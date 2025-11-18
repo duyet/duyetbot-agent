@@ -125,18 +125,20 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 ## Phase 2: Core Agent System 🤖 (3-4 days)
 
-### 2.1 LLM Provider Abstraction
+### 2.1 LLM Provider Abstraction ✅
 **Goal**: Create unified interface for multiple LLM providers
 
 **Tasks**:
-- [x] Define `LLMProvider` interface
+- [x] Define `LLMProvider` interface with streaming support
 - [x] Create provider factory with format parser `<provider>:<model_id>`
 - [x] Add provider configuration validation
 - [x] Write unit tests for provider types and factory (35 tests passing)
-- [ ] Implement Claude provider adapter
-  - Use `@anthropic-ai/claude-agent-sdk`
-  - Handle streaming responses
-  - Implement error handling
+- [x] Implement Claude provider adapter (32 tests passing)
+  - Anthropic SDK integration (`@anthropic-ai/sdk`)
+  - Streaming async generator responses
+  - System message handling
+  - Error handling with LLMProviderError
+  - Support for Claude 3.5 Sonnet, Opus, and Haiku
 - [ ] Implement OpenAI provider adapter
   - Use OpenAI SDK
   - Match interface with Claude provider
@@ -144,7 +146,7 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
   - Use OpenRouter API
   - Support multiple models
 
-**Output**: Working multi-provider LLM system (In Progress - Types and Factory complete)
+**Output**: Working multi-provider LLM system (Partial - Claude complete, 67 tests passing)
 
 ### 2.2 Agent Core
 **Goal**: Build agent execution engine
@@ -166,27 +168,35 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 **Output**: Functional agent that can execute tools
 
-### 2.3 Basic Tools Implementation
+### 2.3 Basic Tools Implementation ✅
 **Goal**: Implement essential tools
 
 **Tasks**:
-- [ ] Implement `bash` tool
+- [x] Implement `bash` tool (32 tests passing)
   - Sandbox command execution
   - Output capture
   - Timeout handling
+  - Environment variable support
 - [ ] Implement `git` tool
   - Clone, commit, push, pull operations
   - Status and diff commands
-- [ ] Implement `plan` tool
-  - Task decomposition
-  - Planning output formatting
-- [ ] Implement `sleep` tool
-  - Delay execution
-  - Schedule coordination
-- [ ] Create tool registry
-- [ ] Write tests for each tool
+- [x] Implement `plan` tool (23 tests passing)
+  - Task decomposition with intelligent step generation
+  - Planning output formatting as markdown
+  - Complexity estimation
+- [x] Implement `sleep` tool (19 tests passing)
+  - Delay execution with timeout support
+  - AbortSignal cancellation support
+  - Multiple time units (ms, seconds, minutes)
+- [x] Create tool registry (30 tests passing)
+  - Registration with override support
+  - Tool validation and execution
+  - Filtering and metadata management
+- [x] Write tests for each tool (104 tests for tools)
 
-**Output**: Working toolset for agent operations
+**Output**: Working toolset for agent operations ✅
+
+**Status**: 3/4 core tools complete. Git tool pending.
 
 ---
 
@@ -714,6 +724,7 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-18 | 1.5 | Phase 2 major progress: 186 tests passing. Completed Phase 2.1 (Claude provider), Phase 2.3 (3/4 tools + registry) |
 | 2025-11-18 | 1.4 | Added Architecture Overview and Phase 13 for CLI tool & GitHub Actions support |
 | 2025-11-18 | 1.3 | Phase 2.1 (partial): TDD implementation of provider types and factory with 35 tests |
 | 2025-11-18 | 1.2 | Completed Phase 1.1-1.3: Project foundation with Biome linting, TypeScript, Vitest, and Cloudflare Workers setup |
