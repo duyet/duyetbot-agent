@@ -1,21 +1,9 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { Hono } from 'hono';
-import {
-  requestIdMiddleware,
-  getRequestId,
-} from '@/api/middleware/request-id';
-import {
-  loggerMiddleware,
-  getLogger,
-  Logger,
-} from '@/api/middleware/logger';
-import {
-  timingMiddleware,
-  getTimer,
-  measure,
-  PerformanceTimer,
-} from '@/api/middleware/timing';
+import { Logger, getLogger, loggerMiddleware } from '@/api/middleware/logger';
+import { getRequestId, requestIdMiddleware } from '@/api/middleware/request-id';
+import { PerformanceTimer, getTimer, measure, timingMiddleware } from '@/api/middleware/timing';
 import type { Env } from '@/api/types';
+import { Hono } from 'hono';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Create mock environment
 const createMockEnv = (): Env => ({

@@ -5,7 +5,8 @@
  */
 
 import { Box, Text, useInput } from 'ink';
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 
 interface InputBoxProps {
   value: string;
@@ -14,12 +15,7 @@ interface InputBoxProps {
   isStreaming: boolean;
 }
 
-export const InputBox: React.FC<InputBoxProps> = ({
-  value,
-  onChange,
-  onSubmit,
-  isStreaming,
-}) => {
+export const InputBox: React.FC<InputBoxProps> = ({ value, onChange, onSubmit, isStreaming }) => {
   const [cursorPosition, setCursorPosition] = useState(0);
 
   useInput(
@@ -64,9 +60,7 @@ export const InputBox: React.FC<InputBoxProps> = ({
         {!isStreaming && <Text inverse>{value[cursorPosition] || ' '}</Text>}
         {value.slice(cursorPosition + 1)}
       </Text>
-      {isStreaming && (
-        <Text dimColor> (waiting for response...)</Text>
-      )}
+      {isStreaming && <Text dimColor> (waiting for response...)</Text>}
     </Box>
   );
 };

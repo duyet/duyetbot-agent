@@ -79,10 +79,7 @@ export class RefreshTokenRepository {
    */
   async deleteExpired(): Promise<void> {
     const now = Date.now();
-    await this.db
-      .prepare('DELETE FROM refresh_tokens WHERE expires_at < ?')
-      .bind(now)
-      .run();
+    await this.db.prepare('DELETE FROM refresh_tokens WHERE expires_at < ?').bind(now).run();
   }
 
   /**

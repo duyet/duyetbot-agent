@@ -1,7 +1,7 @@
-import { describe, expect, it, beforeEach } from 'vitest';
-import { Hono } from 'hono';
 import { createHealthRoutes } from '@/api/routes/health';
 import type { Env } from '@/api/types';
+import { Hono } from 'hono';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 // Create mock environment
 const createMockEnv = (): Env => ({

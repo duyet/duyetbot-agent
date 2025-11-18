@@ -173,10 +173,7 @@ export class FileSessionManager implements SessionManager {
     }
 
     if (session.state !== 'paused') {
-      throw new SessionError(
-        `Cannot resume session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot resume session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const resumed: Session = {
@@ -228,10 +225,7 @@ export class FileSessionManager implements SessionManager {
     }
 
     if (session.state !== 'active') {
-      throw new SessionError(
-        `Cannot complete session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot complete session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const completed: Session = {
@@ -282,10 +276,7 @@ export class FileSessionManager implements SessionManager {
     }
 
     if (session.state === 'completed' || session.state === 'failed') {
-      throw new SessionError(
-        `Cannot cancel session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot cancel session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const cancelled: Session = {

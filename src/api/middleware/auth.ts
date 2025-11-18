@@ -5,9 +5,9 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Env, User } from '../types';
 import { extractToken, verifyToken } from '../auth/jwt';
 import { UserRepository } from '../repositories/user';
+import type { Env, User } from '../types';
 
 /**
  * Authentication middleware
@@ -32,7 +32,11 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
 
     if (!user) {
       return c.json(
-        { error: 'Unauthorized', message: 'User not found', code: 'USER_NOT_FOUND' },
+        {
+          error: 'Unauthorized',
+          message: 'User not found',
+          code: 'USER_NOT_FOUND',
+        },
         401
       );
     }
@@ -41,17 +45,25 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
     c.set('user', user);
 
     await next();
-  } catch (error: any) {
-    if (error.code === 'TOKEN_EXPIRED') {
+  } catch (error: unknown) {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'TOKEN_EXPIRED') {
       return c.json(
-        { error: 'Unauthorized', message: 'Token expired', code: 'TOKEN_EXPIRED' },
+        {
+          error: 'Unauthorized',
+          message: 'Token expired',
+          code: 'TOKEN_EXPIRED',
+        },
         401
       );
     }
 
     if (error.code === 'TOKEN_INVALID') {
       return c.json(
-        { error: 'Unauthorized', message: 'Invalid token', code: 'TOKEN_INVALID' },
+        {
+          error: 'Unauthorized',
+          message: 'Invalid token',
+          code: 'TOKEN_INVALID',
+        },
         401
       );
     }

@@ -39,10 +39,7 @@ export function getGitHubAuthUrl(config: GitHubOAuthConfig, state?: string): str
 /**
  * Exchange authorization code for access token
  */
-export async function exchangeGitHubCode(
-  code: string,
-  config: GitHubOAuthConfig
-): Promise<string> {
+export async function exchangeGitHubCode(code: string, config: GitHubOAuthConfig): Promise<string> {
   const response = await fetch(GITHUB_TOKEN_URL, {
     method: 'POST',
     headers: {
@@ -61,7 +58,10 @@ export async function exchangeGitHubCode(
     throw new GitHubOAuthError('Failed to exchange code for token', 'TOKEN_EXCHANGE_FAILED');
   }
 
-  const data = await response.json() as { access_token?: string; error?: string };
+  const data = (await response.json()) as {
+    access_token?: string;
+    error?: string;
+  };
 
   if (data.error) {
     throw new GitHubOAuthError(`GitHub OAuth error: ${data.error}`, 'GITHUB_OAUTH_ERROR');
@@ -89,7 +89,7 @@ export async function getGitHubProfile(accessToken: string): Promise<OAuthProfil
     throw new GitHubOAuthError('Failed to fetch user profile', 'PROFILE_FETCH_FAILED');
   }
 
-  const data = await response.json() as GitHubProfile & { email?: string };
+  const data = (await response.json()) as GitHubProfile & { email?: string };
 
   // If email is null, fetch from emails endpoint
   let email = data.email;
@@ -101,7 +101,7 @@ export async function getGitHubProfile(accessToken: string): Promise<OAuthProfil
     id: String(data.id),
     email: email || '',
     name: data.name,
-    picture: data.avatarUrl || data.avatar_url || null,
+    picture: data.avatarUrl || null,
   };
 }
 
@@ -120,7 +120,7 @@ async function getGitHubPrimaryEmail(accessToken: string): Promise<string> {
     throw new GitHubOAuthError('Failed to fetch user emails', 'EMAIL_FETCH_FAILED');
   }
 
-  const emails = await response.json() as Array<{
+  const emails = (await response.json()) as Array<{
     email: string;
     primary: boolean;
     verified: boolean;

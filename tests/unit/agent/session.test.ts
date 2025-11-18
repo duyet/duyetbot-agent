@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
 import type { Session, SessionState } from '@/agent/session';
+import { describe, expect, it } from 'vitest';
 
 describe('Session Types', () => {
   describe('SessionState', () => {
