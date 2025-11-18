@@ -150,25 +150,32 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 **Output**: Working multi-provider LLM system ✅ (102 provider tests passing)
 
-### 2.2 Agent Core
+### 2.2 Agent Core ✅
 **Goal**: Build agent execution engine
 
 **Tasks**:
-- [ ] Implement agent core class
-- [ ] Add session management
-  - Session creation and persistence
-  - Session state tracking
-  - Session resumption
-- [ ] Implement tool execution engine
-  - Tool registration system
-  - Input validation with Zod
-  - Error handling and recovery
-- [ ] Add streaming response handling
-- [ ] Implement permission system
-- [ ] Add hooks support (PreToolUse, PostToolUse, etc.)
-- [ ] Write integration tests
+- [x] Implement agent core class (26 tests passing)
+  - Provider integration
+  - Session orchestration
+  - Tool execution coordination
+- [x] Add session management (53 tests passing)
+  - Session creation and persistence (InMemorySessionManager)
+  - Session state tracking (active, paused, completed, failed, cancelled)
+  - Session resumption with resume tokens
+  - Message and metadata management
+- [x] Implement tool execution engine
+  - Tool registration system (ToolRegistry - 30 tests) ✅
+  - Input validation with Zod ✅
+  - Error handling and recovery ✅
+  - Direct tool execution and session-tracked execution
+- [x] Add streaming response handling
+  - AsyncGenerator pattern for LLM responses
+  - Provider-agnostic streaming
+- [ ] Implement permission system (deferred)
+- [ ] Add hooks support (PreToolUse, PostToolUse, etc.) (deferred)
+- [ ] Write integration tests (next)
 
-**Output**: Functional agent that can execute tools
+**Output**: Functional agent that can execute tools ✅ (79 agent tests passing)
 
 ### 2.3 Basic Tools Implementation ✅
 **Goal**: Implement essential tools
@@ -728,6 +735,7 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-18 | 1.8 | ✅ Phase 2.2 COMPLETE: 347 tests passing. Agent Core with session management and tool execution (79 agent tests) |
 | 2025-11-18 | 1.7 | ✅ Phase 2.3 COMPLETE: 268 tests passing. Git tool implemented with comprehensive error handling (47 tests) |
 | 2025-11-18 | 1.6 | ✅ Phase 2.1 COMPLETE: 221 tests passing. All providers (Claude, OpenRouter), all core tools + registry |
 | 2025-11-18 | 1.5 | Phase 2 major progress: 186 tests passing. Completed Phase 2.1 (Claude provider), Phase 2.3 (3/4 tools + registry) |
