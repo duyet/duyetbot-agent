@@ -247,8 +247,9 @@ export async function syncQueue(
       await queue.incrementRetry(message.id);
       failed++;
 
-      // Remove messages that have failed too many times
-      if (message.retries >= 3) {
+      // Remove messages that have failed too many times (after incrementing)
+      if (message.retries >= 2) {
+        // After increment, this will be >= 3
         await queue.dequeue(message.id);
       }
     }
