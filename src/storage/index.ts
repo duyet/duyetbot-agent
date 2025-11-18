@@ -1,12 +1,9 @@
 /**
  * Storage Module
  *
- * Persistence layer using:
- * - Cloudflare KV for task and session storage
- * - Cloudflare D1 for relational data
+ * Local file-based storage for sessions, tasks, and configuration
+ * Similar to Claude Code's ~/.claude/ directory structure
  */
 
-// TODO: Implement storage modules
-// export * from './tasks';
-// export * from './sessions';
-// export * from './types';
+export * from './filesystem';
+export * from './file-session-manager';
