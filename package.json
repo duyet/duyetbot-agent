@@ -1,0 +1,49 @@
+{
+  "name": "duyetbot-agent",
+  "version": "0.1.0",
+  "description": "Autonomous bot agent system with multi-LLM support running on Cloudflare Workers",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "tsc",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:unit": "vitest run --dir tests/unit",
+    "test:integration": "vitest run --dir tests/integration",
+    "type-check": "tsc --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "check": "biome check --write . && tsc --noEmit"
+  },
+  "keywords": [
+    "agent",
+    "bot",
+    "cloudflare-workers",
+    "llm",
+    "claude",
+    "openai",
+    "automation",
+    "scheduler"
+  ],
+  "author": "duyet",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "@cloudflare/vitest-pool-workers": "^0.5.18",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8",
+    "wrangler": "^3.94.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
