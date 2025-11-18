@@ -45,7 +45,7 @@ describe('SessionManager', () => {
       const session = await manager.create(input);
 
       expect(session.messages).toHaveLength(2);
-      expect(session.messages?.[0].content).toBe('Hello');
+      expect(session.messages![0]!.content).toBe('Hello');
     });
 
     it('should create session with metadata', async () => {
@@ -163,7 +163,7 @@ describe('SessionManager', () => {
       });
 
       expect(updated.toolResults).toHaveLength(1);
-      expect(updated.toolResults?.[0].toolName).toBe('bash');
+      expect(updated.toolResults![0]!.toolName).toBe('bash');
     });
 
     it('should throw error for non-existent session', async () => {

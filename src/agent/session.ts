@@ -249,9 +249,9 @@ export class InMemorySessionManager implements SessionManager {
     const resumed: Session = {
       ...session,
       state: 'active',
-      resumeToken: undefined,
       updatedAt: new Date(),
     };
+    delete resumed.resumeToken;
 
     this.sessions.set(id, resumed);
     return resumed;
@@ -276,7 +276,7 @@ export class InMemorySessionManager implements SessionManager {
     const paused: Session = {
       ...session,
       state: 'paused',
-      resumeToken,
+      ...(resumeToken && { resumeToken }),
       updatedAt: new Date(),
     };
 
