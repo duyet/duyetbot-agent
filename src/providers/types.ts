@@ -94,7 +94,7 @@ export interface LLMProvider {
   /**
    * Get current configuration
    */
-  getConfig?(): ProviderConfig;
+  getConfig?(): ProviderConfig | undefined;
 
   /**
    * Validate configuration

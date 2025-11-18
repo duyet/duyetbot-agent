@@ -11,7 +11,8 @@
 
 export * from './types';
 export * from './factory';
-// TODO: Implement provider modules
-// export * from './claude';
+export * from './claude';
+
+// TODO: Implement remaining provider modules
 // export * from './openai';
 // export * from './openrouter';
