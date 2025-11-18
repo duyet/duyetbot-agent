@@ -7,10 +7,10 @@
 import { Agent } from '@/agent/core';
 import { ClaudeProvider } from '@/providers/claude';
 import { FileSessionManager } from '@/storage/file-session-manager';
-import { ToolRegistry } from '@/tools/registry';
 import { bashTool } from '@/tools/bash';
 import { gitTool } from '@/tools/git';
 import { planTool } from '@/tools/plan';
+import { ToolRegistry } from '@/tools/registry';
 import { sleepTool } from '@/tools/sleep';
 
 async function main() {
@@ -129,11 +129,11 @@ async function main() {
   console.log(`   • Registered tools: ${toolRegistry.list().join(', ')}`);
   console.log(`   • Provider: ${provider.getConfig()?.provider}/${provider.getConfig()?.model}`);
   console.log(`   • Sessions: ${allSessions.length} total`);
-  console.log(`   • Storage: ~/.duyetbot/ (file-based persistence)`);
-  console.log(`   • Test coverage: 390 tests passing ✅`);
+  console.log('   • Storage: ~/.duyetbot/ (file-based persistence)');
+  console.log('   • Test coverage: 390 tests passing ✅');
   console.log('\n💾 File Storage Info:');
-  console.log(`   All sessions saved to: ~/.duyetbot/sessions/`);
-  console.log(`   Sessions persist across restarts!`);
+  console.log('   All sessions saved to: ~/.duyetbot/sessions/');
+  console.log('   Sessions persist across restarts!');
   console.log('\n🎉 Ready for interactive terminal UI (Phase 4)!');
 }
 
