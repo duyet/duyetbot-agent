@@ -5,7 +5,8 @@
  */
 
 import type { LLMMessage, LLMProvider, LLMResponse } from '@/providers/types';
-import type { ToolInput, ToolOutput, ToolRegistry } from '@/tools/types';
+import type { ToolInput, ToolOutput } from '@/tools/types';
+import type { ToolRegistry } from '@/tools/registry';
 import type {
   CreateSessionInput,
   Session,
@@ -127,7 +128,7 @@ export class Agent {
    */
   async executeTool(toolName: string, input: unknown): Promise<ToolOutput> {
     const toolInput: ToolInput = {
-      content: input,
+      content: input as string | Record<string, unknown>,
     };
 
     return this.toolRegistry.execute(toolName, toolInput);
@@ -154,7 +155,7 @@ export class Agent {
       toolName,
       status: result.status === 'success' ? 'success' : 'error',
       output: result.content,
-      ...(result.error && { error: result.error }),
+      ...(result.error && { error: { message: result.error.message, code: result.error.code || 'UNKNOWN_ERROR' } }),
       timestamp: new Date(),
     };
     toolResults.push(toolResult);

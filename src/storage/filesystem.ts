@@ -173,7 +173,8 @@ export class FileSystemStorage {
    * List files in directory
    */
   async list(relativePath: string): Promise<string[]> {
-    const dirPath = this.getPath(relativePath.split('*')[0]);
+    const basePath = relativePath.split('*')[0];
+    const dirPath = this.getPath(basePath || '');
 
     if (!existsSync(dirPath)) {
       return [];

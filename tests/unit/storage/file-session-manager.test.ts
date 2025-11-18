@@ -50,7 +50,7 @@ describe('FileSessionManager', () => {
 
       const loaded = await manager.get(session.id);
       expect(loaded?.messages).toHaveLength(1);
-      expect(loaded?.messages?.[0].content).toBe('Hello');
+      expect(loaded?.messages![0]!.content).toBe('Hello');
     });
   });
 

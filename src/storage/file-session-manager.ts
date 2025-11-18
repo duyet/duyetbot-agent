@@ -182,9 +182,9 @@ export class FileSessionManager implements SessionManager {
     const resumed: Session = {
       ...session,
       state: 'active',
-      resumeToken: undefined,
       updatedAt: new Date(),
     };
+    delete resumed.resumeToken;
 
     await this.storage.writeJSON(this.getSessionPath(id), this.serialize(resumed));
     return resumed;
@@ -206,7 +206,7 @@ export class FileSessionManager implements SessionManager {
     const paused: Session = {
       ...session,
       state: 'paused',
-      resumeToken,
+      ...(resumeToken && { resumeToken }),
       updatedAt: new Date(),
     };
 
