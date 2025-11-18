@@ -211,52 +211,142 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 ---
 
-## Phase 3: Storage & Persistence 💾 (2-3 days)
+## Phase 3: Local File Storage 💾 (1-2 days)
 
-### 3.1 Cloudflare KV Integration
-**Goal**: Implement key-value storage for tasks and sessions
+**Design**: Similar to Claude Code's `~/.claude/` directory structure
+
+### 3.1 Storage Architecture
+**Goal**: Implement local file-based persistence
+
+**Directory Structure**:
+```
+~/.duyetbot/
+  ├── config.json          # Global configuration (providers, defaults)
+  ├── sessions/            # Session storage (one file per session)
+  │   ├── session-123.json
+  │   └── session-456.json
+  ├── tasks/               # Task definitions
+  │   ├── task-1.json
+  │   └── task-2.json
+  ├── history/             # Execution history (JSONL format)
+  │   └── 2024-11/
+  │       ├── 2024-11-18.jsonl
+  │       └── 2024-11-19.jsonl
+  ├── cache/               # Temporary cache
+  └── duyetbot.db          # SQLite for structured queries (optional)
+```
 
 **Tasks**:
-- [ ] Create KV namespace in wrangler.jsonc
-- [ ] Implement KV storage adapter
-- [ ] Create task storage module
+- [ ] Create FileSystemStorage class
+  - Directory initialization (~/.duyetbot/)
+  - JSON file read/write with atomic operations
+  - JSONL append for logs/history
+- [ ] Implement FileSessionManager (replaces InMemorySessionManager)
+  - Save session to ~/.duyetbot/sessions/{id}.json
+  - Load session from file
+  - List sessions by reading directory
+  - Auto-cleanup old sessions
+- [ ] Create TaskStorage module
   - Save/load task definitions
-  - List tasks with filters
-  - Update task status
-- [ ] Create session storage module
-  - Persist conversation history
-  - Store agent state
-- [ ] Add caching layer
+  - Task versioning
+- [ ] Add ExecutionHistory module
+  - JSONL append-only logs
+  - Date-based partitioning
+  - Query by date range
+- [ ] Implement ConfigManager
+  - Load/save ~/.duyetbot/config.json
+  - Provider credentials (encrypted)
+  - User preferences
+- [ ] Add SQLite integration (optional, for complex queries)
+  - better-sqlite3 for fast local DB
+  - Schema: sessions, tasks, executions, logs
+  - Indexes for performance
 - [ ] Write storage tests
 
-**Output**: Persistent task and session storage
+**Output**: Local file-based persistence (no external database required)
 
-### 3.2 Cloudflare D1 Integration
-**Goal**: Set up relational database for complex queries
+### 3.2 Migration from In-Memory
+**Goal**: Seamless transition to file storage
 
 **Tasks**:
-- [ ] Define D1 database schema
-  - Tasks table
-  - Executions table
-  - Logs table
-  - Users table (for auth)
-- [ ] Create migration scripts
-- [ ] Implement D1 query builders
-- [ ] Add indexes for performance
-- [ ] Create database seed scripts
-- [ ] Write database tests
+- [ ] Create storage adapter interface
+- [ ] Implement both InMemorySessionManager and FileSessionManager
+- [ ] Add storage selection in Agent constructor
+- [ ] Update tests to support both storage types
+- [ ] Add migration utility (memory → file)
 
-**Output**: Relational database for structured data
+**Output**: Backward-compatible storage layer
 
 ---
 
-## Phase 4: Task Scheduler 📅 (3-4 days)
+## Phase 4: Interactive Terminal UI 🖥️ (2-3 days)
 
-### 4.1 Scheduler Engine
-**Goal**: Build background task execution system
+**Design**: Similar to Claude Code CLI with full-screen interactive interface
+
+### 4.1 Terminal UI Framework
+**Goal**: Build beautiful interactive CLI using Ink (React for terminals)
+
+**Technology Stack**:
+- **Ink** - React for CLIs with Flexbox layouts
+- **Ink UI** - Pre-built components (TextInput, Select, etc.)
+- **Chalk** - Terminal colors and styling
+- **Commander.js** - Command parsing
+- **Inquirer.js** - Interactive prompts
 
 **Tasks**:
-- [ ] Implement task queue
+- [ ] Set up Ink project structure
+  - Install ink, ink-ui, react
+  - Create UI components directory
+  - Configure TypeScript for JSX
+- [ ] Create main UI components
+  - ChatView (message history)
+  - InputBox (user input with autocomplete)
+  - StatusBar (session info, model, tokens)
+  - Sidebar (sessions list, tools)
+  - ToolOutputView (rich tool result display)
+- [ ] Implement interactive features
+  - Real-time streaming LLM responses
+  - Tool execution progress indicators
+  - Session switching (Ctrl+S)
+  - Command palette (Ctrl+P)
+- [ ] Add keyboard shortcuts
+  - Ctrl+C: Cancel current operation
+  - Ctrl+S: Switch session
+  - Ctrl+P: Command palette
+  - Ctrl+L: Clear screen
+  - Ctrl+N: New session
+- [ ] Create CLI entry point
+  - `duyetbot` - Start interactive UI
+  - `duyetbot chat` - Quick chat mode
+  - `duyetbot run <task>` - Execute task
+  - `duyetbot sessions` - List sessions
+- [ ] Write UI tests
+
+**Output**: Full-featured interactive terminal UI
+
+### 4.2 Alternative: TUI Options
+**Goal**: Support multiple UI modes
+
+**Options**:
+- [ ] **Full-screen mode** (Ink/blessed) - Like vim/htop
+- [ ] **Simple mode** (Inquirer) - Question/answer flow
+- [ ] **Headless mode** - API only (for scripting)
+- [ ] **Web UI mode** - Local web server (optional)
+
+**Tasks**:
+- [ ] Create UI mode selector
+- [ ] Implement simple REPL mode (fallback)
+- [ ] Add --ui flag to choose mode
+- [ ] Document all UI modes
+
+**Output**: Flexible UI with multiple interaction modes
+
+---
+
+## Phase 5: Task Scheduler 📅 (2-3 days)
+
+### 5.1 Scheduler Engine
+**Goal**: Build background task execution system
   - Priority-based queuing
   - Task status tracking
   - Execution history
@@ -735,6 +825,7 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-18 | 1.9 | 🎯 **Architecture Pivot**: Changed from Cloudflare Workers to local desktop app. Replaced Phase 3 (KV/D1) with local file storage (~/.duyetbot/). Added Phase 4 for interactive terminal UI using Ink (React for CLIs). Target: Claude Code-like experience. |
 | 2025-11-18 | 1.8 | ✅ Phase 2.2 COMPLETE: 347 tests passing. Agent Core with session management and tool execution (79 agent tests) |
 | 2025-11-18 | 1.7 | ✅ Phase 2.3 COMPLETE: 268 tests passing. Git tool implemented with comprehensive error handling (47 tests) |
 | 2025-11-18 | 1.6 | ✅ Phase 2.1 COMPLETE: 221 tests passing. All providers (Claude, OpenRouter), all core tools + registry |
