@@ -6,16 +6,16 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { authMiddleware, getOptionalUser, getUser } from './middleware/auth';
+import { corsMiddleware } from './middleware/cors';
+import { getLogger, loggerMiddleware } from './middleware/logger';
+import { rateLimitMiddleware } from './middleware/rate-limit';
 import { requestIdMiddleware } from './middleware/request-id';
 import { timingMiddleware } from './middleware/timing';
-import { loggerMiddleware, getLogger } from './middleware/logger';
-import { corsMiddleware } from './middleware/cors';
-import { rateLimitMiddleware } from './middleware/rate-limit';
-import { authMiddleware, getUser, getOptionalUser } from './middleware/auth';
 import { createAuthRoutes } from './routes/auth';
-import { createUserRoutes } from './routes/users';
 import { createHealthRoutes } from './routes/health';
-import type { Env, APIResponse } from './types';
+import { createUserRoutes } from './routes/users';
+import type { APIResponse, Env } from './types';
 
 /**
  * Create main API router

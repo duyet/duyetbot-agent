@@ -96,12 +96,12 @@ export class UserRepository {
     const updates: string[] = [];
     const values: unknown[] = [];
 
-    if (input.name !== undefined) {
+    if ('name' in input) {
       updates.push('name = ?');
       values.push(input.name);
     }
 
-    if (input.picture !== undefined) {
+    if ('picture' in input) {
       updates.push('picture = ?');
       values.push(input.picture);
     }
@@ -198,7 +198,7 @@ export class UserRepository {
       providerId: row.provider_id,
       createdAt: new Date(row.created_at),
       updatedAt: new Date(row.updated_at),
-      settings: row.settings ? JSON.parse(row.settings) as UserSettings : undefined,
+      settings: row.settings ? (JSON.parse(row.settings) as UserSettings) : undefined,
     };
   }
 }

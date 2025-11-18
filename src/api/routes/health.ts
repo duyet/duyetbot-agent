@@ -6,7 +6,7 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { Env, APIResponse } from '../types';
+import type { APIResponse, Env } from '../types';
 
 /**
  * Health check status

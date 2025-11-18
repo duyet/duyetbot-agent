@@ -17,7 +17,10 @@ const DEFAULT_TIMEOUT = 60000;
 
 // Input schema for git tool
 const gitInputSchema = z.union([
-  z.string().min(1, 'Command cannot be empty').transform((command) => ({ command })),
+  z
+    .string()
+    .min(1, 'Command cannot be empty')
+    .transform((command) => ({ command })),
   z.object({
     command: z.enum([
       'status',

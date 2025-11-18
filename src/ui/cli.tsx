@@ -10,14 +10,14 @@
  *   duyetbot --model=claude-3-5-haiku-20241022  # Different model
  */
 
-import { render } from 'ink';
-import React from 'react';
-import { Command } from 'commander';
 import { Agent } from '@/agent/core.js';
 import { ClaudeProvider } from '@/providers/claude.js';
 import { FileSessionManager } from '@/storage/file-session-manager.js';
-import { ToolRegistry } from '@/tools/registry.js';
 import { bashTool, gitTool, planTool, sleepTool } from '@/tools/index.js';
+import { ToolRegistry } from '@/tools/registry.js';
+import { Command } from 'commander';
+import { render } from 'ink';
+import React from 'react';
 import { App } from './App.js';
 import { defaultConfig } from './config.js';
 
@@ -28,11 +28,7 @@ program
   .description('Interactive terminal UI for duyetbot-agent')
   .version(defaultConfig.version)
   .option('-k, --api-key <key>', 'Anthropic API key (or set ANTHROPIC_API_KEY env var)')
-  .option(
-    '-m, --model <model>',
-    'Model to use',
-    defaultConfig.defaultModel
-  )
+  .option('-m, --model <model>', 'Model to use', defaultConfig.defaultModel)
   .option('-s, --storage <path>', 'Storage path', undefined)
   .action((options) => {
     const apiKey = options.apiKey || process.env.ANTHROPIC_API_KEY;
