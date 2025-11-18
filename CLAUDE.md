@@ -131,11 +131,12 @@ npm run deploy              # Deploy to Cloudflare Workers
 npm run deploy:staging      # Deploy to staging environment
 ```
 
-### Linting
+### Linting and Formatting
 ```bash
-npm run lint                # ESLint check
+npm run lint                # Biome check
 npm run lint:fix            # Auto-fix linting issues
-npm run format              # Prettier formatting
+npm run format              # Format code with Biome
+npm run check               # Run all checks (lint + type-check)
 ```
 
 ## Development Workflow
