@@ -103,6 +103,199 @@ agent-name or <provider>:<model_id>
 Task description or prompt
 ```
 
+## Building Effective Agents
+
+This section documents key principles from Anthropic's engineering guide on building effective agents (December 2024). These patterns and recommendations inform the architecture of duyetbot-agent.
+
+### Core Philosophy
+
+**Start Simple, Add Complexity Only When Needed**
+- Begin with simple prompts and direct API calls
+- Add comprehensive evaluation before adding complexity
+- Implement multi-step agentic systems only when simpler solutions fall short
+- The most successful implementations use simple, composable patterns rather than complex frameworks
+
+### Architectural Distinction
+
+**Workflows vs Agents**
+- **Workflows**: LLMs and tools orchestrated through predefined code paths (deterministic)
+- **Agents**: LLMs dynamically direct their own processes and tool usage (autonomous)
+
+Both are "agentic systems" but differ in control flow:
+- Workflows = explicit orchestration
+- Agents = LLM-driven decision making
+
+### Five Workflow Patterns (Increasing Complexity)
+
+#### 1. Prompt Chaining
+**When to use**: Tasks can be decomposed into fixed, sequential subtasks
+
+**Pattern**:
+```
+Input → LLM Step 1 → LLM Step 2 → LLM Step 3 → Output
+```
+
+**Trade-offs**:
+- ✅ Higher accuracy through specialized prompts
+- ✅ Easier to debug individual steps
+- ❌ Increased latency (sequential processing)
+
+**Example**: Document processing pipeline (extract → summarize → categorize)
+
+#### 2. Routing
+**When to use**: Different inputs require different specialized processing paths
+
+**Pattern**:
+```
+Input → Classifier LLM → Route A (specialist LLM)
+                      → Route B (specialist LLM)
+                      → Route C (specialist LLM)
+```
+
+**Benefits**:
+- Separation of concerns
+- Specialized prompts for each domain
+- More efficient than single general-purpose prompt
+
+**Example**: Customer service routing (technical → billing → general inquiry)
+
+#### 3. Parallelization
+**When to use**: Independent subtasks can run concurrently OR diversity/voting is needed
+
+**Two variations**:
+
+a) **Sectioning** - Break task into independent parallel subtasks:
+```
+Input → Split → [LLM 1] → Combine
+              → [LLM 2] →
+              → [LLM 3] →
+```
+
+b) **Voting** - Run same task multiple times for diverse outputs:
+```
+Input → [LLM attempt 1] → Vote/Aggregate → Output
+      → [LLM attempt 2] →
+      → [LLM attempt 3] →
+```
+
+**Example**: Analyzing different document sections simultaneously, or generating multiple solutions and selecting the best
+
+#### 4. Orchestrator-Workers
+**When to use**: Complex tasks requiring dynamic decomposition and synthesis
+
+**Pattern**:
+```
+Input → Orchestrator LLM → Delegate to Worker 1 → Synthesize → Output
+                         → Delegate to Worker 2 →
+                         → Delegate to Worker 3 →
+```
+
+**Characteristics**:
+- Central LLM dynamically breaks down tasks
+- Workers are specialized for specific subtasks
+- Orchestrator synthesizes worker results
+- More flexible than fixed parallelization
+
+**Example**: Research agent that decides which sources to query, delegates searches, then synthesizes findings
+
+#### 5. Evaluator-Optimizer
+**When to use**: Output quality can be iteratively improved through evaluation
+
+**Pattern**:
+```
+Input → Generator LLM → Evaluator LLM → Is it good enough?
+          ↑                                  ↓ No
+          └──────── Refine ─────────────────┘
+                                             ↓ Yes
+                                          Output
+```
+
+**Use cases**:
+- Code generation with review loops
+- Content creation with quality checks
+- Optimization problems with scoring
+
+**Example**: Generate SQL query → Validate syntax/logic → Refine if needed → Return valid query
+
+### Building Blocks
+
+**The Foundation**: LLM + Augmentations
+- **Retrieval**: RAG, search, knowledge bases
+- **Tools**: API calls, code execution, external services
+- **Memory**: Conversation history, session state, long-term storage
+
+**Modern Capability**: LLMs can now actively use these building blocks:
+- Generate their own search queries
+- Select appropriate tools dynamically
+- Determine what information to retain
+
+### Implementation Recommendations
+
+#### Start with Direct API Calls
+```typescript
+// ✅ Good: Simple, composable, debuggable
+const response = await llm.query(messages);
+
+// ❌ Avoid: Complex frameworks for simple tasks
+const agent = new ComplexFramework({ autonomous: true, ... });
+```
+
+#### Compose Patterns as Needed
+- Patterns can be combined (e.g., routing + parallelization)
+- Build incrementally based on evaluation results
+- Keep code paths explicit where possible
+
+#### Use Model Context Protocol (MCP)
+- Standardized tool integration
+- Growing ecosystem of third-party tools
+- Simple client implementation
+- Enables tool reuse across agents
+
+#### Evaluation-Driven Development
+1. Define success criteria
+2. Build simple solution
+3. Evaluate comprehensively
+4. Add complexity only if metrics improve
+5. Repeat
+
+### Anti-Patterns to Avoid
+
+❌ **Over-engineering**: Adding autonomous agents when workflows suffice
+❌ **Framework lock-in**: Using complex frameworks for simple orchestration
+❌ **Premature optimization**: Building multi-agent systems before validating simpler approaches
+❌ **Missing evaluation**: Adding complexity without measuring improvement
+❌ **Ignoring latency**: Chaining LLM calls without considering user experience
+
+### When to Use What
+
+| Pattern | Best For | Avoid When |
+|---------|----------|------------|
+| **Simple Prompt** | Single-step tasks, fast responses | Task requires multiple specialized steps |
+| **Prompt Chaining** | Sequential multi-step tasks | Steps are independent (use parallelization) |
+| **Routing** | Multiple specialized domains | All inputs need same processing |
+| **Parallelization** | Independent subtasks, voting/diversity | Tasks have dependencies |
+| **Orchestrator-Workers** | Dynamic task decomposition | Task structure is predictable |
+| **Evaluator-Optimizer** | Iterative quality improvement | Quality metrics unclear |
+| **Autonomous Agents** | Truly unpredictable workflows | Workflow can be predefined |
+
+### Application to duyetbot-agent
+
+This project implements these patterns:
+
+1. **Workflow Patterns**: Task scheduler uses orchestrator-worker pattern
+2. **Tool System**: Building blocks approach (bash, git, plan, research tools)
+3. **Sub-Agents**: Hierarchical agents with specialized prompts (evaluator pattern for code review)
+4. **Routing**: Different task types routed to appropriate agents
+5. **Evaluation**: Comprehensive test coverage before adding complexity
+
+**Design Decision**: Start with workflows (explicit orchestration) before adding autonomous agents. Most use cases can be solved with composable workflow patterns.
+
+### References
+
+- [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents) (December 2024)
+- [Anthropic Cookbook: Agent Patterns](https://github.com/anthropics/anthropic-cookbook/tree/main/patterns/agents)
+- [Model Context Protocol](https://www.anthropic.com/news/model-context-protocol)
+
 ## Development Commands
 
 ### Setup
