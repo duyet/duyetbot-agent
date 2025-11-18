@@ -81,6 +81,35 @@ export interface TokenPair {
 }
 
 /**
+ * Device flow authorization request
+ */
+export interface DeviceAuthorizationResponse {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number; // seconds
+  interval: number; // seconds
+}
+
+/**
+ * Device flow token request
+ */
+export interface DeviceTokenRequest {
+  deviceCode: string;
+}
+
+/**
+ * Device flow pending authorization (stored in KV)
+ */
+export interface DevicePendingAuthorization {
+  deviceCode: string;
+  userCode: string;
+  userId?: string; // Set when user authorizes
+  createdAt: number; // timestamp
+  expiresAt: number; // timestamp
+}
+
+/**
  * Refresh token model
  */
 export interface RefreshToken {
@@ -175,9 +204,15 @@ export interface Env {
   JWT_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
+  GITHUB_REDIRECT_URI: string;
+  GITHUB_WEBHOOK_SECRET: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_REDIRECT_URI: string;
   ANTHROPIC_API_KEY: string;
+  OPENAI_API_KEY: string;
+  OPENROUTER_API_KEY: string;
+  FRONTEND_URL: string;
 }
 
 /**
