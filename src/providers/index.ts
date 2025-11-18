@@ -9,9 +9,9 @@
  * Provider format: <provider>:<model_id>
  */
 
+export * from './types';
+export * from './factory';
 // TODO: Implement provider modules
-// export * from './types';
 // export * from './claude';
 // export * from './openai';
 // export * from './openrouter';
-// export * from './factory';
