@@ -204,3 +204,21 @@ export interface RateLimitResult {
   remaining: number;
   resetAt: Date;
 }
+
+/**
+ * Request context extensions
+ * These are added by middleware and available in handlers via c.get()
+ */
+export interface RequestContext {
+  // From auth middleware
+  user?: User;
+
+  // From request-id middleware
+  requestId: string;
+
+  // From logger middleware
+  logger: import('./middleware/logger').Logger;
+
+  // From timing middleware
+  timer: import('./middleware/timing').PerformanceTimer;
+}
