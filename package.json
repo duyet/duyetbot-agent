@@ -17,7 +17,8 @@
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "check": "biome check --write . && tsc --noEmit"
+    "check": "biome check --write . && tsc --noEmit",
+    "demo": "tsx examples/demo.ts"
   },
   "keywords": [
     "agent",
@@ -40,6 +41,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@cloudflare/vitest-pool-workers": "^0.5.18",
+    "tsx": "^4.20.6",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
     "wrangler": "^3.94.0"
