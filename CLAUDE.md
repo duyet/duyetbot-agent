@@ -442,7 +442,50 @@ Parent agents can spawn sub-agents for specialized tasks:
 
 Sub-agents inherit tools but can override model configuration.
 
-### 5. Cloudflare Workers Integration
+### 5. Streaming vs Single Mode
+
+The Claude Agent SDK supports two input modes for agent execution:
+
+**Streaming Mode (Recommended)**
+- Long-lived process with continuous interaction
+- Full access to all tools and custom MCP servers
+- Attach images directly to messages
+- Send multiple messages sequentially with interrupt capability
+- See responses as they're generated (real-time feedback)
+- Use lifecycle hooks for customization
+- Maintain conversation context across turns naturally
+
+**Single Mode**
+- Simple, one-shot execution
+- Best for batch processing or deterministic runs
+- Limited tool access
+- No interruption support
+- Final results only (no real-time streaming)
+
+**When to Use What:**
+- **Streaming**: Interactive workflows, development, UI applications, real-time feedback
+- **Single**: Automation scripts, batch jobs, simple deterministic tasks
+
+**Implementation in duyetbot-agent:**
+```typescript
+// Streaming mode (default for UI and interactive tasks)
+const agent = createAgent({
+  prompt: async function* (messages) {
+    // Async generator for streaming
+    for await (const message of messages) {
+      yield* handleMessage(message);
+    }
+  },
+  tools: [bashTool, gitTool, planTool],
+});
+
+// Single mode (for scheduled background tasks)
+const result = await agent.query(singleMessage, { mode: 'single' });
+```
+
+**Design Decision**: Use streaming mode for all UI interactions and real-time tasks. Use single mode only for scheduled background jobs that don't require user interaction.
+
+### 6. Cloudflare Workers Integration
 
 The worker handles multiple concerns:
 - API endpoints for UI (`/api/*`)
