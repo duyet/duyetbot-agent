@@ -6,8 +6,8 @@
  * Command-line interface for interacting with duyetbot agent
  */
 
-import { Command } from 'commander';
 import chalk from 'chalk';
+import { Command } from 'commander';
 import { chatCommand } from './commands/chat';
 import { loginCommand } from './commands/login';
 import { logoutCommand } from './commands/logout';
@@ -17,10 +17,7 @@ import { whoamiCommand } from './commands/whoami';
 
 const program = new Command();
 
-program
-  .name('duyetbot')
-  .description('Autonomous AI agent with persistent memory')
-  .version('0.1.0');
+program.name('duyetbot').description('Autonomous AI agent with persistent memory').version('0.1.0');
 
 // Login command
 program
@@ -36,10 +33,7 @@ program
   .action(logoutCommand);
 
 // Whoami command
-program
-  .command('whoami')
-  .description('Show current user information')
-  .action(whoamiCommand);
+program.command('whoami').description('Show current user information').action(whoamiCommand);
 
 // Chat command
 program
@@ -54,11 +48,7 @@ program
 program
   .command('memory')
   .description('Manage conversation memory')
-  .addCommand(
-    new Command('list')
-      .description('List all sessions')
-      .action(memoryCommand.list)
-  )
+  .addCommand(new Command('list').description('List all sessions').action(memoryCommand.list))
   .addCommand(
     new Command('delete')
       .description('Delete a session')

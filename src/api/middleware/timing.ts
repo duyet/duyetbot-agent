@@ -66,7 +66,9 @@ export class PerformanceTimer {
    */
   getTotalDuration(): number {
     const timings = this.getTimings();
-    if (timings.length === 0) return 0;
+    if (timings.length === 0) {
+      return 0;
+    }
     return Math.max(...timings.map((t) => t.duration));
   }
 

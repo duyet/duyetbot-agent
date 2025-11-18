@@ -21,7 +21,9 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   const isAllowed =
     origin &&
     allowedOrigins.some((allowed) => {
-      if (allowed === '*') return true;
+      if (allowed === '*') {
+        return true;
+      }
       if (allowed.endsWith('*')) {
         const prefix = allowed.slice(0, -1);
         return origin.startsWith(prefix);

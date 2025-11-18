@@ -6,13 +6,13 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import type { Env, APIResponse } from '../types';
 import {
+  type GitHubEvent,
   handleGitHubWebhook,
   verifyWebhookSignature,
-  type GitHubEvent,
 } from '../../github/webhook-handler';
 import { getLogger } from '../middleware/logger';
+import type { APIResponse, Env } from '../types';
 
 /**
  * Create GitHub routes

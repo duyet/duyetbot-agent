@@ -21,7 +21,9 @@ export const InputBox: React.FC<InputBoxProps> = ({ value, onChange, onSubmit, i
   useInput(
     (input, key) => {
       // Don't accept input while streaming
-      if (isStreaming) return;
+      if (isStreaming) {
+        return;
+      }
 
       if (key.return) {
         // Submit on Enter

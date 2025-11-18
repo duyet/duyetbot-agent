@@ -134,7 +134,9 @@ export class FileSessionManager implements SessionManager {
     const sessions: Session[] = [];
 
     for (const file of files) {
-      if (!file.endsWith('.json')) continue;
+      if (!file.endsWith('.json')) {
+        continue;
+      }
 
       try {
         const data = await this.storage.readJSON(`sessions/${file}`);
@@ -153,7 +155,9 @@ export class FileSessionManager implements SessionManager {
 
     if (filter?.metadata) {
       filtered = filtered.filter((s) => {
-        if (!s.metadata) return false;
+        if (!s.metadata) {
+          return false;
+        }
         return Object.entries(filter.metadata ?? {}).every(
           ([key, value]) => s.metadata?.[key] === value
         );
@@ -181,7 +185,7 @@ export class FileSessionManager implements SessionManager {
       state: 'active',
       updatedAt: new Date(),
     };
-    delete resumed.resumeToken;
+    resumed.resumeToken = undefined;
 
     await this.storage.writeJSON(this.getSessionPath(id), this.serialize(resumed));
     return resumed;

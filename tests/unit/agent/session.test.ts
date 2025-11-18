@@ -74,8 +74,8 @@ describe('Session Types', () => {
       };
 
       expect(session.messages).toHaveLength(2);
-      expect(session.messages![0]!.role).toBe('user');
-      expect(session.messages![1]!.role).toBe('assistant');
+      expect(session.messages?.[0]?.role).toBe('user');
+      expect(session.messages?.[1]?.role).toBe('assistant');
     });
 
     it('should support optional metadata', () => {
@@ -129,8 +129,8 @@ describe('Session Types', () => {
       };
 
       expect(session.toolResults).toHaveLength(1);
-      expect(session.toolResults![0]!.toolName).toBe('bash');
-      expect(session.toolResults![0]!.status).toBe('success');
+      expect(session.toolResults?.[0]?.toolName).toBe('bash');
+      expect(session.toolResults?.[0]?.status).toBe('success');
     });
 
     it('should support optional resume token', () => {

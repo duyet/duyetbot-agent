@@ -41,7 +41,7 @@ describe('Agent Core', () => {
     it('should have access to provider', () => {
       const config = agent.getProvider().getConfig?.();
       expect(config).toBeDefined();
-      expect(config!.provider).toBe('claude');
+      expect(config?.provider).toBe('claude');
     });
 
     it('should have access to session manager', () => {
@@ -135,7 +135,7 @@ describe('Agent Core', () => {
 
       const updated = await agent.getSession(session.id);
       expect(updated).toBeDefined();
-      expect(updated!.messages![0]!.role).toBe('system');
+      expect(updated?.messages?.[0]?.role).toBe('system');
     });
   });
 
@@ -162,8 +162,8 @@ describe('Agent Core', () => {
 
       const updated = await agent.getSession(session.id);
       expect(updated).toBeDefined();
-      expect(updated!.toolResults!.length).toBe(1);
-      expect(updated!.toolResults![0]!.toolName).toBe('sleep');
+      expect(updated?.toolResults?.length).toBe(1);
+      expect(updated?.toolResults?.[0]?.toolName).toBe('sleep');
     });
   });
 
@@ -215,7 +215,7 @@ describe('Agent Core', () => {
     it('should use configured provider', () => {
       const config = agent.getProvider().getConfig?.();
       expect(config).toBeDefined();
-      expect(config!.model).toBe('claude-3-5-sonnet-20241022');
+      expect(config?.model).toBe('claude-3-5-sonnet-20241022');
     });
 
     it('should allow provider override per session', async () => {

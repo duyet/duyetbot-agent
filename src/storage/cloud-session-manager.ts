@@ -4,7 +4,6 @@
  * Multi-tenant session manager using D1 for metadata and KV for messages/tools
  */
 
-import { nanoid } from "nanoid";
 import type {
   CreateSessionInput,
   Session,
@@ -12,11 +11,12 @@ import type {
   SessionState,
   ToolResult,
   UpdateSessionInput,
-} from "@/agent/session";
-import { SessionError } from "@/agent/session";
-import type { SessionRepository } from "@/api/repositories/session";
-import type { MessageStore } from "./kv-message-store";
-import type { ToolResultStore } from "./kv-tool-result-store";
+} from '@/agent/session';
+import { SessionError } from '@/agent/session';
+import type { SessionRepository } from '@/api/repositories/session';
+import { nanoid } from 'nanoid';
+import type { MessageStore } from './kv-message-store';
+import type { ToolResultStore } from './kv-tool-result-store';
 
 /**
  * Cloud-based session manager with multi-tenant support
@@ -26,7 +26,7 @@ export class CloudSessionManager implements SessionManager {
     private userId: string,
     private sessionRepo: SessionRepository,
     private messageStore: MessageStore,
-    private toolStore: ToolResultStore,
+    private toolStore: ToolResultStore
   ) {}
 
   /**
@@ -39,7 +39,7 @@ export class CloudSessionManager implements SessionManager {
     const sessionRow = await this.sessionRepo.create({
       id: sessionId,
       userId: this.userId,
-      state: "active",
+      state: 'active',
       title: input.metadata?.title as string | undefined,
       metadata: input.metadata,
     });
@@ -72,7 +72,7 @@ export class CloudSessionManager implements SessionManager {
   async update(id: string, input: UpdateSessionInput): Promise<Session> {
     const existingSession = await this.get(id);
     if (!existingSession) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
     // Update metadata in D1
@@ -95,10 +95,7 @@ export class CloudSessionManager implements SessionManager {
 
     const sessionRow = await this.sessionRepo.update(this.userId, id, updates);
     if (!sessionRow) {
-      throw new SessionError(
-        `Failed to update session: ${id}`,
-        "UPDATE_FAILED",
-      );
+      throw new SessionError(`Failed to update session: ${id}`, 'UPDATE_FAILED');
     }
 
     // Append new messages to KV if provided
@@ -150,9 +147,11 @@ export class CloudSessionManager implements SessionManager {
     // Filter by metadata if provided
     if (filter?.metadata) {
       return sessions.filter((session) => {
-        if (!session.metadata) return false;
+        if (!session.metadata) {
+          return false;
+        }
         return Object.entries(filter.metadata!).every(
-          ([key, value]) => session.metadata![key] === value,
+          ([key, value]) => session.metadata?.[key] === value
         );
       });
     }
@@ -166,15 +165,15 @@ export class CloudSessionManager implements SessionManager {
   async resume(id: string): Promise<Session> {
     const session = await this.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
-    if (session.state !== "paused") {
-      throw new SessionError(`Session is not paused: ${id}`, "INVALID_STATE");
+    if (session.state !== 'paused') {
+      throw new SessionError(`Session is not paused: ${id}`, 'INVALID_STATE');
     }
 
     return this.update(id, {
-      state: "active",
+      state: 'active',
     });
   }
 
@@ -184,15 +183,15 @@ export class CloudSessionManager implements SessionManager {
   async pause(id: string, resumeToken?: string): Promise<Session> {
     const session = await this.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
-    if (session.state !== "active") {
-      throw new SessionError(`Session is not active: ${id}`, "INVALID_STATE");
+    if (session.state !== 'active') {
+      throw new SessionError(`Session is not active: ${id}`, 'INVALID_STATE');
     }
 
     return this.update(id, {
-      state: "paused",
+      state: 'paused',
       metadata: {
         ...session.metadata,
         resumeToken,
@@ -206,11 +205,11 @@ export class CloudSessionManager implements SessionManager {
   async complete(id: string): Promise<Session> {
     const session = await this.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
     return this.update(id, {
-      state: "completed",
+      state: 'completed',
     });
   }
 
@@ -219,15 +218,15 @@ export class CloudSessionManager implements SessionManager {
    */
   async fail(
     id: string,
-    error: { message: string; code: string; details?: unknown },
+    error: { message: string; code: string; details?: unknown }
   ): Promise<Session> {
     const session = await this.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
     return this.update(id, {
-      state: "failed",
+      state: 'failed',
       metadata: {
         ...session.metadata,
         error,
@@ -241,11 +240,11 @@ export class CloudSessionManager implements SessionManager {
   async cancel(id: string): Promise<Session> {
     const session = await this.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
     return this.update(id, {
-      state: "cancelled",
+      state: 'cancelled',
     });
   }
 
@@ -262,10 +261,7 @@ export class CloudSessionManager implements SessionManager {
   /**
    * Get all tool results for a session
    */
-  async getToolResults(
-    sessionId: string,
-    limit?: number,
-  ): Promise<ToolResult[]> {
+  async getToolResults(sessionId: string, limit?: number): Promise<ToolResult[]> {
     if (limit) {
       return this.toolStore.getRecent(this.userId, sessionId, limit);
     }
@@ -303,7 +299,7 @@ export function createCloudSessionManager(
   userId: string,
   sessionRepo: SessionRepository,
   messageStore: MessageStore,
-  toolStore: ToolResultStore,
+  toolStore: ToolResultStore
 ): SessionManager {
   return new CloudSessionManager(userId, sessionRepo, messageStore, toolStore);
 }

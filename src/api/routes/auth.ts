@@ -29,7 +29,9 @@ function generateUserCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // Exclude similar-looking chars
   let code = '';
   for (let i = 0; i < 8; i++) {
-    if (i === 4) code += '-';
+    if (i === 4) {
+      code += '-';
+    }
     code += chars[Math.floor(Math.random() * chars.length)];
   }
   return code;
