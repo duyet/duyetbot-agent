@@ -23,6 +23,9 @@ export { RefreshTokenRepository } from './repositories/refresh-token';
 export { authMiddleware, getUser, getOptionalUser } from './middleware/auth';
 export { corsMiddleware } from './middleware/cors';
 export { rateLimitMiddleware } from './middleware/rate-limit';
+export { requestIdMiddleware, getRequestId } from './middleware/request-id';
+export { loggerMiddleware, getLogger, Logger } from './middleware/logger';
+export { timingMiddleware, getTimer, PerformanceTimer, measure } from './middleware/timing';
 
 // Routes
 export { createAuthRoutes } from './routes/auth';
