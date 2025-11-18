@@ -2,12 +2,12 @@
  * Tests for Offline Queue
  */
 
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import * as fs from 'node:fs/promises';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
 import { OfflineQueue, isOnline, syncQueue } from '@/client/offline-queue';
 import type { QueuedMessage } from '@/client/offline-queue';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('OfflineQueue', () => {
   let testQueuePath: string;
@@ -267,12 +267,9 @@ describe('syncQueue', () => {
     await queue.enqueue({ message: 'Message 3' });
 
     const sentMessages: QueuedMessage[] = [];
-    const result = await syncQueue(
-      queue,
-      async (msg) => {
-        sentMessages.push(msg);
-      }
-    );
+    const result = await syncQueue(queue, async (msg) => {
+      sentMessages.push(msg);
+    });
 
     expect(result.success).toBe(3);
     expect(result.failed).toBe(0);
@@ -285,15 +282,12 @@ describe('syncQueue', () => {
     await queue.enqueue({ message: 'Fail' });
 
     let attempts = 0;
-    const result = await syncQueue(
-      queue,
-      async (msg) => {
-        attempts++;
-        if (msg.message === 'Fail') {
-          throw new Error('Send failed');
-        }
+    const result = await syncQueue(queue, async (msg) => {
+      attempts++;
+      if (msg.message === 'Fail') {
+        throw new Error('Send failed');
       }
-    );
+    });
 
     expect(result.success).toBe(1);
     expect(result.failed).toBe(1);
@@ -314,12 +308,9 @@ describe('syncQueue', () => {
     messages[0].retries = 2;
     await fs.writeFile(testQueuePath, JSON.stringify(messages), { mode: 0o600 });
 
-    await syncQueue(
-      queue,
-      async (_msg) => {
-        throw new Error('Send failed');
-      }
-    );
+    await syncQueue(queue, async (_msg) => {
+      throw new Error('Send failed');
+    });
 
     // Message should be removed after 3rd failure
     const remaining = await queue.getAll();

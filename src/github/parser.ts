@@ -4,7 +4,6 @@
  * Parse GitHub issue and PR comments for @duyetbot mentions
  */
 
-import { extractCommand } from './webhook-handler';
 import type { WebhookPayload } from './webhook-handler';
 
 /**

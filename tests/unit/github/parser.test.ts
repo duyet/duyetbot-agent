@@ -2,16 +2,19 @@
  * Tests for GitHub Comment Parser
  */
 
-import { describe, it, expect } from 'vitest';
 import {
+  extractCodeBlocks,
+  extractIssueReferences,
+  extractMentions,
+  formatGitHubComment,
   parseIssueComment,
   parsePullRequestComment,
-  formatGitHubComment,
-  extractCodeBlocks,
-  extractMentions,
-  extractIssueReferences,
 } from '@/github/parser';
-import type { IssueCommentPayload, PullRequestReviewCommentPayload } from '@/github/webhook-handler';
+import type {
+  IssueCommentPayload,
+  PullRequestReviewCommentPayload,
+} from '@/github/webhook-handler';
+import { describe, expect, it } from 'vitest';
 
 describe('GitHub Parser', () => {
   describe('parseIssueComment', () => {

@@ -2,8 +2,8 @@
  * Tests for API Client
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { APIClient, APIError } from '@/client/api-client';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -100,7 +100,7 @@ describe('APIClient', () => {
       expect(sessions).toHaveLength(2);
       expect(sessions[0].id).toBe('session-1');
       expect(global.fetch).toHaveBeenCalledWith(
-        `${mockApiUrl}/sessions`,
+        `${mockApiUrl}/agent/sessions`,
         expect.objectContaining({
           headers: expect.objectContaining({
             Authorization: `Bearer ${mockAccessToken}`,
@@ -128,7 +128,7 @@ describe('APIClient', () => {
       expect(session.id).toBe('new-session');
       expect(session.title).toBe('New Chat');
       expect(global.fetch).toHaveBeenCalledWith(
-        `${mockApiUrl}/sessions`,
+        `${mockApiUrl}/agent/sessions`,
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
@@ -151,7 +151,7 @@ describe('APIClient', () => {
       await client.deleteSession('session-123');
 
       expect(global.fetch).toHaveBeenCalledWith(
-        `${mockApiUrl}/sessions/session-123`,
+        `${mockApiUrl}/agent/sessions/session-123`,
         expect.objectContaining({
           method: 'DELETE',
           headers: expect.objectContaining({
@@ -183,13 +183,15 @@ describe('APIClient', () => {
       );
     });
 
-    it('should throw error if no refresh token', async () => {
+    it('should logout without error if no refresh token', async () => {
       const clientWithoutRefresh = new APIClient({
         apiUrl: mockApiUrl,
         accessToken: mockAccessToken,
       });
 
-      await expect(clientWithoutRefresh.logout()).rejects.toThrow('No refresh token available');
+      await expect(clientWithoutRefresh.logout()).resolves.toBeUndefined();
+      // Should not call API if no refresh token
+      expect(global.fetch).not.toHaveBeenCalled();
     });
   });
 
@@ -237,11 +239,11 @@ describe('APIClient', () => {
 
   describe('APIError', () => {
     it('should create error with all properties', () => {
-      const error = new APIError('Not Found', 'USER_NOT_FOUND', 404);
+      const error = new APIError('Not Found', 404, 'USER_NOT_FOUND');
 
       expect(error.message).toBe('Not Found');
-      expect(error.code).toBe('USER_NOT_FOUND');
       expect(error.statusCode).toBe(404);
+      expect(error.code).toBe('USER_NOT_FOUND');
       expect(error.name).toBe('APIError');
     });
 
@@ -277,9 +279,7 @@ describe('APIClient', () => {
     });
 
     it('should handle network errors', async () => {
-      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(
-        new Error('Network error')
-      );
+      (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
 
       await expect(client.getProfile()).rejects.toThrow('Network error');
     });
