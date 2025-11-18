@@ -1,14 +1,11 @@
 /**
- * Web UI Module
+ * UI Module
  *
- * Minimal web interface for:
- * - Task input and management
- * - Schedule visualization
- * - Execution logs
- * - Real-time updates
+ * Interactive terminal UI components
  */
 
-// TODO: Implement UI modules
-// export * from './app';
-// export * from './components';
-// export * from './types';
+export * from './App';
+export * from './config';
+export * from './components/StatusBar';
+export * from './components/ChatView';
+export * from './components/InputBox';
