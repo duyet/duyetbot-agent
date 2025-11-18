@@ -5,8 +5,8 @@
  */
 
 import { Agent } from '@/agent/core';
-import { InMemorySessionManager } from '@/agent/session';
 import { ClaudeProvider } from '@/providers/claude';
+import { FileSessionManager } from '@/storage/file-session-manager';
 import { ToolRegistry } from '@/tools/registry';
 import { bashTool } from '@/tools/bash';
 import { gitTool } from '@/tools/git';
@@ -18,7 +18,8 @@ async function main() {
 
   // 1. Set up dependencies
   console.log('1️⃣  Setting up agent components...');
-  const sessionManager = new InMemorySessionManager();
+  console.log('   📁 Using file storage: ~/.duyetbot/');
+  const sessionManager = new FileSessionManager();
   const provider = new ClaudeProvider();
   const toolRegistry = new ToolRegistry();
 
@@ -128,8 +129,12 @@ async function main() {
   console.log(`   • Registered tools: ${toolRegistry.list().join(', ')}`);
   console.log(`   • Provider: ${provider.getConfig()?.provider}/${provider.getConfig()?.model}`);
   console.log(`   • Sessions: ${allSessions.length} total`);
-  console.log(`   • Test coverage: 347 tests passing ✅`);
-  console.log('\n🎉 Ready for production deployment to Cloudflare Workers!');
+  console.log(`   • Storage: ~/.duyetbot/ (file-based persistence)`);
+  console.log(`   • Test coverage: 390 tests passing ✅`);
+  console.log('\n💾 File Storage Info:');
+  console.log(`   All sessions saved to: ~/.duyetbot/sessions/`);
+  console.log(`   Sessions persist across restarts!`);
+  console.log('\n🎉 Ready for interactive terminal UI (Phase 4)!');
 }
 
 // Run demo

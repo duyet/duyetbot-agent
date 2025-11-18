@@ -18,7 +18,8 @@
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
     "check": "biome check --write . && tsc --noEmit",
-    "demo": "tsx examples/demo.ts"
+    "demo": "tsx examples/demo.ts",
+    "demo:stream": "tsx examples/demo-streaming.ts"
   },
   "keywords": [
     "agent",
