@@ -28,6 +28,35 @@ When working on this project:
 - ✅ Markdown-based configuration
 - ✅ Simple, clean web UI for task management
 - ✅ Cloudflare Workers deployment with Sandbox SDK
+- 🎯 **CLI tool distribution** (`npx @duyetbot/agent`)
+- 🎯 **GitHub Actions integration**
+- 🎯 **Cross-platform support** (Mac & Linux)
+
+---
+
+## Architecture Overview
+
+**Multi-Deployment Model**:
+The system is designed to run in multiple environments:
+
+1. **CLI Tool** (`npx @duyetbot/agent`)
+   - Published to npm as `@duyetbot/agent`
+   - Interactive mode: `npx @duyetbot/agent`
+   - Direct execution: `npx @duyetbot/agent "task or question"`
+   - Local execution with Node.js runtime
+
+2. **GitHub Actions Integration**
+   - Easy to integrate in workflows
+   - Environment variable configuration
+   - Structured output for CI/CD
+
+3. **Web UI** (Cloudflare Workers)
+   - Web interface for task management
+   - Cloudflare Workers deployment
+   - Cloudflare Sandbox SDK for isolated execution
+
+**Core Design Principle**:
+The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are different frontends to the same core system.
 
 ---
 
@@ -631,10 +660,61 @@ When working on this project:
 
 ---
 
+## Phase 13: CLI Tool & GitHub Actions 💻 (2-3 days)
+
+### 13.1 CLI Package
+**Goal**: Create npm package for command-line usage
+
+**Tasks**:
+- [ ] Create CLI entry point (`src/cli/index.ts`)
+- [ ] Implement command parser (using `commander` or `yargs`)
+- [ ] Add interactive mode with prompts
+- [ ] Add direct execution mode for single tasks
+- [ ] Implement output formatting for CLI
+- [ ] Add progress indicators and spinners
+- [ ] Create package.json bin configuration
+- [ ] Write CLI tests
+- [ ] Test with `npm link` locally
+- [ ] Publish to npm as `@duyetbot/agent`
+
+**Output**: Published CLI tool (`npx @duyetbot/agent`)
+
+### 13.2 GitHub Actions Integration
+**Goal**: Enable CI/CD usage
+
+**Tasks**:
+- [ ] Create action.yml for GitHub Actions
+- [ ] Add environment variable configuration
+- [ ] Implement structured output for workflows
+- [ ] Create example workflow files
+- [ ] Add success/failure exit codes
+- [ ] Test in actual GitHub Actions
+- [ ] Write GitHub Actions documentation
+- [ ] Publish to GitHub Actions marketplace
+
+**Output**: GitHub Actions-ready package
+
+### 13.3 Cross-Platform Support
+**Goal**: Ensure Mac and Linux compatibility
+
+**Tasks**:
+- [ ] Test on macOS
+- [ ] Test on Linux (Ubuntu, Debian)
+- [ ] Handle platform-specific paths
+- [ ] Test shell execution on both platforms
+- [ ] Add platform detection
+- [ ] Create platform-specific documentation
+- [ ] Set up CI for both platforms
+
+**Output**: Cross-platform verified package
+
+---
+
 ## Revision History
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-18 | 1.4 | Added Architecture Overview and Phase 13 for CLI tool & GitHub Actions support |
 | 2025-11-18 | 1.3 | Phase 2.1 (partial): TDD implementation of provider types and factory with 35 tests |
 | 2025-11-18 | 1.2 | Completed Phase 1.1-1.3: Project foundation with Biome linting, TypeScript, Vitest, and Cloudflare Workers setup |
 | 2025-11-18 | 1.1 | Added maintenance workflow section with reference to CLAUDE.md |

@@ -9,9 +9,11 @@
  * - sleep: Delay execution
  */
 
-// TODO: Implement tool modules
-// export * from './bash';
+export * from './types';
+export * from './sleep';
+export * from './plan';
+export * from './bash';
+
+// TODO: Implement remaining tool modules
 // export * from './git';
 // export * from './research';
-// export * from './plan';
-// export * from './sleep';
