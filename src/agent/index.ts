@@ -9,5 +9,5 @@
 
 // TODO: Implement core agent modules
 // export * from './core';
-// export * from './session';
+export * from './session';
 // export * from './executor';
