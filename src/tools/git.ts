@@ -127,6 +127,9 @@ export class GitTool implements Tool {
           }
           gitCommand = this.buildCloneCommand(data as any);
           result = await this.execGit(gitCommand, cwd);
+          if (result.failed) {
+            return this.error(result.stderr || 'Clone failed', 'GIT_ERROR');
+          }
           return this.success('Repository cloned successfully', result, startTime, input, {
             command,
           });
@@ -137,6 +140,9 @@ export class GitTool implements Tool {
           }
           gitCommand = this.buildCommitCommand(data as any);
           result = await this.execGit(gitCommand, cwd);
+          if (result.failed) {
+            return this.error(result.stderr || 'Commit failed', 'GIT_ERROR');
+          }
           return this.success('Commit created successfully', result, startTime, input, {
             command,
           });
@@ -144,6 +150,9 @@ export class GitTool implements Tool {
         case 'push':
           gitCommand = this.buildPushCommand(data as any);
           result = await this.execGit(gitCommand, cwd);
+          if (result.failed) {
+            return this.error(result.stderr || 'Push failed', 'GIT_ERROR');
+          }
           return this.success('Pushed to remote successfully', result, startTime, input, {
             command,
           });
@@ -151,6 +160,9 @@ export class GitTool implements Tool {
         case 'pull':
           gitCommand = this.buildPullCommand(data as any);
           result = await this.execGit(gitCommand, cwd);
+          if (result.failed) {
+            return this.error(result.stderr || 'Pull failed', 'GIT_ERROR');
+          }
           return this.success('Pulled from remote successfully', result, startTime, input, {
             command,
           });
@@ -161,6 +173,9 @@ export class GitTool implements Tool {
           }
           gitCommand = this.buildAddCommand(data as any);
           result = await this.execGit(gitCommand, cwd);
+          if (result.failed) {
+            return this.error(result.stderr || 'Add failed', 'GIT_ERROR');
+          }
           return this.success('Files staged successfully', result, startTime, input, { command });
 
         case 'diff':
@@ -186,6 +201,9 @@ export class GitTool implements Tool {
           }
           gitCommand = this.buildCheckoutCommand(data as any);
           result = await this.execGit(gitCommand, cwd);
+          if (result.failed) {
+            return this.error(result.stderr || 'Checkout failed', 'GIT_ERROR');
+          }
           return this.success('Checked out branch successfully', result, startTime, input, {
             command,
           });
@@ -209,7 +227,7 @@ export class GitTool implements Tool {
   private async execGit(
     command: string,
     cwd?: string
-  ): Promise<{ stdout: string; stderr: string }> {
+  ): Promise<{ stdout: string; stderr: string; failed?: boolean }> {
     try {
       const { stdout, stderr } = await execAsync(command, {
         cwd: cwd || process.cwd(),
@@ -224,6 +242,7 @@ export class GitTool implements Tool {
         return {
           stdout: error.stdout?.trim() || '',
           stderr: error.stderr?.trim() || error.message,
+          failed: true,
         };
       }
       throw error;
@@ -355,10 +374,14 @@ export class GitTool implements Tool {
    * Handle status output
    */
   private handleStatus(
-    result: { stdout: string; stderr: string },
+    result: { stdout: string; stderr: string; failed?: boolean },
     startTime: number,
     input: ToolInput
   ): ToolOutput {
+    if (result.failed) {
+      return this.error(result.stderr || 'Status command failed', 'GIT_ERROR');
+    }
+
     const lines = result.stdout.split('\n');
     const branchLine = lines[0];
     const branch = branchLine?.replace('## ', '').split('...')[0] || 'unknown';
@@ -382,10 +405,14 @@ export class GitTool implements Tool {
    * Handle branch output
    */
   private handleBranch(
-    result: { stdout: string; stderr: string },
+    result: { stdout: string; stderr: string; failed?: boolean },
     startTime: number,
     input: ToolInput
   ): ToolOutput {
+    if (result.failed) {
+      return this.error(result.stderr || 'Branch command failed', 'GIT_ERROR');
+    }
+
     const branches = result.stdout
       .split('\n')
       .map((line) => line.trim())
