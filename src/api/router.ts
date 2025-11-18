@@ -6,6 +6,9 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { requestIdMiddleware } from './middleware/request-id';
+import { timingMiddleware } from './middleware/timing';
+import { loggerMiddleware, getLogger } from './middleware/logger';
 import { corsMiddleware } from './middleware/cors';
 import { rateLimitMiddleware } from './middleware/rate-limit';
 import { authMiddleware, getUser, getOptionalUser } from './middleware/auth';
@@ -20,12 +23,26 @@ import type { Env, APIResponse } from './types';
 export function createRouter(): Hono<{ Bindings: Env }> {
   const app = new Hono<{ Bindings: Env }>();
 
-  // Global middleware
+  // Global middleware (order matters!)
+  // 1. Request ID - first, so all logs have it
+  app.use('*', requestIdMiddleware);
+
+  // 2. Performance timing - early, to measure everything
+  app.use('*', timingMiddleware);
+
+  // 3. Structured logging - after request ID is set
+  app.use('*', loggerMiddleware);
+
+  // 4. CORS - handle preflight before other logic
   app.use('*', corsMiddleware);
 
   // Error handling
   app.onError((err, c) => {
-    console.error('API Error:', err);
+    const logger = getLogger(c);
+    logger.error('Unhandled error', err, {
+      url: c.req.url,
+      method: c.req.method,
+    });
 
     // Handle JWT errors
     if (err.name === 'JWTExpired') {
