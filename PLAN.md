@@ -1,7 +1,9 @@
 # Implementation Plan: duyetbot-agent
 
 ## Overview
-This document outlines the phased implementation plan for the duyetbot-agent project - an autonomous bot agent system running on Cloudflare Workers with multi-LLM support and background task scheduling.
+**A personal AI agent system with persistent memory across multiple interfaces** - enabling users to interact with their agent from GitHub Actions, CLI, Web UI, or any platform while maintaining full conversation history and context.
+
+📖 **See ARCHITECTURE.md for complete system design and technical details.**
 
 ---
 
@@ -20,43 +22,70 @@ When working on this project:
 
 ---
 
-## Project Goals
-- ✅ Multi-LLM provider support (Claude, OpenAI, OpenRouter)
-- ✅ Background task execution with scheduling
-- ✅ Natural language task input and parsing
-- ✅ Sub-agent system with custom model configuration
-- ✅ Markdown-based configuration
-- ✅ Simple, clean web UI for task management
-- ✅ Cloudflare Workers deployment with Sandbox SDK
-- 🎯 **CLI tool distribution** (`npx @duyetbot/agent`)
-- 🎯 **GitHub Actions integration**
-- 🎯 **Cross-platform support** (Mac & Linux)
+## Project Vision
+
+### Core Concept
+**Your personal AI agent that follows you everywhere** - accessible via GitHub Actions, CLI, Web UI, and future interfaces, with all conversations and context stored centrally.
+
+### Key Features
+- ✅ **Multi-LLM support**: Claude, OpenAI, OpenRouter
+- 🎯 **Persistent memory**: Full conversation history across all interfaces
+- 🎯 **Centralized storage**: User data synced via API deployed on Cloudflare Workers
+- 🎯 **Multi-tenant**: Isolated user environments with secure authentication
+- 🎯 **Authentication**: GitHub OAuth and Google OAuth
+- 🎯 **Multiple interfaces**: CLI tool, GitHub Actions, Web UI, Mobile (future)
+- 🎯 **Offline support**: CLI can queue operations and sync when online
+- 🎯 **Semantic search**: Vector database for finding relevant past conversations
 
 ---
 
 ## Architecture Overview
 
-**Multi-Deployment Model**:
-The system is designed to run in multiple environments:
+**See ARCHITECTURE.md for complete details.** Here's the high-level structure:
 
-1. **CLI Tool** (`npx @duyetbot/agent`)
-   - Published to npm as `@duyetbot/agent`
-   - Interactive mode: `npx @duyetbot/agent`
-   - Direct execution: `npx @duyetbot/agent "task or question"`
-   - Local execution with Node.js runtime
+```
+┌─────────────────────────────────────────────────────────────┐
+│           User Interfaces (Multi-Platform)                  │
+├────────────────┬──────────────┬─────────────────────────────┤
+│ GitHub Actions │  CLI Tool    │    Web UI                   │
+└────────┬───────┴──────┬───────┴─────────┬───────────────────┘
+         │              │                 │
+         └──────────────┼─────────────────┘
+                        │
+                ┌───────▼────────┐
+                │  Auth Layer    │
+                │ (GitHub/Google)│
+                └───────┬────────┘
+                        │
+         ┌──────────────┼──────────────┐
+         │                             │
+    ┌────▼─────┐              ┌────────▼─────┐
+    │ API      │              │ Auth Service │
+    │ Gateway  │              │ (JWT)        │
+    └────┬─────┘              └──────────────┘
+         │
+    ┌────▼────────────────────────────────┐
+    │   Central API (Cloudflare Workers)  │
+    │   - Agent Core                      │
+    │   - Session Manager                 │
+    │   - User Manager                    │
+    │   - Tool Registry                   │
+    └────┬────────────────────────────────┘
+         │
+    ┌────┼────┬──────────┬────────────┐
+    │    │    │          │            │
+   D1  KV  Vectorize   R2         Queue
+  (User) (Msg) (Search) (Files) (Tasks)
+```
 
-2. **GitHub Actions Integration**
-   - Easy to integrate in workflows
-   - Environment variable configuration
-   - Structured output for CI/CD
+### Design Principles
 
-3. **Web UI** (Cloudflare Workers)
-   - Web interface for task management
-   - Cloudflare Workers deployment
-   - Cloudflare Sandbox SDK for isolated execution
-
-**Core Design Principle**:
-The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are different frontends to the same core system.
+1. **User-Centric**: Each user has their own agent with isolated data
+2. **Interface-Agnostic**: Same agent accessible from anywhere
+3. **Persistent Memory**: All conversations stored and searchable
+4. **Centralized API**: Single source of truth deployed on Cloudflare Workers
+5. **Multi-Tenant**: Secure user isolation with authentication
+6. **Offline-Capable**: CLI works offline with sync when connected
 
 ---
 
@@ -967,10 +996,610 @@ messages: [
 
 ---
 
+## ⚠️ ARCHITECTURE CHANGE: Centralized Multi-Tenant System
+
+**The plan has been updated to reflect a new vision** - a centralized, multi-tenant agent platform accessible from multiple interfaces (GitHub Actions, CLI, Web) with persistent user memory.
+
+**Old Plan** (Phases 5-13 above): Local-only deployment
+**New Plan** (Below): Centralized API with authentication and multi-interface access
+
+📖 **See ARCHITECTURE.md for complete technical design.**
+
+---
+
+## 🆕 Phase 5: Central API & Authentication 🔐 (4-5 days)
+
+**Goal**: Build centralized API on Cloudflare Workers with user authentication
+
+### 5.1 Authentication System
+**OAuth 2.0 Implementation**
+
+**Tasks**:
+- [ ] Set up GitHub OAuth integration
+  - Create GitHub OAuth App
+  - Implement OAuth callback handler
+  - Exchange code for access token
+  - Fetch user profile from GitHub API
+- [ ] Set up Google OAuth integration
+  - Create Google OAuth client
+  - Implement OAuth callback handler
+  - Exchange code for tokens
+  - Fetch user profile from Google API
+- [ ] Implement JWT token generation
+  - Sign JWT with HS256
+  - Include user claims (sub, email, name, picture, provider)
+  - Set expiration (1 hour)
+  - Store JWT secret in Cloudflare Secrets
+- [ ] Create refresh token mechanism
+  - Generate refresh tokens (30 days)
+  - Store in D1 database
+  - Implement token rotation
+  - Handle refresh endpoint
+- [ ] Build authentication middleware
+  - Extract JWT from Authorization header
+  - Verify JWT signature
+  - Validate expiration
+  - Attach user context to request
+- [ ] Add logout functionality
+  - Invalidate refresh tokens
+  - Clear client-side tokens
+- [ ] Write auth tests (50+ tests)
+  - OAuth flow tests
+  - JWT generation/validation
+  - Token refresh
+  - Middleware tests
+
+**Output**: Working OAuth authentication with JWT ✅
+
+### 5.2 API Gateway
+**Cloudflare Workers Entry Point**
+
+**Tasks**:
+- [ ] Create API router
+  - Hono framework for routing
+  - Middleware pipeline
+  - Error handling
+  - CORS configuration
+- [ ] Implement rate limiting
+  - Per-user rate limits (100 req/min)
+  - IP-based rate limiting
+  - Store counts in KV
+  - Return 429 with Retry-After header
+- [ ] Add request logging
+  - Structured logging
+  - Request ID generation
+  - Performance metrics
+  - Error tracking
+- [ ] Create health check endpoint
+  - `/health` - API status
+  - `/health/db` - Database connectivity
+  - `/health/llm` - LLM provider status
+- [ ] Write API tests (30+ tests)
+
+**Output**: Production-ready API gateway ✅
+
+### 5.3 User Management API
+**User CRUD Operations**
+
+**Endpoints**:
+- `POST /auth/github/callback` - GitHub OAuth callback
+- `POST /auth/google/callback` - Google OAuth callback
+- `POST /auth/refresh` - Refresh access token
+- `POST /auth/logout` - Logout user
+- `GET /users/me` - Get current user
+- `PATCH /users/me` - Update user settings
+- `GET /users/me/usage` - Get usage statistics
+- `DELETE /users/me` - Delete account (GDPR)
+
+**Tasks**:
+- [ ] Create User model and types
+- [ ] Implement user CRUD operations
+- [ ] Add usage tracking
+  - API requests count
+  - Tokens used
+  - Storage used
+- [ ] Implement user settings
+  - Default model preference
+  - UI preferences
+  - Notification settings
+- [ ] Add account deletion (GDPR compliance)
+  - Delete all user data
+  - Delete all sessions
+  - Revoke all tokens
+- [ ] Write tests (40+ tests)
+
+**Output**: Complete user management system ✅
+
+---
+
+## 🆕 Phase 6: Multi-Tenant Database 🗄️ (3-4 days)
+
+**Goal**: Implement multi-tenant database with user isolation
+
+### 6.1 Database Schema (D1)
+
+**Users Table**:
+```sql
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  email TEXT UNIQUE NOT NULL,
+  name TEXT,
+  picture TEXT,
+  provider TEXT NOT NULL,
+  provider_id TEXT NOT NULL,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  settings JSON,
+  UNIQUE(provider, provider_id)
+);
+
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_provider ON users(provider, provider_id);
+```
+
+**Sessions Table**:
+```sql
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  state TEXT NOT NULL,
+  title TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  metadata JSON,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_sessions_user ON sessions(user_id, updated_at DESC);
+CREATE INDEX idx_sessions_state ON sessions(user_id, state);
+```
+
+**Refresh Tokens Table**:
+```sql
+CREATE TABLE refresh_tokens (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  token TEXT UNIQUE NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
+CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
+```
+
+**Tasks**:
+- [ ] Create migration system for D1
+- [ ] Write schema definition
+- [ ] Create database initialization script
+- [ ] Add database seeding for dev/test
+- [ ] Implement migration runner
+- [ ] Write database tests (20+ tests)
+
+**Output**: Production database schema ✅
+
+### 6.2 Session Storage (KV + D1)
+
+**Design**:
+- **D1**: Session metadata (id, user_id, state, title, timestamps)
+- **KV**: Session messages (hot data, frequently accessed)
+  - Key: `users:{userId}:sessions:{sessionId}:messages`
+  - Value: `Array<LLMMessage>`
+- **KV**: Tool results
+  - Key: `users:{userId}:sessions:{sessionId}:tools`
+  - Value: `Array<ToolResult>`
+
+**Tasks**:
+- [ ] Create SessionRepository for D1
+  - CRUD operations with user_id filtering
+  - List sessions with pagination
+  - Search sessions by title/metadata
+- [ ] Create MessageStore for KV
+  - Append message to session
+  - Get all messages for session
+  - Trim old messages (keep last 1000)
+- [ ] Create ToolResultStore for KV
+  - Append tool result
+  - Get all tool results
+- [ ] Implement multi-tenant SessionManager
+  - Replace FileSessionManager with CloudSessionManager
+  - Enforce user isolation
+  - Handle KV + D1 consistency
+- [ ] Write tests (50+ tests)
+
+**Output**: Multi-tenant session storage ✅
+
+### 6.3 Data Isolation & Security
+
+**Row-Level Security**:
+```typescript
+// All queries automatically filter by user_id
+class SessionRepository {
+  async list(userId: string, filter?: Filter): Promise<Session[]> {
+    // ALWAYS include user_id in WHERE clause
+    return db.query(
+      'SELECT * FROM sessions WHERE user_id = ? AND state = ?',
+      [userId, filter.state]
+    );
+  }
+}
+```
+
+**Tasks**:
+- [ ] Create repository pattern for all models
+  - UserRepository
+  - SessionRepository
+  - RefreshTokenRepository
+- [ ] Add user_id to all queries automatically
+- [ ] Implement resource quotas per user
+  - Max sessions: 1000
+  - Max messages per session: 10,000
+  - Storage limit: 1 GB
+- [ ] Add quota enforcement middleware
+- [ ] Write security tests (30+ tests)
+  - Test user cannot access other user's data
+  - Test SQL injection prevention
+  - Test quota enforcement
+
+**Output**: Secure multi-tenant data layer ✅
+
+---
+
+## 🆕 Phase 7: Client Interfaces - CLI Cloud Sync 🔄 (3-4 days)
+
+**Goal**: Update CLI to sync with central API
+
+### 7.1 API Client SDK
+
+**Tasks**:
+- [ ] Create TypeScript API client
+  - REST API wrapper
+  - Typed request/response
+  - Automatic token refresh
+  - Error handling
+- [ ] Implement authentication flow in CLI
+  - `duyetbot login --github` opens browser
+  - OAuth callback server (localhost:3000)
+  - Save JWT to `~/.duyetbot/auth.json`
+  - Automatic token refresh
+- [ ] Add logout command
+  - `duyetbot logout`
+  - Clear local auth tokens
+- [ ] Write API client tests (40+ tests)
+
+**Output**: Typed API client for CLI ✅
+
+### 7.2 Cloud Sync
+
+**Online Mode** (default):
+```typescript
+// CLI connects to central API
+const client = new DuyetbotClient({
+  apiUrl: 'https://api.duyet.net',
+  token: loadToken(),
+});
+
+// All operations go to API
+await client.sessions.create({ title: 'Code review' });
+await client.chat({ message: 'Analyze this code' });
+```
+
+**Offline Mode** (fallback):
+```typescript
+// CLI uses local storage
+const storage = new FileSessionManager('~/.duyetbot');
+
+// Queue operations
+const queue = new OfflineQueue('~/.duyetbot/queue');
+await queue.push({ type: 'chat', message: '...' });
+
+// Sync when online
+await queue.sync((ops) => client.batch(ops));
+```
+
+**Tasks**:
+- [ ] Implement cloud sync logic
+  - Check online status
+  - Fallback to local storage if offline
+  - Sync queue when back online
+- [ ] Create OfflineQueue
+  - JSONL-based queue
+  - Append operations when offline
+  - Sync in order when online
+  - Handle conflicts (last-write-wins)
+- [ ] Add sync command
+  - `duyetbot sync` - Manual sync
+  - `duyetbot sync --status` - Check sync status
+- [ ] Update all CLI commands to use API
+  - `duyetbot chat` → API
+  - `duyetbot sessions ls` → API
+  - `duyetbot ask` → API
+- [ ] Write sync tests (30+ tests)
+
+**Output**: CLI with cloud sync ✅
+
+### 7.3 Migration from Local to Cloud
+
+**Tasks**:
+- [ ] Create migration command
+  - `duyetbot migrate --to-cloud`
+  - Upload all local sessions to API
+  - Keep local backup
+  - Switch to cloud mode
+- [ ] Add cloud/local mode toggle
+  - `duyetbot config set mode cloud`
+  - `duyetbot config set mode local`
+- [ ] Write migration tests (10+ tests)
+
+**Output**: Seamless local→cloud migration ✅
+
+---
+
+## 🆕 Phase 8: Web UI 🌐 (4-5 days)
+
+**Goal**: Build browser-based chat interface
+
+### 8.1 Web UI Foundation
+
+**Tech Stack**:
+- React + TypeScript
+- TailwindCSS for styling
+- Vite for build
+- Deployed on Cloudflare Pages
+
+**Tasks**:
+- [ ] Set up React + Vite project
+- [ ] Create authentication flow
+  - Login with GitHub button
+  - Login with Google button
+  - OAuth redirect handling
+  - Store JWT in localStorage
+- [ ] Create main layout
+  - Sidebar (sessions list)
+  - Chat area (messages)
+  - Input box (send message)
+  - Settings panel
+- [ ] Implement session management
+  - List sessions
+  - Create new session
+  - Switch between sessions
+  - Delete session
+- [ ] Build chat interface
+  - Display messages (user/assistant)
+  - Markdown rendering
+  - Code syntax highlighting
+  - Stream LLM responses (SSE)
+  - Show typing indicator
+- [ ] Add tool execution visualization
+  - Show tool calls
+  - Display tool results
+  - Syntax highlight outputs
+- [ ] Write UI tests (40+ tests)
+
+**Output**: Working web chat interface ✅
+
+### 8.2 Real-Time Streaming
+
+**Server-Sent Events (SSE)**:
+```typescript
+// API endpoint
+GET /agent/stream/:conversationId
+
+// SSE stream
+data: {"type":"content","content":"Let me"}
+data: {"type":"content","content":" analyze"}
+data: {"type":"tool","tool":"bash","input":"ls"}
+data: {"type":"tool_result","result":"..."}
+data: {"type":"done","usage":{"tokens":150}}
+```
+
+**Tasks**:
+- [ ] Implement SSE endpoint in API
+- [ ] Create SSE client in Web UI
+- [ ] Handle connection errors and reconnect
+- [ ] Show real-time token streaming
+- [ ] Write streaming tests (20+ tests)
+
+**Output**: Real-time streaming responses ✅
+
+### 8.3 Advanced Features
+
+**Tasks**:
+- [ ] Add session search
+  - Search by title
+  - Search by message content
+  - Filter by date range
+- [ ] Implement export/import
+  - Export session to JSON
+  - Export all sessions
+  - Import sessions
+- [ ] Add settings panel
+  - API key management (future)
+  - Model preferences
+  - UI theme (light/dark)
+  - Notification preferences
+- [ ] Create usage dashboard
+  - API calls used
+  - Tokens consumed
+  - Storage used
+  - Charts and graphs
+- [ ] Write feature tests (30+ tests)
+
+**Output**: Feature-complete web UI ✅
+
+---
+
+## 🆕 Phase 9: GitHub Actions Integration ⚙️ (2-3 days)
+
+**Goal**: Enable duyetbot in GitHub workflows
+
+### 9.1 GitHub Action
+
+**Usage**:
+```yaml
+- uses: duyetbot/agent-action@v1
+  with:
+    github-token: ${{ secrets.GITHUB_TOKEN }}
+    task: "review"
+```
+
+**Tasks**:
+- [ ] Create action.yml definition
+- [ ] Implement action entrypoint
+  - Authenticate with central API
+  - Use GitHub token for auth (future: app installation)
+  - Execute task via API
+  - Post results as PR comments
+- [ ] Add task types
+  - `review` - Code review
+  - `test` - Suggest tests
+  - `security` - Security audit
+  - `custom` - Custom prompt
+- [ ] Create example workflows
+  - PR auto-review
+  - Test coverage suggestions
+  - Documentation generation
+- [ ] Write action tests (20+ tests)
+- [ ] Publish to GitHub Actions Marketplace
+
+**Output**: Published GitHub Action ✅
+
+### 9.2 GitHub Integration Features
+
+**Tasks**:
+- [ ] PR comment integration
+  - Post review comments
+  - Reply to user comments
+  - Link to web UI session
+- [ ] Commit status checks
+  - Post check results
+  - Show pass/fail status
+- [ ] Issue integration
+  - Create issues for findings
+  - Label issues
+- [ ] Write integration tests (15+ tests)
+
+**Output**: Full GitHub integration ✅
+
+---
+
+## 🆕 Phase 10: Vector Search & Semantic Memory 🔍 (3-4 days)
+
+**Goal**: Add semantic search over conversation history
+
+### 10.1 Vector Database (Cloudflare Vectorize)
+
+**Tasks**:
+- [ ] Set up Vectorize index
+  - Create index with 1536 dimensions (OpenAI embeddings)
+  - Configure metadata fields
+- [ ] Implement embedding service
+  - Use OpenAI text-embedding-3-small
+  - Batch embedding for efficiency
+  - Cache embeddings in KV
+- [ ] Create message embedding pipeline
+  - Embed each message on creation
+  - Store in Vectorize with metadata (userId, sessionId, role, timestamp)
+  - Update on message edit
+- [ ] Implement semantic search
+  - `searchMessages(userId, query, limit)` - Find similar messages
+  - `findRelevantContext(userId, query)` - Get relevant past conversations
+- [ ] Write vector tests (25+ tests)
+
+**Output**: Semantic search over all user conversations ✅
+
+### 10.2 Contextual Memory
+
+**Auto-Context Retrieval**:
+```typescript
+// When user asks a question
+const query = "How do I deploy to Cloudflare Workers?";
+
+// Find relevant past conversations
+const context = await vectorSearch.findRelevant(userId, query, limit=5);
+
+// Include in system prompt
+const systemPrompt = `${basePrompt}
+
+## Relevant Past Conversations
+${context.map(c => `- ${c.content}`).join('\n')}
+`;
+```
+
+**Tasks**:
+- [ ] Implement auto-context retrieval
+  - Triggered on each user message
+  - Find top 5 relevant past messages
+  - Include in system prompt
+- [ ] Add memory management
+  - Limit context window (max 10K tokens)
+  - Prioritize recent + relevant
+- [ ] Create memory UI
+  - Show which past conversations were used
+  - Allow manual memory search
+  - Memory management (delete old memories)
+- [ ] Write memory tests (20+ tests)
+
+**Output**: AI with long-term memory ✅
+
+---
+
+## 🆕 Phase 11: Advanced Features 🚀 (Ongoing)
+
+### 11.1 Team Workspaces (Future)
+- Shared sessions across team members
+- Role-based access control
+- Team billing
+- Admin dashboard
+
+### 11.2 Mobile Apps (Future)
+- iOS/Android native apps
+- Push notifications
+- Voice input/output
+- Offline mode with sync
+
+### 11.3 Plugin Marketplace (Future)
+- Custom tools via API
+- Third-party integrations
+- Community plugins
+- Revenue sharing
+
+### 11.4 Multi-Agent Collaboration (Future)
+- Multiple agents working together
+- Agent-to-agent communication
+- Workflow orchestration
+- Specialized agent roles
+
+---
+
+## 📋 Development Checklist
+
+### MVP (Minimum Viable Product)
+- [x] Phase 1: Project Foundation ✅
+- [x] Phase 2: Core Agent System ✅
+- [x] Phase 3: Local File Storage ✅
+- [x] Phase 4: Interactive Terminal UI (partial) ✅
+- [ ] Phase 5: Central API & Authentication
+- [ ] Phase 6: Multi-Tenant Database
+- [ ] Phase 7: CLI Cloud Sync
+- [ ] Phase 8: Web UI
+- [ ] Phase 9: GitHub Actions
+
+### Post-MVP
+- [ ] Phase 10: Vector Search & Semantic Memory
+- [ ] Phase 11: Advanced Features
+- [ ] Mobile Apps
+- [ ] Team Workspaces
+- [ ] Plugin Marketplace
+
+---
+
 ## Revision History
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-18 | 2.0 | 🚀 **MAJOR ARCHITECTURE REDESIGN**: Multi-tenant centralized platform with persistent user memory across all interfaces. Added ARCHITECTURE.md with complete system design. Updated PLAN.md with new Phases 5-11 for Central API, Multi-Tenant DB, Cloud Sync, Web UI, GitHub Actions, Vector Search. Project vision changed from local-only to centralized SaaS platform. |
 | 2025-11-18 | 1.9 | 🎯 **Architecture Pivot**: Changed from Cloudflare Workers to local desktop app. Replaced Phase 3 (KV/D1) with local file storage (~/.duyetbot/). Added Phase 4 for interactive terminal UI using Ink (React for CLIs). Target: Claude Code-like experience. |
 | 2025-11-18 | 1.8 | ✅ Phase 2.2 COMPLETE: 347 tests passing. Agent Core with session management and tool execution (79 agent tests) |
 | 2025-11-18 | 1.7 | ✅ Phase 2.3 COMPLETE: 268 tests passing. Git tool implemented with comprehensive error handling (47 tests) |
