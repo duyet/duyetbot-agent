@@ -12,7 +12,7 @@
 export * from './types';
 export * from './factory';
 export * from './claude';
+export * from './openrouter';
 
 // TODO: Implement remaining provider modules
 // export * from './openai';
-// export * from './openrouter';
