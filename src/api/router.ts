@@ -15,6 +15,7 @@ import { timingMiddleware } from './middleware/timing';
 import { createAuthRoutes } from './routes/auth';
 import { createHealthRoutes } from './routes/health';
 import { createUserRoutes } from './routes/users';
+import { createGitHubRoutes } from './routes/github';
 import type { APIResponse, Env } from './types';
 
 /**
@@ -86,6 +87,9 @@ export function createRouter(): Hono<{ Bindings: Env }> {
 
   // Auth routes (no auth required)
   app.route('/auth', createAuthRoutes());
+
+  // GitHub webhook routes (no auth required for webhooks)
+  app.route('/github', createGitHubRoutes());
 
   // Protected user routes
   app.route('/users', createUserRoutes());
