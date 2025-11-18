@@ -392,6 +392,52 @@ git commit -m "feat: implement feature X
 
 **Remember**: PLAN.md is the source of truth for project progress. Keep it updated so you and future Claude instances can track what's done and what's next.
 
+### Commit Message Guidelines
+
+**Always use semantic commit format with simple English. Do NOT uppercase the message after the semantic prefix.**
+
+**Format**: `<type>: <description in lowercase>`
+
+**Correct Examples**:
+```bash
+git commit -m "feat: add file-based session storage"
+git commit -m "fix: resolve git tool error handling"
+git commit -m "docs: update PLAN.md with phase 3 progress"
+git commit -m "test: add storage integration tests"
+git commit -m "refactor: simplify provider factory logic"
+git commit -m "chore: update dependencies"
+```
+
+**Incorrect Examples** (DO NOT USE):
+```bash
+git commit -m "feat: Add file-based session storage"  # ❌ Uppercase after prefix
+git commit -m "Feat: add storage"                     # ❌ Uppercase type
+git commit -m "Added storage"                         # ❌ No semantic prefix
+git commit -m "feat:add storage"                      # ❌ No space after colon
+```
+
+**Semantic Types**:
+- `feat`: new feature
+- `fix`: bug fix
+- `docs`: documentation changes
+- `test`: adding or updating tests
+- `refactor`: code refactoring
+- `perf`: performance improvements
+- `chore`: maintenance tasks
+- `ci`: CI/CD changes
+- `build`: build system changes
+
+**Multi-line commits** (for detailed changes):
+```bash
+git commit -m "feat: implement phase 3.1 local file storage
+
+- add FileSystemStorage class with atomic writes
+- add FileSessionManager for persistent sessions
+- sessions saved to ~/.duyetbot/sessions/
+- 43 new tests passing
+"
+```
+
 ## Key Architectural Patterns
 
 ### 1. Multi-Provider LLM Integration
