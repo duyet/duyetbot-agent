@@ -6,8 +6,8 @@
 
 import chalk from 'chalk';
 import ora from 'ora';
-import { loadCredentials, deleteCredentials } from '../../client/auth';
 import { APIClient } from '../../client/api-client';
+import { deleteCredentials, loadCredentials } from '../../client/auth';
 
 export async function logoutCommand() {
   const spinner = ora('Signing out...').start();
@@ -29,7 +29,7 @@ export async function logoutCommand() {
       });
 
       await client.logout();
-    } catch (error) {
+    } catch (_error) {
       // Continue even if server logout fails
       console.warn(chalk.yellow('\n⚠ Failed to revoke tokens on server'));
     }

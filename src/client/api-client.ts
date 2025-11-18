@@ -76,10 +76,7 @@ export class APIClient {
   /**
    * Make authenticated request
    */
-  private async request<T>(
-    path: string,
-    options: RequestInit = {}
-  ): Promise<T> {
+  private async request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const url = `${this.config.apiUrl}${path}`;
     const headers: HeadersInit = {
       'Content-Type': 'application/json',
@@ -114,11 +111,7 @@ export class APIClient {
     const data = await response.json();
 
     if (!response.ok) {
-      throw new APIError(
-        data.message || 'Request failed',
-        response.status,
-        data.code
-      );
+      throw new APIError(data.message || 'Request failed', response.status, data.code);
     }
 
     return data.data as T;
@@ -152,10 +145,7 @@ export class APIClient {
 
       // Notify callback
       if (this.config.onTokenRefresh && this.config.refreshToken) {
-        this.config.onTokenRefresh(
-          this.config.accessToken,
-          this.config.refreshToken
-        );
+        this.config.onTokenRefresh(this.config.accessToken, this.config.refreshToken);
       }
 
       return true;
@@ -225,11 +215,7 @@ export class APIClient {
 
     if (!response.ok) {
       const data = await response.json();
-      throw new APIError(
-        data.message || 'Chat request failed',
-        response.status,
-        data.code
-      );
+      throw new APIError(data.message || 'Chat request failed', response.status, data.code);
     }
 
     // Parse SSE stream

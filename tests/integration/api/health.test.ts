@@ -19,7 +19,7 @@ const createMockEnv = (): Env => ({
         },
         run: async () => {},
         all: async () => ({ results: [] }),
-        bind: (...values: any[]) => statement, // Return self for chaining
+        bind: (..._values: any[]) => statement, // Return self for chaining
       };
       return statement;
     },
@@ -239,14 +239,14 @@ describe('Health Routes', () => {
       let deleteCalled = false;
 
       env.KV = {
-        get: async (key: string) => {
+        get: async (_key: string) => {
           getCalled = true;
           return 'ok';
         },
-        put: async (key: string, value: string) => {
+        put: async (_key: string, _value: string) => {
           putCalled = true;
         },
-        delete: async (key: string) => {
+        delete: async (_key: string) => {
           deleteCalled = true;
         },
       } as unknown as KVNamespace;

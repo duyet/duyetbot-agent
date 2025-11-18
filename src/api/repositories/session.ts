@@ -4,8 +4,8 @@
  * Data access layer for session metadata in D1
  */
 
-import type { D1Database } from "@cloudflare/workers-types";
-import type { SessionState } from "@/agent/session";
+import type { SessionState } from '@/agent/session';
+import type { D1Database } from '@cloudflare/workers-types';
 
 export interface SessionRow {
   id: string;
@@ -49,7 +49,7 @@ export class SessionRepository {
     await this.db
       .prepare(
         `INSERT INTO sessions (id, user_id, state, title, created_at, updated_at, metadata)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .bind(
         input.id,
@@ -58,7 +58,7 @@ export class SessionRepository {
         input.title || null,
         now,
         now,
-        input.metadata ? JSON.stringify(input.metadata) : null,
+        input.metadata ? JSON.stringify(input.metadata) : null
       )
       .run();
 
@@ -78,7 +78,7 @@ export class SessionRepository {
    */
   async get(userId: string, sessionId: string): Promise<SessionRow | null> {
     const result = await this.db
-      .prepare("SELECT * FROM sessions WHERE id = ? AND user_id = ?")
+      .prepare('SELECT * FROM sessions WHERE id = ? AND user_id = ?')
       .bind(sessionId, userId)
       .first();
 
@@ -91,23 +91,23 @@ export class SessionRepository {
   async update(
     userId: string,
     sessionId: string,
-    input: UpdateSessionInput,
+    input: UpdateSessionInput
   ): Promise<SessionRow | null> {
     const updates: string[] = [];
     const values: unknown[] = [];
 
-    if ("state" in input) {
-      updates.push("state = ?");
+    if ('state' in input) {
+      updates.push('state = ?');
       values.push(input.state);
     }
 
-    if ("title" in input) {
-      updates.push("title = ?");
+    if ('title' in input) {
+      updates.push('title = ?');
       values.push(input.title);
     }
 
-    if ("metadata" in input) {
-      updates.push("metadata = ?");
+    if ('metadata' in input) {
+      updates.push('metadata = ?');
       values.push(input.metadata ? JSON.stringify(input.metadata) : null);
     }
 
@@ -116,7 +116,7 @@ export class SessionRepository {
     }
 
     // Add updated_at
-    updates.push("updated_at = ?");
+    updates.push('updated_at = ?');
     values.push(Date.now());
 
     // Add WHERE clause values
@@ -124,9 +124,7 @@ export class SessionRepository {
     values.push(userId);
 
     await this.db
-      .prepare(
-        `UPDATE sessions SET ${updates.join(", ")} WHERE id = ? AND user_id = ?`,
-      )
+      .prepare(`UPDATE sessions SET ${updates.join(', ')} WHERE id = ? AND user_id = ?`)
       .bind(...values)
       .run();
 
@@ -138,7 +136,7 @@ export class SessionRepository {
    */
   async delete(userId: string, sessionId: string): Promise<void> {
     await this.db
-      .prepare("DELETE FROM sessions WHERE id = ? AND user_id = ?")
+      .prepare('DELETE FROM sessions WHERE id = ? AND user_id = ?')
       .bind(sessionId, userId)
       .run();
   }
@@ -149,15 +147,15 @@ export class SessionRepository {
   async list(options: ListSessionsOptions): Promise<SessionRow[]> {
     const { userId, state, limit = 100, offset = 0 } = options;
 
-    let query = "SELECT * FROM sessions WHERE user_id = ?";
+    let query = 'SELECT * FROM sessions WHERE user_id = ?';
     const values: unknown[] = [userId];
 
     if (state) {
-      query += " AND state = ?";
+      query += ' AND state = ?';
       values.push(state);
     }
 
-    query += " ORDER BY updated_at DESC LIMIT ? OFFSET ?";
+    query += ' ORDER BY updated_at DESC LIMIT ? OFFSET ?';
     values.push(limit, offset);
 
     const result = await this.db
@@ -172,11 +170,11 @@ export class SessionRepository {
    * Count sessions for a user
    */
   async count(userId: string, state?: SessionState): Promise<number> {
-    let query = "SELECT COUNT(*) as count FROM sessions WHERE user_id = ?";
+    let query = 'SELECT COUNT(*) as count FROM sessions WHERE user_id = ?';
     const values: unknown[] = [userId];
 
     if (state) {
-      query += " AND state = ?";
+      query += ' AND state = ?';
       values.push(state);
     }
 
@@ -192,10 +190,7 @@ export class SessionRepository {
    * Delete all sessions for a user (GDPR compliance)
    */
   async deleteAllForUser(userId: string): Promise<void> {
-    await this.db
-      .prepare("DELETE FROM sessions WHERE user_id = ?")
-      .bind(userId)
-      .run();
+    await this.db.prepare('DELETE FROM sessions WHERE user_id = ?').bind(userId).run();
   }
 }
 

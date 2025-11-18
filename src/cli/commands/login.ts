@@ -22,22 +22,19 @@ export async function loginCommand(options: { apiUrl: string }) {
     console.log(chalk.blue('🔐 duyetbot Authentication\n'));
 
     // Start device flow
-    await deviceFlowLogin(
-      options.apiUrl,
-      (message) => {
-        if (message.startsWith('Waiting')) {
-          spinner.text = message;
-          if (!spinner.isSpinning) {
-            spinner.start();
-          }
-        } else {
-          if (spinner.isSpinning) {
-            spinner.stop();
-          }
-          console.log(message);
+    await deviceFlowLogin(options.apiUrl, (message) => {
+      if (message.startsWith('Waiting')) {
+        spinner.text = message;
+        if (!spinner.isSpinning) {
+          spinner.start();
         }
+      } else {
+        if (spinner.isSpinning) {
+          spinner.stop();
+        }
+        console.log(message);
       }
-    );
+    });
 
     spinner.succeed(chalk.green('Successfully authenticated!'));
     console.log(chalk.gray('\nYou can now use `duyetbot chat` to start a conversation\n'));

@@ -19,7 +19,7 @@ export const ChatView: React.FC<ChatViewProps> = ({ messages, isStreaming, appNa
     return (
       <Box flexDirection="column" padding={1}>
         <Text dimColor>No messages yet. Type your message below to start.</Text>
-        <Text dimColor></Text>
+        <Text dimColor />
         <Text dimColor>Example: "Write a haiku about coding"</Text>
       </Box>
     );

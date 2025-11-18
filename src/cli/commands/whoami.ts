@@ -6,8 +6,8 @@
 
 import chalk from 'chalk';
 import ora from 'ora';
-import { loadCredentials, saveCredentials } from '../../client/auth';
 import { APIClient } from '../../client/api-client';
+import { loadCredentials, saveCredentials } from '../../client/auth';
 
 export async function whoamiCommand() {
   const spinner = ora('Fetching user information...').start();

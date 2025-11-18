@@ -66,20 +66,14 @@ export async function loadCredentials(): Promise<StoredCredentials | null> {
 /**
  * Save credentials
  */
-export async function saveCredentials(
-  credentials: StoredCredentials
-): Promise<void> {
+export async function saveCredentials(credentials: StoredCredentials): Promise<void> {
   const configDir = getConfigDir();
 
   // Ensure directory exists
   await fs.mkdir(configDir, { recursive: true });
 
   // Write credentials with restricted permissions (600)
-  await fs.writeFile(
-    getCredentialsPath(),
-    JSON.stringify(credentials, null, 2),
-    { mode: 0o600 }
-  );
+  await fs.writeFile(getCredentialsPath(), JSON.stringify(credentials, null, 2), { mode: 0o600 });
 }
 
 /**
@@ -96,9 +90,7 @@ export async function deleteCredentials(): Promise<void> {
 /**
  * Start device authorization flow
  */
-export async function startDeviceFlow(
-  apiUrl: string
-): Promise<DeviceCodeResponse> {
+export async function startDeviceFlow(apiUrl: string): Promise<DeviceCodeResponse> {
   const response = await fetch(`${apiUrl}/auth/device`, {
     method: 'POST',
     headers: {
@@ -120,7 +112,7 @@ export async function startDeviceFlow(
 export async function pollDeviceAuthorization(
   apiUrl: string,
   deviceCode: string,
-  interval: number = 5
+  _interval = 5
 ): Promise<TokenResponse | null> {
   const response = await fetch(`${apiUrl}/auth/device/token`, {
     method: 'POST',
@@ -151,7 +143,7 @@ export async function waitForAuthorization(
   apiUrl: string,
   deviceCode: string,
   expiresIn: number,
-  interval: number = 5,
+  interval = 5,
   onPoll?: () => void
 ): Promise<TokenResponse> {
   const startTime = Date.now();
@@ -222,10 +214,7 @@ export async function deviceFlowLogin(
 /**
  * Refresh access token
  */
-export async function refreshToken(
-  apiUrl: string,
-  refreshToken: string
-): Promise<string> {
+export async function refreshToken(apiUrl: string, refreshToken: string): Promise<string> {
   const response = await fetch(`${apiUrl}/auth/refresh`, {
     method: 'POST',
     headers: {

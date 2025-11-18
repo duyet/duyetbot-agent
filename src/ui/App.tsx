@@ -86,7 +86,9 @@ export const App: React.FC<AppProps> = ({ agent, config: userConfig }) => {
   };
 
   const handleSubmit = async (message: string) => {
-    if (!session || !message.trim() || isStreaming) return;
+    if (!session || !message.trim() || isStreaming) {
+      return;
+    }
 
     setInput('');
     setIsStreaming(true);

@@ -243,7 +243,7 @@ export class GitTool implements Tool {
    * Build clone command
    */
   private buildCloneCommand(data: any): string {
-    let cmd = `git clone`;
+    let cmd = 'git clone';
     if (data.depth) {
       cmd += ` --depth ${data.depth}`;
     }

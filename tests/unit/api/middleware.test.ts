@@ -22,7 +22,7 @@ const mockUser: User = {
 const createMockEnv = (): Env => ({
   DB: {
     prepare: (sql: string) => ({
-      bind: (...values: any[]) => ({
+      bind: (..._values: any[]) => ({
         first: async () => {
           if (sql.includes('SELECT * FROM users WHERE id')) {
             return {

@@ -4,9 +4,9 @@
  * Per-user resource limits and enforcement
  */
 
-import type { D1Database } from "@cloudflare/workers-types";
-import type { SessionRepository } from "@/api/repositories/session";
-import type { MessageStore } from "./kv-message-store";
+import type { SessionRepository } from '@/api/repositories/session';
+import type { D1Database } from '@cloudflare/workers-types';
+import type { MessageStore } from './kv-message-store';
 
 /**
  * Resource quotas per user
@@ -61,10 +61,10 @@ export class QuotaExceededError extends Error {
     message: string,
     public quotaType: string,
     public current: number,
-    public limit: number,
+    public limit: number
   ) {
     super(message);
-    this.name = "QuotaExceededError";
+    this.name = 'QuotaExceededError';
   }
 }
 
@@ -75,7 +75,7 @@ export class QuotaManager {
   constructor(
     private sessionRepo: SessionRepository,
     private messageStore: MessageStore,
-    private quota: ResourceQuota = DEFAULT_QUOTA,
+    private quota: ResourceQuota = DEFAULT_QUOTA
   ) {}
 
   /**
@@ -87,9 +87,9 @@ export class QuotaManager {
     if (sessionCount >= this.quota.maxSessions) {
       throw new QuotaExceededError(
         `Session quota exceeded. Maximum ${this.quota.maxSessions} sessions allowed.`,
-        "sessions",
+        'sessions',
         sessionCount,
-        this.quota.maxSessions,
+        this.quota.maxSessions
       );
     }
   }
@@ -103,9 +103,9 @@ export class QuotaManager {
     if (messageCount >= this.quota.maxMessagesPerSession) {
       throw new QuotaExceededError(
         `Message quota exceeded for session. Maximum ${this.quota.maxMessagesPerSession} messages allowed.`,
-        "messages",
+        'messages',
         messageCount,
-        this.quota.maxMessagesPerSession,
+        this.quota.maxMessagesPerSession
       );
     }
   }
@@ -117,7 +117,7 @@ export class QuotaManager {
     const sessionCount = await this.sessionRepo.count(userId);
 
     let messagesInSession = 0;
-    let toolResultsInSession = 0;
+    const toolResultsInSession = 0;
 
     if (sessionId) {
       messagesInSession = await this.messageStore.count(userId, sessionId);
@@ -157,7 +157,7 @@ export class QuotaManager {
    */
   async isApproachingLimit(
     userId: string,
-    threshold = 0.9,
+    threshold = 0.9
   ): Promise<{
     sessions: boolean;
     storage: boolean;
@@ -177,7 +177,7 @@ export class QuotaManager {
 export function createQuotaManager(
   sessionRepo: SessionRepository,
   messageStore: MessageStore,
-  quota?: Partial<ResourceQuota>,
+  quota?: Partial<ResourceQuota>
 ): QuotaManager {
   const finalQuota = {
     ...DEFAULT_QUOTA,

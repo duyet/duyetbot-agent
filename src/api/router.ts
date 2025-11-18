@@ -13,9 +13,9 @@ import { rateLimitMiddleware } from './middleware/rate-limit';
 import { requestIdMiddleware } from './middleware/request-id';
 import { timingMiddleware } from './middleware/timing';
 import { createAuthRoutes } from './routes/auth';
+import { createGitHubRoutes } from './routes/github';
 import { createHealthRoutes } from './routes/health';
 import { createUserRoutes } from './routes/users';
-import { createGitHubRoutes } from './routes/github';
 import type { APIResponse, Env } from './types';
 
 /**

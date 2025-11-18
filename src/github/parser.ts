@@ -163,7 +163,9 @@ export function extractMentions(text: string): string[] {
 /**
  * Extract issue references
  */
-export function extractIssueReferences(text: string): Array<{ repository?: string; issue: number }> {
+export function extractIssueReferences(
+  text: string
+): Array<{ repository?: string; issue: number }> {
   const references: Array<{ repository?: string; issue: number }> = [];
 
   // Match #123 or owner/repo#123
