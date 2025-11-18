@@ -3,6 +3,23 @@
 ## Overview
 This document outlines the phased implementation plan for the duyetbot-agent project - an autonomous bot agent system running on Cloudflare Workers with multi-LLM support and background task scheduling.
 
+---
+
+## ⚠️ IMPORTANT: Keeping This Plan Updated
+
+**This is a living document that MUST be maintained throughout development.**
+
+When working on this project:
+1. **Read this plan before starting any work** to understand current phase and dependencies
+2. **Mark tasks complete `[x]` immediately** as you finish them (don't batch updates)
+3. **Add new tasks** discovered during implementation to the appropriate phase
+4. **Update the Revision History** table at the bottom when making changes
+5. **Commit PLAN.md along with your code changes**
+
+📖 **See CLAUDE.md "Development Workflow" section for detailed instructions.**
+
+---
+
 ## Project Goals
 - ✅ Multi-LLM provider support (Claude, OpenAI, OpenRouter)
 - ✅ Background task execution with scheduling
@@ -613,4 +630,5 @@ This document outlines the phased implementation plan for the duyetbot-agent pro
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-18 | 1.1 | Added maintenance workflow section with reference to CLAUDE.md |
 | 2025-11-18 | 1.0 | Initial plan created |
