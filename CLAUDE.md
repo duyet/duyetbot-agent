@@ -138,6 +138,66 @@ npm run lint:fix            # Auto-fix linting issues
 npm run format              # Prettier formatting
 ```
 
+## Development Workflow
+
+### IMPORTANT: Maintaining PLAN.md
+
+**PLAN.md is a living document that tracks project progress. You MUST maintain it throughout development.**
+
+#### Before Starting Work
+1. **Always read PLAN.md first** to understand:
+   - Current phase and tasks
+   - Dependencies between tasks
+   - Overall project status
+   - What has been completed
+
+#### During Development
+1. **Check off completed tasks** in PLAN.md using `[x]` syntax
+   - Mark tasks complete as soon as they're done
+   - Don't batch updates - update immediately
+2. **Update task status** if you discover:
+   - Tasks are more complex than estimated
+   - Additional subtasks are needed
+   - Dependencies have changed
+
+#### After Completing Work
+1. **Update PLAN.md** with:
+   - Mark completed tasks with `[x]`
+   - Add any new tasks discovered during implementation
+   - Update estimates if timeline has changed
+   - Document any architectural decisions that affect future phases
+2. **Update the Revision History** table at the bottom of PLAN.md
+3. **Commit PLAN.md** along with your code changes
+
+#### Adding New Items
+When you discover new requirements or tasks:
+1. Add them to the appropriate phase in PLAN.md
+2. If it doesn't fit existing phases, create a new section
+3. Update dependencies and timeline estimates
+4. Document the rationale for the addition
+
+#### Example Workflow
+```bash
+# 1. Read the plan
+cat PLAN.md
+
+# 2. Work on your task
+# ... implement feature ...
+
+# 3. Update PLAN.md (mark task complete, add new discoveries)
+# ... edit PLAN.md ...
+
+# 4. Commit both code and updated plan
+git add src/ PLAN.md
+git commit -m "feat: implement feature X
+
+- Completed Phase 2, Task 2.1
+- Added new subtask for error handling (Phase 2, Task 2.4)
+- Updated PLAN.md with progress"
+```
+
+**Remember**: PLAN.md is the source of truth for project progress. Keep it updated so you and future Claude instances can track what's done and what's next.
+
 ## Key Architectural Patterns
 
 ### 1. Multi-Provider LLM Integration
