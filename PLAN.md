@@ -60,6 +60,149 @@ The agent core is deployment-agnostic. CLI, GitHub Actions, and Web UI are diffe
 
 ---
 
+## Prompt Engineering Best Practices
+
+### Overview
+This project leverages advanced prompt engineering techniques from Anthropic's official guidance to maximize LLM effectiveness. All agent implementations should follow these principles.
+
+### Core Techniques (in recommended order)
+
+#### 1. Clarity and Directness
+- Write clear, specific instructions
+- Avoid ambiguity in task descriptions
+- State success criteria explicitly
+
+#### 2. XML Tags for Structure
+Use XML tags to organize complex prompts and responses:
+
+```xml
+<instructions>
+  Task-specific instructions here
+</instructions>
+
+<context>
+  Relevant background information
+</context>
+
+<examples>
+  <example>
+    Input/output demonstration
+  </example>
+</examples>
+
+<output_format>
+  Expected response structure
+</output_format>
+```
+
+**Benefits**:
+- Prevents Claude from confusing different prompt sections
+- Enables programmatic parsing of outputs
+- Makes prompts easier to modify and maintain
+
+#### 3. Chain of Thought
+For complex reasoning tasks, use explicit thinking steps:
+
+```xml
+<thinking>
+  Step-by-step reasoning process
+</thinking>
+
+<answer>
+  Final response based on reasoning
+</answer>
+```
+
+**When to use**: Mathematical problems, multi-step analysis, complex decisions
+**Critical**: Always output thinking - "without outputting its thought process, no thinking occurs"
+
+#### 4. System Prompts (Role Assignment)
+Assign Claude specific roles for domain expertise:
+
+```typescript
+{
+  role: 'system',
+  content: 'You are an experienced software architect specializing in distributed systems and agent-based architectures.'
+}
+```
+
+**Best practices**:
+- Use system parameter exclusively for roles
+- Put task-specific instructions in user messages
+- Experiment with specificity (generic vs. detailed roles)
+
+#### 5. Few-Shot Examples
+Demonstrate desired patterns with 2-3 examples:
+- Shows expected input/output format
+- Illustrates tone and style
+- Clarifies edge case handling
+
+#### 6. Prompt Chaining
+Break complex workflows into sequential subtasks:
+- Each subtask gets Claude's full attention
+- Easier to debug and refine individual steps
+- Improves overall accuracy
+
+**Pattern**:
+```
+Step 1: Research → Step 2: Outline → Step 3: Draft → Step 4: Review
+```
+
+#### 7. Response Prefilling
+Guide output format by starting the assistant message:
+```typescript
+messages: [
+  { role: 'user', content: 'Generate JSON config' },
+  { role: 'assistant', content: '{' }  // Forces JSON output
+]
+```
+
+**Use cases**: Skipping preambles, maintaining character consistency, enforcing formats
+
+### Implementation in duyetbot-agent
+
+#### For Tool Execution:
+- Use XML tags to structure tool inputs/outputs
+- Include chain-of-thought for complex tool operations (e.g., multi-step git workflows)
+
+#### For Task Planning:
+- System prompt: Assign "task planning specialist" role
+- Use XML tags to separate task description, constraints, and dependencies
+- Chain-of-thought for breaking down complex tasks
+
+#### For Sub-Agents:
+- Each sub-agent gets a specific role via system prompt
+- Use prompt chaining to pass context between agents
+- XML tags for structured inter-agent communication
+
+#### For Research Tools:
+- System prompt: "Research analyst specializing in [domain]"
+- XML tags for query, sources, findings
+- Chain-of-thought for synthesizing information
+
+### Testing Prompt Effectiveness
+
+**Prerequisites before optimization**:
+1. Clear success criteria for the use case
+2. Empirical testing methods to measure performance
+3. A draft prompt to refine
+
+**Why prompt engineering over fine-tuning**:
+- Nearly instantaneous results vs. hours of training
+- Works with base model (lower cost)
+- Rapid iteration and adaptation
+- No large labeled datasets required
+- Prompts work across model versions
+
+### References
+- [Prompt Engineering Overview](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview)
+- [Chain of Thought](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/chain-of-thought)
+- [XML Tags](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags)
+- [System Prompts](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/system-prompts)
+- [Prompt Chaining](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/chain-prompts)
+
+---
+
 ## Phase 1: Project Foundation ⚡ (1-2 days)
 
 ### 1.1 Project Initialization
