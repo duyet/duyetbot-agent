@@ -1,0 +1,206 @@
+/**
+ * API Types
+ *
+ * Type definitions for API, authentication, and user management
+ */
+
+/**
+ * OAuth provider types
+ */
+export type OAuthProvider = 'github' | 'google';
+
+/**
+ * User model
+ */
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  picture: string | null;
+  provider: OAuthProvider;
+  providerId: string;
+  createdAt: Date;
+  updatedAt: Date;
+  settings?: UserSettings;
+}
+
+/**
+ * User settings
+ */
+export interface UserSettings {
+  defaultModel?: string;
+  defaultProvider?: string;
+  uiTheme?: 'light' | 'dark' | 'system';
+  notifications?: {
+    email?: boolean;
+    push?: boolean;
+  };
+}
+
+/**
+ * User creation input
+ */
+export interface CreateUserInput {
+  email: string;
+  name: string | null;
+  picture: string | null;
+  provider: OAuthProvider;
+  providerId: string;
+  settings?: UserSettings;
+}
+
+/**
+ * User update input
+ */
+export interface UpdateUserInput {
+  name?: string | null;
+  picture?: string | null;
+  settings?: Partial<UserSettings>;
+}
+
+/**
+ * JWT claims
+ */
+export interface JWTClaims {
+  sub: string; // User ID
+  email: string;
+  name: string | null;
+  picture: string | null;
+  provider: OAuthProvider;
+  iat: number; // Issued at
+  exp: number; // Expiration
+}
+
+/**
+ * JWT token pair
+ */
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number; // seconds
+}
+
+/**
+ * Refresh token model
+ */
+export interface RefreshToken {
+  id: string;
+  userId: string;
+  token: string;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+/**
+ * OAuth profile from provider
+ */
+export interface OAuthProfile {
+  id: string;
+  email: string;
+  name: string | null;
+  picture: string | null;
+}
+
+/**
+ * GitHub OAuth profile
+ */
+export interface GitHubProfile extends OAuthProfile {
+  login: string;
+  avatarUrl: string;
+}
+
+/**
+ * Google OAuth profile
+ */
+export interface GoogleProfile extends OAuthProfile {
+  sub: string;
+  givenName?: string;
+  familyName?: string;
+}
+
+/**
+ * Usage statistics
+ */
+export interface UsageStats {
+  userId: string;
+  apiRequests: number;
+  tokensUsed: number;
+  storageUsed: number; // bytes
+  period: {
+    start: Date;
+    end: Date;
+  };
+}
+
+/**
+ * API error response
+ */
+export interface APIError {
+  error: string;
+  message: string;
+  code: string;
+  details?: unknown;
+}
+
+/**
+ * API success response
+ */
+export interface APISuccess<T = unknown> {
+  success: true;
+  data: T;
+}
+
+/**
+ * Cloudflare Workers environment bindings
+ */
+export interface Env {
+  // D1 Database
+  DB: D1Database;
+
+  // KV Namespace
+  KV: KVNamespace;
+
+  // Vectorize Index
+  VECTORIZE: VectorizeIndex;
+
+  // R2 Bucket
+  R2: R2Bucket;
+
+  // Environment variables
+  ENVIRONMENT: 'development' | 'staging' | 'production';
+  API_URL: string;
+  WEB_URL: string;
+
+  // Secrets (set via wrangler secret put)
+  JWT_SECRET: string;
+  GITHUB_CLIENT_ID: string;
+  GITHUB_CLIENT_SECRET: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
+  ANTHROPIC_API_KEY: string;
+}
+
+/**
+ * Request context with authenticated user
+ */
+export interface AuthContext {
+  user: User;
+  env: Env;
+}
+
+/**
+ * Rate limit configuration
+ */
+export interface RateLimitConfig {
+  maxRequests: number;
+  windowSeconds: number;
+}
+
+/**
+ * Rate limit result
+ */
+export interface RateLimitResult {
+  allowed: boolean;
+  remaining: number;
+  resetAt: Date;
+}
