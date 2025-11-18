@@ -142,9 +142,10 @@ export class APIClient {
 
       const data = await response.json();
       this.config.accessToken = data.data.accessToken;
+      this.config.refreshToken = data.data.refreshToken;
 
       // Notify callback
-      if (this.config.onTokenRefresh && this.config.refreshToken) {
+      if (this.config.onTokenRefresh) {
         this.config.onTokenRefresh(this.config.accessToken, this.config.refreshToken);
       }
 

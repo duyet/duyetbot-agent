@@ -2,8 +2,8 @@
  * Tests for GitHub Webhook Handler
  */
 
-import { describe, it, expect } from 'vitest';
-import { verifyWebhookSignature, mentionsDuyetbot, extractCommand } from '@/github/webhook-handler';
+import { extractCommand, mentionsDuyetbot, verifyWebhookSignature } from '@/github/webhook-handler';
+import { describe, expect, it } from 'vitest';
 
 describe('GitHub Webhook Handler', () => {
   describe('verifyWebhookSignature', () => {
