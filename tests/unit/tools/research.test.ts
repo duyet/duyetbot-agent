@@ -40,8 +40,6 @@ describe('ResearchTool', () => {
   describe('validate', () => {
     it('should accept string query', () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: 'what is TypeScript',
       };
 
@@ -51,8 +49,6 @@ describe('ResearchTool', () => {
 
     it('should accept object with query', () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           query: 'what is TypeScript',
         },
@@ -64,8 +60,6 @@ describe('ResearchTool', () => {
 
     it('should accept object with query and maxResults', () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           query: 'what is TypeScript',
           maxResults: 5,
@@ -78,8 +72,6 @@ describe('ResearchTool', () => {
 
     it('should reject empty query', () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: '',
       };
 
@@ -89,8 +81,6 @@ describe('ResearchTool', () => {
 
     it('should reject invalid maxResults', () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           query: 'test',
           maxResults: -1,
@@ -103,8 +93,6 @@ describe('ResearchTool', () => {
 
     it('should reject maxResults over limit', () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           query: 'test',
           maxResults: 100,
@@ -130,17 +118,17 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: 'TypeScript programming language',
       };
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      expect(output.data).toBeDefined();
-      expect(output.data.results).toBeInstanceOf(Array);
-      expect(output.data.results.length).toBeGreaterThan(0);
+      expect(output.status).toBe('success');
+      expect(output.content).toBeDefined();
+      expect(typeof output.content).toBe('object');
+      const content = output.content as Record<string, unknown>;
+      expect(Array.isArray(content.results)).toBe(true);
+      expect((content.results as unknown[]).length).toBeGreaterThan(0);
     });
 
     it('should return search results with citations', async () => {
@@ -156,15 +144,14 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: 'Node.js runtime',
       };
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      const results = output.data.results;
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      const results = content.results as Array<Record<string, unknown>>;
       expect(results[0]).toHaveProperty('title');
       expect(results[0]).toHaveProperty('url');
       expect(results[0]).toHaveProperty('snippet');
@@ -191,8 +178,6 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           query: 'JavaScript frameworks',
           maxResults: 3,
@@ -201,8 +186,9 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      expect(output.data.results.length).toBeLessThanOrEqual(3);
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      expect((content.results as unknown[]).length).toBeLessThanOrEqual(3);
     });
 
     it('should include query metadata in response', async () => {
@@ -213,15 +199,14 @@ describe('ResearchTool', () => {
 
       const query = 'React framework';
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: query,
       };
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      expect(output.data.query).toBe(query);
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      expect(content.query).toBe(query);
     });
 
     it('should handle empty search results gracefully', async () => {
@@ -231,16 +216,15 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: 'xyzabc123nonexistentterm999',
       };
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      expect(output.data.results).toBeInstanceOf(Array);
-      expect(output.data.results.length).toBe(0);
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      expect(Array.isArray(content.results)).toBe(true);
+      expect((content.results as unknown[]).length).toBe(0);
     });
   });
 
@@ -252,8 +236,6 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           url: 'https://example.com',
         },
@@ -261,9 +243,10 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      expect(output.data).toHaveProperty('content');
-      expect(output.data).toHaveProperty('url');
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      expect(content).toHaveProperty('content');
+      expect(content).toHaveProperty('url');
     });
 
     it('should extract text content from HTML', async () => {
@@ -273,8 +256,6 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           url: 'https://example.com',
         },
@@ -282,15 +263,14 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      expect(typeof output.data.content).toBe('string');
-      expect(output.data.content.length).toBeGreaterThan(0);
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      expect(typeof content.content).toBe('string');
+      expect((content.content as string).length).toBeGreaterThan(0);
     });
 
     it('should handle invalid URLs', async () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           url: 'not-a-url',
         },
@@ -298,7 +278,7 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(false);
+      expect(output.status).toBe('error');
       expect(output.error).toBeDefined();
     });
 
@@ -306,8 +286,6 @@ describe('ResearchTool', () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValueOnce(new Error('Network error'));
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           url: 'https://this-domain-does-not-exist-12345.com',
         },
@@ -315,7 +293,7 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(false);
+      expect(output.status).toBe('error');
       expect(output.error).toBeDefined();
     });
   });
@@ -323,27 +301,23 @@ describe('ResearchTool', () => {
   describe('execute - error handling', () => {
     it('should return error for invalid input', async () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
-        content: null,
+        content: {} as Record<string, unknown>,
       };
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(false);
+      expect(output.status).toBe('error');
       expect(output.error).toBeDefined();
     });
 
     it('should return error for empty query', async () => {
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: '',
       };
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(false);
+      expect(output.status).toBe('error');
       expect(output.error).toBeDefined();
     });
   });
@@ -356,8 +330,6 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           url: 'https://example.com',
         },
@@ -365,9 +337,10 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
       // Should not contain HTML tags
-      expect(output.data.content).not.toMatch(/<[^>]*>/);
+      expect((content.content as string)).not.toMatch(/<[^>]*>/);
     });
 
     it('should extract title from page', async () => {
@@ -377,8 +350,6 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           url: 'https://example.com',
         },
@@ -386,9 +357,10 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
-      expect(output.data).toHaveProperty('title');
-      expect(output.data.title).toBe('Page Title');
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      expect(content).toHaveProperty('title');
+      expect(content.title).toBe('Page Title');
     });
   });
 
@@ -407,8 +379,6 @@ describe('ResearchTool', () => {
       });
 
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: {
           query: 'machine learning tutorial',
           maxResults: 5,
@@ -417,10 +387,12 @@ describe('ResearchTool', () => {
 
       const output = await tool.execute(input);
 
-      expect(output.success).toBe(true);
+      expect(output.status).toBe('success');
+      const content = output.content as Record<string, unknown>;
+      const results = content.results as Array<Record<string, unknown>>;
       // Results should have relevance scores
-      if (output.data.results.length > 0) {
-        expect(output.data.results[0]).toHaveProperty('relevance');
+      if (results.length > 0) {
+        expect(results[0]).toHaveProperty('relevance');
       }
     });
   });
@@ -435,8 +407,6 @@ describe('ResearchTool', () => {
 
       const query = 'test query for caching';
       const input: ToolInput = {
-        type: 'tool_use',
-        name: 'research',
         content: query,
       };
 
@@ -448,8 +418,8 @@ describe('ResearchTool', () => {
       const output2 = await tool.execute(input);
       const duration2 = output2.metadata?.duration || 0;
 
-      expect(output1.success).toBe(true);
-      expect(output2.success).toBe(true);
+      expect(output1.status).toBe('success');
+      expect(output2.status).toBe('success');
       expect(output2.metadata?.cached).toBe(true);
       // Second call should be faster (cached)
       expect(duration2).toBeLessThanOrEqual(duration1);

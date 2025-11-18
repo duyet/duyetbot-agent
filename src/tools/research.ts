@@ -96,8 +96,12 @@ export class ResearchTool implements Tool {
       const parsed = this.inputSchema.safeParse(input.content);
       if (!parsed.success) {
         return {
-          success: false,
-          error: parsed.error.errors[0]?.message || 'Invalid input',
+          status: 'error',
+          content: 'Invalid input',
+          error: {
+            message: parsed.error.errors[0]?.message || 'Invalid input',
+            code: 'INVALID_INPUT',
+          },
           metadata: {
             duration: Date.now() - startTime,
             timestamp: new Date().toISOString(),
@@ -114,13 +118,17 @@ export class ResearchTool implements Tool {
 
       // Handle search query
       if ('query' in data && data.query) {
-        const maxResults = data.maxResults || DEFAULT_RESULTS;
+        const maxResults = 'maxResults' in data && data.maxResults ? data.maxResults : DEFAULT_RESULTS;
         return await this.search(data.query, maxResults, startTime);
       }
 
       return {
-        success: false,
-        error: 'Either query or url must be provided',
+        status: 'error',
+        content: 'Either query or url must be provided',
+        error: {
+          message: 'Either query or url must be provided',
+          code: 'MISSING_PARAMETER',
+        },
         metadata: {
           duration: Date.now() - startTime,
           timestamp: new Date().toISOString(),
@@ -128,8 +136,12 @@ export class ResearchTool implements Tool {
       };
     } catch (error) {
       return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
+        status: 'error',
+        content: error instanceof Error ? error.message : 'Unknown error occurred',
+        error: {
+          message: error instanceof Error ? error.message : 'Unknown error occurred',
+          code: 'EXECUTION_ERROR',
+        },
         metadata: {
           duration: Date.now() - startTime,
           timestamp: new Date().toISOString(),
@@ -148,8 +160,8 @@ export class ResearchTool implements Tool {
       const cached = searchCache.get(cacheKey);
       if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
         return {
-          success: true,
-          data: cached.results,
+          status: 'success',
+          content: cached.results as Record<string, unknown>,
           metadata: {
             duration: Date.now() - startTime,
             timestamp: new Date().toISOString(),
@@ -174,8 +186,8 @@ export class ResearchTool implements Tool {
       });
 
       return {
-        success: true,
-        data: responseData,
+        status: 'success',
+        content: responseData,
         metadata: {
           duration: Date.now() - startTime,
           timestamp: new Date().toISOString(),
@@ -184,8 +196,12 @@ export class ResearchTool implements Tool {
       };
     } catch (error) {
       return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Search failed',
+        status: 'error',
+        content: error instanceof Error ? error.message : 'Search failed',
+        error: {
+          message: error instanceof Error ? error.message : 'Search failed',
+          code: 'SEARCH_ERROR',
+        },
         metadata: {
           duration: Date.now() - startTime,
           timestamp: new Date().toISOString(),
@@ -264,8 +280,12 @@ export class ResearchTool implements Tool {
         new URL(url);
       } catch {
         return {
-          success: false,
-          error: 'Invalid URL format',
+          status: 'error',
+          content: 'Invalid URL format',
+          error: {
+            message: 'Invalid URL format',
+            code: 'INVALID_URL',
+          },
           metadata: {
             duration: Date.now() - startTime,
             timestamp: new Date().toISOString(),
@@ -284,8 +304,12 @@ export class ResearchTool implements Tool {
 
       if (!response.ok) {
         return {
-          success: false,
-          error: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+          status: 'error',
+          content: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+          error: {
+            message: `Failed to fetch URL: ${response.status} ${response.statusText}`,
+            code: 'FETCH_ERROR',
+          },
           metadata: {
             duration: Date.now() - startTime,
             timestamp: new Date().toISOString(),
@@ -314,8 +338,8 @@ export class ResearchTool implements Tool {
       }
 
       return {
-        success: true,
-        data: {
+        status: 'success',
+        content: {
           url,
           title,
           content,
@@ -327,8 +351,12 @@ export class ResearchTool implements Tool {
       };
     } catch (error) {
       return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Failed to fetch URL',
+        status: 'error',
+        content: error instanceof Error ? error.message : 'Failed to fetch URL',
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to fetch URL',
+          code: 'FETCH_ERROR',
+        },
         metadata: {
           duration: Date.now() - startTime,
           timestamp: new Date().toISOString(),
