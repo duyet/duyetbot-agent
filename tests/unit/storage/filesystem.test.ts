@@ -1,6 +1,6 @@
-import { FileSystemStorage } from '@/storage/filesystem';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { FileSystemStorage } from '@/storage/filesystem';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('FileSystemStorage', () => {

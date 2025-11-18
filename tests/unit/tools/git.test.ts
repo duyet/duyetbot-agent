@@ -1,6 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest';
 import { GitTool } from '@/tools/git';
 import type { ToolInput } from '@/tools/types';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('GitTool', () => {
   let gitTool: GitTool;

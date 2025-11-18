@@ -105,7 +105,7 @@ describe('SessionManager', () => {
       const session = await manager.create({});
 
       // Add small delay to ensure different timestamp
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const updated = await manager.update(session.id, { state: 'paused' });
 
@@ -308,9 +308,9 @@ describe('SessionManager', () => {
       const session = await manager.create({});
       await manager.complete(session.id);
 
-      await expect(
-        manager.fail(session.id, { message: 'Error', code: 'ERROR' })
-      ).rejects.toThrow(SessionError);
+      await expect(manager.fail(session.id, { message: 'Error', code: 'ERROR' })).rejects.toThrow(
+        SessionError
+      );
     });
   });
 

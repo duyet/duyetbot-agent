@@ -18,14 +18,16 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   const allowedOrigins = getAllowedOrigins(env);
 
   // Check if origin is allowed
-  const isAllowed = origin && allowedOrigins.some((allowed) => {
-    if (allowed === '*') return true;
-    if (allowed.endsWith('*')) {
-      const prefix = allowed.slice(0, -1);
-      return origin.startsWith(prefix);
-    }
-    return origin === allowed;
-  });
+  const isAllowed =
+    origin &&
+    allowedOrigins.some((allowed) => {
+      if (allowed === '*') return true;
+      if (allowed.endsWith('*')) {
+        const prefix = allowed.slice(0, -1);
+        return origin.startsWith(prefix);
+      }
+      return origin === allowed;
+    });
 
   if (isAllowed) {
     c.header('Access-Control-Allow-Origin', origin!);
@@ -33,10 +35,7 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   }
 
   c.header('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-  c.header(
-    'Access-Control-Allow-Headers',
-    'Content-Type, Authorization, X-Requested-With'
-  );
+  c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
   c.header('Access-Control-Max-Age', '86400'); // 24 hours
 
   // Handle preflight

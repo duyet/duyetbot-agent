@@ -1,6 +1,6 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
 import { generateAccessToken, generateRefreshToken, verifyToken } from '@/api/auth/jwt';
 import type { User } from '@/api/types';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 describe('JWT Authentication', () => {
   const mockUser: User = {
@@ -76,9 +76,7 @@ describe('JWT Authentication', () => {
     });
 
     it('should generate tokens with high entropy', async () => {
-      const tokens = await Promise.all(
-        Array.from({ length: 100 }, () => generateRefreshToken())
-      );
+      const tokens = await Promise.all(Array.from({ length: 100 }, () => generateRefreshToken()));
 
       // All tokens should be unique
       const uniqueTokens = new Set(tokens);

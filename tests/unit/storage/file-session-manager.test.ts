@@ -1,6 +1,6 @@
-import { FileSessionManager } from '@/storage/file-session-manager';
 import { existsSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
+import { FileSessionManager } from '@/storage/file-session-manager';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 describe('FileSessionManager', () => {
@@ -81,7 +81,7 @@ describe('FileSessionManager', () => {
     it('should update session file', async () => {
       const session = await manager.create({});
 
-      await new Promise(resolve => setTimeout(resolve, 10));
+      await new Promise((resolve) => setTimeout(resolve, 10));
 
       const updated = await manager.update(session.id, { state: 'paused' });
 

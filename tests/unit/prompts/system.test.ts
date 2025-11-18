@@ -1,13 +1,13 @@
-import { describe, expect, it } from 'vitest';
 import {
+  type AgentType,
+  CODE_REVIEWER_PROMPT,
   DUYETBOT_SYSTEM_PROMPT,
   RESEARCH_AGENT_PROMPT,
-  CODE_REVIEWER_PROMPT,
   TASK_PLANNER_PROMPT,
-  getSystemPrompt,
   buildSystemPrompt,
-  type AgentType,
+  getSystemPrompt,
 } from '@/prompts/system';
+import { describe, expect, it } from 'vitest';
 
 describe('System Prompts', () => {
   describe('DUYETBOT_SYSTEM_PROMPT', () => {

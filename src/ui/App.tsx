@@ -4,14 +4,15 @@
  * Interactive CLI similar to Claude Code
  */
 
-import { Box, Text, useApp, useInput } from 'ink';
-import React, { useState, useEffect } from 'react';
 import type { Agent } from '@/agent/core';
 import type { Session } from '@/agent/session';
 import type { LLMMessage } from '@/providers/types';
-import { StatusBar } from './components/StatusBar';
+import { Box, Text, useApp, useInput } from 'ink';
+import type React from 'react';
+import { useEffect, useState } from 'react';
 import { ChatView } from './components/ChatView';
 import { InputBox } from './components/InputBox';
+import { StatusBar } from './components/StatusBar';
 import type { UIConfig } from './config';
 import { defaultConfig } from './config';
 
@@ -173,7 +174,8 @@ export const App: React.FC<AppProps> = ({ agent, config: userConfig }) => {
       {/* Help Text */}
       <Box paddingX={1} borderStyle="single" borderTop={false}>
         <Text dimColor>
-          {config.shortcuts.exit}: exit | {config.shortcuts.clear}: clear | {config.shortcuts.newSession}: new session
+          {config.shortcuts.exit}: exit | {config.shortcuts.clear}: clear |{' '}
+          {config.shortcuts.newSession}: new session
         </Text>
       </Box>
     </Box>
