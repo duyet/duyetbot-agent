@@ -241,7 +241,9 @@ Create actionable plans that guide execution while remaining flexible to change.
 /**
  * Get system prompt for a specific agent type
  */
-export function getSystemPrompt(agentType: 'default' | 'research' | 'reviewer' | 'planner'): string {
+export function getSystemPrompt(
+  agentType: 'default' | 'research' | 'reviewer' | 'planner'
+): string {
   switch (agentType) {
     case 'research':
       return RESEARCH_AGENT_PROMPT;

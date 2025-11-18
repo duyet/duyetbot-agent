@@ -5,8 +5,7 @@
  */
 
 import { Box, Text } from 'ink';
-import React from 'react';
-
+import type React from 'react';
 
 interface StatusBarProps {
   appName: string;
@@ -22,12 +21,7 @@ export const StatusBar: React.FC<StatusBarProps> = ({
   isStreaming,
 }) => {
   return (
-    <Box
-      paddingX={1}
-      borderStyle="single"
-      borderBottom={false}
-      justifyContent="space-between"
-    >
+    <Box paddingX={1} borderStyle="single" borderBottom={false} justifyContent="space-between">
       {/* Left side: Session title */}
       <Box>
         <Text bold color="cyan">

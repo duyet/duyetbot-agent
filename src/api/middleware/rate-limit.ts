@@ -19,9 +19,7 @@ const DEFAULT_RATE_LIMIT: RateLimitConfig = {
 /**
  * Rate limiting middleware
  */
-export async function rateLimitMiddleware(
-  config: Partial<RateLimitConfig> = {}
-) {
+export async function rateLimitMiddleware(config: Partial<RateLimitConfig> = {}) {
   const finalConfig: RateLimitConfig = {
     ...DEFAULT_RATE_LIMIT,
     ...config,
@@ -34,11 +32,7 @@ export async function rateLimitMiddleware(
     // Use user ID if authenticated, otherwise use IP
     const identifier = user?.id || c.req.header('CF-Connecting-IP') || 'unknown';
 
-    const result = await checkRateLimit(
-      env.KV,
-      identifier,
-      finalConfig
-    );
+    const result = await checkRateLimit(env.KV, identifier, finalConfig);
 
     // Set rate limit headers
     c.header('X-RateLimit-Limit', String(finalConfig.maxRequests));
@@ -77,16 +71,14 @@ async function checkRateLimit(
   const windowMs = config.windowSeconds * 1000;
 
   // Get current counter
-  const data = await kv.get(key, 'json') as RateLimitData | null;
+  const data = (await kv.get(key, 'json')) as RateLimitData | null;
 
   if (!data) {
     // First request in this window
     const resetAt = new Date(now + windowMs);
-    await kv.put(
-      key,
-      JSON.stringify({ count: 1, resetAt: resetAt.getTime() }),
-      { expirationTtl: config.windowSeconds }
-    );
+    await kv.put(key, JSON.stringify({ count: 1, resetAt: resetAt.getTime() }), {
+      expirationTtl: config.windowSeconds,
+    });
 
     return {
       allowed: true,
@@ -101,11 +93,9 @@ async function checkRateLimit(
   if (now >= data.resetAt) {
     // Reset counter for new window
     const newResetAt = new Date(now + windowMs);
-    await kv.put(
-      key,
-      JSON.stringify({ count: 1, resetAt: newResetAt.getTime() }),
-      { expirationTtl: config.windowSeconds }
-    );
+    await kv.put(key, JSON.stringify({ count: 1, resetAt: newResetAt.getTime() }), {
+      expirationTtl: config.windowSeconds,
+    });
 
     return {
       allowed: true,
@@ -125,11 +115,9 @@ async function checkRateLimit(
 
   // Increment counter
   const newCount = data.count + 1;
-  await kv.put(
-    key,
-    JSON.stringify({ count: newCount, resetAt: data.resetAt }),
-    { expirationTtl: Math.ceil((data.resetAt - now) / 1000) }
-  );
+  await kv.put(key, JSON.stringify({ count: newCount, resetAt: data.resetAt }), {
+    expirationTtl: Math.ceil((data.resetAt - now) / 1000),
+  });
 
   return {
     allowed: true,

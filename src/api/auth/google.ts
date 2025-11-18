@@ -41,10 +41,7 @@ export function getGoogleAuthUrl(config: GoogleOAuthConfig, state?: string): str
 /**
  * Exchange authorization code for access token
  */
-export async function exchangeGoogleCode(
-  code: string,
-  config: GoogleOAuthConfig
-): Promise<string> {
+export async function exchangeGoogleCode(code: string, config: GoogleOAuthConfig): Promise<string> {
   const response = await fetch(GOOGLE_TOKEN_URL, {
     method: 'POST',
     headers: {
@@ -63,7 +60,7 @@ export async function exchangeGoogleCode(
     throw new GoogleOAuthError('Failed to exchange code for token', 'TOKEN_EXCHANGE_FAILED');
   }
 
-  const data = await response.json() as { access_token?: string; error?: string };
+  const data = (await response.json()) as { access_token?: string; error?: string };
 
   if (data.error) {
     throw new GoogleOAuthError(`Google OAuth error: ${data.error}`, 'GOOGLE_OAUTH_ERROR');
@@ -90,17 +87,18 @@ export async function getGoogleProfile(accessToken: string): Promise<OAuthProfil
     throw new GoogleOAuthError('Failed to fetch user profile', 'PROFILE_FETCH_FAILED');
   }
 
-  const data = await response.json() as GoogleProfile & {
+  const data = (await response.json()) as GoogleProfile & {
     id?: string;
     given_name?: string;
     family_name?: string;
   };
 
-  const name = data.givenName && data.familyName
-    ? `${data.givenName} ${data.familyName}`
-    : data.given_name && data.family_name
-      ? `${data.given_name} ${data.family_name}`
-      : data.name;
+  const name =
+    data.givenName && data.familyName
+      ? `${data.givenName} ${data.familyName}`
+      : data.given_name && data.family_name
+        ? `${data.given_name} ${data.family_name}`
+        : data.name;
 
   return {
     id: data.sub || data.id || '',

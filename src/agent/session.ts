@@ -213,7 +213,10 @@ export class InMemorySessionManager implements SessionManager {
   /**
    * List sessions
    */
-  async list(filter?: { state?: SessionState; metadata?: Record<string, unknown> }): Promise<Session[]> {
+  async list(filter?: {
+    state?: SessionState;
+    metadata?: Record<string, unknown>;
+  }): Promise<Session[]> {
     let sessions = Array.from(this.sessions.values());
 
     if (filter?.state) {
@@ -222,8 +225,12 @@ export class InMemorySessionManager implements SessionManager {
 
     if (filter?.metadata) {
       sessions = sessions.filter((s) => {
-        if (!s.metadata) return false;
-        return Object.entries(filter.metadata ?? {}).every(([key, value]) => s.metadata?.[key] === value);
+        if (!s.metadata) {
+          return false;
+        }
+        return Object.entries(filter.metadata ?? {}).every(
+          ([key, value]) => s.metadata?.[key] === value
+        );
       });
     }
 
@@ -240,18 +247,15 @@ export class InMemorySessionManager implements SessionManager {
     }
 
     if (session.state !== 'paused') {
-      throw new SessionError(
-        `Cannot resume session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot resume session in state: ${session.state}`, 'INVALID_STATE');
     }
 
+    const { resumeToken, ...sessionWithoutToken } = session;
     const resumed: Session = {
-      ...session,
+      ...sessionWithoutToken,
       state: 'active',
       updatedAt: new Date(),
     };
-    delete resumed.resumeToken;
 
     this.sessions.set(id, resumed);
     return resumed;
@@ -267,10 +271,7 @@ export class InMemorySessionManager implements SessionManager {
     }
 
     if (session.state !== 'active') {
-      throw new SessionError(
-        `Cannot pause session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot pause session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const paused: Session = {
@@ -298,10 +299,7 @@ export class InMemorySessionManager implements SessionManager {
     }
 
     if (session.state !== 'active') {
-      throw new SessionError(
-        `Cannot complete session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot complete session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const completed: Session = {
@@ -328,10 +326,7 @@ export class InMemorySessionManager implements SessionManager {
     }
 
     if (session.state !== 'active') {
-      throw new SessionError(
-        `Cannot fail session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot fail session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const failed: Session = {
@@ -355,10 +350,7 @@ export class InMemorySessionManager implements SessionManager {
     }
 
     if (session.state === 'completed' || session.state === 'failed') {
-      throw new SessionError(
-        `Cannot cancel session in state: ${session.state}`,
-        'INVALID_STATE'
-      );
+      throw new SessionError(`Cannot cancel session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const cancelled: Session = {

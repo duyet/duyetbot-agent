@@ -1,10 +1,10 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { Hono } from 'hono';
-import { authMiddleware, getUser, getOptionalUser } from '@/api/middleware/auth';
+import { generateAccessToken } from '@/api/auth/jwt';
+import { authMiddleware, getOptionalUser, getUser } from '@/api/middleware/auth';
 import { corsMiddleware } from '@/api/middleware/cors';
 import { rateLimitMiddleware } from '@/api/middleware/rate-limit';
-import { generateAccessToken } from '@/api/auth/jwt';
 import type { Env, User } from '@/api/types';
+import { Hono } from 'hono';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock user for tests
 const mockUser: User = {

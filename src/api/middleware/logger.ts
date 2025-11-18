@@ -6,8 +6,8 @@
 
 import type { Context, Next } from 'hono';
 import type { Env } from '../types';
-import { getRequestId } from './request-id';
 import { getOptionalUser } from './auth';
+import { getRequestId } from './request-id';
 
 /**
  * Log levels

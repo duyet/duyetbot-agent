@@ -7,9 +7,9 @@
 import { Hono } from 'hono';
 import type { Context } from 'hono';
 import { getUser } from '../middleware/auth';
-import { UserRepository } from '../repositories/user';
 import { RefreshTokenRepository } from '../repositories/refresh-token';
-import type { Env, APIResponse, UpdateUserInput, UserSettings } from '../types';
+import { UserRepository } from '../repositories/user';
+import type { APIResponse, Env, UpdateUserInput, UserSettings } from '../types';
 
 /**
  * Create user routes

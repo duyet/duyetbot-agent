@@ -4,9 +4,9 @@
  * Displays conversation messages
  */
 
-import { Box, Text } from 'ink';
-import React from 'react';
 import type { LLMMessage } from '@/providers/types';
+import { Box, Text } from 'ink';
+import type React from 'react';
 
 interface ChatViewProps {
   messages: LLMMessage[];

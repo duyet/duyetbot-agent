@@ -14,9 +14,7 @@ import type { Env } from '../types';
 export async function requestIdMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
   // Check if request ID already exists (from upstream proxy/load balancer)
   const existingId =
-    c.req.header('X-Request-ID') ||
-    c.req.header('X-Request-Id') ||
-    c.req.header('CF-Ray'); // Cloudflare Ray ID
+    c.req.header('X-Request-ID') || c.req.header('X-Request-Id') || c.req.header('CF-Ray'); // Cloudflare Ray ID
 
   // Generate new ID if none exists
   const requestId = existingId || crypto.randomUUID();
