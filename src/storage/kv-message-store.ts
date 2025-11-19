@@ -114,6 +114,7 @@ export class KVMessageStore implements MessageStore {
     // In production, you would list all keys with prefix and delete them
     // For now, this is a placeholder that would need to be implemented
     // using KV list() with prefix filtering
+    // @ts-expect-error unused parameter
     const _ = `users:${userId}:`;
 
     // This is a simplified implementation

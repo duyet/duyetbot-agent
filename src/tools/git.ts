@@ -133,12 +133,12 @@ export class GitTool implements Tool {
           return this.handleStatus(result, startTime, input);
 
         case 'clone':
-          if (typeof data !== 'string' && !data.url) {
+          if (typeof data !== 'string' && !(data as any).url) {
             return this.error('Clone requires URL parameter', 'MISSING_PARAMETER');
           }
           gitCommand = this.buildCloneCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if (result.failed) {
+          if (result.failed === true) {
             return this.error(result.stderr || 'Clone failed', 'GIT_ERROR');
           }
           return this.success('Repository cloned successfully', result, startTime, input, {
@@ -146,12 +146,12 @@ export class GitTool implements Tool {
           });
 
         case 'commit':
-          if (typeof data !== 'string' && !data.message) {
+          if (typeof data !== 'string' && !(data as any).message) {
             return this.error('Commit requires message parameter', 'MISSING_PARAMETER');
           }
           gitCommand = this.buildCommitCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if (result.failed) {
+          if (result.failed === true) {
             return this.error(result.stderr || 'Commit failed', 'GIT_ERROR');
           }
           return this.success('Commit created successfully', result, startTime, input, {
@@ -161,7 +161,7 @@ export class GitTool implements Tool {
         case 'push':
           gitCommand = this.buildPushCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if (result.failed) {
+          if (result.failed === true) {
             return this.error(result.stderr || 'Push failed', 'GIT_ERROR');
           }
           return this.success('Pushed to remote successfully', result, startTime, input, {
@@ -171,7 +171,7 @@ export class GitTool implements Tool {
         case 'pull':
           gitCommand = this.buildPullCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if (result.failed) {
+          if (result.failed === true) {
             return this.error(result.stderr || 'Pull failed', 'GIT_ERROR');
           }
           return this.success('Pulled from remote successfully', result, startTime, input, {
@@ -179,12 +179,12 @@ export class GitTool implements Tool {
           });
 
         case 'add':
-          if (typeof data !== 'string' && !data.files) {
+          if (typeof data !== 'string' && !(data as any).files) {
             return this.error('Add requires files parameter', 'MISSING_PARAMETER');
           }
           gitCommand = this.buildAddCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if (result.failed) {
+          if (result.failed === true) {
             return this.error(result.stderr || 'Add failed', 'GIT_ERROR');
           }
           return this.success('Files staged successfully', result, startTime, input, { command });
@@ -207,12 +207,12 @@ export class GitTool implements Tool {
           return this.handleBranch(result, startTime, input);
 
         case 'checkout':
-          if (typeof data !== 'string' && !data.branch) {
+          if (typeof data !== 'string' && !(data as any).branch) {
             return this.error('Checkout requires branch parameter', 'MISSING_PARAMETER');
           }
           gitCommand = this.buildCheckoutCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if (result.failed) {
+          if (result.failed === true) {
             return this.error(result.stderr || 'Checkout failed', 'GIT_ERROR');
           }
           return this.success('Checked out branch successfully', result, startTime, input, {
@@ -390,7 +390,7 @@ export class GitTool implements Tool {
     startTime: number,
     input: ToolInput
   ): ToolOutput {
-    if (result.failed) {
+    if (result.failed === true) {
       return this.error(result.stderr || 'Status command failed', 'GIT_ERROR');
     }
 
@@ -421,7 +421,7 @@ export class GitTool implements Tool {
     startTime: number,
     input: ToolInput
   ): ToolOutput {
-    if (result.failed) {
+    if (result.failed === true) {
       return this.error(result.stderr || 'Branch command failed', 'GIT_ERROR');
     }
 

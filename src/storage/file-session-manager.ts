@@ -197,8 +197,8 @@ export class FileSessionManager implements SessionManager {
       ...session,
       state: 'active',
       updatedAt: new Date(),
+      resumeToken: undefined,
     };
-    resumed.resumeToken = undefined;
 
     await this.storage.writeJSON(this.getSessionPath(id), this.serialize(resumed));
     return resumed;
