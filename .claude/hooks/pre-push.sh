@@ -7,6 +7,11 @@
 
 set -e
 
+# Skip hook in test/CI environments to avoid recursion
+if [ -n "$VITEST" ] || [ -n "$CI" ] || [ -n "$SKIP_HOOKS" ]; then
+  exit 0
+fi
+
 echo "🔍 Running pre-push checks..."
 
 # Colors for output
