@@ -1,5 +1,5 @@
-import { InMemorySessionManager, SessionError } from '@/agent/session';
-import type { CreateSessionInput, Session } from '@/agent/session';
+import { InMemorySessionManagerError } from '@/agent/session';
+import type { CreateSessionInput } from '@/agent/session';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('SessionManager', () => {
