@@ -113,7 +113,7 @@ export class OfflineQueue {
    */
   async peek(): Promise<QueuedMessage | null> {
     const queue = await this.loadQueue();
-    return queue.length > 0 ? queue[0] : null;
+    return queue.length > 0 ? queue[0]! : null;
   }
 
   /**
@@ -241,7 +241,7 @@ export async function syncQueue(
   let failed = 0;
 
   for (let i = 0; i < messages.length; i++) {
-    const message = messages[i];
+    const message = messages[i]!;
 
     try {
       await sendMessage(message);

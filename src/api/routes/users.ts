@@ -33,7 +33,7 @@ export function createUserRoutes(): Hono<AppEnv> {
         provider: string;
         createdAt: string;
         updatedAt: string;
-        settings?: UserSettings;
+        settings?: UserSettings | undefined;
       }>
     >(
       {
@@ -67,7 +67,7 @@ export function createUserRoutes(): Hono<AppEnv> {
 
     for (const [key, value] of Object.entries(body)) {
       if (allowedFields.includes(key)) {
-        updates[key as keyof UpdateUserInput] = value;
+        updates[key as keyof UpdateUserInput] = value as any;
       }
     }
 
@@ -96,7 +96,7 @@ export function createUserRoutes(): Hono<AppEnv> {
           provider: string;
           createdAt: string;
           updatedAt: string;
-          settings?: UserSettings;
+          settings?: UserSettings | undefined;
         }>
       >(
         {

@@ -190,9 +190,23 @@ export type APIResponse<T = unknown> = APISuccess<T> | APIError;
 /**
  * Auth response with tokens
  */
+/**
+ * Public user info (safe to send to client)
+ */
+export interface PublicUser {
+  id: string;
+  email: string;
+  name: string | null;
+  picture: string | null;
+  provider: OAuthProvider;
+}
+
 export interface AuthResponse {
-  user: User;
-  tokens: TokenPair;
+  user: PublicUser;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
 }
 
 /**
