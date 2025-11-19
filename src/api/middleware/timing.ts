@@ -5,7 +5,7 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Env } from '../types';
+import type { AppEnv } from '../types';
 
 /**
  * Timing entry for Server-Timing header
@@ -13,14 +13,14 @@ import type { Env } from '../types';
 interface TimingEntry {
   name: string;
   duration: number;
-  description?: string;
+  description?: string | undefined;
 }
 
 /**
  * Performance timer class
  */
 export class PerformanceTimer {
-  private timings: Map<string, { start: number; end?: number; description?: string }> = new Map();
+  private timings: Map<string, { start: number; end?: number | undefined; description?: string | undefined }> = new Map();
 
   /**
    * Start a timer
@@ -94,7 +94,7 @@ export class PerformanceTimer {
  * Performance timing middleware
  * Tracks request timing and adds Server-Timing header
  */
-export async function timingMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function timingMiddleware(c: Context<AppEnv>, next: Next) {
   const timer = new PerformanceTimer();
 
   // Store timer in context
@@ -120,20 +120,20 @@ export async function timingMiddleware(c: Context<{ Bindings: Env }>, next: Next
 /**
  * Get performance timer from context
  */
-export function getTimer(c: Context): PerformanceTimer {
+export function getTimer(c: Context<AppEnv>): PerformanceTimer {
   const timer = c.get('timer');
   if (!timer) {
     // Fallback to new timer if not in context
     return new PerformanceTimer();
   }
-  return timer as PerformanceTimer;
+  return timer;
 }
 
 /**
  * Measure async operation
  */
 export async function measure<T>(
-  c: Context,
+  c: Context<AppEnv>,
   name: string,
   fn: () => Promise<T>,
   description?: string

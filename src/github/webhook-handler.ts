@@ -109,7 +109,7 @@ export function extractCommand(text: string): string {
  * Handle GitHub webhook
  */
 export async function handleGitHubWebhook(
-  c: Context<{ Bindings: Env }>,
+  c: Context<AppEnv>,
   event: GitHubEvent,
   payload: WebhookPayload
 ): Promise<Response> {
@@ -159,7 +159,7 @@ export async function handleGitHubWebhook(
  * Handle issue comment
  */
 async function handleIssueComment(
-  c: Context<{ Bindings: Env }>,
+  c: Context<AppEnv>,
   payload: WebhookPayload
 ): Promise<Response> {
   const logger = getLogger(c);
@@ -196,7 +196,7 @@ async function handleIssueComment(
  * Handle pull request comment
  */
 async function handlePullRequestComment(
-  c: Context<{ Bindings: Env }>,
+  c: Context<AppEnv>,
   payload: WebhookPayload
 ): Promise<Response> {
   const logger = getLogger(c);
@@ -233,7 +233,7 @@ async function handlePullRequestComment(
  * Handle new issue
  */
 async function handleNewIssue(
-  c: Context<{ Bindings: Env }>,
+  c: Context<AppEnv>,
   payload: WebhookPayload
 ): Promise<Response> {
   const logger = getLogger(c);

@@ -5,20 +5,20 @@
  */
 
 import { Hono } from 'hono';
-import type { Context } from 'hono';
+
 import {
   type GitHubEvent,
   handleGitHubWebhook,
   verifyWebhookSignature,
 } from '../../github/webhook-handler';
 import { getLogger } from '../middleware/logger';
-import type { APIResponse, Env } from '../types';
+import type { APIResponse, AppEnv } from '../types';
 
 /**
  * Create GitHub routes
  */
-export function createGitHubRoutes(): Hono<{ Bindings: Env }> {
-  const app = new Hono<{ Bindings: Env }>();
+export function createGitHubRoutes(): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
   /**
    * POST /github/webhook

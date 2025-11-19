@@ -167,6 +167,7 @@ export interface UsageStats {
  * API error response
  */
 export interface APIError {
+  success: false;
   error: string;
   message: string;
   code: string;
@@ -279,3 +280,12 @@ export interface RequestContext {
   // From timing middleware
   timer: import('./middleware/timing').PerformanceTimer;
 }
+
+/**
+ * Hono app environment type
+ * Combines bindings (Cloudflare env) and variables (request context)
+ */
+export type AppEnv = {
+  Bindings: Env;
+  Variables: RequestContext;
+};
