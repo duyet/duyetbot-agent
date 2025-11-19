@@ -182,6 +182,26 @@ export interface APISuccess<T = unknown> {
 }
 
 /**
+ * API response (success or error)
+ */
+export type APIResponse<T = unknown> = APISuccess<T> | APIError;
+
+/**
+ * Auth response with tokens
+ */
+export interface AuthResponse {
+  user: User;
+  tokens: TokenPair;
+}
+
+/**
+ * Refresh token request
+ */
+export interface RefreshTokenRequest {
+  refreshToken: string;
+}
+
+/**
  * Cloudflare Workers environment bindings
  */
 export interface Env {

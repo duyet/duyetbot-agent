@@ -7,8 +7,8 @@
 import { webcrypto } from 'node:crypto';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { completeGitHubOAuth, getGitHubAuthorizationUrl } from '../auth/github';
-import { completeGoogleOAuth, getGoogleAuthorizationUrl } from '../auth/google';
+import { completeGitHubOAuth, getGitHubAuthUrl } from '../auth/github';
+import { completeGoogleOAuth, getGoogleAuthUrl } from '../auth/google';
 import { generateAccessToken, generateRefreshToken, verifyToken } from '../auth/jwt';
 import { authMiddleware, getUser } from '../middleware/auth';
 import { RefreshTokenRepository } from '../repositories/refresh-token';
@@ -24,7 +24,7 @@ import type {
 } from '../types';
 
 // Use Node.js crypto for compatibility with Node 18
-const crypto = webcrypto as Crypto;
+const crypto = webcrypto as unknown as Crypto;
 
 /**
  * Generate a user-friendly code (e.g., "ABCD-1234")
@@ -68,7 +68,7 @@ export function createAuthRoutes(): Hono<{ Bindings: Env }> {
     }
 
     const state = crypto.randomUUID();
-    const authUrl = getGitHubAuthorizationUrl({
+    const authUrl = getGitHubAuthUrl({
       clientId,
       redirectUri,
       state,
@@ -205,7 +205,7 @@ export function createAuthRoutes(): Hono<{ Bindings: Env }> {
     }
 
     const state = crypto.randomUUID();
-    const authUrl = getGoogleAuthorizationUrl({
+    const authUrl = getGoogleAuthUrl({
       clientId,
       redirectUri,
       state,
