@@ -94,7 +94,7 @@ export function quotaMiddleware() {
  */
 function extractSessionId(path: string): string | null {
   const match = path.match(/\/sessions\/([^/]+)/);
-  return match && match[1] ? match[1] : null;
+  return match?.[1] ?? null;
 }
 
 /**

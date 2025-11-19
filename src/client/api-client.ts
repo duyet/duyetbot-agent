@@ -108,6 +108,7 @@ export class APIClient {
     }
 
     // Parse response
+    // biome-ignore lint/suspicious/noExplicitAny: Response body type unknown
     const data = (await response.json()) as any;
 
     if (!response.ok) {
