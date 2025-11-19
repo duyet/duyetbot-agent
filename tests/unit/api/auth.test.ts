@@ -125,7 +125,10 @@ describe('JWT Authentication', () => {
     it('should use HS256 algorithm', async () => {
       const token = await generateAccessToken(mockUser, testSecret);
       const [header] = token.split('.');
-      const decodedHeader = JSON.parse(atob(header!));
+      if (!header) {
+        throw new Error('Token header is missing');
+      }
+      const decodedHeader = JSON.parse(atob(header));
 
       expect(decodedHeader.alg).toBe('HS256');
     });

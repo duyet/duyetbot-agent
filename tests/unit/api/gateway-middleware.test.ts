@@ -2,8 +2,9 @@ import { Logger, getLogger, loggerMiddleware } from '@/api/middleware/logger';
 import { getRequestId, requestIdMiddleware } from '@/api/middleware/request-id';
 import { PerformanceTimer, getTimer, measure, timingMiddleware } from '@/api/middleware/timing';
 import type { Env } from '@/api/types';
+import type { R2Bucket, VectorizeIndex } from '@cloudflare/workers-types';
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Create mock environment
 const createMockEnv = (): Env => ({

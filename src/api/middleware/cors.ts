@@ -31,8 +31,8 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       return origin === allowed;
     });
 
-  if (isAllowed) {
-    c.header('Access-Control-Allow-Origin', origin!);
+  if (isAllowed && origin) {
+    c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
   }
 

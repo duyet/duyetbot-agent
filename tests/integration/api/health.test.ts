@@ -1,5 +1,6 @@
 import { createHealthRoutes } from '@/api/routes/health';
 import type { Env } from '@/api/types';
+import type { R2Bucket, VectorizeIndex } from '@cloudflare/workers-types';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
 

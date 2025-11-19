@@ -3,6 +3,7 @@ import { authMiddleware, getOptionalUser, getUser } from '@/api/middleware/auth'
 import { corsMiddleware } from '@/api/middleware/cors';
 import { rateLimitMiddleware } from '@/api/middleware/rate-limit';
 import type { Env, User } from '@/api/types';
+import type { R2Bucket, VectorizeIndex } from '@cloudflare/workers-types';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -367,7 +368,11 @@ describe('Rate Limit Middleware', () => {
 
     expect(res.status).toBe(429);
     expect(res.headers.get('Retry-After')).toBeTruthy();
-    const retryAfter = Number.parseInt(res.headers.get('Retry-After')!);
+    const retryAfterHeader = res.headers.get('Retry-After');
+    if (!retryAfterHeader) {
+      throw new Error('Expected Retry-After header');
+    }
+    const retryAfter = Number.parseInt(retryAfterHeader);
     expect(retryAfter).toBeGreaterThan(0);
     expect(retryAfter).toBeLessThanOrEqual(60);
   });

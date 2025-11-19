@@ -203,7 +203,9 @@ describe('SessionManager', () => {
     it('should filter sessions by state', async () => {
       const sessions = await manager.list({ state: 'completed' });
       expect(sessions.length).toBeGreaterThanOrEqual(1);
-      sessions.forEach((s: Session) => expect(s.state).toBe('completed'));
+      for (const s of sessions) {
+        expect(s.state).toBe('completed');
+      }
     });
 
     it('should filter sessions by metadata', async () => {

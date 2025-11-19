@@ -60,6 +60,27 @@ const gitInputSchema = z.union([
   }),
 ]);
 
+// Helper type for git command options
+interface GitCommandOptions {
+  command?: string;
+  url?: string;
+  directory?: string;
+  depth?: number;
+  message?: string;
+  amend?: boolean;
+  remote?: string;
+  branch?: string;
+  force?: boolean;
+  rebase?: boolean;
+  files?: string[];
+  staged?: boolean;
+  limit?: number;
+  oneline?: boolean;
+  name?: string;
+  create?: boolean;
+  delete?: boolean;
+}
+
 /**
  * Git tool implementation
  */
@@ -112,12 +133,12 @@ export class GitTool implements Tool {
           return this.handleStatus(result, startTime, input);
 
         case 'clone':
-          if (typeof data !== 'string' && !(data as any).url) {
+          if (typeof data !== 'string' && !data.url) {
             return this.error('Clone requires URL parameter', 'MISSING_PARAMETER');
           }
-          gitCommand = this.buildCloneCommand(data as any);
+          gitCommand = this.buildCloneCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if ((result as any).failed) {
+          if (result.failed) {
             return this.error(result.stderr || 'Clone failed', 'GIT_ERROR');
           }
           return this.success('Repository cloned successfully', result, startTime, input, {
@@ -125,12 +146,12 @@ export class GitTool implements Tool {
           });
 
         case 'commit':
-          if (typeof data !== 'string' && !(data as any).message) {
+          if (typeof data !== 'string' && !data.message) {
             return this.error('Commit requires message parameter', 'MISSING_PARAMETER');
           }
-          gitCommand = this.buildCommitCommand(data as any);
+          gitCommand = this.buildCommitCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if ((result as any).failed) {
+          if (result.failed) {
             return this.error(result.stderr || 'Commit failed', 'GIT_ERROR');
           }
           return this.success('Commit created successfully', result, startTime, input, {
@@ -138,9 +159,9 @@ export class GitTool implements Tool {
           });
 
         case 'push':
-          gitCommand = this.buildPushCommand(data as any);
+          gitCommand = this.buildPushCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if ((result as any).failed) {
+          if (result.failed) {
             return this.error(result.stderr || 'Push failed', 'GIT_ERROR');
           }
           return this.success('Pushed to remote successfully', result, startTime, input, {
@@ -148,9 +169,9 @@ export class GitTool implements Tool {
           });
 
         case 'pull':
-          gitCommand = this.buildPullCommand(data as any);
+          gitCommand = this.buildPullCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if ((result as any).failed) {
+          if (result.failed) {
             return this.error(result.stderr || 'Pull failed', 'GIT_ERROR');
           }
           return this.success('Pulled from remote successfully', result, startTime, input, {
@@ -158,40 +179,40 @@ export class GitTool implements Tool {
           });
 
         case 'add':
-          if (typeof data !== 'string' && !(data as any).files) {
+          if (typeof data !== 'string' && !data.files) {
             return this.error('Add requires files parameter', 'MISSING_PARAMETER');
           }
-          gitCommand = this.buildAddCommand(data as any);
+          gitCommand = this.buildAddCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if ((result as any).failed) {
+          if (result.failed) {
             return this.error(result.stderr || 'Add failed', 'GIT_ERROR');
           }
           return this.success('Files staged successfully', result, startTime, input, { command });
 
         case 'diff':
-          gitCommand = this.buildDiffCommand(data as any);
+          gitCommand = this.buildDiffCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
           return this.success(result.stdout || 'No changes', result, startTime, input, {
             command,
           });
 
         case 'log':
-          gitCommand = this.buildLogCommand(data as any);
+          gitCommand = this.buildLogCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
           return this.success(result.stdout, result, startTime, input, { command });
 
         case 'branch':
-          gitCommand = this.buildBranchCommand(data as any);
+          gitCommand = this.buildBranchCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
           return this.handleBranch(result, startTime, input);
 
         case 'checkout':
-          if (typeof data !== 'string' && !(data as any).branch) {
+          if (typeof data !== 'string' && !data.branch) {
             return this.error('Checkout requires branch parameter', 'MISSING_PARAMETER');
           }
-          gitCommand = this.buildCheckoutCommand(data as any);
+          gitCommand = this.buildCheckoutCommand(data as GitCommandOptions);
           result = await this.execGit(gitCommand, cwd);
-          if ((result as any).failed) {
+          if (result.failed) {
             return this.error(result.stderr || 'Checkout failed', 'GIT_ERROR');
           }
           return this.success('Checked out branch successfully', result, startTime, input, {
@@ -225,13 +246,14 @@ export class GitTool implements Tool {
         maxBuffer: 10 * 1024 * 1024, // 10MB
       });
       return { stdout: stdout.trim(), stderr: stderr.trim() };
-    } catch (error: any) {
+    } catch (error: unknown) {
       // Git commands can return non-zero exit codes for valid operations
       // (e.g., git diff returns 1 if there are changes)
-      if (error.stdout || error.stderr) {
+      const execError = error as { stdout?: string; stderr?: string; message?: string };
+      if (execError.stdout || execError.stderr) {
         return {
-          stdout: error.stdout?.trim() || '',
-          stderr: error.stderr?.trim() || error.message,
+          stdout: execError.stdout?.trim() || '',
+          stderr: execError.stderr?.trim() || execError.message || '',
           failed: true,
         };
       }
@@ -242,7 +264,7 @@ export class GitTool implements Tool {
   /**
    * Build clone command
    */
-  private buildCloneCommand(data: any): string {
+  private buildCloneCommand(data: GitCommandOptions): string {
     let cmd = 'git clone';
     if (data.depth) {
       cmd += ` --depth ${data.depth}`;
@@ -257,19 +279,19 @@ export class GitTool implements Tool {
   /**
    * Build commit command
    */
-  private buildCommitCommand(data: any): string {
+  private buildCommitCommand(data: GitCommandOptions): string {
     let cmd = 'git commit';
     if (data.amend) {
       cmd += ' --amend';
     }
-    cmd += ` -m "${data.message.replace(/"/g, '\\"')}"`;
+    cmd += ` -m "${data.message?.replace(/"/g, '\\"')}"`;
     return cmd;
   }
 
   /**
    * Build push command
    */
-  private buildPushCommand(data: any): string {
+  private buildPushCommand(data: GitCommandOptions): string {
     let cmd = 'git push';
     if (data.force) {
       cmd += ' --force';
@@ -286,7 +308,7 @@ export class GitTool implements Tool {
   /**
    * Build pull command
    */
-  private buildPullCommand(data: any): string {
+  private buildPullCommand(data: GitCommandOptions): string {
     let cmd = 'git pull';
     if (data.rebase) {
       cmd += ' --rebase';
@@ -303,14 +325,14 @@ export class GitTool implements Tool {
   /**
    * Build add command
    */
-  private buildAddCommand(data: any): string {
-    return `git add ${data.files.join(' ')}`;
+  private buildAddCommand(data: GitCommandOptions): string {
+    return `git add ${data.files?.join(' ')}`;
   }
 
   /**
    * Build diff command
    */
-  private buildDiffCommand(data: any): string {
+  private buildDiffCommand(data: GitCommandOptions): string {
     let cmd = 'git diff';
     if (data.staged) {
       cmd += ' --staged';
@@ -324,7 +346,7 @@ export class GitTool implements Tool {
   /**
    * Build log command
    */
-  private buildLogCommand(data: any): string {
+  private buildLogCommand(data: GitCommandOptions): string {
     let cmd = 'git log';
     if (data.oneline) {
       cmd += ' --oneline';
@@ -338,7 +360,7 @@ export class GitTool implements Tool {
   /**
    * Build branch command
    */
-  private buildBranchCommand(data: any): string {
+  private buildBranchCommand(data: GitCommandOptions): string {
     let cmd = 'git branch';
     if (data.create && data.name) {
       cmd += ` ${data.name}`;
@@ -351,7 +373,7 @@ export class GitTool implements Tool {
   /**
    * Build checkout command
    */
-  private buildCheckoutCommand(data: any): string {
+  private buildCheckoutCommand(data: GitCommandOptions): string {
     let cmd = 'git checkout';
     if (data.create) {
       cmd += ' -b';

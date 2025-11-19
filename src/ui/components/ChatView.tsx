@@ -28,7 +28,11 @@ export const ChatView: React.FC<ChatViewProps> = ({ messages, isStreaming, appNa
   return (
     <Box flexDirection="column" paddingX={1} paddingY={0}>
       {messages.map((message, index) => (
-        <Box key={index} flexDirection="column" marginY={1}>
+        <Box
+          key={`${message.role}-${index}-${message.content.slice(0, 20)}`}
+          flexDirection="column"
+          marginY={1}
+        >
           {/* Message Header */}
           <Box>
             <Text bold color={message.role === 'user' ? 'green' : 'blue'}>

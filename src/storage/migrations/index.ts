@@ -67,11 +67,14 @@ export class D1MigrationRunner implements MigrationRunner {
 
     const result = await this.db.prepare('SELECT * FROM migrations ORDER BY id ASC').all();
 
-    return (result.results || []).map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      executed_at: row.executed_at,
-    }));
+    return (result.results || []).map((row: unknown) => {
+      const migrationRow = row as { id: number; name: string; executed_at: number };
+      return {
+        id: migrationRow.id,
+        name: migrationRow.name,
+        executed_at: migrationRow.executed_at,
+      };
+    });
   }
 
   /**

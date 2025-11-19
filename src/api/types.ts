@@ -4,6 +4,8 @@
  * Type definitions for API, authentication, and user management
  */
 
+import type { R2Bucket, VectorizeIndex } from '@cloudflare/workers-types';
+
 /**
  * OAuth provider types
  */

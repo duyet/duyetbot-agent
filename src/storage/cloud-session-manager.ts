@@ -146,11 +146,12 @@ export class CloudSessionManager implements SessionManager {
 
     // Filter by metadata if provided
     if (filter?.metadata) {
+      const filterMetadata = filter.metadata;
       return sessions.filter((session) => {
         if (!session.metadata) {
           return false;
         }
-        return Object.entries(filter.metadata!).every(
+        return Object.entries(filterMetadata).every(
           ([key, value]) => session.metadata?.[key] === value
         );
       });

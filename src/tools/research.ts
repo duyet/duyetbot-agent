@@ -118,7 +118,8 @@ export class ResearchTool implements Tool {
 
       // Handle search query
       if ('query' in data && data.query) {
-        const maxResults = 'maxResults' in data && data.maxResults ? data.maxResults : DEFAULT_RESULTS;
+        const maxResults =
+          'maxResults' in data && data.maxResults ? data.maxResults : DEFAULT_RESULTS;
         return await this.search(data.query, maxResults, startTime);
       }
 
