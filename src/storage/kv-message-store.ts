@@ -4,7 +4,7 @@
  * Stores session messages in Cloudflare KV for fast access
  */
 
-import type { LLMMessage } from "@/providers/types";
+import type { LLMMessage } from '@/providers/types';
 
 export interface MessageStore {
   /**
@@ -20,11 +20,7 @@ export interface MessageStore {
   /**
    * Get recent messages (last N)
    */
-  getRecent(
-    userId: string,
-    sessionId: string,
-    limit: number,
-  ): Promise<LLMMessage[]>;
+  getRecent(userId: string, sessionId: string, limit: number): Promise<LLMMessage[]>;
 
   /**
    * Clear all messages for session
@@ -52,11 +48,7 @@ export class KVMessageStore implements MessageStore {
   /**
    * Append message to session
    */
-  async append(
-    userId: string,
-    sessionId: string,
-    message: LLMMessage,
-  ): Promise<void> {
+  async append(userId: string, sessionId: string, message: LLMMessage): Promise<void> {
     const key = this.getKey(userId, sessionId);
     const messages = await this.getAll(userId, sessionId);
 
@@ -77,7 +69,7 @@ export class KVMessageStore implements MessageStore {
    */
   async getAll(userId: string, sessionId: string): Promise<LLMMessage[]> {
     const key = this.getKey(userId, sessionId);
-    const value = await this.kv.get(key, "text");
+    const value = await this.kv.get(key, 'text');
 
     if (!value) {
       return [];
@@ -93,11 +85,7 @@ export class KVMessageStore implements MessageStore {
   /**
    * Get recent messages (last N)
    */
-  async getRecent(
-    userId: string,
-    sessionId: string,
-    limit: number,
-  ): Promise<LLMMessage[]> {
+  async getRecent(userId: string, sessionId: string, limit: number): Promise<LLMMessage[]> {
     const messages = await this.getAll(userId, sessionId);
     return messages.slice(-limit);
   }
@@ -126,7 +114,8 @@ export class KVMessageStore implements MessageStore {
     // In production, you would list all keys with prefix and delete them
     // For now, this is a placeholder that would need to be implemented
     // using KV list() with prefix filtering
-    const prefix = `users:${userId}:`;
+    // @ts-expect-error unused parameter
+    const _ = `users:${userId}:`;
 
     // This is a simplified implementation
     // In production, you'd need to:
@@ -134,9 +123,7 @@ export class KVMessageStore implements MessageStore {
     // 2. Delete each key
     // 3. Handle pagination if there are many keys
 
-    console.warn(
-      `deleteAllForUser called for ${userId} - implement KV list/delete`,
-    );
+    console.warn(`deleteAllForUser called for ${userId} - implement KV list/delete`);
   }
 }
 

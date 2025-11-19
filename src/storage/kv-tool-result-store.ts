@@ -4,7 +4,7 @@
  * Stores tool execution results in Cloudflare KV
  */
 
-import type { ToolResult } from "@/agent/session";
+import type { ToolResult } from '@/agent/session';
 
 export interface ToolResultStore {
   /**
@@ -20,11 +20,7 @@ export interface ToolResultStore {
   /**
    * Get recent tool results (last N)
    */
-  getRecent(
-    userId: string,
-    sessionId: string,
-    limit: number,
-  ): Promise<ToolResult[]>;
+  getRecent(userId: string, sessionId: string, limit: number): Promise<ToolResult[]>;
 
   /**
    * Clear all tool results for session
@@ -52,11 +48,7 @@ export class KVToolResultStore implements ToolResultStore {
   /**
    * Append tool result to session
    */
-  async append(
-    userId: string,
-    sessionId: string,
-    result: ToolResult,
-  ): Promise<void> {
+  async append(userId: string, sessionId: string, result: ToolResult): Promise<void> {
     const key = this.getKey(userId, sessionId);
     const results = await this.getAll(userId, sessionId);
 
@@ -80,7 +72,7 @@ export class KVToolResultStore implements ToolResultStore {
    */
   async getAll(userId: string, sessionId: string): Promise<ToolResult[]> {
     const key = this.getKey(userId, sessionId);
-    const value = await this.kv.get(key, "text");
+    const value = await this.kv.get(key, 'text');
 
     if (!value) {
       return [];
@@ -101,11 +93,7 @@ export class KVToolResultStore implements ToolResultStore {
   /**
    * Get recent tool results (last N)
    */
-  async getRecent(
-    userId: string,
-    sessionId: string,
-    limit: number,
-  ): Promise<ToolResult[]> {
+  async getRecent(userId: string, sessionId: string, limit: number): Promise<ToolResult[]> {
     const results = await this.getAll(userId, sessionId);
     return results.slice(-limit);
   }
@@ -132,10 +120,9 @@ export class KVToolResultStore implements ToolResultStore {
   async deleteAllForUser(userId: string): Promise<void> {
     // Note: KV doesn't support prefix deletion directly
     // See KVMessageStore for implementation notes
-    const prefix = `users:${userId}:`;
-    console.warn(
-      `deleteAllForUser called for ${userId} - implement KV list/delete`,
-    );
+    // @ts-expect-error unused parameter
+    const _ = `users:${userId}:`;
+    console.warn(`deleteAllForUser called for ${userId} - implement KV list/delete`);
   }
 }
 

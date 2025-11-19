@@ -5,7 +5,7 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Env } from '../types';
+import type { AppEnv } from '../types';
 import { getOptionalUser } from './auth';
 import { getRequestId } from './request-id';
 
@@ -24,24 +24,26 @@ export interface LogEntry {
   message: string;
   method?: string;
   path?: string;
-  userId?: string;
+  userId?: string | undefined;
   statusCode?: number;
   duration?: number;
   ip?: string;
-  userAgent?: string;
-  error?: {
-    message: string;
-    stack?: string;
-    code?: string;
-  };
-  metadata?: Record<string, unknown>;
+  userAgent?: string | undefined;
+  error?:
+    | {
+        message: string;
+        stack?: string | undefined;
+        code?: string | undefined;
+      }
+    | undefined;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 /**
  * Logger class for structured logging
  */
 export class Logger {
-  constructor(private context: Context<{ Bindings: Env }>) {}
+  constructor(private context: Context<AppEnv>) {}
 
   private log(level: LogLevel, message: string, metadata?: Record<string, unknown>) {
     const requestId = getRequestId(this.context);
@@ -77,6 +79,7 @@ export class Logger {
   }
 
   error(message: string, error?: Error, metadata?: Record<string, unknown>) {
+    const errorWithCode = error as Error & { code?: string };
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level: 'error',
@@ -91,7 +94,7 @@ export class Logger {
         ? {
             message: error.message,
             stack: error.stack,
-            code: (error as any).code,
+            code: errorWithCode.code,
           }
         : undefined,
       metadata,
@@ -105,7 +108,7 @@ export class Logger {
  * Request logging middleware
  * Logs all incoming requests and responses
  */
-export async function loggerMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function loggerMiddleware(c: Context<AppEnv>, next: Next) {
   const logger = new Logger(c);
   const startTime = Date.now();
 
@@ -148,11 +151,11 @@ export async function loggerMiddleware(c: Context<{ Bindings: Env }>, next: Next
 /**
  * Get logger from context
  */
-export function getLogger(c: Context): Logger {
+export function getLogger(c: Context<AppEnv>): Logger {
   const logger = c.get('logger');
   if (!logger) {
     // Fallback to new logger if not in context
     return new Logger(c);
   }
-  return logger as Logger;
+  return logger;
 }

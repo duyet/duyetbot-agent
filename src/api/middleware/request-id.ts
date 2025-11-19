@@ -4,14 +4,18 @@
  * Generates unique request IDs for tracking and correlation
  */
 
+import { webcrypto } from 'node:crypto';
 import type { Context, Next } from 'hono';
-import type { Env } from '../types';
+import type { AppEnv } from '../types';
+
+// Use Node.js crypto for compatibility with Node 18
+const crypto = webcrypto as unknown as Crypto;
 
 /**
  * Request ID middleware
  * Generates a unique ID for each request and adds it to response headers
  */
-export async function requestIdMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function requestIdMiddleware(c: Context<AppEnv>, next: Next) {
   // Check if request ID already exists (from upstream proxy/load balancer)
   const existingId =
     c.req.header('X-Request-ID') || c.req.header('X-Request-Id') || c.req.header('CF-Ray'); // Cloudflare Ray ID
@@ -31,6 +35,6 @@ export async function requestIdMiddleware(c: Context<{ Bindings: Env }>, next: N
 /**
  * Get request ID from context
  */
-export function getRequestId(c: Context): string {
-  return c.get('requestId') as string;
+export function getRequestId(c: Context<AppEnv>): string {
+  return c.get('requestId');
 }

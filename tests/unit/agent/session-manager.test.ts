@@ -1,5 +1,5 @@
 import { InMemorySessionManager, SessionError } from '@/agent/session';
-import type { CreateSessionInput, Session } from '@/agent/session';
+import type { CreateSessionInput } from '@/agent/session';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 describe('SessionManager', () => {
@@ -45,7 +45,7 @@ describe('SessionManager', () => {
       const session = await manager.create(input);
 
       expect(session.messages).toHaveLength(2);
-      expect(session.messages![0]!.content).toBe('Hello');
+      expect(session.messages?.[0]?.content).toBe('Hello');
     });
 
     it('should create session with metadata', async () => {
@@ -163,7 +163,7 @@ describe('SessionManager', () => {
       });
 
       expect(updated.toolResults).toHaveLength(1);
-      expect(updated.toolResults![0]!.toolName).toBe('bash');
+      expect(updated.toolResults?.[0]?.toolName).toBe('bash');
     });
 
     it('should throw error for non-existent session', async () => {
@@ -203,7 +203,9 @@ describe('SessionManager', () => {
     it('should filter sessions by state', async () => {
       const sessions = await manager.list({ state: 'completed' });
       expect(sessions.length).toBeGreaterThanOrEqual(1);
-      sessions.forEach((s: Session) => expect(s.state).toBe('completed'));
+      for (const s of sessions) {
+        expect(s.state).toBe('completed');
+      }
     });
 
     it('should filter sessions by metadata', async () => {

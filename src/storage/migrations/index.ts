@@ -4,13 +4,8 @@
  * Manages database schema migrations for Cloudflare D1
  */
 
-import type { D1Database } from "@cloudflare/workers-types";
-import type {
-  Migration,
-  MigrationFile,
-  MigrationResult,
-  MigrationRunner,
-} from "./types";
+import type { D1Database } from '@cloudflare/workers-types';
+import type { Migration, MigrationFile, MigrationResult, MigrationRunner } from './types';
 
 export class D1MigrationRunner implements MigrationRunner {
   private migrations: MigrationFile[] = [];
@@ -28,13 +23,13 @@ export class D1MigrationRunner implements MigrationRunner {
     this.migrations = [
       {
         id: 1,
-        name: "001_initial_schema",
-        up: this.loadMigrationFile("001_initial_schema.sql"),
+        name: '001_initial_schema',
+        up: this.loadMigrationFile('001_initial_schema.sql'),
       },
       {
         id: 2,
-        name: "002_add_indexes",
-        up: this.loadMigrationFile("002_add_indexes.sql"),
+        name: '002_add_indexes',
+        up: this.loadMigrationFile('002_add_indexes.sql'),
       },
     ];
   }
@@ -59,7 +54,7 @@ export class D1MigrationRunner implements MigrationRunner {
           id INTEGER PRIMARY KEY,
           name TEXT NOT NULL UNIQUE,
           executed_at INTEGER NOT NULL
-        )`,
+        )`
       )
       .run();
   }
@@ -70,15 +65,16 @@ export class D1MigrationRunner implements MigrationRunner {
   async getExecuted(): Promise<Migration[]> {
     await this.initMigrationsTable();
 
-    const result = await this.db
-      .prepare("SELECT * FROM migrations ORDER BY id ASC")
-      .all();
+    const result = await this.db.prepare('SELECT * FROM migrations ORDER BY id ASC').all();
 
-    return (result.results || []).map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      executed_at: row.executed_at,
-    }));
+    return (result.results || []).map((row: unknown) => {
+      const migrationRow = row as { id: number; name: string; executed_at: number };
+      return {
+        id: migrationRow.id,
+        name: migrationRow.name,
+        executed_at: migrationRow.executed_at,
+      };
+    });
   }
 
   /**
@@ -105,23 +101,21 @@ export class D1MigrationRunner implements MigrationRunner {
 
         // Record migration
         await this.db
-          .prepare(
-            "INSERT INTO migrations (id, name, executed_at) VALUES (?, ?, ?)",
-          )
+          .prepare('INSERT INTO migrations (id, name, executed_at) VALUES (?, ?, ?)')
           .bind(migration.id, migration.name, Date.now())
           .run();
 
         results.push({
           id: migration.id,
           name: migration.name,
-          status: "success",
+          status: 'success',
           executedAt: new Date(),
         });
       } catch (error) {
         results.push({
           id: migration.id,
           name: migration.name,
-          status: "failed",
+          status: 'failed',
           error: error instanceof Error ? error.message : String(error),
           executedAt: new Date(),
         });
@@ -139,13 +133,11 @@ export class D1MigrationRunner implements MigrationRunner {
   async down(): Promise<MigrationResult> {
     const executed = await this.getExecuted();
     if (executed.length === 0) {
-      throw new Error("No migrations to rollback");
+      throw new Error('No migrations to rollback');
     }
 
-    const lastMigration = executed[executed.length - 1];
-    const migrationFile = this.migrations.find(
-      (m) => m.id === lastMigration.id,
-    );
+    const lastMigration = executed[executed.length - 1]!;
+    const migrationFile = this.migrations.find((m) => m.id === lastMigration.id);
 
     if (!migrationFile) {
       throw new Error(`Migration file not found: ${lastMigration.name}`);
@@ -160,22 +152,19 @@ export class D1MigrationRunner implements MigrationRunner {
       await this.executeMigration(migrationFile.down);
 
       // Remove migration record
-      await this.db
-        .prepare("DELETE FROM migrations WHERE id = ?")
-        .bind(lastMigration.id)
-        .run();
+      await this.db.prepare('DELETE FROM migrations WHERE id = ?').bind(lastMigration.id).run();
 
       return {
         id: lastMigration.id,
         name: lastMigration.name,
-        status: "success",
+        status: 'success',
         executedAt: new Date(),
       };
     } catch (error) {
       return {
         id: lastMigration.id,
         name: lastMigration.name,
-        status: "failed",
+        status: 'failed',
         error: error instanceof Error ? error.message : String(error),
         executedAt: new Date(),
       };
@@ -188,9 +177,9 @@ export class D1MigrationRunner implements MigrationRunner {
   private async executeMigration(sql: string): Promise<void> {
     // Split by semicolon and execute each statement
     const statements = sql
-      .split(";")
+      .split(';')
       .map((s) => s.trim())
-      .filter((s) => s.length > 0 && !s.startsWith("--"));
+      .filter((s) => s.length > 0 && !s.startsWith('--'));
 
     for (const statement of statements) {
       await this.db.prepare(statement).run();
@@ -206,7 +195,7 @@ export class D1MigrationRunner implements MigrationRunner {
     migrations: Array<{
       id: number;
       name: string;
-      status: "executed" | "pending";
+      status: 'executed' | 'pending';
     }>;
   }> {
     const executed = await this.getExecuted();
@@ -216,9 +205,7 @@ export class D1MigrationRunner implements MigrationRunner {
     const migrations = this.migrations.map((m) => ({
       id: m.id,
       name: m.name,
-      status: executedIds.has(m.id)
-        ? ("executed" as const)
-        : ("pending" as const),
+      status: executedIds.has(m.id) ? ('executed' as const) : ('pending' as const),
     }));
 
     return {
@@ -236,4 +223,4 @@ export function createMigrationRunner(db: D1Database): MigrationRunner {
   return new D1MigrationRunner(db);
 }
 
-export * from "./types";
+export * from './types';

@@ -123,8 +123,11 @@ describe('FileSystemStorage', () => {
       const content = await storage.readText('log.jsonl');
       const lines = content.trim().split('\n');
       expect(lines).toHaveLength(2);
-      expect(JSON.parse(lines[0]!)).toEqual({ event: 'start' });
-      expect(JSON.parse(lines[1]!)).toEqual({ event: 'end' });
+      if (!lines[0] || !lines[1]) {
+        throw new Error('Expected 2 lines in JSONL file');
+      }
+      expect(JSON.parse(lines[0])).toEqual({ event: 'start' });
+      expect(JSON.parse(lines[1])).toEqual({ event: 'end' });
     });
 
     it('should create file if it does not exist', async () => {

@@ -1,9 +1,10 @@
-import { Logger, getLogger, loggerMiddleware } from '@/api/middleware/logger';
+import { getLogger, loggerMiddleware } from '@/api/middleware/logger';
 import { getRequestId, requestIdMiddleware } from '@/api/middleware/request-id';
 import { PerformanceTimer, getTimer, measure, timingMiddleware } from '@/api/middleware/timing';
 import type { Env } from '@/api/types';
+import type { R2Bucket, VectorizeIndex } from '@cloudflare/workers-types';
 import { Hono } from 'hono';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Create mock environment
 const createMockEnv = (): Env => ({
@@ -18,13 +19,14 @@ const createMockEnv = (): Env => ({
   GITHUB_CLIENT_ID: 'test-id',
   GITHUB_CLIENT_SECRET: 'test-secret',
   GITHUB_REDIRECT_URI: 'http://localhost/callback',
+  GITHUB_WEBHOOK_SECRET: 'test-secret',
   GOOGLE_CLIENT_ID: 'test-id',
   GOOGLE_CLIENT_SECRET: 'test-secret',
   GOOGLE_REDIRECT_URI: 'http://localhost/callback',
   FRONTEND_URL: 'http://localhost:3000',
-  ENVIRONMENT: 'test',
   API_URL: 'http://localhost:8787',
   WEB_URL: 'http://localhost:3000',
+  ENVIRONMENT: 'test',
 });
 
 describe('Request ID Middleware', () => {
@@ -39,14 +41,14 @@ describe('Request ID Middleware', () => {
 
   it('should generate a unique request ID', async () => {
     app.get('/test', (c) => {
-      const requestId = getRequestId(c);
+      const requestId = getRequestId(c as any);
       return c.json({ requestId });
     });
 
     const res = await app.request('/test', { method: 'GET' }, env);
 
     expect(res.status).toBe(200);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.requestId).toBeTruthy();
     expect(typeof body.requestId).toBe('string');
   });
@@ -63,7 +65,7 @@ describe('Request ID Middleware', () => {
     const existingId = 'my-custom-id';
 
     app.get('/test', (c) => {
-      const requestId = getRequestId(c);
+      const requestId = getRequestId(c as any);
       return c.json({ requestId });
     });
 
@@ -78,7 +80,7 @@ describe('Request ID Middleware', () => {
       env
     );
 
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.requestId).toBe(existingId);
     expect(res.headers.get('X-Request-ID')).toBe(existingId);
   });
@@ -87,7 +89,7 @@ describe('Request ID Middleware', () => {
     const cfRay = 'cloudflare-ray-123';
 
     app.get('/test', (c) => {
-      const requestId = getRequestId(c);
+      const requestId = getRequestId(c as any);
       return c.json({ requestId });
     });
 
@@ -102,21 +104,21 @@ describe('Request ID Middleware', () => {
       env
     );
 
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.requestId).toBe(cfRay);
   });
 
   it('should generate different IDs for different requests', async () => {
     app.get('/test', (c) => {
-      const requestId = getRequestId(c);
+      const requestId = getRequestId(c as any);
       return c.json({ requestId });
     });
 
     const res1 = await app.request('/test', { method: 'GET' }, env);
     const res2 = await app.request('/test', { method: 'GET' }, env);
 
-    const body1 = await res1.json();
-    const body2 = await res2.json();
+    const body1 = (await res1.json()) as any;
+    const body2 = (await res2.json()) as any;
 
     expect(body1.requestId).not.toBe(body2.requestId);
   });
@@ -194,7 +196,7 @@ describe('Logger Middleware', () => {
     });
 
     app.onError((err, c) => {
-      const logger = getLogger(c);
+      const logger = getLogger(c as any);
       logger.error('Handler error', err);
       return c.json({ error: err.message }, 500);
     });
@@ -209,7 +211,7 @@ describe('Logger Middleware', () => {
 
   it('should log with different levels', async () => {
     app.get('/test', (c) => {
-      const logger = getLogger(c);
+      const logger = getLogger(c as any);
       logger.debug('Debug message');
       logger.info('Info message');
       logger.warn('Warning message');
@@ -229,7 +231,7 @@ describe('Logger Middleware', () => {
 
   it('should include metadata in logs', async () => {
     app.get('/test', (c) => {
-      const logger = getLogger(c);
+      const logger = getLogger(c as any);
       logger.info('Test with metadata', { userId: '123', action: 'test' });
       return c.json({ ok: true });
     });
@@ -287,7 +289,7 @@ describe('Timing Middleware', () => {
 
   it('should allow custom timing measurements', async () => {
     app.get('/test', async (c) => {
-      const timer = getTimer(c);
+      const timer = getTimer(c as any);
 
       timer.start('db-query', 'Database query');
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -305,7 +307,7 @@ describe('Timing Middleware', () => {
 
   it('should support measure utility', async () => {
     app.get('/test', async (c) => {
-      const result = await measure(c, 'async-op', async () => {
+      const result = await measure(c as any, 'async-op', async () => {
         await new Promise((resolve) => setTimeout(resolve, 10));
         return 'result';
       });
@@ -315,7 +317,7 @@ describe('Timing Middleware', () => {
 
     const res = await app.request('/test', { method: 'GET' }, env);
 
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.result).toBe('result');
 
     const serverTiming = res.headers.get('Server-Timing');
@@ -324,7 +326,7 @@ describe('Timing Middleware', () => {
 
   it('should track multiple operations', async () => {
     app.get('/test', async (c) => {
-      const timer = getTimer(c);
+      const timer = getTimer(c as any);
 
       timer.start('op1');
       await new Promise((resolve) => setTimeout(resolve, 5));
@@ -347,7 +349,7 @@ describe('Timing Middleware', () => {
 
   it('should get all timings', async () => {
     app.get('/test', async (c) => {
-      const timer = getTimer(c);
+      const timer = getTimer(c as any);
 
       timer.start('test-op');
       await new Promise((resolve) => setTimeout(resolve, 10));
@@ -358,7 +360,7 @@ describe('Timing Middleware', () => {
     });
 
     const res = await app.request('/test', { method: 'GET' }, env);
-    const body = await res.json();
+    const body = (await res.json()) as any;
 
     expect(body.timings).toBeInstanceOf(Array);
     expect(body.timings.length).toBeGreaterThan(0);

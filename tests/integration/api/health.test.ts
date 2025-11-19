@@ -1,5 +1,6 @@
 import { createHealthRoutes } from '@/api/routes/health';
 import type { Env } from '@/api/types';
+import type { R2Bucket, VectorizeIndex } from '@cloudflare/workers-types';
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
 
@@ -19,7 +20,7 @@ const createMockEnv = (): Env => ({
         },
         run: async () => {},
         all: async () => ({ results: [] }),
-        bind: (...values: any[]) => statement, // Return self for chaining
+        bind: (..._values: any[]) => statement, // Return self for chaining
       };
       return statement;
     },
@@ -44,10 +45,13 @@ const createMockEnv = (): Env => ({
   GITHUB_CLIENT_ID: 'test-id',
   GITHUB_CLIENT_SECRET: 'test-secret',
   GITHUB_REDIRECT_URI: 'http://localhost/callback',
+  GITHUB_WEBHOOK_SECRET: 'test-secret',
   GOOGLE_CLIENT_ID: 'test-id',
   GOOGLE_CLIENT_SECRET: 'test-secret',
   GOOGLE_REDIRECT_URI: 'http://localhost/callback',
   FRONTEND_URL: 'http://localhost:3000',
+  API_URL: 'http://localhost:8787',
+  WEB_URL: 'http://localhost:3000',
   ENVIRONMENT: 'test',
 });
 
@@ -66,7 +70,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health', { method: 'GET' }, env);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(true);
       expect(body.data.status).toBe('healthy');
       expect(body.data.timestamp).toBeTruthy();
@@ -75,7 +79,7 @@ describe('Health Routes', () => {
     it('should return ISO timestamp', async () => {
       const res = await app.request('/health', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       const timestamp = body.data.timestamp;
       expect(timestamp).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
     });
@@ -86,7 +90,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health/live', { method: 'GET' }, env);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(true);
       expect(body.data.status).toBe('alive');
     });
@@ -94,7 +98,7 @@ describe('Health Routes', () => {
     it('should include uptime', async () => {
       const res = await app.request('/health/live', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.data.uptime).toBeGreaterThanOrEqual(0);
       expect(typeof body.data.uptime).toBe('number');
     });
@@ -105,7 +109,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health/ready', { method: 'GET' }, env);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(true);
       expect(body.data.status).toBe('healthy');
     });
@@ -113,7 +117,7 @@ describe('Health Routes', () => {
     it('should include all health checks', async () => {
       const res = await app.request('/health/ready', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.data.checks).toBeTruthy();
       expect(body.data.checks.database).toBeTruthy();
       expect(body.data.checks.kv).toBeTruthy();
@@ -123,7 +127,7 @@ describe('Health Routes', () => {
     it('should include latency for database check', async () => {
       const res = await app.request('/health/ready', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.data.checks.database.status).toBe('healthy');
       expect(body.data.checks.database.latency).toBeGreaterThanOrEqual(0);
     });
@@ -131,7 +135,7 @@ describe('Health Routes', () => {
     it('should include latency for KV check', async () => {
       const res = await app.request('/health/ready', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.data.checks.kv.status).toBe('healthy');
       expect(body.data.checks.kv.latency).toBeGreaterThanOrEqual(0);
     });
@@ -151,7 +155,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health/ready', { method: 'GET' }, env);
 
       expect(res.status).toBe(503);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(false);
       expect(body.data.status).toBe('unhealthy');
       expect(body.data.checks.database.status).toBe('unhealthy');
@@ -163,7 +167,7 @@ describe('Health Routes', () => {
 
       const res = await app.request('/health/ready', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       // Should be degraded or healthy depending on implementation
       expect(['healthy', 'degraded']).toContain(body.data.status);
     });
@@ -174,7 +178,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health/db', { method: 'GET' }, env);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(true);
       expect(body.data.status).toBe('healthy');
     });
@@ -182,7 +186,7 @@ describe('Health Routes', () => {
     it('should include latency measurement', async () => {
       const res = await app.request('/health/db', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.data.latency).toBeGreaterThanOrEqual(0);
       expect(typeof body.data.latency).toBe('number');
     });
@@ -190,7 +194,7 @@ describe('Health Routes', () => {
     it('should check for tables', async () => {
       const res = await app.request('/health/db', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.data.tables).toBeTruthy();
       expect(body.data.tables.users).toBeTruthy();
     });
@@ -209,7 +213,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health/db', { method: 'GET' }, env);
 
       expect(res.status).toBe(503);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(false);
       expect(body.code).toBe('DB_UNHEALTHY');
     });
@@ -220,7 +224,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health/kv', { method: 'GET' }, env);
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(true);
       expect(body.data.status).toBe('healthy');
     });
@@ -228,7 +232,7 @@ describe('Health Routes', () => {
     it('should include latency measurement', async () => {
       const res = await app.request('/health/kv', { method: 'GET' }, env);
 
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.data.latency).toBeGreaterThanOrEqual(0);
       expect(typeof body.data.latency).toBe('number');
     });
@@ -239,14 +243,14 @@ describe('Health Routes', () => {
       let deleteCalled = false;
 
       env.KV = {
-        get: async (key: string) => {
+        get: async (_key: string) => {
           getCalled = true;
           return 'ok';
         },
-        put: async (key: string, value: string) => {
+        put: async (_key: string, _value: string) => {
           putCalled = true;
         },
-        delete: async (key: string) => {
+        delete: async (_key: string) => {
           deleteCalled = true;
         },
       } as unknown as KVNamespace;
@@ -273,7 +277,7 @@ describe('Health Routes', () => {
       const res = await app.request('/health/kv', { method: 'GET' }, env);
 
       expect(res.status).toBe(503);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.success).toBe(false);
       expect(body.code).toBe('KV_UNHEALTHY');
     });

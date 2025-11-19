@@ -4,8 +4,12 @@
  * JWT token generation and verification using jose library
  */
 
+import { webcrypto } from 'node:crypto';
 import * as jose from 'jose';
 import type { JWTClaims, TokenPair, User } from '../types';
+
+// Use Node.js crypto for compatibility with Node 18
+const crypto = webcrypto as unknown as Crypto;
 
 /**
  * JWT configuration
@@ -18,14 +22,13 @@ const REFRESH_TOKEN_EXPIRY = 30 * 24 * 60 * 60; // 30 days
  * Generate JWT access token
  */
 export async function generateAccessToken(user: User, secret: string): Promise<string> {
-  const claims: JWTClaims = {
+  // User-specific claims (don't include iat/exp, jose will set them)
+  const claims = {
     sub: user.id,
     email: user.email,
     name: user.name,
     picture: user.picture,
     provider: user.provider,
-    iat: Math.floor(Date.now() / 1000),
-    exp: Math.floor(Date.now() / 1000) + ACCESS_TOKEN_EXPIRY,
   };
 
   const secretKey = new TextEncoder().encode(secret);
@@ -109,7 +112,7 @@ export class JWTError extends Error {
   constructor(
     message: string,
     public code: string,
-    public cause?: unknown
+    public override cause?: unknown
   ) {
     super(message);
     this.name = 'JWTError';

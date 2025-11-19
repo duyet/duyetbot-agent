@@ -1,6 +1,6 @@
 import { generateAccessToken, generateRefreshToken, verifyToken } from '@/api/auth/jwt';
 import type { User } from '@/api/types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('JWT Authentication', () => {
   const mockUser: User = {
@@ -44,15 +44,15 @@ describe('JWT Authentication', () => {
       expect(claims.iat).toBeTruthy();
 
       // Should expire in approximately 1 hour (3600 seconds)
-      const expiresIn = claims.exp - claims.iat;
+      const expiresIn = claims.exp! - claims.iat!;
       expect(expiresIn).toBeGreaterThanOrEqual(3599);
       expect(expiresIn).toBeLessThanOrEqual(3601);
     });
 
     it('should generate different tokens for the same user', async () => {
       const token1 = await generateAccessToken(mockUser, testSecret);
-      // Wait a bit to ensure different timestamp
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Wait 1 second to ensure different timestamp (iat is in seconds)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const token2 = await generateAccessToken(mockUser, testSecret);
 
       expect(token1).not.toBe(token2);
@@ -125,7 +125,10 @@ describe('JWT Authentication', () => {
     it('should use HS256 algorithm', async () => {
       const token = await generateAccessToken(mockUser, testSecret);
       const [header] = token.split('.');
-      const decodedHeader = JSON.parse(atob(header!));
+      if (!header) {
+        throw new Error('Token header is missing');
+      }
+      const decodedHeader = JSON.parse(atob(header));
 
       expect(decodedHeader.alg).toBe('HS256');
     });

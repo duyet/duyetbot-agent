@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 Discussions
+    url: https://github.com/duyet/duyetbot-agent/discussions
+    about: Ask questions and discuss ideas with the community
+  - name: 📚 Documentation
+    url: https://github.com/duyet/duyetbot-agent#readme
+    about: Read the documentation
+  - name: 🔒 Security Issue
+    url: https://github.com/duyet/duyetbot-agent/security/advisories/new
+    about: Report a security vulnerability privately

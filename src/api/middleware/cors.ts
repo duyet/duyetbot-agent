@@ -5,12 +5,12 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Env } from '../types';
+import type { AppEnv, Env } from '../types';
 
 /**
  * CORS middleware
  */
-export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function corsMiddleware(c: Context<AppEnv>, next: Next) {
   const env = c.env;
   const origin = c.req.header('Origin');
 
@@ -21,7 +21,9 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
   const isAllowed =
     origin &&
     allowedOrigins.some((allowed) => {
-      if (allowed === '*') return true;
+      if (allowed === '*') {
+        return true;
+      }
       if (allowed.endsWith('*')) {
         const prefix = allowed.slice(0, -1);
         return origin.startsWith(prefix);
@@ -29,8 +31,8 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       return origin === allowed;
     });
 
-  if (isAllowed) {
-    c.header('Access-Control-Allow-Origin', origin!);
+  if (isAllowed && origin) {
+    c.header('Access-Control-Allow-Origin', origin);
     c.header('Access-Control-Allow-Credentials', 'true');
   }
 
@@ -40,7 +42,17 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
 
   // Handle preflight
   if (c.req.method === 'OPTIONS') {
-    return c.text('', 204);
+    const headers = new Headers();
+    headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+    headers.set('Access-Control-Max-Age', '86400');
+
+    if (isAllowed && origin) {
+      headers.set('Access-Control-Allow-Origin', origin);
+      headers.set('Access-Control-Allow-Credentials', 'true');
+    }
+
+    return new Response(null, { status: 204, headers });
   }
 
   await next();
@@ -52,7 +64,8 @@ export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
 function getAllowedOrigins(env: Env): string[] {
   const origins: string[] = [];
 
-  if (env.ENVIRONMENT === 'development') {
+  // Allow localhost in development and test environments
+  if (env.ENVIRONMENT === 'development' || env.ENVIRONMENT === 'test') {
     origins.push('http://localhost:*');
     origins.push('http://127.0.0.1:*');
   }
