@@ -176,7 +176,19 @@ export function extractIssueReferences(
   let match: RegExpExecArray | null = regex.exec(text);
   while (match !== null) {
     references.push({
-      repository: match[1],
+      ...(match[1] ? { repository: match[1] } : {}),
+      issue: Number.parseInt(match[2] || '0', 10),
+    });
+    references.push({
+      ...(match[1] ? { repository: match[1] } : {}),
+      issue: Number.parseInt(match[2] || '0', 10),
+    });
+    references.push({
+      ...(match[1] ? { repository: match[1] } : {}),
+      issue: Number.parseInt(match[2] || '0', 10),
+    });
+    references.push({
+      ...(match[1] ? { repository: match[1] } : {}),
       issue: Number.parseInt(match[2] || '0', 10),
     });
     match = regex.exec(text);

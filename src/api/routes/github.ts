@@ -106,7 +106,7 @@ export function createGitHubRoutes(): Hono<AppEnv> {
     }
 
     // Handle webhook
-    return await handleGitHubWebhook(c, event, payload);
+    return await handleGitHubWebhook(c, event, payload as any);
   });
 
   /**

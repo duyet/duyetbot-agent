@@ -9,7 +9,7 @@ import type { LLMMessage } from '@/providers/types';
 import { CloudSessionManager } from '@/storage/cloud-session-manager';
 import type { MessageStore } from '@/storage/kv-message-store';
 import type { ToolResultStore } from '@/storage/kv-tool-result-store';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 
 // Mock dependencies
 function createMockSessionRepo(): SessionRepository {

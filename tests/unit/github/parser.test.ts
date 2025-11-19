@@ -26,14 +26,15 @@ describe('GitHub Parser', () => {
           title: 'Bug in login feature',
           body: 'Users cannot log in with OAuth',
           html_url: 'https://github.com/user/repo/issues/42',
+          user: { login: 'testuser' },
         },
         comment: {
+          id: 123,
           body: '@duyetbot please investigate this issue',
           html_url: 'https://github.com/user/repo/issues/42#issuecomment-123',
-          user: {
-            login: 'testuser',
-          },
+          user: { login: 'testuser' },
         },
+        sender: { login: 'testuser', html_url: 'https://github.com/testuser' },
         repository: {
           full_name: 'user/repo',
           html_url: 'https://github.com/user/repo',
@@ -62,12 +63,15 @@ describe('GitHub Parser', () => {
           title: 'Test issue',
           body: null,
           html_url: 'https://github.com/user/repo/issues/1',
+          user: { login: 'testuser' },
         },
         comment: {
+          id: 123,
           body: '@duyetbot test',
           html_url: 'https://github.com/user/repo/issues/1#issuecomment-1',
           user: { login: 'user' },
         },
+        sender: { login: 'testuser', html_url: 'https://github.com/testuser' },
         repository: {
           full_name: 'user/repo',
           html_url: 'https://github.com/user/repo',
@@ -88,14 +92,17 @@ describe('GitHub Parser', () => {
           title: 'Add new feature',
           body: 'This PR adds a new feature',
           html_url: 'https://github.com/user/repo/pull/123',
+          user: { login: 'testuser' },
         },
         comment: {
+          id: 123,
           body: '@duyetbot review this code',
           html_url: 'https://github.com/user/repo/pull/123#discussion_r456',
           user: {
             login: 'reviewer',
           },
         },
+        sender: { login: 'testuser', html_url: 'https://github.com/testuser' },
         repository: {
           full_name: 'user/repo',
           html_url: 'https://github.com/user/repo',
@@ -174,10 +181,10 @@ print("hello")
       const blocks = extractCodeBlocks(text);
 
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].language).toBe('javascript');
-      expect(blocks[0].code).toContain('const x = 1;');
-      expect(blocks[1].language).toBe('python');
-      expect(blocks[1].code).toContain('print("hello")');
+      expect(blocks[0]!.language).toBe('javascript');
+      expect(blocks[0]!.code).toContain('const x = 1;');
+      expect(blocks[1]!.language).toBe('python');
+      expect(blocks[1]!.code).toContain('print("hello")');
     });
 
     it('should extract code blocks without language', () => {
@@ -190,8 +197,8 @@ plain code
       const blocks = extractCodeBlocks(text);
 
       expect(blocks).toHaveLength(1);
-      expect(blocks[0].language).toBe('text');
-      expect(blocks[0].code).toContain('plain code');
+      expect(blocks[0]!.language).toBe('text');
+      expect(blocks[0]!.code).toContain('plain code');
     });
 
     it('should handle no code blocks', () => {
@@ -215,8 +222,8 @@ code 2
       const blocks = extractCodeBlocks(text);
 
       expect(blocks).toHaveLength(2);
-      expect(blocks[0].language).toBe('js');
-      expect(blocks[1].language).toBe('js');
+      expect(blocks[0]!.language).toBe('js');
+      expect(blocks[1]!.language).toBe('js');
     });
   });
 
@@ -284,11 +291,11 @@ code 2
 
       expect(refs).toHaveLength(2);
 
-      expect(refs[0].repository).toBeUndefined();
-      expect(refs[0].issue).toBe(42);
+      expect(refs[0]!.repository).toBeUndefined();
+      expect(refs[0]!.issue).toBe(42);
 
-      expect(refs[1].repository).toBe('user/repo');
-      expect(refs[1].issue).toBe(123);
+      expect(refs[1]!.repository).toBe('user/repo');
+      expect(refs[1]!.issue).toBe(123);
     });
 
     it('should extract number-only references', () => {
@@ -297,7 +304,7 @@ code 2
       const refs = extractIssueReferences(text);
 
       expect(refs).toHaveLength(1);
-      expect(refs[0].issue).toBe(456);
+      expect(refs[0]!.issue).toBe(456);
     });
 
     it('should handle mixed reference styles', () => {
@@ -308,8 +315,8 @@ Closes owner/repo#20
       const refs = extractIssueReferences(text);
 
       expect(refs).toHaveLength(2);
-      expect(refs[0].issue).toBe(10);
-      expect(refs[1].issue).toBe(20);
+      expect(refs[0]!.issue).toBe(10);
+      expect(refs[1]!.issue).toBe(20);
     });
 
     it('should handle no references', () => {
@@ -324,8 +331,8 @@ Closes owner/repo#20
       const refs = extractIssueReferences(text);
 
       expect(refs).toHaveLength(2);
-      expect(refs[0].issue).toBe(100);
-      expect(refs[1].issue).toBe(200);
+      expect(refs[0]!.issue).toBe(100);
+      expect(refs[1]!.issue).toBe(200);
     });
   });
 });

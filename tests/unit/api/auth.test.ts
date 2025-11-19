@@ -44,7 +44,7 @@ describe('JWT Authentication', () => {
       expect(claims.iat).toBeTruthy();
 
       // Should expire in approximately 1 hour (3600 seconds)
-      const expiresIn = claims.exp - claims.iat;
+      const expiresIn = claims.exp! - claims.iat!;
       expect(expiresIn).toBeGreaterThanOrEqual(3599);
       expect(expiresIn).toBeLessThanOrEqual(3601);
     });

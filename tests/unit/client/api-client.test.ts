@@ -98,7 +98,7 @@ describe('APIClient', () => {
       const sessions = await client.listSessions();
 
       expect(sessions).toHaveLength(2);
-      expect(sessions[0].id).toBe('session-1');
+      expect(sessions[0]!.id).toBe('session-1');
       expect(global.fetch).toHaveBeenCalledWith(
         `${mockApiUrl}/agent/sessions`,
         expect.objectContaining({
@@ -248,7 +248,7 @@ describe('APIClient', () => {
     });
 
     it('should be instanceof Error', () => {
-      const error = new APIError('Test error');
+      const error = new APIError('Test error', 400);
 
       expect(error).toBeInstanceOf(Error);
       expect(error).toBeInstanceOf(APIError);

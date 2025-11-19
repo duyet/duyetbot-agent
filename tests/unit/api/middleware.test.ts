@@ -59,10 +59,13 @@ const createMockEnv = (): Env => ({
   GITHUB_CLIENT_ID: 'test-id',
   GITHUB_CLIENT_SECRET: 'test-secret',
   GITHUB_REDIRECT_URI: 'http://localhost/callback',
+  GITHUB_WEBHOOK_SECRET: 'test-secret',
   GOOGLE_CLIENT_ID: 'test-id',
   GOOGLE_CLIENT_SECRET: 'test-secret',
   GOOGLE_REDIRECT_URI: 'http://localhost/callback',
   FRONTEND_URL: 'http://localhost:3000',
+  API_URL: 'http://localhost:8787',
+  WEB_URL: 'http://localhost:3000',
   ENVIRONMENT: 'test',
 });
 
@@ -84,7 +87,7 @@ describe('Auth Middleware', () => {
       });
 
       expect(res.status).toBe(401);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.error).toBe('Unauthorized');
     });
 
@@ -109,7 +112,7 @@ describe('Auth Middleware', () => {
       const token = await generateAccessToken(mockUser, env.JWT_SECRET);
 
       app.get('/test', authMiddleware, (c) => {
-        const user = getUser(c);
+        const user = getUser(c as any);
         return c.json({ userId: user.id });
       });
 
@@ -125,7 +128,7 @@ describe('Auth Middleware', () => {
       );
 
       expect(res.status).toBe(200);
-      const body = await res.json();
+      const body = (await res.json()) as any;
       expect(body.userId).toBe(mockUser.id);
     });
 
@@ -154,7 +157,7 @@ describe('Auth Middleware', () => {
       const token = await generateAccessToken(mockUser, env.JWT_SECRET);
 
       app.get('/test', authMiddleware, (c) => {
-        const user = getUser(c);
+        const user = getUser(c as any);
         expect(user).toBeTruthy();
         expect(user.id).toBe(mockUser.id);
         return c.json({ success: true });
@@ -174,7 +177,7 @@ describe('Auth Middleware', () => {
 
     it('should throw if user not in context', () => {
       app.get('/test', (c) => {
-        expect(() => getUser(c)).toThrow('User not found in context');
+        expect(() => getUser(c as any)).toThrow('User not found in context');
         return c.json({ success: true });
       });
 
@@ -187,7 +190,7 @@ describe('Auth Middleware', () => {
       const token = await generateAccessToken(mockUser, env.JWT_SECRET);
 
       app.get('/test', authMiddleware, (c) => {
-        const user = getOptionalUser(c);
+        const user = getOptionalUser(c as any);
         expect(user).toBeTruthy();
         expect(user?.id).toBe(mockUser.id);
         return c.json({ success: true });
@@ -207,7 +210,7 @@ describe('Auth Middleware', () => {
 
     it('should return undefined if not authenticated', async () => {
       app.get('/test', (c) => {
-        const user = getOptionalUser(c);
+        const user = getOptionalUser(c as any);
         expect(user).toBeUndefined();
         return c.json({ success: true });
       });
@@ -348,7 +351,7 @@ describe('Rate Limit Middleware', () => {
     const res = await app.request('/test', { method: 'GET' }, env);
 
     expect(res.status).toBe(429);
-    const body = await res.json();
+    const body = (await res.json()) as any;
     expect(body.code).toBe('RATE_LIMIT_EXCEEDED');
   });
 

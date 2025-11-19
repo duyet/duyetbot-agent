@@ -41,11 +41,11 @@ describe('OfflineQueue', () => {
 
       const messages = await queue.getAll();
       expect(messages).toHaveLength(1);
-      expect(messages[0].id).toBe(messageId);
-      expect(messages[0].message).toBe('Hello, world!');
-      expect(messages[0].sessionId).toBe('test-session');
-      expect(messages[0].model).toBe('claude-3-5-sonnet-20241022');
-      expect(messages[0].retries).toBe(0);
+      expect(messages[0]!.id).toBe(messageId);
+      expect(messages[0]!.message).toBe('Hello, world!');
+      expect(messages[0]!.sessionId).toBe('test-session');
+      expect(messages[0]!.model).toBe('claude-3-5-sonnet-20241022');
+      expect(messages[0]!.retries).toBe(0);
     });
 
     it('should queue multiple messages', async () => {
@@ -55,9 +55,9 @@ describe('OfflineQueue', () => {
 
       const messages = await queue.getAll();
       expect(messages).toHaveLength(3);
-      expect(messages[0].message).toBe('Message 1');
-      expect(messages[1].message).toBe('Message 2');
-      expect(messages[2].message).toBe('Message 3');
+      expect(messages[0]!.message).toBe('Message 1');
+      expect(messages[1]!.message).toBe('Message 2');
+      expect(messages[2]!.message).toBe('Message 3');
     });
 
     it('should persist queue to disk', async () => {
@@ -68,7 +68,7 @@ describe('OfflineQueue', () => {
       const messages = await queue2.getAll();
 
       expect(messages).toHaveLength(1);
-      expect(messages[0].message).toBe('Persisted message');
+      expect(messages[0]!.message).toBe('Persisted message');
     });
   });
 
@@ -97,9 +97,9 @@ describe('OfflineQueue', () => {
 
       const messages = await queue.getAll();
       expect(messages).toHaveLength(2);
-      expect(messages[0].message).toBe('Message 2');
-      expect(messages[1].message).toBe('Message 3');
-      expect(messages[1].id).toBe(id3);
+      expect(messages[0]!.message).toBe('Message 2');
+      expect(messages[1]!.message).toBe('Message 3');
+      expect(messages[1]!.id).toBe(id3);
     });
   });
 
@@ -128,11 +128,11 @@ describe('OfflineQueue', () => {
 
       await queue.incrementRetry(messageId);
       let messages = await queue.getAll();
-      expect(messages[0].retries).toBe(1);
+      expect(messages[0]!.retries).toBe(1);
 
       await queue.incrementRetry(messageId);
       messages = await queue.getAll();
-      expect(messages[0].retries).toBe(2);
+      expect(messages[0]!.retries).toBe(2);
     });
 
     it('should return false for non-existent message', async () => {
@@ -181,9 +181,10 @@ describe('OfflineQueue', () => {
   describe('pruneOldMessages', () => {
     it('should remove messages older than maxAge', async () => {
       // Enqueue a message and manually set old timestamp
-      const _messageId = await queue.enqueue({ message: 'Old message' });
+      // @ts-expect-error unused variable
+    const _messageId = await queue.enqueue({ message: 'Old message' });
       const messages = await queue.getAll();
-      messages[0].timestamp = Date.now() - 10000; // 10 seconds ago
+      messages[0]!.timestamp = Date.now() - 10000; // 10 seconds ago
 
       // Save modified queue
       await fs.writeFile(testQueuePath, JSON.stringify(messages), { mode: 0o600 });
@@ -197,7 +198,7 @@ describe('OfflineQueue', () => {
       expect(removed).toBe(1);
       const remaining = await queue.getAll();
       expect(remaining).toHaveLength(1);
-      expect(remaining[0].message).toBe('New message');
+      expect(remaining[0]!.message).toBe('New message');
     });
   });
 
@@ -225,7 +226,7 @@ describe('OfflineQueue', () => {
       expect(await queue.size()).toBe(2);
 
       const messages = await queue.getAll();
-      await queue.dequeue(messages[0].id);
+      await queue.dequeue(messages[0]!.id);
       expect(await queue.size()).toBe(1);
     });
   });
@@ -299,16 +300,17 @@ describe('syncQueue', () => {
     // Failed message should still be in queue with incremented retry count
     const remaining = await queue.getAll();
     expect(remaining).toHaveLength(1);
-    expect(remaining[0].message).toBe('Fail');
-    expect(remaining[0].retries).toBe(1);
+    expect(remaining[0]!.message).toBe('Fail');
+    expect(remaining[0]!.retries).toBe(1);
   });
 
   it('should remove messages after 3 failed retries', async () => {
+    // @ts-expect-error unused variable
     const _messageId = await queue.enqueue({ message: 'Fail' });
 
     // Set retries to 2 (so next failure will be 3rd retry)
     const messages = await queue.getAll();
-    messages[0].retries = 2;
+    messages[0]!.retries = 2;
     await fs.writeFile(testQueuePath, JSON.stringify(messages), { mode: 0o600 });
 
     await syncQueue(queue, async (_msg) => {
