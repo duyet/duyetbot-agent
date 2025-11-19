@@ -1,4 +1,4 @@
-import { getloggerMiddleware } from '@/api/middleware/logger';
+import { getLogger, loggerMiddleware } from '@/api/middleware/logger';
 import { getRequestId, requestIdMiddleware } from '@/api/middleware/request-id';
 import { PerformanceTimer, getTimer, measure, timingMiddleware } from '@/api/middleware/timing';
 import type { Env } from '@/api/types';

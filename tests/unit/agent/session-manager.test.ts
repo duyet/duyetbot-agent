@@ -1,4 +1,4 @@
-import { InMemorySessionManagerError } from '@/agent/session';
+import { InMemorySessionManager, InMemorySessionManagerError } from '@/agent/session';
 import type { CreateSessionInput } from '@/agent/session';
 import { beforeEach, describe, expect, it } from 'vitest';
 
