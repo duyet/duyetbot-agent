@@ -323,7 +323,7 @@ export class ResearchTool implements Tool {
 
       // Extract title
       const titleMatch = html.match(/<title>(.*?)<\/title>/i);
-      const title = titleMatch ? this.cleanHtml(titleMatch[1]) : 'Untitled';
+      const title = titleMatch ? this.cleanHtml(titleMatch[1] || '') : 'Untitled';
 
       // Extract content (remove scripts, styles, and extract text)
       let content = html

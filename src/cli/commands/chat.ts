@@ -210,11 +210,11 @@ export async function chatCommand(options: ChatOptions) {
               message: input,
               model: currentModel,
             })) {
-              if (message.type === 'text') {
-                process.stdout.write(message.text);
-                _responseText += message.text;
-              } else if (message.type === 'tool_use') {
-                process.stdout.write(chalk.gray(`\n[Using tool: ${message.name}]\n`));
+              if ((message as any).type === 'text') {
+                process.stdout.write((message as any).text);
+                _responseText += (message as any).text;
+              } else if ((message as any).type === 'tool_use') {
+                process.stdout.write(chalk.gray(`\n[Using tool: ${(message as any).name}]\n`));
               }
             }
 

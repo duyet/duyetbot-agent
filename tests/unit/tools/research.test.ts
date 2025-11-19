@@ -414,11 +414,11 @@ describe('ResearchTool', () => {
 
       // First call
       const output1 = await tool.execute(input);
-      const duration1 = output1.metadata?.duration || 0;
+      const duration1 = ((output1.metadata?.duration as number)) || 0;
 
       // Second call (should use cache, no new fetch mock needed)
       const output2 = await tool.execute(input);
-      const duration2 = output2.metadata?.duration || 0;
+      const duration2 = ((output2.metadata?.duration as number)) || 0;
 
       expect(output1.status).toBe('success');
       expect(output2.status).toBe('success');

@@ -54,7 +54,7 @@ function createMockDB(): D1Database {
             );
 
             if (sessionIndex >= 0) {
-              const session = data.sessions[sessionIndex];
+              const session = data.sessions[sessionIndex]!;
               let valueIndex = 0;
               if (sql.includes('state =')) {
                 session.state = boundValues[valueIndex++] as string;

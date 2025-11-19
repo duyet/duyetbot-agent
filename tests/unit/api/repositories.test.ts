@@ -1,6 +1,5 @@
 import { RefreshTokenRepository } from '@/api/repositories/refresh-token';
 import { UserRepository } from '@/api/repositories/user';
-import type { RefreshToken, User } from '@/api/types';
 import { beforeEach, describe, expect, it } from 'vitest';
 
 // Mock D1 Database
