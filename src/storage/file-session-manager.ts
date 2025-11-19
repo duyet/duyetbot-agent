@@ -56,12 +56,25 @@ export class FileSessionManager implements SessionManager {
   /**
    * Deserialize session from storage (convert ISO strings to Dates)
    */
-  private deserialize(data: any): Session {
+  private deserialize(data: unknown): Session {
+    const serializedSession = data as {
+      id: string;
+      state: SessionState;
+      createdAt: string;
+      updatedAt: string;
+      completedAt?: string;
+      messages?: Session['messages'];
+      toolResults?: Session['toolResults'];
+      metadata?: Session['metadata'];
+    };
+
     return {
-      ...data,
-      createdAt: new Date(data.createdAt),
-      updatedAt: new Date(data.updatedAt),
-      ...(data.completedAt && { completedAt: new Date(data.completedAt) }),
+      ...serializedSession,
+      createdAt: new Date(serializedSession.createdAt),
+      updatedAt: new Date(serializedSession.updatedAt),
+      ...(serializedSession.completedAt && {
+        completedAt: new Date(serializedSession.completedAt),
+      }),
     };
   }
 

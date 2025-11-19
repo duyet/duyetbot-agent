@@ -2,9 +2,9 @@
  * Tests for Research Tool
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ResearchTool } from '@/tools/research';
 import type { ToolInput } from '@/tools/types';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 // Mock fetch globally
 global.fetch = vi.fn();
@@ -151,7 +151,7 @@ describe('ResearchTool', () => {
 
       expect(output.status).toBe('success');
       const content = output.content as Record<string, unknown>;
-      const results = content.results as Array<Record<string, unknown>>;
+      const results = content.results as Record<string, unknown>[];
       expect(results[0]).toHaveProperty('title');
       expect(results[0]).toHaveProperty('url');
       expect(results[0]).toHaveProperty('snippet');
@@ -232,7 +232,8 @@ describe('ResearchTool', () => {
     it('should fetch content from URL', async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
-        text: async () => '<html><head><title>Example Domain</title></head><body>Example content</body></html>',
+        text: async () =>
+          '<html><head><title>Example Domain</title></head><body>Example content</body></html>',
       });
 
       const input: ToolInput = {
@@ -252,7 +253,8 @@ describe('ResearchTool', () => {
     it('should extract text content from HTML', async () => {
       (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
         ok: true,
-        text: async () => '<html><head><title>Test</title></head><body>Test content here</body></html>',
+        text: async () =>
+          '<html><head><title>Test</title></head><body>Test content here</body></html>',
       });
 
       const input: ToolInput = {
@@ -340,7 +342,7 @@ describe('ResearchTool', () => {
       expect(output.status).toBe('success');
       const content = output.content as Record<string, unknown>;
       // Should not contain HTML tags
-      expect((content.content as string)).not.toMatch(/<[^>]*>/);
+      expect(content.content as string).not.toMatch(/<[^>]*>/);
     });
 
     it('should extract title from page', async () => {
@@ -389,7 +391,7 @@ describe('ResearchTool', () => {
 
       expect(output.status).toBe('success');
       const content = output.content as Record<string, unknown>;
-      const results = content.results as Array<Record<string, unknown>>;
+      const results = content.results as Record<string, unknown>[];
       // Results should have relevance scores
       if (results.length > 0) {
         expect(results[0]).toHaveProperty('relevance');

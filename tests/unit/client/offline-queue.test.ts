@@ -164,7 +164,10 @@ describe('OfflineQueue', () => {
       expect(stats.totalMessages).toBe(2);
       expect(stats.oldestMessage).toBeDefined();
       expect(stats.newestMessage).toBeDefined();
-      expect(stats.newestMessage).toBeGreaterThanOrEqual(stats.oldestMessage!);
+      if (stats.oldestMessage === undefined || stats.newestMessage === undefined) {
+        throw new Error('Expected oldestMessage and newestMessage to be defined');
+      }
+      expect(stats.newestMessage).toBeGreaterThanOrEqual(stats.oldestMessage);
     });
 
     it('should return zero stats for empty queue', async () => {
@@ -178,7 +181,7 @@ describe('OfflineQueue', () => {
   describe('pruneOldMessages', () => {
     it('should remove messages older than maxAge', async () => {
       // Enqueue a message and manually set old timestamp
-      const messageId = await queue.enqueue({ message: 'Old message' });
+      const _messageId = await queue.enqueue({ message: 'Old message' });
       const messages = await queue.getAll();
       messages[0].timestamp = Date.now() - 10000; // 10 seconds ago
 
@@ -301,7 +304,7 @@ describe('syncQueue', () => {
   });
 
   it('should remove messages after 3 failed retries', async () => {
-    const messageId = await queue.enqueue({ message: 'Fail' });
+    const _messageId = await queue.enqueue({ message: 'Fail' });
 
     // Set retries to 2 (so next failure will be 3rd retry)
     const messages = await queue.getAll();

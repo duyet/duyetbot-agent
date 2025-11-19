@@ -51,19 +51,20 @@ const createMockD1 = () => {
                 const userId = boundValues[boundValues.length - 1];
                 const userIndex = data.users.findIndex((u) => u.id === userId);
                 if (userIndex >= 0) {
+                  const user = data.users[userIndex];
                   // Parse which fields are being updated from SQL
                   let valueIndex = 0;
                   if (sql.includes('name =')) {
-                    data.users[userIndex]!.name = boundValues[valueIndex++];
+                    user.name = boundValues[valueIndex++];
                   }
                   if (sql.includes('picture =')) {
-                    data.users[userIndex]!.picture = boundValues[valueIndex++];
+                    user.picture = boundValues[valueIndex++];
                   }
                   if (sql.includes('settings =')) {
-                    data.users[userIndex]!.settings = boundValues[valueIndex++];
+                    user.settings = boundValues[valueIndex++];
                   }
                   // updated_at is always last before the WHERE userId
-                  data.users[userIndex]!.updated_at = boundValues[boundValues.length - 2];
+                  user.updated_at = boundValues[boundValues.length - 2];
                 }
               }
               // DELETE

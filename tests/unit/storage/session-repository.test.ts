@@ -65,9 +65,7 @@ function createMockDB(): D1Database {
               if (sql.includes('metadata =')) {
                 session.metadata = boundValues[valueIndex++] as string | null;
               }
-              session.updated_at = boundValues[
-                boundValues.length - 3
-              ] as number;
+              session.updated_at = boundValues[boundValues.length - 3] as number;
             }
           }
           // DELETE

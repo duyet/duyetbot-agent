@@ -132,12 +132,13 @@ export function extractCodeBlocks(text: string): Array<{ language: string; code:
   const codeBlocks: Array<{ language: string; code: string }> = [];
   const regex = /```(\w+)?\n([\s\S]*?)```/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
+  let match: RegExpExecArray | null = regex.exec(text);
+  while (match !== null) {
     codeBlocks.push({
       language: match[1] || 'text',
       code: match[2] || '',
     });
+    match = regex.exec(text);
   }
 
   return codeBlocks;
@@ -150,11 +151,12 @@ export function extractMentions(text: string): string[] {
   const mentions: string[] = [];
   const regex = /@(\w+)/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
+  let match: RegExpExecArray | null = regex.exec(text);
+  while (match !== null) {
     if (match[1] && match[1].toLowerCase() !== 'duyetbot') {
       mentions.push(match[1]);
     }
+    match = regex.exec(text);
   }
 
   return [...new Set(mentions)];
@@ -171,12 +173,13 @@ export function extractIssueReferences(
   // Match #123 or owner/repo#123
   const regex = /(?:(\w+\/\w+))?#(\d+)/g;
 
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(text)) !== null) {
+  let match: RegExpExecArray | null = regex.exec(text);
+  while (match !== null) {
     references.push({
       repository: match[1],
       issue: Number.parseInt(match[2] || '0', 10),
     });
+    match = regex.exec(text);
   }
 
   return references;

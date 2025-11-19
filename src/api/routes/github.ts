@@ -89,7 +89,7 @@ export function createGitHubRoutes(): Hono<{ Bindings: Env }> {
     }
 
     // Parse payload
-    let payload: any;
+    let payload: unknown;
     try {
       payload = JSON.parse(rawBody);
     } catch (error) {

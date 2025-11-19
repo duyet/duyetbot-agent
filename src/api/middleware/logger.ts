@@ -77,6 +77,7 @@ export class Logger {
   }
 
   error(message: string, error?: Error, metadata?: Record<string, unknown>) {
+    const errorWithCode = error as Error & { code?: string };
     const entry: LogEntry = {
       timestamp: new Date().toISOString(),
       level: 'error',
@@ -91,7 +92,7 @@ export class Logger {
         ? {
             message: error.message,
             stack: error.stack,
-            code: (error as any).code,
+            code: errorWithCode.code,
           }
         : undefined,
       metadata,
