@@ -108,7 +108,7 @@ export class APIClient {
     }
 
     // Parse response
-    const data = await response.json();
+    const data = (await response.json()) as any;
 
     if (!response.ok) {
       throw new APIError(data.message || 'Request failed', response.status, data.code);
@@ -140,12 +140,12 @@ export class APIClient {
         return false;
       }
 
-      const data = await response.json();
+      const data = (await response.json()) as any;
       this.config.accessToken = data.data.accessToken;
       this.config.refreshToken = data.data.refreshToken;
 
       // Notify callback
-      if (this.config.onTokenRefresh) {
+      if (this.config.onTokenRefresh && this.config.accessToken && this.config.refreshToken) {
         this.config.onTokenRefresh(this.config.accessToken, this.config.refreshToken);
       }
 
@@ -215,7 +215,7 @@ export class APIClient {
     });
 
     if (!response.ok) {
-      const data = await response.json();
+      const data = (await response.json()) as any;
       throw new APIError(data.message || 'Chat request failed', response.status, data.code);
     }
 

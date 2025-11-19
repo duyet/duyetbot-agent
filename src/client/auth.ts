@@ -102,7 +102,7 @@ export async function startDeviceFlow(apiUrl: string): Promise<DeviceCodeRespons
     throw new Error('Failed to start device flow');
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.data as DeviceCodeResponse;
 }
 
@@ -128,11 +128,11 @@ export async function pollDeviceAuthorization(
   }
 
   if (!response.ok) {
-    const data = await response.json();
+    const data = (await response.json()) as any;
     throw new Error(data.message || 'Authorization failed');
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.data as TokenResponse;
 }
 
@@ -227,7 +227,7 @@ export async function refreshToken(apiUrl: string, refreshToken: string): Promis
     throw new Error('Failed to refresh token');
   }
 
-  const data = await response.json();
+  const data = (await response.json()) as any;
   return data.data.accessToken;
 }
 
