@@ -136,7 +136,7 @@ export class D1MigrationRunner implements MigrationRunner {
       throw new Error('No migrations to rollback');
     }
 
-    const lastMigration = executed[executed.length - 1];
+    const lastMigration = executed[executed.length - 1]!;
     const migrationFile = this.migrations.find((m) => m.id === lastMigration.id);
 
     if (!migrationFile) {

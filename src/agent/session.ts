@@ -21,8 +21,8 @@ export interface ToolResult {
   error?: {
     message: string;
     code: string;
-  };
-  timestamp?: Date;
+  } | undefined;
+  timestamp?: Date | undefined;
 }
 
 /**
@@ -36,17 +36,17 @@ export interface Session {
   updatedAt: Date;
 
   // Optional properties
-  provider?: ProviderConfig;
-  messages?: LLMMessage[];
-  metadata?: Record<string, unknown>;
+  provider?: ProviderConfig | undefined;
+  messages?: LLMMessage[] | undefined;
+  metadata?: Record<string, unknown> | undefined;
   error?: {
     message: string;
     code: string;
     details?: unknown;
-  };
-  toolResults?: ToolResult[];
-  resumeToken?: string;
-  completedAt?: Date;
+  } | undefined;
+  toolResults?: ToolResult[] | undefined;
+  resumeToken?: string | undefined;
+  completedAt?: Date | undefined;
 }
 
 /**
