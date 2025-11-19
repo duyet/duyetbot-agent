@@ -12,9 +12,9 @@ import type { WebhookPayload } from './webhook-handler';
 export interface ParsedComment {
   repository: string;
   repositoryUrl: string;
-  issueNumber?: number;
-  prNumber?: number;
-  commentId?: number;
+  issueNumber?: number | undefined;
+  prNumber?: number | undefined;
+  commentId?: number | undefined;
   command: string;
   fullText: string;
   author: string;

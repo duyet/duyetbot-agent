@@ -21,21 +21,21 @@ export interface CreateSessionInput {
   id: string;
   userId: string;
   state: SessionState;
-  title?: string;
-  metadata?: Record<string, unknown>;
+  title?: string | undefined;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 export interface UpdateSessionInput {
-  state?: SessionState;
-  title?: string;
-  metadata?: Record<string, unknown>;
+  state?: SessionState | undefined;
+  title?: string | undefined;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 export interface ListSessionsOptions {
   userId: string;
-  state?: SessionState;
-  limit?: number;
-  offset?: number;
+  state?: SessionState | undefined;
+  limit?: number | undefined;
+  offset?: number | undefined;
 }
 
 export class SessionRepository {
