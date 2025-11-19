@@ -54,17 +54,18 @@ function createMockDB(): D1Database {
             );
 
             if (sessionIndex >= 0) {
+              const session = data.sessions[sessionIndex];
               let valueIndex = 0;
               if (sql.includes('state =')) {
-                data.sessions[sessionIndex]!.state = boundValues[valueIndex++] as string;
+                session.state = boundValues[valueIndex++] as string;
               }
               if (sql.includes('title =')) {
-                data.sessions[sessionIndex]!.title = boundValues[valueIndex++] as string | null;
+                session.title = boundValues[valueIndex++] as string | null;
               }
               if (sql.includes('metadata =')) {
-                data.sessions[sessionIndex]!.metadata = boundValues[valueIndex++] as string | null;
+                session.metadata = boundValues[valueIndex++] as string | null;
               }
-              data.sessions[sessionIndex]!.updated_at = boundValues[
+              session.updated_at = boundValues[
                 boundValues.length - 3
               ] as number;
             }
