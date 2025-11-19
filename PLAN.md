@@ -1,9 +1,26 @@
-# Implementation Plan: duyetbot-agent
+# Implementation Plan: duyetbot-agent v3.0 (Redesigned Architecture)
+
+## 🚨 MAJOR ARCHITECTURAL REDESIGN
+
+**Previous Architecture**: Cloudflare Workers-only deployment
+**New Architecture**: Long-running container server + Cloudflare MCP memory layer + Monorepo
+
+**This redesign changes the fundamental deployment model from stateless Workers to a stateful container-based system with distributed memory.**
+
+---
 
 ## Overview
-**A personal AI agent system with persistent memory across multiple interfaces** - enabling users to interact with their agent from GitHub Actions, CLI, Web UI, or any platform while maintaining full conversation history and context.
 
-📖 **See ARCHITECTURE.md for complete system design and technical details.**
+**A personal AI agent system for @duyet** - helping manage GitHub issues, PRs, code reviews, build/test automation, research, and communication via GitHub mentions (@duyetbot) and Telegram.
+
+### Core Capabilities
+- 🤖 **GitHub Integration**: Respond to @duyetbot mentions, manage issues/PRs, automated reviews
+- 💬 **Telegram Bot**: Chat interface for quick queries and notifications
+- 🧠 **Persistent Memory**: MCP-based memory server on Cloudflare Workers (D1 + KV)
+- 🛠️ **Multi-LLM Support**: Claude, OpenAI, OpenRouter, Z.AI (via base URL override)
+- 📦 **Monorepo**: Separated packages for core, tools, server, CLI, MCP, bots
+- 🐳 **Container Deployment**: Long-running Node.js/Bun server for stateful agent sessions
+- 💻 **CLI Support**: Local execution with optional cloud memory access
 
 ---
 
@@ -22,1599 +39,1522 @@ When working on this project:
 
 ---
 
-## Project Vision
+## New Architecture Overview
 
-### Core Concept
-**Your personal AI agent that follows you everywhere** - accessible via GitHub Actions, CLI, Web UI, and future interfaces, with all conversations and context stored centrally.
+### High-Level System Design
 
-### Key Features
-- ✅ **Multi-LLM support**: Claude, OpenAI, OpenRouter
-- 🎯 **Persistent memory**: Full conversation history across all interfaces
-- 🎯 **Centralized storage**: User data synced via API deployed on Cloudflare Workers
-- 🎯 **Multi-tenant**: Isolated user environments with secure authentication
-- 🎯 **Authentication**: GitHub OAuth and Google OAuth
-- 🎯 **Multiple interfaces**: CLI tool, GitHub Actions, Web UI, Mobile (future)
-- 🎯 **Offline support**: CLI can queue operations and sync when online
-- 🎯 **Semantic search**: Vector database for finding relevant past conversations
+```
+┌──────────────────────────────────────────────────────────────────┐
+│                        User Interactions                          │
+├────────────────┬────────────────┬──────────────┬─────────────────┤
+│ GitHub @mentions│ Telegram Bot   │  CLI Tool    │ Web UI (future) │
+└────────┬───────┴────────┬───────┴──────┬───────┴─────────────────┘
+         │                │              │
+         │                │              │
+    ┌────▼────────────────▼──────────────▼─────┐
+    │       HTTP API Gateway (Hono)             │
+    │   - Authentication (GitHub user context)  │
+    │   - Rate limiting                         │
+    │   - Request routing                       │
+    └────────────────────┬──────────────────────┘
+                         │
+         ┌───────────────┼───────────────┐
+         │               │               │
+    ┌────▼────┐     ┌────▼────┐    ┌────▼────────┐
+    │ GitHub  │     │Telegram │    │   Agent     │
+    │  Bot    │     │  Bot    │    │   Server    │
+    │ Handler │     │ Handler │    │ (Container) │
+    └────┬────┘     └────┬────┘    └──────┬──────┘
+         │               │                 │
+         └───────────────┼─────────────────┘
+                         │
+              ┌──────────▼──────────┐
+              │  MCP Memory Server   │
+              │ (Cloudflare Workers)│
+              ├──────────────────────┤
+              │ • Authentication     │
+              │ • Session Storage    │
+              │ • Message History    │
+              │ • Vector Search      │
+              └──────────┬───────────┘
+                         │
+         ┌───────────────┼────────────────┐
+         │               │                │
+    ┌────▼────┐    ┌────▼────┐      ┌────▼────┐
+    │   D1    │    │   KV    │      │Vectorize│
+    │(Metadata)│    │(Messages)│      │ (Search)│
+    └─────────┘    └─────────┘      └─────────┘
+```
+
+### Key Architectural Changes
+
+| Component | Old Design | New Design | Rationale |
+|-----------|------------|------------|-----------|
+| **Main Runtime** | Cloudflare Workers | Node.js/Bun Container | Long-running stateful sessions, no CPU limits |
+| **Memory Layer** | KV + D1 directly | MCP Server (CF Workers) | Standardized protocol, reusable across clients |
+| **Project Structure** | Single package | Monorepo (pnpm) | Separated concerns, independent deployments |
+| **CLI** | Planned | Full-featured with MCP | Local execution + cloud memory access |
+| **Provider System** | Fixed providers | Base URL override support | Flexible (Z.AI, custom endpoints) |
+| **GitHub Integration** | Webhook parsing only | Full bot with @mentions | Complete automation for @duyet |
+| **Telegram** | Not planned | Full bot integration | Communication and notifications |
 
 ---
 
-## Architecture Overview
-
-**See ARCHITECTURE.md for complete details.** Here's the high-level structure:
+## Monorepo Structure (pnpm Workspaces)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│           User Interfaces (Multi-Platform)                  │
-├────────────────┬──────────────┬─────────────────────────────┤
-│ GitHub Actions │  CLI Tool    │    Web UI                   │
-└────────┬───────┴──────┬───────┴─────────┬───────────────────┘
-         │              │                 │
-         └──────────────┼─────────────────┘
-                        │
-                ┌───────▼────────┐
-                │  Auth Layer    │
-                │ (GitHub/Google)│
-                └───────┬────────┘
-                        │
-         ┌──────────────┼──────────────┐
-         │                             │
-    ┌────▼─────┐              ┌────────▼─────┐
-    │ API      │              │ Auth Service │
-    │ Gateway  │              │ (JWT)        │
-    └────┬─────┘              └──────────────┘
-         │
-    ┌────▼────────────────────────────────┐
-    │   Central API (Cloudflare Workers)  │
-    │   - Agent Core                      │
-    │   - Session Manager                 │
-    │   - User Manager                    │
-    │   - Tool Registry                   │
-    └────┬────────────────────────────────┘
-         │
-    ┌────┼────┬──────────┬────────────┐
-    │    │    │          │            │
-   D1  KV  Vectorize   R2         Queue
-  (User) (Msg) (Search) (Files) (Tasks)
+duyetbot-agent/
+├── packages/
+│   ├── core/                       # Core agent logic
+│   │   ├── src/
+│   │   │   ├── agent/             # Agent orchestration
+│   │   │   ├── session/           # Session management
+│   │   │   └── types/             # Shared types
+│   │   └── package.json
+│   │
+│   ├── providers/                  # LLM provider abstractions
+│   │   ├── src/
+│   │   │   ├── base.ts            # Base provider interface
+│   │   │   ├── claude.ts          # Claude provider
+│   │   │   ├── openai.ts          # OpenAI provider
+│   │   │   ├── openrouter.ts      # OpenRouter provider
+│   │   │   ├── zai.ts             # Z.AI provider (base URL override)
+│   │   │   └── factory.ts         # Provider factory with URL override
+│   │   └── package.json
+│   │
+│   ├── tools/                      # Tool implementations
+│   │   ├── src/
+│   │   │   ├── bash.ts
+│   │   │   ├── git.ts
+│   │   │   ├── github.ts          # GitHub API operations (NEW)
+│   │   │   ├── research.ts
+│   │   │   ├── plan.ts
+│   │   │   ├── sleep.ts
+│   │   │   └── registry.ts
+│   │   └── package.json
+│   │
+│   ├── memory-mcp/                 # MCP server for memory (Cloudflare Workers)
+│   │   ├── src/
+│   │   │   ├── index.ts           # Worker entry point
+│   │   │   ├── mcp-server.ts      # MCP protocol implementation
+│   │   │   ├── tools/             # MCP tools
+│   │   │   │   ├── get_memory.ts
+│   │   │   │   ├── save_memory.ts
+│   │   │   │   ├── search_memory.ts
+│   │   │   │   └── authenticate.ts
+│   │   │   ├── storage/
+│   │   │   │   ├── d1.ts          # D1 operations
+│   │   │   │   ├── kv.ts          # KV operations
+│   │   │   │   └── vectorize.ts   # Vector search
+│   │   │   └── auth/
+│   │   │       └── github.ts      # GitHub user verification
+│   │   ├── wrangler.toml
+│   │   └── package.json
+│   │
+│   ├── server/                     # Long-running agent server (Node.js/Bun)
+│   │   ├── src/
+│   │   │   ├── index.ts           # Server entry point
+│   │   │   ├── agent-runner.ts    # Agent execution engine
+│   │   │   ├── websocket.ts       # WebSocket server (streaming)
+│   │   │   ├── mcp-client.ts      # MCP client for memory server
+│   │   │   └── config.ts          # Server configuration
+│   │   ├── Dockerfile
+│   │   └── package.json
+│   │
+│   ├── cli/                        # CLI tool
+│   │   ├── src/
+│   │   │   ├── index.ts           # CLI entry point
+│   │   │   ├── commands/          # Command implementations
+│   │   │   │   ├── chat.ts
+│   │   │   │   ├── login.ts
+│   │   │   │   ├── run.ts
+│   │   │   │   └── memory.ts
+│   │   │   ├── ui/                # Terminal UI (Ink)
+│   │   │   │   ├── App.tsx
+│   │   │   │   ├── ChatView.tsx
+│   │   │   │   └── StatusBar.tsx
+│   │   │   ├── mcp-client.ts      # MCP client for memory
+│   │   │   └── local-mode.ts      # Standalone local execution
+│   │   └── package.json
+│   │
+│   ├── sdk/                        # Client SDK for API
+│   │   ├── src/
+│   │   │   ├── client.ts          # HTTP client
+│   │   │   ├── websocket.ts       # WebSocket client
+│   │   │   └── types.ts
+│   │   └── package.json
+│   │
+│   └── types/                      # Shared TypeScript types
+│       ├── src/
+│       │   ├── agent.ts
+│       │   ├── session.ts
+│       │   ├── message.ts
+│       │   ├── tool.ts
+│       │   └── provider.ts
+│       └── package.json
+│
+├── apps/
+│   ├── api/                        # HTTP API Gateway (Hono)
+│   │   ├── src/
+│   │   │   ├── index.ts           # API entry point
+│   │   │   ├── routes/
+│   │   │   │   ├── agent.ts       # /agent/* endpoints
+│   │   │   │   ├── github.ts      # /github/* webhooks
+│   │   │   │   ├── telegram.ts    # /telegram/* webhooks
+│   │   │   │   └── health.ts      # /health/* endpoints
+│   │   │   ├── middleware/
+│   │   │   │   ├── auth.ts        # GitHub user verification
+│   │   │   │   ├── rate-limit.ts
+│   │   │   │   └── cors.ts
+│   │   │   └── config.ts
+│   │   └── package.json
+│   │
+│   ├── github-bot/                 # GitHub App/webhook handler
+│   │   ├── src/
+│   │   │   ├── index.ts           # Bot entry point
+│   │   │   ├── webhooks/
+│   │   │   │   ├── mention.ts     # @duyetbot mentions
+│   │   │   │   ├── issue.ts       # Issue events
+│   │   │   │   ├── pr.ts          # PR events
+│   │   │   │   └── comment.ts     # Comment events
+│   │   │   ├── actions/
+│   │   │   │   ├── review-pr.ts
+│   │   │   │   ├── summarize.ts
+│   │   │   │   ├── test.ts
+│   │   │   │   └── research.ts
+│   │   │   └── github-api.ts      # GitHub API client
+│   │   └── package.json
+│   │
+│   ├── telegram-bot/               # Telegram bot integration
+│   │   ├── src/
+│   │   │   ├── index.ts           # Bot entry point
+│   │   │   ├── commands/
+│   │   │   │   ├── start.ts
+│   │   │   │   ├── chat.ts
+│   │   │   │   ├── help.ts
+│   │   │   │   └── status.ts
+│   │   │   ├── handlers/
+│   │   │   │   └── message.ts
+│   │   │   └── telegram-api.ts
+│   │   └── package.json
+│   │
+│   └── web/                        # Web UI (optional, future)
+│       ├── src/
+│       └── package.json
+│
+├── infrastructure/
+│   ├── cloudflare/
+│   │   └── wrangler.toml          # MCP server deployment
+│   ├── docker/
+│   │   ├── docker-compose.yml     # Server + dependencies
+│   │   └── agent-server.Dockerfile
+│   └── kubernetes/                 # K8s manifests (optional)
+│       ├── deployment.yaml
+│       └── service.yaml
+│
+├── .github/
+│   └── workflows/
+│       ├── deploy-mcp.yml         # Deploy MCP server to CF Workers
+│       ├── deploy-server.yml      # Deploy agent server to container
+│       └── tests.yml
+│
+├── pnpm-workspace.yaml
+├── turbo.json                      # Turborepo configuration
+├── package.json                    # Root package
+├── CLAUDE.md
+├── ARCHITECTURE.md
+└── PLAN.md (this file)
 ```
-
-### Design Principles
-
-1. **User-Centric**: Each user has their own agent with isolated data
-2. **Interface-Agnostic**: Same agent accessible from anywhere
-3. **Persistent Memory**: All conversations stored and searchable
-4. **Centralized API**: Single source of truth deployed on Cloudflare Workers
-5. **Multi-Tenant**: Secure user isolation with authentication
-6. **Offline-Capable**: CLI works offline with sync when connected
 
 ---
 
-## Prompt Engineering Best Practices
+## Provider System with Base URL Override
 
-### Overview
-This project leverages advanced prompt engineering techniques from Anthropic's official guidance to maximize LLM effectiveness. All agent implementations should follow these principles.
+### Motivation
 
-### Core Techniques (in recommended order)
+Support alternative LLM providers that use Claude-compatible APIs (e.g., Z.AI) by overriding the base URL while keeping the same provider interface.
 
-#### 1. Clarity and Directness
-- Write clear, specific instructions
-- Avoid ambiguity in task descriptions
-- State success criteria explicitly
+### Configuration Format
 
-#### 2. XML Tags for Structure
-Use XML tags to organize complex prompts and responses:
+**Environment Variables**:
+```bash
+# Standard Claude
+ANTHROPIC_API_KEY="sk-ant-..."
+ANTHROPIC_BASE_URL="https://api.anthropic.com"
 
-```xml
-<instructions>
-  Task-specific instructions here
-</instructions>
+# Z.AI (Claude-compatible API)
+ZAI_API_KEY="your_zai_api_key"
+ZAI_BASE_URL="https://api.z.ai/api/anthropic"
 
-<context>
-  Relevant background information
-</context>
+# Override default models (optional)
+MODEL_HAIKU="glm-4.5-air"
+MODEL_SONNET="glm-4.6"
+MODEL_OPUS="glm-4.6"
 
-<examples>
-  <example>
-    Input/output demonstration
-  </example>
-</examples>
-
-<output_format>
-  Expected response structure
-</output_format>
+# Set environment to use Z.AI
+export ANTHROPIC_AUTH_TOKEN="$ZAI_API_KEY"
+export ANTHROPIC_BASE_URL="$ZAI_BASE_URL"
+export ANTHROPIC_DEFAULT_HAIKU_MODEL="$MODEL_HAIKU"
+export ANTHROPIC_DEFAULT_SONNET_MODEL="$MODEL_SONNET"
+export ANTHROPIC_DEFAULT_OPUS_MODEL="$MODEL_OPUS"
 ```
 
-**Benefits**:
-- Prevents Claude from confusing different prompt sections
-- Enables programmatic parsing of outputs
-- Makes prompts easier to modify and maintain
-
-#### 3. Chain of Thought
-For complex reasoning tasks, use explicit thinking steps:
-
-```xml
-<thinking>
-  Step-by-step reasoning process
-</thinking>
-
-<answer>
-  Final response based on reasoning
-</answer>
-```
-
-**When to use**: Mathematical problems, multi-step analysis, complex decisions
-**Critical**: Always output thinking - "without outputting its thought process, no thinking occurs"
-
-#### 4. System Prompts (Role Assignment)
-Assign Claude specific roles for domain expertise:
-
-```typescript
+**Configuration File** (`~/.duyetbot/config.json`):
+```json
 {
-  role: 'system',
-  content: 'You are an experienced software architect specializing in distributed systems and agent-based architectures.'
+  "providers": [
+    {
+      "name": "claude",
+      "type": "anthropic",
+      "apiKey": "${ANTHROPIC_API_KEY}",
+      "baseUrl": "https://api.anthropic.com",
+      "models": {
+        "haiku": "claude-3-5-haiku-20241022",
+        "sonnet": "claude-3-5-sonnet-20241022",
+        "opus": "claude-3-opus-20240229"
+      }
+    },
+    {
+      "name": "zai",
+      "type": "anthropic",
+      "apiKey": "${ZAI_API_KEY}",
+      "baseUrl": "https://api.z.ai/api/anthropic",
+      "models": {
+        "haiku": "glm-4.5-air",
+        "sonnet": "glm-4.6",
+        "opus": "glm-4.6"
+      }
+    },
+    {
+      "name": "openrouter",
+      "type": "openrouter",
+      "apiKey": "${OPENROUTER_API_KEY}",
+      "baseUrl": "https://openrouter.ai/api/v1"
+    }
+  ],
+  "defaultProvider": "claude"
 }
 ```
 
-**Best practices**:
-- Use system parameter exclusively for roles
-- Put task-specific instructions in user messages
-- Experiment with specificity (generic vs. detailed roles)
+### Provider Factory Implementation
 
-#### 5. Few-Shot Examples
-Demonstrate desired patterns with 2-3 examples:
-- Shows expected input/output format
-- Illustrates tone and style
-- Clarifies edge case handling
-
-#### 6. Prompt Chaining
-Break complex workflows into sequential subtasks:
-- Each subtask gets Claude's full attention
-- Easier to debug and refine individual steps
-- Improves overall accuracy
-
-**Pattern**:
-```
-Step 1: Research → Step 2: Outline → Step 3: Draft → Step 4: Review
-```
-
-#### 7. Response Prefilling
-Guide output format by starting the assistant message:
 ```typescript
-messages: [
-  { role: 'user', content: 'Generate JSON config' },
-  { role: 'assistant', content: '{' }  // Forces JSON output
-]
+// packages/providers/src/factory.ts
+interface ProviderConfig {
+  type: 'anthropic' | 'openai' | 'openrouter' | 'custom';
+  apiKey: string;
+  baseUrl?: string;  // Optional base URL override
+  models?: Record<string, string>;  // Model name mappings
+}
+
+class ProviderFactory {
+  static create(config: ProviderConfig): LLMProvider {
+    switch (config.type) {
+      case 'anthropic':
+        return new ClaudeProvider({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl || 'https://api.anthropic.com',
+          models: config.models,
+        });
+      case 'openai':
+        return new OpenAIProvider({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl || 'https://api.openai.com/v1',
+        });
+      case 'openrouter':
+        return new OpenRouterProvider({
+          apiKey: config.apiKey,
+          baseUrl: config.baseUrl || 'https://openrouter.ai/api/v1',
+        });
+      default:
+        throw new Error(`Unknown provider type: ${config.type}`);
+    }
+  }
+}
 ```
 
-**Use cases**: Skipping preambles, maintaining character consistency, enforcing formats
-
-### Implementation in duyetbot-agent
-
-#### For Tool Execution:
-- Use XML tags to structure tool inputs/outputs
-- Include chain-of-thought for complex tool operations (e.g., multi-step git workflows)
-
-#### For Task Planning:
-- System prompt: Assign "task planning specialist" role
-- Use XML tags to separate task description, constraints, and dependencies
-- Chain-of-thought for breaking down complex tasks
-
-#### For Sub-Agents:
-- Each sub-agent gets a specific role via system prompt
-- Use prompt chaining to pass context between agents
-- XML tags for structured inter-agent communication
-
-#### For Research Tools:
-- System prompt: "Research analyst specializing in [domain]"
-- XML tags for query, sources, findings
-- Chain-of-thought for synthesizing information
-
-### Testing Prompt Effectiveness
-
-**Prerequisites before optimization**:
-1. Clear success criteria for the use case
-2. Empirical testing methods to measure performance
-3. A draft prompt to refine
-
-**Why prompt engineering over fine-tuning**:
-- Nearly instantaneous results vs. hours of training
-- Works with base model (lower cost)
-- Rapid iteration and adaptation
-- No large labeled datasets required
-- Prompts work across model versions
-
-### References
-- [Prompt Engineering Overview](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/overview)
-- [Chain of Thought](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/chain-of-thought)
-- [XML Tags](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/use-xml-tags)
-- [System Prompts](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/system-prompts)
-- [Prompt Chaining](https://docs.claude.com/en/docs/build-with-claude/prompt-engineering/chain-prompts)
-
 ---
 
-## Phase 1: Project Foundation ⚡ (1-2 days)
+## MCP Memory Server Design
 
-### 1.1 Project Initialization
-**Goal**: Set up TypeScript project structure and tooling
+### Overview
 
-**Tasks**:
-- [x] Initialize npm project with TypeScript
-- [x] Install core dependencies:
-  - `@anthropic-ai/claude-agent-sdk`
-  - `@cloudflare/workers-types`
-  - `zod` for schema validation
-  - `vitest` for testing
-  - Development tools (typescript, biome)
-- [x] Create `tsconfig.json` with strict settings
-- [x] Create `.gitignore` for Node.js/TypeScript
-- [x] Set up Biome configuration for linting and formatting
-- [x] Create `vitest.config.ts` for testing
-- [x] Create basic `README.md`
+The Memory MCP Server runs on Cloudflare Workers and exposes memory/storage as MCP resources. This allows the CLI, server, and other clients to access persistent memory via the standardized MCP protocol.
 
-**Output**: Working TypeScript environment with linting ✅
+### MCP Tools Exposed
 
-### 1.2 Cloudflare Workers Setup
-**Goal**: Configure Cloudflare Workers deployment
+#### 1. `authenticate`
+**Description**: Authenticate user via GitHub token or OAuth
 
-**Tasks**:
-- [x] Create `wrangler.jsonc` configuration
-- [x] Define KV namespace bindings
-- [x] Define D1 database bindings
-- [x] Set up environment variables structure
-- [x] Create basic worker entry point (`src/index.ts`)
-- [ ] Test local development with `wrangler dev`
-
-**Output**: Deployable Cloudflare Worker skeleton
-
-### 1.3 Project Structure
-**Goal**: Establish directory structure
-
-**Tasks**:
-- [x] Create directory structure:
-  ```
-  src/
-    ├── agent/          # Agent core
-    ├── tools/          # Tool implementations
-    ├── providers/      # LLM providers
-    ├── agents/         # Sub-agent system
-    ├── scheduler/      # Task scheduling
-    ├── config/         # Configuration parsing
-    ├── storage/        # Persistence layer
-    ├── ui/             # Web interface
-    └── index.ts        # Entry point
-  agents/               # Agent configs
-  tasks/                # Task templates
-  tests/
-    ├── unit/
-    └── integration/
-  ```
-- [x] Create index files for each module
-- [x] Set up path aliases in tsconfig.json
-
-**Output**: Organized codebase structure ✅
-
----
-
-## Phase 2: Core Agent System 🤖 (3-4 days)
-
-### 2.1 LLM Provider Abstraction ✅ COMPLETE
-**Goal**: Create unified interface for multiple LLM providers
-
-**Tasks**:
-- [x] Define `LLMProvider` interface with streaming support
-- [x] Create provider factory with format parser `<provider>:<model_id>`
-- [x] Add provider configuration validation
-- [x] Write unit tests for provider types and factory (35 tests passing)
-- [x] Implement Claude provider adapter (32 tests passing)
-  - Anthropic SDK integration (`@anthropic-ai/sdk`)
-  - Streaming async generator responses
-  - System message handling
-  - Error handling with LLMProviderError
-  - Support for Claude 3.5 Sonnet, Opus, and Haiku
-- [x] Implement OpenRouter provider adapter (35 tests passing)
-  - Fetch API with SSE streaming
-  - Support for Claude, GPT, Gemini, Llama via OpenRouter
-  - OpenAI-compatible message format
-  - Timeout and error handling
-- [ ] Implement OpenAI provider adapter (SKIPPED - using OpenRouter instead)
-  - ~~Use OpenAI SDK~~
-  - ~~Match interface with Claude provider~~
-
-**Output**: Working multi-provider LLM system ✅ (102 provider tests passing)
-
-### 2.2 Agent Core ✅
-**Goal**: Build agent execution engine
-
-**Tasks**:
-- [x] Implement agent core class (26 tests passing)
-  - Provider integration
-  - Session orchestration
-  - Tool execution coordination
-- [x] Add session management (53 tests passing)
-  - Session creation and persistence (InMemorySessionManager)
-  - Session state tracking (active, paused, completed, failed, cancelled)
-  - Session resumption with resume tokens
-  - Message and metadata management
-- [x] Implement tool execution engine
-  - Tool registration system (ToolRegistry - 30 tests) ✅
-  - Input validation with Zod ✅
-  - Error handling and recovery ✅
-  - Direct tool execution and session-tracked execution
-- [x] Add streaming response handling
-  - AsyncGenerator pattern for LLM responses
-  - Provider-agnostic streaming
-- [ ] Implement permission system (deferred)
-- [ ] Add hooks support (PreToolUse, PostToolUse, etc.) (deferred)
-- [ ] Write integration tests (next)
-
-**Output**: Functional agent that can execute tools ✅ (79 agent tests passing)
-
-### 2.3 Basic Tools Implementation ✅
-**Goal**: Implement essential tools
-
-**Tasks**:
-- [x] Implement `bash` tool (32 tests passing)
-  - Sandbox command execution
-  - Output capture
-  - Timeout handling
-  - Environment variable support
-- [x] Implement `git` tool (47 tests passing)
-  - Clone, commit, push, pull operations
-  - Status and diff commands
-  - Branch and checkout operations
-  - Comprehensive error handling
-- [x] Implement `plan` tool (23 tests passing)
-  - Task decomposition with intelligent step generation
-  - Planning output formatting as markdown
-  - Complexity estimation
-- [x] Implement `sleep` tool (19 tests passing)
-  - Delay execution with timeout support
-  - AbortSignal cancellation support
-  - Multiple time units (ms, seconds, minutes)
-- [x] Create tool registry (30 tests passing)
-  - Registration with override support
-  - Tool validation and execution
-  - Filtering and metadata management
-- [x] Write tests for each tool (151 tests for tools)
-
-**Output**: Working toolset for agent operations ✅ (151 tool tests passing)
-
-**Status**: COMPLETE - All 4 core tools implemented and tested.
-
----
-
-## Phase 3: Local File Storage 💾 (1-2 days)
-
-**Design**: Similar to Claude Code's `~/.claude/` directory structure
-
-### 3.1 Storage Architecture ✅
-**Goal**: Implement local file-based persistence
-
-**Directory Structure**:
-```
-~/.duyetbot/
-  ├── config.json          # Global configuration (providers, defaults)
-  ├── sessions/            # Session storage (one file per session)
-  │   ├── session-123.json
-  │   └── session-456.json
-  ├── tasks/               # Task definitions
-  │   ├── task-1.json
-  │   └── task-2.json
-  ├── history/             # Execution history (JSONL format)
-  │   └── 2024-11/
-  │       ├── 2024-11-18.jsonl
-  │       └── 2024-11-19.jsonl
-  ├── cache/               # Temporary cache
-  └── duyetbot.db          # SQLite for structured queries (optional)
+**Input**:
+```typescript
+{
+  github_token?: string;
+  oauth_code?: string;
+}
 ```
 
-**Tasks**:
-- [x] Create FileSystemStorage class (24 tests passing)
-  - Directory initialization (~/.duyetbot/)
-  - JSON file read/write with atomic operations
-  - JSONL append for logs/history
-  - Path expansion (~ to home directory)
-- [x] Implement FileSessionManager (19 tests passing)
-  - Save session to ~/.duyetbot/sessions/{id}.json
-  - Load session from file
-  - List sessions by reading directory
-  - Date serialization/deserialization
-  - State transition persistence
-- [ ] Create TaskStorage module (deferred to Phase 3.2)
-  - Save/load task definitions
-  - Task versioning
-- [ ] Add ExecutionHistory module (deferred to Phase 3.2)
-  - JSONL append-only logs
-  - Date-based partitioning
-  - Query by date range
-- [ ] Implement ConfigManager (deferred to Phase 3.2)
-  - Load/save ~/.duyetbot/config.json
-  - Provider credentials (encrypted)
-  - User preferences
-- [ ] Add SQLite integration (optional, deferred)
-  - better-sqlite3 for fast local DB
-  - Schema: sessions, tasks, executions, logs
-  - Indexes for performance
-- [x] Write storage tests (43 tests passing)
+**Output**:
+```typescript
+{
+  user_id: string;
+  session_token: string;
+  expires_at: number;
+}
+```
 
-**Output**: Local file-based persistence ✅ (43 storage tests passing)
-**Status**: Core persistence complete. Additional modules deferred to Phase 3.2.
+#### 2. `get_memory`
+**Description**: Retrieve session messages and context
 
-### 3.2 Migration from In-Memory
-**Goal**: Seamless transition to file storage
+**Input**:
+```typescript
+{
+  session_id: string;
+  limit?: number;
+  offset?: number;
+}
+```
 
-**Tasks**:
-- [ ] Create storage adapter interface
-- [ ] Implement both InMemorySessionManager and FileSessionManager
-- [ ] Add storage selection in Agent constructor
-- [ ] Update tests to support both storage types
-- [ ] Add migration utility (memory → file)
+**Output**:
+```typescript
+{
+  session_id: string;
+  messages: Array<LLMMessage>;
+  metadata: Record<string, any>;
+}
+```
 
-**Output**: Backward-compatible storage layer
+#### 3. `save_memory`
+**Description**: Save messages to session
 
----
+**Input**:
+```typescript
+{
+  session_id: string;
+  messages: Array<LLMMessage>;
+  metadata?: Record<string, any>;
+}
+```
 
-## Phase 4: Interactive Terminal UI 🖥️ (2-3 days)
+**Output**:
+```typescript
+{
+  session_id: string;
+  saved_count: number;
+  updated_at: number;
+}
+```
 
-**Design**: Similar to Claude Code CLI with full-screen interactive interface
+#### 4. `search_memory`
+**Description**: Semantic search across all user's sessions
 
-### 4.1 Terminal UI Framework
-**Goal**: Build beautiful interactive CLI using Ink (React for terminals)
+**Input**:
+```typescript
+{
+  query: string;
+  limit?: number;
+  filter?: {
+    session_id?: string;
+    date_range?: { start: number; end: number };
+  };
+}
+```
 
-**Technology Stack**:
-- **Ink** - React for CLIs with Flexbox layouts
-- **Ink UI** - Pre-built components (TextInput, Select, etc.)
-- **Chalk** - Terminal colors and styling
-- **Commander.js** - Command parsing
-- **Inquirer.js** - Interactive prompts
+**Output**:
+```typescript
+{
+  results: Array<{
+    session_id: string;
+    message: LLMMessage;
+    score: number;
+    context: Array<LLMMessage>;
+  }>;
+}
+```
 
-**Tasks**:
-- [ ] Set up Ink project structure
-  - Install ink, ink-ui, react
-  - Create UI components directory
-  - Configure TypeScript for JSX
-- [ ] Create main UI components
-  - ChatView (message history)
-  - InputBox (user input with autocomplete)
-  - StatusBar (session info, model, tokens)
-  - Sidebar (sessions list, tools)
-  - ToolOutputView (rich tool result display)
-- [ ] Implement interactive features
-  - Real-time streaming LLM responses
-  - Tool execution progress indicators
-  - Session switching (Ctrl+S)
-  - Command palette (Ctrl+P)
-- [ ] Add keyboard shortcuts
-  - Ctrl+C: Cancel current operation
-  - Ctrl+S: Switch session
-  - Ctrl+P: Command palette
-  - Ctrl+L: Clear screen
-  - Ctrl+N: New session
-- [ ] Create CLI entry point
-  - `duyetbot` - Start interactive UI
-  - `duyetbot chat` - Quick chat mode
-  - `duyetbot run <task>` - Execute task
-  - `duyetbot sessions` - List sessions
-- [ ] Write UI tests
+#### 5. `list_sessions`
+**Description**: List user's sessions
 
-**Output**: Full-featured interactive terminal UI
+**Input**:
+```typescript
+{
+  limit?: number;
+  offset?: number;
+  state?: 'active' | 'paused' | 'completed';
+}
+```
 
-### 4.2 Alternative: TUI Options
-**Goal**: Support multiple UI modes
+**Output**:
+```typescript
+{
+  sessions: Array<{
+    id: string;
+    title: string;
+    state: string;
+    created_at: number;
+    updated_at: number;
+    message_count: number;
+  }>;
+  total: number;
+}
+```
 
-**Options**:
-- [ ] **Full-screen mode** (Ink/blessed) - Like vim/htop
-- [ ] **Simple mode** (Inquirer) - Question/answer flow
-- [ ] **Headless mode** - API only (for scripting)
-- [ ] **Web UI mode** - Local web server (optional)
+### Storage Schema (D1 + KV)
 
-**Tasks**:
-- [ ] Create UI mode selector
-- [ ] Implement simple REPL mode (fallback)
-- [ ] Add --ui flag to choose mode
-- [ ] Document all UI modes
+**D1 Tables**:
+```sql
+-- Users table
+CREATE TABLE users (
+  id TEXT PRIMARY KEY,
+  github_id TEXT UNIQUE NOT NULL,
+  github_login TEXT NOT NULL,
+  email TEXT,
+  name TEXT,
+  avatar_url TEXT,
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL
+);
 
-**Output**: Flexible UI with multiple interaction modes
+CREATE INDEX idx_users_github ON users(github_id);
 
----
+-- Sessions table (metadata only)
+CREATE TABLE sessions (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  title TEXT,
+  state TEXT NOT NULL DEFAULT 'active',
+  created_at INTEGER NOT NULL,
+  updated_at INTEGER NOT NULL,
+  metadata TEXT, -- JSON
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
-## Phase 5: Task Scheduler 📅 (2-3 days)
+CREATE INDEX idx_sessions_user ON sessions(user_id, updated_at DESC);
+CREATE INDEX idx_sessions_state ON sessions(user_id, state);
 
-### 5.1 Scheduler Engine
-**Goal**: Build background task execution system
-  - Priority-based queuing
-  - Task status tracking
-  - Execution history
-- [ ] Create scheduler core
-  - Cron expression parsing
-  - Next execution calculation
-  - Trigger management
-- [ ] Add execution engine
-  - Task runner with timeout
-  - Concurrent execution limits
-  - Retry logic with exponential backoff
-- [ ] Implement Cloudflare Cron Triggers
-- [ ] Add manual task triggering
-- [ ] Write scheduler tests
+-- Session auth tokens
+CREATE TABLE session_tokens (
+  token TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  expires_at INTEGER NOT NULL,
+  created_at INTEGER NOT NULL,
+  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+);
 
-**Output**: Working background task scheduler
+CREATE INDEX idx_tokens_user ON session_tokens(user_id);
+CREATE INDEX idx_tokens_expires ON session_tokens(expires_at);
+```
 
-### 4.2 Natural Language Task Parsing
-**Goal**: Parse user input into structured tasks
+**KV Storage**:
+```typescript
+// Messages (hot data)
+// Key: `sessions:{session_id}:messages`
+// Value: JSONL format (append-only for efficiency)
+{
+  session_id: string;
+  messages: string; // JSONL: one message per line
+  updated_at: number;
+}
 
-**Tasks**:
-- [ ] Create NLP parsing module using LLM
-- [ ] Define task extraction schema
-  - Task name and description
-  - Schedule information
-  - Agent/tool requirements
-  - Priority level
-- [ ] Implement schedule parser
-  - Natural language → cron expression
-  - Relative time handling (e.g., "in 2 hours")
-- [ ] Add validation and confirmation flow
-- [ ] Create example prompts for parsing
-- [ ] Write parsing tests with various inputs
+// Vector embeddings (for search)
+// Handled by Cloudflare Vectorize
+```
 
-**Output**: AI-powered task creation from natural language
+### MCP Server Implementation
 
----
+```typescript
+// packages/memory-mcp/src/mcp-server.ts
+import { createMCPServer } from '@anthropic-ai/mcp-server';
 
-## Phase 5: Sub-Agent System 🔄 (2-3 days)
+const mcpServer = createMCPServer({
+  name: 'duyetbot-memory',
+  version: '1.0.0',
 
-### 5.1 Agent Registry
-**Goal**: Dynamic agent loading and management
+  tools: [
+    {
+      name: 'authenticate',
+      description: 'Authenticate user via GitHub token',
+      inputSchema: z.object({
+        github_token: z.string().optional(),
+        oauth_code: z.string().optional(),
+      }),
+      handler: async (input, context) => {
+        // Verify GitHub token or OAuth code
+        // Create session token
+        // Return user_id and session_token
+      },
+    },
+    {
+      name: 'get_memory',
+      description: 'Retrieve session messages',
+      inputSchema: z.object({
+        session_id: z.string(),
+        limit: z.number().optional(),
+        offset: z.number().optional(),
+      }),
+      handler: async (input, context) => {
+        // Get session from D1
+        // Get messages from KV
+        // Return formatted response
+      },
+    },
+    // ... other tools
+  ],
 
-**Tasks**:
-- [ ] Create agent registry system
-- [ ] Implement agent definition loader
-- [ ] Add agent validation
-- [ ] Create default agents:
-  - Researcher agent
-  - Developer agent
-  - Reviewer agent
-- [ ] Implement agent caching
-- [ ] Write registry tests
+  resources: [
+    {
+      uri: 'memory://sessions',
+      name: 'User Sessions',
+      description: 'List of all user sessions',
+      handler: async (uri, context) => {
+        // Return list of sessions
+      },
+    },
+  ],
+});
 
-**Output**: Extensible agent management system
-
-### 5.2 Sub-Agent Execution
-**Goal**: Enable hierarchical agent delegation
-
-**Tasks**:
-- [ ] Implement sub-agent spawning
-- [ ] Add context passing between agents
-- [ ] Create agent communication protocol
-- [ ] Implement model override per agent
-- [ ] Add tool inheritance with overrides
-- [ ] Create delegation strategies
-- [ ] Write sub-agent integration tests
-
-**Output**: Working multi-agent collaboration
-
-### 5.3 Markdown Configuration Parser
-**Goal**: Load agents and tasks from markdown files
-
-**Tasks**:
-- [ ] Create markdown parser
-- [ ] Define agent configuration format
-- [ ] Define task configuration format
-- [ ] Implement validation with schemas
-- [ ] Add hot-reloading for development
-- [ ] Create example configurations
-- [ ] Write parser tests
-
-**Output**: Markdown-based configuration system
-
----
-
-## Phase 6: Web UI 🎨 (3-4 days)
-
-### 6.1 UI Framework Setup
-**Goal**: Set up minimal web interface
-
-**Tasks**:
-- [ ] Choose UI framework (vanilla JS/React/Solid)
-- [ ] Set up build system (esbuild/vite)
-- [ ] Create base HTML template
-- [ ] Implement dark theme CSS
-  - Use design inspiration from homelab.duyet.net
-  - Monospace fonts for code-friendly interface
-  - Grid-based layout
-- [ ] Set up routing
-- [ ] Configure asset bundling for Cloudflare Workers
-
-**Output**: UI build pipeline and base styles
-
-### 6.2 Core UI Components
-**Goal**: Build essential UI components
-
-**Tasks**:
-- [ ] Create task input component
-  - Text area for natural language
-  - Quick action buttons
-- [ ] Create task list component
-  - Grid/card layout
-  - Status indicators
-  - Action buttons (run, edit, delete)
-- [ ] Create task detail view
-  - Execution history
-  - Logs display
-  - Configuration editor
-- [ ] Create schedule visualizer
-  - Timeline view
-  - Next execution indicators
-- [ ] Add loading states and error handling
-- [ ] Implement responsive design
-
-**Output**: Functional task management UI
-
-### 6.3 Real-Time Updates
-**Goal**: Live execution status updates
-
-**Tasks**:
-- [ ] Implement WebSocket connection (or Server-Sent Events)
-- [ ] Create event streaming from worker
-- [ ] Add real-time log streaming
-- [ ] Update UI on task status changes
-- [ ] Show execution progress
-- [ ] Handle connection errors and reconnection
-
-**Output**: Live-updating interface
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    return mcpServer.handleRequest(request, {
+      D1: env.DB,
+      KV: env.KV,
+      VECTORIZE: env.VECTORIZE,
+    });
+  },
+};
+```
 
 ---
 
-## Phase 7: API Layer 🔌 (2-3 days)
+## Long-Running Agent Server Design
 
-### 7.1 REST API Endpoints
-**Goal**: Create HTTP API for UI and external access
+### Overview
 
-**Tasks**:
-- [ ] Implement API routes in worker:
-  ```
-  GET  /api/tasks              # List all tasks
-  POST /api/tasks              # Create new task
-  GET  /api/tasks/:id          # Get task details
-  PUT  /api/tasks/:id          # Update task
-  DELETE /api/tasks/:id        # Delete task
-  POST /api/tasks/:id/execute  # Trigger execution
-  GET  /api/executions/:id     # Get execution logs
-  GET  /api/agents             # List available agents
-  POST /api/parse              # Parse natural language
-  ```
-- [ ] Add request validation
-- [ ] Implement response formatting
-- [ ] Add CORS handling
-- [ ] Create API documentation
-- [ ] Write API tests
+The agent server runs as a long-lived Node.js/Bun process in a container. It maintains stateful agent sessions and handles requests from the API gateway.
 
-**Output**: Complete REST API
+### Key Features
 
-### 7.2 Webhook Support
-**Goal**: Allow external triggers
+1. **Stateful Sessions**: Keep agent context in memory for fast access
+2. **WebSocket Support**: Real-time streaming to clients
+3. **MCP Client**: Connects to memory MCP server for persistence
+4. **Tool Execution**: Execute bash, git, GitHub operations in isolated environment
+5. **Queue System**: Background job processing
 
-**Tasks**:
-- [ ] Implement webhook endpoints
-- [ ] Add webhook signature verification
-- [ ] Create webhook → task mapping
-- [ ] Add webhook management UI
-- [ ] Write webhook tests
+### Server Architecture
 
-**Output**: Webhook-triggered task execution
+```typescript
+// packages/server/src/index.ts
+import { createAgent } from '@duyetbot/core';
+import { MCPClient } from '@anthropic-ai/mcp-client';
+import { WebSocketServer } from 'ws';
 
----
+class AgentServer {
+  private mcpClient: MCPClient;
+  private activeSessions: Map<string, AgentSession> = new Map();
 
-## Phase 8: Authentication & Multi-Tenant Database 🔐 ✅ COMPLETE (2-3 days)
+  async start() {
+    // Connect to MCP memory server
+    this.mcpClient = new MCPClient({
+      url: process.env.MCP_SERVER_URL,
+    });
 
-### 8.1 Authentication System ✅
-**Goal**: Secure UI and API access
+    // Start WebSocket server
+    const wss = new WebSocketServer({ port: 8080 });
+    wss.on('connection', this.handleWebSocket.bind(this));
 
-**Tasks**:
-- [x] Choose auth strategy (OAuth 2.0 with JWT tokens)
-- [x] Implement authentication middleware (JWT verification)
-- [x] Create OAuth 2.0 flow (GitHub and Google providers)
-- [x] Add session management (D1 + KV storage)
-- [x] Implement user storage (UserRepository with D1)
-- [x] Implement refresh token system (RefreshTokenRepository)
-- [x] Write auth tests (507 tests passing)
+    // Start HTTP API
+    const app = new Hono();
+    app.post('/execute', this.handleExecute.bind(this));
+    app.listen(3000);
+  }
 
-**Output**: Secure OAuth 2.0 + JWT authentication system ✅
+  async handleExecute(req: Request) {
+    const { session_id, message, user_id } = await req.json();
 
-### 8.2 Multi-Tenant Database System ✅
-**Goal**: Scalable multi-tenant data storage
+    // Get or create session
+    let session = this.activeSessions.get(session_id);
+    if (!session) {
+      // Load session from MCP memory server
+      const memoryData = await this.mcpClient.call('get_memory', {
+        session_id,
+      });
 
-**Tasks**:
-- [x] Create D1 migration system
-  - [x] Migration runner with up/down support
-  - [x] Initial schema (users, sessions, refresh_tokens)
-  - [x] Performance indexes
-- [x] Implement KV-based storage
-  - [x] KVMessageStore (10K messages per session)
-  - [x] KVToolResultStore (1K tool results per session)
-- [x] Create multi-tenant SessionManager
-  - [x] CloudSessionManager with user isolation
-  - [x] D1 for metadata, KV for hot data
-- [x] Add resource quotas
-  - [x] QuotaManager (1000 sessions, 1GB storage per user)
-  - [x] Quota enforcement middleware
-- [x] Write comprehensive tests (88 storage tests passing)
+      session = await createAgent({
+        sessionId: session_id,
+        initialMessages: memoryData.messages,
+        tools: getAllTools(),
+        providers: getProviders(),
+      });
 
-**Output**: Production-ready multi-tenant database layer ✅
+      this.activeSessions.set(session_id, session);
+    }
 
-### 8.3 Authorization & Security
-**Goal**: Implement access control and security measures
+    // Execute agent
+    const response = await session.execute(message);
 
-**Tasks**:
-- [x] Implement rate limiting (per-IP and per-user)
-- [ ] Add role-based access control (RBAC)
-- [x] Add input sanitization (Zod validation)
-- [ ] Implement API key rotation
-- [x] Add security headers (CORS middleware)
-- [ ] Create audit logging
-- [ ] Run security audit
-- [x] Write security tests (gateway middleware tests)
+    // Save to memory
+    await this.mcpClient.call('save_memory', {
+      session_id,
+      messages: session.getMessages(),
+    });
 
-**Output**: Enhanced security posture
+    return response;
+  }
 
----
+  async handleWebSocket(ws: WebSocket) {
+    ws.on('message', async (data) => {
+      const { type, session_id, message } = JSON.parse(data.toString());
 
-## Phase 9: Advanced Tools 🛠️ (2-3 days)
+      if (type === 'chat') {
+        const session = this.activeSessions.get(session_id);
+        if (!session) {
+          ws.send(JSON.stringify({ error: 'Session not found' }));
+          return;
+        }
 
-### 9.1 Research Tool ✅
-**Goal**: Web research and information gathering
+        // Stream response via WebSocket
+        for await (const chunk of session.stream(message)) {
+          ws.send(JSON.stringify({ type: 'chunk', data: chunk }));
+        }
 
-**Tasks**:
-- [x] Implement web search integration (DuckDuckGo HTML scraping)
-- [x] Add web scraping capability (URL content fetching)
-- [x] Create content extraction (HTML to text)
-- [x] Implement source citation (title, URL, snippet)
-- [x] Add result ranking (position-based relevance)
-- [x] Write research tool tests (24 tests, all passing)
+        ws.send(JSON.stringify({ type: 'done' }));
+      }
+    });
+  }
+}
 
-**Output**: Functional research tool ✅ (24 tests passing)
+const server = new AgentServer();
+server.start();
+```
 
-### 9.2 Additional Tools
-**Goal**: Expand tool library
+### Deployment
 
-**Tasks**:
-- [ ] Implement file operations tool
-  - Read, write, edit files
-  - Directory operations
-- [ ] Create database query tool
-- [ ] Add HTTP request tool
-- [ ] Implement code analysis tool
-- [ ] Create notification tool (email, Slack, etc.)
-- [ ] Write tests for all tools
+**Docker Compose**:
+```yaml
+# infrastructure/docker/docker-compose.yml
+version: '3.8'
 
-**Output**: Comprehensive tool library
+services:
+  agent-server:
+    build:
+      context: ../../
+      dockerfile: infrastructure/docker/agent-server.Dockerfile
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+    environment:
+      - MCP_SERVER_URL=https://memory.duyetbot.workers.dev
+      - GITHUB_TOKEN=${GITHUB_TOKEN}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - NODE_ENV=production
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
 
----
+**Dockerfile**:
+```dockerfile
+# infrastructure/docker/agent-server.Dockerfile
+FROM oven/bun:1 AS base
 
-## Phase 10: Testing & Quality 🧪 (2-3 days)
+WORKDIR /app
 
-### 10.1 Comprehensive Testing
-**Goal**: Ensure code quality and reliability
+# Install dependencies
+COPY package.json pnpm-workspace.yaml ./
+COPY packages/ ./packages/
+COPY apps/ ./apps/
 
-**Tasks**:
-- [ ] Achieve >80% unit test coverage
-- [ ] Create integration test suite
-  - End-to-end task execution
-  - Multi-agent workflows
-  - API endpoint testing
-- [ ] Add E2E UI tests
-- [ ] Implement load testing
-- [ ] Create test fixtures and mocks
-- [ ] Set up CI/CD pipeline (GitHub Actions)
-- [ ] Add test reporting
+RUN bun install --frozen-lockfile
 
-**Output**: Well-tested codebase
+# Build all packages
+RUN bun run build
 
-### 10.2 Performance Optimization
-**Goal**: Optimize for Cloudflare Workers constraints
+# Expose ports
+EXPOSE 3000 8080
 
-**Tasks**:
-- [ ] Profile and optimize cold start time
-- [ ] Optimize bundle size
-- [ ] Add code splitting
-- [ ] Implement caching strategies
-- [ ] Optimize database queries
-- [ ] Add performance monitoring
-- [ ] Load test and optimize
-
-**Output**: Performant application
+# Start server
+CMD ["bun", "run", "packages/server/src/index.ts"]
+```
 
 ---
 
-## Phase 11: Documentation 📚 (1-2 days)
+## CLI with Remote Memory Access
 
-### 11.1 User Documentation
-**Goal**: Create comprehensive user guides
+### Design
+
+The CLI can operate in two modes:
+
+1. **Local Mode**: Standalone execution without network (uses local file storage)
+2. **Cloud Mode**: Connect to MCP memory server for persistent sessions
+
+### Commands
+
+```bash
+# Authentication
+duyetbot login                      # Authenticate with GitHub
+duyetbot logout                     # Clear credentials
+duyetbot whoami                     # Show current user
+
+# Chat
+duyetbot chat                       # Interactive chat (cloud mode)
+duyetbot chat --local               # Local mode (no network)
+duyetbot ask "question"             # One-shot question
+duyetbot run "task description"     # Execute specific task
+
+# Sessions
+duyetbot sessions list              # List all sessions (from MCP)
+duyetbot sessions new "title"       # Create new session
+duyetbot sessions resume <id>       # Resume session
+duyetbot sessions delete <id>       # Delete session
+duyetbot sessions export <id>       # Export session to JSON
+
+# Memory
+duyetbot memory search "query"      # Semantic search across history
+duyetbot memory stats               # Show memory usage stats
+
+# Configuration
+duyetbot config set provider zai    # Switch LLM provider
+duyetbot config get                 # Show current config
+duyetbot config edit                # Edit config file
+```
+
+### Implementation
+
+```typescript
+// packages/cli/src/commands/chat.ts
+import { MCPClient } from '@anthropic-ai/mcp-client';
+import { createAgent } from '@duyetbot/core';
+import { render } from 'ink';
+import { ChatUI } from '../ui/ChatView';
+
+export async function chatCommand(options: { local?: boolean }) {
+  if (options.local) {
+    // Local mode: use file storage
+    const agent = await createAgent({
+      sessionManager: new FileSessionManager('~/.duyetbot/sessions'),
+      tools: getAllTools(),
+    });
+
+    render(<ChatUI agent={agent} mode="local" />);
+  } else {
+    // Cloud mode: connect to MCP server
+    const mcpClient = new MCPClient({
+      url: process.env.MCP_SERVER_URL || 'https://memory.duyetbot.workers.dev',
+      auth: {
+        token: loadGitHubToken(),
+      },
+    });
+
+    // Authenticate
+    const authResult = await mcpClient.call('authenticate', {
+      github_token: loadGitHubToken(),
+    });
+
+    // Create session
+    const session = await mcpClient.call('list_sessions', { limit: 1 });
+    const sessionId = session.sessions[0]?.id || crypto.randomUUID();
+
+    // Load messages from MCP
+    const memory = await mcpClient.call('get_memory', { session_id: sessionId });
+
+    // Create agent with MCP-backed storage
+    const agent = await createAgent({
+      sessionId,
+      initialMessages: memory.messages,
+      tools: getAllTools(),
+      onMessage: async (messages) => {
+        // Auto-save to MCP after each turn
+        await mcpClient.call('save_memory', {
+          session_id: sessionId,
+          messages,
+        });
+      },
+    });
+
+    render(<ChatUI agent={agent} mcpClient={mcpClient} mode="cloud" />);
+  }
+}
+```
+
+---
+
+## GitHub Integration (@duyetbot)
+
+### Overview
+
+Full GitHub App integration that responds to `@duyetbot` mentions in issues, PRs, and comments.
+
+### Capabilities
+
+1. **@duyetbot mentions**: Respond to mentions with agent-generated responses
+2. **Issue management**: Create, update, label, close issues
+3. **PR reviews**: Automated code reviews with inline comments
+4. **Build/Test**: Trigger CI/CD, analyze test failures
+5. **Research**: Gather information and summarize
+6. **Documentation**: Generate/update docs
+
+### Example Usage
+
+**In GitHub Issue**:
+```markdown
+@duyetbot analyze the failing tests in PR #123 and suggest fixes
+```
+
+**Agent Response**:
+```markdown
+I've analyzed PR #123 and found 3 failing tests:
+
+1. **test_user_authentication** (line 45)
+   - **Issue**: Mock GitHub OAuth token expired
+   - **Fix**: Update test fixture with valid token
+
+2. **test_memory_search** (line 78)
+   - **Issue**: Vectorize index not initialized in test environment
+   - **Fix**: Add index initialization in test setup
+
+3. **test_rate_limiting** (line 102)
+   - **Issue**: Race condition in concurrent requests
+   - **Fix**: Add proper synchronization
+
+I can create a PR with these fixes if you'd like. Reply with `@duyetbot fix tests` to proceed.
+```
+
+### GitHub Webhook Handler
+
+```typescript
+// apps/github-bot/src/webhooks/mention.ts
+import { createAgent } from '@duyetbot/core';
+import { Octokit } from '@octokit/rest';
+import { MCPClient } from '@anthropic-ai/mcp-client';
+
+export async function handleMention(event: GitHubWebhookEvent) {
+  const { comment, issue, repository } = event;
+
+  // Extract @duyetbot mention
+  const mentionRegex = /@duyetbot\s+(.+)/;
+  const match = comment.body.match(mentionRegex);
+  if (!match) return;
+
+  const task = match[1];
+
+  // Create GitHub API client
+  const octokit = new Octokit({ auth: process.env.GITHUB_TOKEN });
+
+  // Create MCP client for memory
+  const mcpClient = new MCPClient({
+    url: process.env.MCP_SERVER_URL,
+    auth: { token: process.env.MCP_AUTH_TOKEN },
+  });
+
+  // Create or load session for this issue/PR
+  const sessionId = `github:${repository.full_name}:${issue.number}`;
+  const memory = await mcpClient.call('get_memory', {
+    session_id: sessionId,
+  }).catch(() => ({ messages: [] }));
+
+  // Create agent with GitHub context
+  const agent = await createAgent({
+    sessionId,
+    initialMessages: memory.messages,
+    tools: [
+      bashTool,
+      gitTool,
+      githubTool(octokit, repository, issue), // GitHub-specific tool
+      researchTool,
+      planTool,
+    ],
+    systemPrompt: `You are @duyetbot, an AI assistant helping @duyet with GitHub tasks.
+
+Current context:
+- Repository: ${repository.full_name}
+- Issue/PR: #${issue.number} - ${issue.title}
+- Task: ${task}
+
+You have access to GitHub API, bash, git, and research tools. Provide clear, actionable responses.`,
+  });
+
+  // Execute task
+  const response = await agent.execute(task);
+
+  // Post comment
+  await octokit.issues.createComment({
+    owner: repository.owner.login,
+    repo: repository.name,
+    issue_number: issue.number,
+    body: response.content,
+  });
+
+  // Save session to memory
+  await mcpClient.call('save_memory', {
+    session_id: sessionId,
+    messages: agent.getMessages(),
+  });
+}
+```
+
+### GitHub Tool Implementation
+
+```typescript
+// packages/tools/src/github.ts
+import { tool } from '@anthropic-ai/claude-agent-sdk';
+import { z } from 'zod';
+import type { Octokit } from '@octokit/rest';
+
+export function createGitHubTool(
+  octokit: Octokit,
+  repo: { owner: string; name: string },
+) {
+  return tool(
+    'github',
+    'Interact with GitHub API for repository operations',
+    z.object({
+      action: z.enum([
+        'get_pr',
+        'get_issue',
+        'create_issue',
+        'update_issue',
+        'create_comment',
+        'get_diff',
+        'get_file',
+        'create_review',
+        'merge_pr',
+        'trigger_workflow',
+      ]),
+      params: z.record(z.any()),
+    }),
+    async ({ action, params }) => {
+      switch (action) {
+        case 'get_pr':
+          const pr = await octokit.pulls.get({
+            ...repo,
+            pull_number: params.number,
+          });
+          return {
+            title: pr.data.title,
+            body: pr.data.body,
+            state: pr.data.state,
+            files_changed: pr.data.changed_files,
+            commits: pr.data.commits,
+          };
+
+        case 'get_diff':
+          const diff = await octokit.pulls.get({
+            ...repo,
+            pull_number: params.number,
+            mediaType: { format: 'diff' },
+          });
+          return diff.data;
+
+        case 'create_comment':
+          await octokit.issues.createComment({
+            ...repo,
+            issue_number: params.issue_number,
+            body: params.body,
+          });
+          return { success: true };
+
+        case 'create_review':
+          await octokit.pulls.createReview({
+            ...repo,
+            pull_number: params.number,
+            body: params.body,
+            event: params.event || 'COMMENT',
+            comments: params.comments,
+          });
+          return { success: true };
+
+        // ... other actions
+
+        default:
+          throw new Error(`Unknown GitHub action: ${action}`);
+      }
+    },
+  );
+}
+```
+
+---
+
+## Telegram Integration
+
+### Overview
+
+Telegram bot for quick queries and notifications.
+
+### Commands
+
+```
+/start - Initialize bot
+/chat <message> - Chat with agent
+/status - Check agent status
+/sessions - List recent sessions
+/help - Show help
+```
+
+### Implementation
+
+```typescript
+// apps/telegram-bot/src/index.ts
+import { Telegraf } from 'telegraf';
+import { MCPClient } from '@anthropic-ai/mcp-client';
+import { createAgent } from '@duyetbot/core';
+
+const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+const mcpClient = new MCPClient({
+  url: process.env.MCP_SERVER_URL,
+});
+
+bot.command('chat', async (ctx) => {
+  const message = ctx.message.text.replace('/chat', '').trim();
+  if (!message) {
+    return ctx.reply('Usage: /chat <your message>');
+  }
+
+  const userId = `telegram:${ctx.from.id}`;
+  const sessionId = `telegram:${ctx.from.id}:${Date.now()}`;
+
+  // Load memory
+  const memory = await mcpClient.call('get_memory', {
+    session_id: sessionId,
+  }).catch(() => ({ messages: [] }));
+
+  // Create agent
+  const agent = await createAgent({
+    sessionId,
+    initialMessages: memory.messages,
+    tools: [bashTool, researchTool, planTool],
+  });
+
+  // Execute
+  const response = await agent.execute(message);
+
+  // Reply
+  await ctx.reply(response.content);
+
+  // Save
+  await mcpClient.call('save_memory', {
+    session_id: sessionId,
+    messages: agent.getMessages(),
+  });
+});
+
+bot.launch();
+```
+
+---
+
+## Development Phases
+
+### Phase 1: Monorepo Setup (2-3 days)
+
+**Goal**: Set up monorepo structure with pnpm workspaces
 
 **Tasks**:
-- [ ] Write README.md
-  - Project overview
-  - Quick start guide
-  - Installation instructions
-- [ ] Create user guide
-  - Task creation tutorial
-  - Agent configuration guide
-  - Tool usage examples
-- [ ] Add API documentation
-- [ ] Create troubleshooting guide
+- [ ] Create pnpm-workspace.yaml
+- [ ] Set up Turborepo for builds
+- [ ] Create packages/core with shared types
+- [ ] Create packages/types
+- [ ] Set up TypeScript project references
+- [ ] Configure Biome for monorepo
+- [ ] Set up Vitest for monorepo testing
+- [ ] Create root package.json scripts
+- [ ] Add Changesets for versioning
+- [ ] Write monorepo documentation
+
+**Output**: Working monorepo with build system ✅
+
+---
+
+### Phase 2: MCP Memory Server (4-5 days)
+
+**Goal**: Implement MCP server on Cloudflare Workers with D1 + KV storage
+
+**Tasks**:
+- [ ] Create packages/memory-mcp package
+- [ ] Set up Cloudflare Workers entry point
+- [ ] Implement MCP server using @anthropic-ai/mcp-server
+- [ ] Create D1 schema (users, sessions, tokens)
+- [ ] Create D1 migration system
+- [ ] Implement `authenticate` tool (GitHub token verification)
+- [ ] Implement `get_memory` tool (D1 + KV read)
+- [ ] Implement `save_memory` tool (D1 + KV write)
+- [ ] Implement `search_memory` tool (Vectorize integration)
+- [ ] Implement `list_sessions` tool
+- [ ] Add rate limiting (per user)
+- [ ] Write comprehensive tests (80+ tests)
+- [ ] Deploy to Cloudflare Workers
+- [ ] Create wrangler.toml configuration
+- [ ] Document MCP API
+
+**Output**: Production MCP memory server ✅
+
+---
+
+### Phase 3: Refactor Core Packages (3-4 days)
+
+**Goal**: Extract and refactor existing code into monorepo packages
+
+**Tasks**:
+- [ ] Move src/providers/ → packages/providers/
+  - [ ] Refactor ClaudeProvider with base URL override support
+  - [ ] Refactor OpenRouterProvider
+  - [ ] Create Z.AI provider (uses ClaudeProvider with custom base URL)
+  - [ ] Update ProviderFactory to support base URL config
+  - [ ] Add provider configuration loader
+  - [ ] Write provider tests (maintain 102 existing tests)
+- [ ] Move src/tools/ → packages/tools/
+  - [ ] Extract bash, git, plan, sleep, research tools
+  - [ ] Create new `github` tool for GitHub API operations
+  - [ ] Add ToolRegistry
+  - [ ] Write tool tests (maintain 151 existing tests)
+- [ ] Move src/agent/ → packages/core/
+  - [ ] Extract Agent core
+  - [ ] Extract Session management
+  - [ ] Add MCP client integration for memory
+  - [ ] Write core tests (maintain 79 existing tests)
+- [ ] Update import paths across all packages
+- [ ] Run all tests (maintain 507+ passing tests)
+
+**Output**: Modular packages with maintained test coverage ✅
+
+---
+
+### Phase 4: Long-Running Agent Server (5-6 days)
+
+**Goal**: Build containerized server with WebSocket support
+
+**Tasks**:
+- [ ] Create packages/server package
+- [ ] Implement server entry point
+- [ ] Add MCP client for memory server connection
+- [ ] Implement AgentSessionManager (in-memory + MCP persistence)
+- [ ] Create WebSocket server for streaming
+- [ ] Add HTTP API for /execute endpoint
+- [ ] Implement session lifecycle management
+- [ ] Add graceful shutdown handling
+- [ ] Create health check endpoints
+- [ ] Write Dockerfile for deployment
+- [ ] Write docker-compose.yml for local dev
+- [ ] Add server configuration system
+- [ ] Write server tests (40+ tests)
+- [ ] Document deployment process
+
+**Output**: Production-ready agent server ✅
+
+---
+
+### Phase 5: CLI with MCP Integration (4-5 days)
+
+**Goal**: Full-featured CLI with cloud and local modes
+
+**Tasks**:
+- [ ] Create packages/cli package
+- [ ] Set up Commander.js command structure
+- [ ] Implement `login` command (GitHub OAuth device flow)
+- [ ] Implement `logout` command
+- [ ] Implement `whoami` command
+- [ ] Implement `chat` command (both local and cloud modes)
+- [ ] Add Ink-based terminal UI components
+  - [ ] ChatView component
+  - [ ] StatusBar component
+  - [ ] SessionList component
+- [ ] Implement `sessions` commands (list, new, resume, delete, export)
+- [ ] Implement `memory` commands (search, stats)
+- [ ] Implement `config` commands (get, set, edit)
+- [ ] Add MCP client for cloud mode
+- [ ] Add FileSessionManager for local mode
+- [ ] Implement automatic mode detection (online/offline)
+- [ ] Add configuration file support (~/.duyetbot/config.json)
+- [ ] Write CLI tests (50+ tests)
+- [ ] Create npm package for distribution
+
+**Output**: Published CLI tool (@duyetbot/cli) ✅
+
+---
+
+### Phase 6: GitHub Bot Integration (5-6 days)
+
+**Goal**: Full GitHub App with @duyetbot mention support
+
+**Tasks**:
+- [ ] Create apps/github-bot package
+- [ ] Register GitHub App
+- [ ] Implement webhook verification
+- [ ] Create @duyetbot mention parser
+- [ ] Implement webhook handlers:
+  - [ ] issue_comment (mentions)
+  - [ ] pull_request_review_comment (PR mentions)
+  - [ ] issues (issue events)
+  - [ ] pull_request (PR events)
+- [ ] Create GitHub tool for agent
+  - [ ] get_pr, get_issue, get_diff
+  - [ ] create_comment, create_review
+  - [ ] create_issue, update_issue
+  - [ ] trigger_workflow
+- [ ] Implement session management (issue/PR → session mapping)
+- [ ] Add MCP client integration for memory
+- [ ] Create agent with GitHub context
+- [ ] Implement response posting
+- [ ] Add error handling and logging
+- [ ] Write GitHub bot tests (40+ tests)
+- [ ] Deploy GitHub App
+- [ ] Document setup and usage
+
+**Output**: Production GitHub bot ✅
+
+---
+
+### Phase 7: Telegram Bot Integration (3-4 days)
+
+**Goal**: Telegram bot for chat and notifications
+
+**Tasks**:
+- [ ] Create apps/telegram-bot package
+- [ ] Register Telegram bot
+- [ ] Set up Telegraf framework
+- [ ] Implement commands:
+  - [ ] /start
+  - [ ] /chat
+  - [ ] /status
+  - [ ] /sessions
+  - [ ] /help
+- [ ] Create message handler
+- [ ] Add MCP client integration
+- [ ] Implement session management
+- [ ] Add notification system (for GitHub events)
+- [ ] Write Telegram bot tests (25+ tests)
+- [ ] Deploy bot
+- [ ] Document usage
+
+**Output**: Production Telegram bot ✅
+
+---
+
+### Phase 8: API Gateway (3-4 days)
+
+**Goal**: HTTP API for web UI and external integrations
+
+**Tasks**:
+- [ ] Create apps/api package
+- [ ] Set up Hono framework
+- [ ] Create route structure:
+  - [ ] /agent/* (chat, execute, stream)
+  - [ ] /github/* (webhook handlers)
+  - [ ] /telegram/* (webhook handlers)
+  - [ ] /health/* (health checks)
+- [ ] Implement authentication middleware (GitHub token verification)
+- [ ] Add rate limiting middleware
+- [ ] Add CORS middleware
+- [ ] Create request/response logging
+- [ ] Add error handling
+- [ ] Implement SSE streaming for real-time responses
+- [ ] Write API tests (35+ tests)
+- [ ] Document API endpoints
+- [ ] Deploy API gateway
+
+**Output**: Production API gateway ✅
+
+---
+
+### Phase 9: Integration & Testing (4-5 days)
+
+**Goal**: End-to-end testing and integration
+
+**Tasks**:
+- [ ] Write integration tests:
+  - [ ] CLI → MCP Server → D1/KV
+  - [ ] Agent Server → MCP Server
+  - [ ] GitHub Bot → Agent Server → MCP Server
+  - [ ] Telegram Bot → Agent Server → MCP Server
+- [ ] Test full @duyetbot workflow on GitHub
+- [ ] Test Telegram bot workflow
+- [ ] Test CLI local and cloud modes
+- [ ] Performance testing (latency, throughput)
+- [ ] Load testing (concurrent sessions)
+- [ ] Security audit
+- [ ] Fix issues and bugs
+- [ ] Optimize performance
+- [ ] Update documentation
+
+**Output**: Fully tested system ✅
+
+---
+
+### Phase 10: Documentation & Deployment (2-3 days)
+
+**Goal**: Production deployment and documentation
+
+**Tasks**:
+- [ ] Update README.md with new architecture
+- [ ] Update ARCHITECTURE.md with detailed design
 - [ ] Write deployment guide
-
-**Output**: Complete user documentation
-
-### 11.2 Developer Documentation
-**Goal**: Enable contributor onboarding
-
-**Tasks**:
-- [ ] Update CLAUDE.md with final architecture
-- [ ] Create architecture diagrams
-- [ ] Write contributing guide
-- [ ] Document code conventions
-- [ ] Add inline code documentation
+  - [ ] MCP server deployment (Cloudflare Workers)
+  - [ ] Agent server deployment (Docker/K8s)
+  - [ ] GitHub App setup
+  - [ ] Telegram bot setup
+- [ ] Write user guide
+  - [ ] CLI usage
+  - [ ] GitHub integration
+  - [ ] Telegram bot usage
 - [ ] Create example configurations
-- [ ] Write changelog template
+- [ ] Write troubleshooting guide
+- [ ] Set up CI/CD pipelines
+  - [ ] .github/workflows/deploy-mcp.yml
+  - [ ] .github/workflows/deploy-server.yml
+  - [ ] .github/workflows/tests.yml
+- [ ] Deploy all components to production
+- [ ] Monitor and verify
 
-**Output**: Developer-friendly documentation
+**Output**: Production deployment with documentation ✅
 
 ---
 
-## Phase 12: Deployment & Operations 🚀 (1-2 days)
+## Migration from Current Architecture
 
-### 12.1 Production Deployment
-**Goal**: Deploy to Cloudflare Workers
+### Current State
+- Cloudflare Workers-based (single package)
+- 60% MVP complete (507 tests passing)
+- Core agent system ✅
+- Multi-provider LLM ✅
+- Tools system ✅
+- Local file storage ✅
+- OAuth authentication ✅
 
-**Tasks**:
-- [ ] Create production wrangler configuration
-- [ ] Set up environment secrets
-- [ ] Configure KV and D1 in production
-- [ ] Deploy to production
-- [ ] Set up custom domain
-- [ ] Configure CDN caching
-- [ ] Verify health checks
+### Migration Strategy
 
-**Output**: Live production deployment
+**Phase 1: Keep Existing Code Working**
+- Don't delete existing code immediately
+- Create new monorepo structure alongside
+- Gradually move code to new packages
+- Maintain all existing tests
 
-### 12.2 Monitoring & Logging
-**Goal**: Observability for production
+**Phase 2: Incremental Refactoring**
+1. Set up monorepo (Phase 1)
+2. Move providers → packages/providers (maintain tests)
+3. Move tools → packages/tools (maintain tests)
+4. Move core → packages/core (maintain tests)
+5. Build MCP server (new)
+6. Build agent server (new)
+7. Build CLI (refactor existing)
+8. Build GitHub/Telegram bots (new)
 
-**Tasks**:
-- [ ] Set up logging infrastructure
-  - Structured logging
-  - Log aggregation
-- [ ] Add metrics and monitoring
-  - Task execution metrics
-  - LLM API usage tracking
-  - Error rates
-- [ ] Create alerting rules
-- [ ] Set up uptime monitoring
-- [ ] Create operational dashboard
-- [ ] Write runbook for common issues
-
-**Output**: Production-ready monitoring
+**Phase 3: Deprecation**
+1. Once all components working in new architecture
+2. Remove old Cloudflare Workers code
+3. Update documentation
+4. Archive old structure
 
 ---
 
 ## Success Metrics
 
 ### Technical Metrics
-- [ ] Cold start time < 500ms
-- [ ] API response time p95 < 200ms
+- [ ] All existing 507+ tests still passing
+- [ ] Agent response time < 2s (p95)
+- [ ] MCP server latency < 100ms (p95)
+- [ ] CLI startup time < 500ms
+- [ ] GitHub mention response < 10s
 - [ ] Test coverage > 80%
-- [ ] Zero critical security vulnerabilities
-- [ ] Uptime > 99.9%
 
 ### Functional Metrics
-- [ ] Successfully parse natural language tasks
-- [ ] Execute scheduled tasks reliably
-- [ ] Support all three LLM providers
-- [ ] Sub-agents can be dynamically configured
-- [ ] UI responsive on mobile and desktop
+- [ ] @duyetbot responds to GitHub mentions
+- [ ] Telegram bot functional
+- [ ] CLI works in local and cloud modes
+- [ ] MCP memory server stores/retrieves sessions
+- [ ] Multi-provider support works (Claude, Z.AI, OpenRouter)
+- [ ] Container deployment successful
 
 ---
 
-## Risk Mitigation
+## Technology Stack Summary
 
-### Technical Risks
-- **Cloudflare Worker CPU/memory limits**: Use Sandbox SDK for heavy operations
-- **LLM API rate limits**: Implement exponential backoff and queuing
-- **Cold start latency**: Optimize bundle size, use warming strategies
-
-### Operational Risks
-- **Cost overruns**: Implement usage monitoring and limits
-- **Security vulnerabilities**: Regular security audits, dependency updates
-- **Data loss**: Regular backups, transaction logging
-
----
-
-## Timeline Estimate
-
-**Total Duration**: 6-8 weeks
-
-| Phase | Duration | Dependencies |
-|-------|----------|--------------|
-| Phase 1: Foundation | 1-2 days | None |
-| Phase 2: Core Agent | 3-4 days | Phase 1 |
-| Phase 3: Storage | 2-3 days | Phase 1 |
-| Phase 4: Scheduler | 3-4 days | Phase 2, 3 |
-| Phase 5: Sub-Agents | 2-3 days | Phase 2 |
-| Phase 6: Web UI | 3-4 days | Phase 1 |
-| Phase 7: API Layer | 2-3 days | Phase 2, 3, 4 |
-| Phase 8: Auth & Security | 2-3 days | Phase 6, 7 |
-| Phase 9: Advanced Tools | 2-3 days | Phase 2 |
-| Phase 10: Testing | 2-3 days | All phases |
-| Phase 11: Documentation | 1-2 days | All phases |
-| Phase 12: Deployment | 1-2 days | Phase 10, 11 |
-
-**Note**: Phases can be parallelized where dependencies allow.
+| Component | Technology | Rationale |
+|-----------|-----------|-----------|
+| **Monorepo** | pnpm workspaces + Turborepo | Fast, efficient, great TypeScript support |
+| **Agent Server** | Node.js/Bun + Docker | Long-running, stateful, containerized |
+| **MCP Memory Server** | Cloudflare Workers + D1 + KV | Edge deployment, low latency, scalable |
+| **CLI** | Node.js + Ink + Commander | Cross-platform, rich terminal UI |
+| **GitHub Bot** | Probot/Octokit | Official GitHub App framework |
+| **Telegram Bot** | Telegraf | Best TypeScript bot framework |
+| **API Gateway** | Hono | Fast, lightweight, edge-compatible |
+| **Testing** | Vitest | Fast, modern, great DX |
+| **LLM** | Claude/OpenAI/Z.AI | Multi-provider flexibility |
+| **Protocol** | MCP | Standardized tool/resource protocol |
 
 ---
 
-## Next Steps
+## Development Workflow
 
-1. ✅ Review and approve this plan
-2. ✅ Phase 1.1: Project Initialization - Complete
-3. ✅ Phase 1.2: Cloudflare Workers Setup - Mostly complete (pending wrangler dev test)
-4. ✅ Phase 1.3: Project Structure - Complete
-5. ⏳ Start Phase 2: Core Agent System
-6. Set up project tracking (GitHub Projects/Issues)
-7. Schedule regular progress reviews
+### Commit Message Guidelines
 
----
+**Always use semantic commit format with simple English. Do NOT uppercase the message after the semantic prefix.**
 
-## Phase 13: CLI Tool & GitHub Actions 💻 (2-3 days)
+**Format**: `<type>: <description in lowercase>`
 
-### 13.1 CLI Package
-**Goal**: Create npm package for command-line usage
-
-**Tasks**:
-- [ ] Create CLI entry point (`src/cli/index.ts`)
-- [ ] Implement command parser (using `commander` or `yargs`)
-- [ ] Add interactive mode with prompts
-- [ ] Add direct execution mode for single tasks
-- [ ] Implement output formatting for CLI
-- [ ] Add progress indicators and spinners
-- [ ] Create package.json bin configuration
-- [ ] Write CLI tests
-- [ ] Test with `npm link` locally
-- [ ] Publish to npm as `@duyetbot/agent`
-
-**Output**: Published CLI tool (`npx @duyetbot/agent`)
-
-### 13.2 GitHub Actions Integration
-**Goal**: Enable CI/CD usage
-
-**Tasks**:
-- [ ] Create action.yml for GitHub Actions
-- [ ] Add environment variable configuration
-- [ ] Implement structured output for workflows
-- [ ] Create example workflow files
-- [ ] Add success/failure exit codes
-- [ ] Test in actual GitHub Actions
-- [ ] Write GitHub Actions documentation
-- [ ] Publish to GitHub Actions marketplace
-
-**Output**: GitHub Actions-ready package
-
-### 13.3 Cross-Platform Support
-**Goal**: Ensure Mac and Linux compatibility
-
-**Tasks**:
-- [ ] Test on macOS
-- [ ] Test on Linux (Ubuntu, Debian)
-- [ ] Handle platform-specific paths
-- [ ] Test shell execution on both platforms
-- [ ] Add platform detection
-- [ ] Create platform-specific documentation
-- [ ] Set up CI for both platforms
-
-**Output**: Cross-platform verified package
-
----
-
-## ⚠️ ARCHITECTURE CHANGE: Centralized Multi-Tenant System
-
-**The plan has been updated to reflect a new vision** - a centralized, multi-tenant agent platform accessible from multiple interfaces (GitHub Actions, CLI, Web) with persistent user memory.
-
-**Old Plan** (Phases 5-13 above): Local-only deployment
-**New Plan** (Below): Centralized API with authentication and multi-interface access
-
-📖 **See ARCHITECTURE.md for complete technical design.**
-
----
-
-## 🆕 Phase 5: Central API & Authentication 🔐 ✅ **COMPLETE**
-
-**Goal**: Build centralized API on Cloudflare Workers with user authentication
-
-### 5.1 Authentication System ✅
-**OAuth 2.0 Implementation**
-
-**Tasks**:
-- [x] Set up GitHub OAuth integration
-  - Create GitHub OAuth App
-  - Implement OAuth callback handler
-  - Exchange code for access token
-  - Fetch user profile from GitHub API
-- [x] Set up Google OAuth integration
-  - Create Google OAuth client
-  - Implement OAuth callback handler
-  - Exchange code for tokens
-  - Fetch user profile from Google API
-- [x] Implement JWT token generation
-  - Sign JWT with HS256
-  - Include user claims (sub, email, name, picture, provider)
-  - Set expiration (1 hour)
-  - Store JWT secret in Cloudflare Secrets
-- [x] Create refresh token mechanism
-  - Generate refresh tokens (30 days)
-  - Store in D1 database
-  - Implement token rotation
-  - Handle refresh endpoint
-- [x] Build authentication middleware
-  - Extract JWT from Authorization header
-  - Verify JWT signature
-  - Validate expiration
-  - Attach user context to request
-- [x] Add logout functionality
-  - Invalidate refresh tokens
-  - Clear client-side tokens
-- [x] Write auth tests
-  - OAuth flow tests
-  - JWT generation/validation
-  - Token refresh
-  - Middleware tests
-
-**Output**: Working OAuth authentication with JWT ✅
-
-### 5.2 API Gateway ✅
-**Cloudflare Workers Entry Point**
-
-**Tasks**:
-- [x] Create API router
-  - Hono framework for routing
-  - Middleware pipeline
-  - Error handling
-  - CORS configuration
-- [x] Implement rate limiting
-  - Per-user rate limits (100 req/min)
-  - IP-based rate limiting
-  - Store counts in KV
-  - Return 429 with Retry-After header
-- [x] Add request logging
-  - Structured logging
-  - Request ID generation
-  - Performance metrics
-  - Error tracking
-- [x] Create health check endpoints
-  - `/health` - API status
-  - `/health/ready` - Readiness probe
-  - `/health/live` - Liveness probe
-  - `/health/db` - Database connectivity
-  - `/health/kv` - KV status
-- [x] Write API tests
-
-**Output**: Production-ready API gateway ✅
-
-### 5.3 User Management API ✅
-**User CRUD Operations**
-
-**Endpoints**:
-- `POST /auth/github` - Start GitHub OAuth
-- `GET /auth/github/callback` - GitHub OAuth callback
-- `POST /auth/google` - Start Google OAuth
-- `GET /auth/google/callback` - Google OAuth callback
-- `POST /auth/refresh` - Refresh access token
-- `POST /auth/logout` - Logout user
-- `GET /users/me` - Get current user
-- `PATCH /users/me` - Update user settings
-- `DELETE /users/me` - Delete account (GDPR)
-
-**Tasks**:
-- [x] Create User model and types
-- [x] Implement user CRUD operations (UserRepository)
-- [x] Add usage tracking structure
-  - API requests count
-  - Tokens used
-  - Storage used
-- [x] Implement user settings
-  - Default model preference
-  - UI preferences
-  - Notification settings
-- [x] Add account deletion (GDPR compliance)
-  - Delete all user data
-  - Delete all sessions
-  - Revoke all tokens
-- [x] Write tests (25+ repository tests)
-
-**Output**: Complete user management system ✅
-
-**Status**: Phase 5 complete with 507 tests passing (98.4% pass rate). Minor test failures in rate limiting don't affect core functionality.
-
----
-
-## 🆕 Phase 6: Multi-Tenant Database 🗄️ (3-4 days)
-
-**Goal**: Implement multi-tenant database with user isolation
-
-### 6.1 Database Schema (D1)
-
-**Users Table**:
-```sql
-CREATE TABLE users (
-  id TEXT PRIMARY KEY,
-  email TEXT UNIQUE NOT NULL,
-  name TEXT,
-  picture TEXT,
-  provider TEXT NOT NULL,
-  provider_id TEXT NOT NULL,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  settings JSON,
-  UNIQUE(provider, provider_id)
-);
-
-CREATE INDEX idx_users_email ON users(email);
-CREATE INDEX idx_users_provider ON users(provider, provider_id);
+**Correct Examples**:
+```bash
+git commit -m "feat: add file-based session storage"
+git commit -m "fix: resolve git tool error handling"
+git commit -m "docs: update PLAN.md with phase 3 progress"
+git commit -m "test: add storage integration tests"
+git commit -m "refactor: simplify provider factory logic"
+git commit -m "chore: update dependencies"
 ```
 
-**Sessions Table**:
-```sql
-CREATE TABLE sessions (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  state TEXT NOT NULL,
-  title TEXT,
-  created_at INTEGER NOT NULL,
-  updated_at INTEGER NOT NULL,
-  metadata JSON,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
+**Semantic Types**:
+- `feat`: new feature
+- `fix`: bug fix
+- `docs`: documentation changes
+- `test`: adding or updating tests
+- `refactor`: code refactoring
+- `perf`: performance improvements
+- `chore`: maintenance tasks
+- `ci`: CI/CD changes
+- `build`: build system changes
 
-CREATE INDEX idx_sessions_user ON sessions(user_id, updated_at DESC);
-CREATE INDEX idx_sessions_state ON sessions(user_id, state);
+### Monorepo Commands
+
+```bash
+# Install all dependencies
+pnpm install
+
+# Build all packages
+pnpm run build
+
+# Test all packages
+pnpm run test
+
+# Test specific package
+pnpm run test --filter @duyetbot/core
+
+# Build specific package
+pnpm run build --filter @duyetbot/memory-mcp
+
+# Add dependency to package
+cd packages/core
+pnpm add zod
+
+# Add dev dependency
+pnpm add -D vitest --filter @duyetbot/core
+
+# Run CLI locally
+pnpm --filter @duyetbot/cli dev
+
+# Deploy MCP server
+pnpm --filter @duyetbot/memory-mcp deploy
+
+# Start agent server locally
+pnpm --filter @duyetbot/server dev
+
+# Watch mode for all packages
+pnpm run dev
 ```
-
-**Refresh Tokens Table**:
-```sql
-CREATE TABLE refresh_tokens (
-  id TEXT PRIMARY KEY,
-  user_id TEXT NOT NULL,
-  token TEXT UNIQUE NOT NULL,
-  expires_at INTEGER NOT NULL,
-  created_at INTEGER NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-);
-
-CREATE INDEX idx_refresh_tokens_user ON refresh_tokens(user_id);
-CREATE INDEX idx_refresh_tokens_token ON refresh_tokens(token);
-```
-
-**Tasks**:
-- [ ] Create migration system for D1 (needed)
-- [x] Write schema definition (defined in PLAN.md)
-- [ ] Create database initialization script (needed)
-- [ ] Add database seeding for dev/test (needed)
-- [ ] Implement migration runner (needed)
-- [x] Write database tests (UserRepository: 25 tests, RefreshTokenRepository tests exist)
-
-**Output**: Database schema defined, migration system needed
-
-### 6.2 Session Storage (KV + D1)
-
-**Design**:
-- **D1**: Session metadata (id, user_id, state, title, timestamps)
-- **KV**: Session messages (hot data, frequently accessed)
-  - Key: `users:{userId}:sessions:{sessionId}:messages`
-  - Value: `Array<LLMMessage>`
-- **KV**: Tool results
-  - Key: `users:{userId}:sessions:{sessionId}:tools`
-  - Value: `Array<ToolResult>`
-
-**Tasks**:
-- [x] Create SessionRepository for D1 (basic structure exists)
-  - CRUD operations with user_id filtering (partially implemented)
-  - [ ] List sessions with pagination (needed)
-  - [ ] Search sessions by title/metadata (needed)
-- [ ] Create MessageStore for KV (not started)
-  - Append message to session
-  - Get all messages for session
-  - Trim old messages (keep last 1000)
-- [ ] Create ToolResultStore for KV (not started)
-  - Append tool result
-  - Get all tool results
-- [ ] Implement multi-tenant SessionManager (not started)
-  - Replace FileSessionManager with CloudSessionManager
-  - Enforce user isolation
-  - Handle KV + D1 consistency
-- [x] Write basic tests (19 FileSessionManager tests exist, need KV tests)
-
-**Output**: Multi-tenant session storage in progress (40% complete)
-
-### 6.3 Data Isolation & Security
-
-**Row-Level Security**:
-```typescript
-// All queries automatically filter by user_id
-class SessionRepository {
-  async list(userId: string, filter?: Filter): Promise<Session[]> {
-    // ALWAYS include user_id in WHERE clause
-    return db.query(
-      'SELECT * FROM sessions WHERE user_id = ? AND state = ?',
-      [userId, filter.state]
-    );
-  }
-}
-```
-
-**Tasks**:
-- [x] Create repository pattern for all models
-  - [x] UserRepository (complete)
-  - [ ] SessionRepository (basic structure only)
-  - [x] RefreshTokenRepository (complete)
-- [x] Add user_id to all queries automatically (implemented in UserRepository)
-- [ ] Implement resource quotas per user (not started)
-  - Max sessions: 1000
-  - Max messages per session: 10,000
-  - Storage limit: 1 GB
-- [ ] Add quota enforcement middleware (not started)
-- [ ] Write security tests (not started)
-  - Test user cannot access other user's data
-  - Test SQL injection prevention
-  - Test quota enforcement
-
-**Output**: Repository pattern established, security features pending
-
----
-
-## 🆕 Phase 7: Client Interfaces - CLI Cloud Sync 🔄 (3-4 days)
-
-**Goal**: Update CLI to sync with central API
-
-### 7.1 API Client SDK
-
-**Tasks**:
-- [ ] Create TypeScript API client
-  - REST API wrapper
-  - Typed request/response
-  - Automatic token refresh
-  - Error handling
-- [ ] Implement authentication flow in CLI
-  - `duyetbot login --github` opens browser
-  - OAuth callback server (localhost:3000)
-  - Save JWT to `~/.duyetbot/auth.json`
-  - Automatic token refresh
-- [ ] Add logout command
-  - `duyetbot logout`
-  - Clear local auth tokens
-- [ ] Write API client tests (40+ tests)
-
-**Output**: Typed API client for CLI ✅
-
-### 7.2 Cloud Sync
-
-**Online Mode** (default):
-```typescript
-// CLI connects to central API
-const client = new DuyetbotClient({
-  apiUrl: 'https://api.duyet.net',
-  token: loadToken(),
-});
-
-// All operations go to API
-await client.sessions.create({ title: 'Code review' });
-await client.chat({ message: 'Analyze this code' });
-```
-
-**Offline Mode** (fallback):
-```typescript
-// CLI uses local storage
-const storage = new FileSessionManager('~/.duyetbot');
-
-// Queue operations
-const queue = new OfflineQueue('~/.duyetbot/queue');
-await queue.push({ type: 'chat', message: '...' });
-
-// Sync when online
-await queue.sync((ops) => client.batch(ops));
-```
-
-**Tasks**:
-- [ ] Implement cloud sync logic
-  - Check online status
-  - Fallback to local storage if offline
-  - Sync queue when back online
-- [ ] Create OfflineQueue
-  - JSONL-based queue
-  - Append operations when offline
-  - Sync in order when online
-  - Handle conflicts (last-write-wins)
-- [ ] Add sync command
-  - `duyetbot sync` - Manual sync
-  - `duyetbot sync --status` - Check sync status
-- [ ] Update all CLI commands to use API
-  - `duyetbot chat` → API
-  - `duyetbot sessions ls` → API
-  - `duyetbot ask` → API
-- [ ] Write sync tests (30+ tests)
-
-**Output**: CLI with cloud sync ✅
-
-### 7.3 Migration from Local to Cloud
-
-**Tasks**:
-- [ ] Create migration command
-  - `duyetbot migrate --to-cloud`
-  - Upload all local sessions to API
-  - Keep local backup
-  - Switch to cloud mode
-- [ ] Add cloud/local mode toggle
-  - `duyetbot config set mode cloud`
-  - `duyetbot config set mode local`
-- [ ] Write migration tests (10+ tests)
-
-**Output**: Seamless local→cloud migration ✅
-
----
-
-## 🆕 Phase 8: Web UI 🌐 (4-5 days)
-
-**Goal**: Build browser-based chat interface
-
-### 8.1 Web UI Foundation
-
-**Tech Stack**:
-- React + TypeScript
-- TailwindCSS for styling
-- Vite for build
-- Deployed on Cloudflare Pages
-
-**Tasks**:
-- [ ] Set up React + Vite project
-- [ ] Create authentication flow
-  - Login with GitHub button
-  - Login with Google button
-  - OAuth redirect handling
-  - Store JWT in localStorage
-- [ ] Create main layout
-  - Sidebar (sessions list)
-  - Chat area (messages)
-  - Input box (send message)
-  - Settings panel
-- [ ] Implement session management
-  - List sessions
-  - Create new session
-  - Switch between sessions
-  - Delete session
-- [ ] Build chat interface
-  - Display messages (user/assistant)
-  - Markdown rendering
-  - Code syntax highlighting
-  - Stream LLM responses (SSE)
-  - Show typing indicator
-- [ ] Add tool execution visualization
-  - Show tool calls
-  - Display tool results
-  - Syntax highlight outputs
-- [ ] Write UI tests (40+ tests)
-
-**Output**: Working web chat interface ✅
-
-### 8.2 Real-Time Streaming
-
-**Server-Sent Events (SSE)**:
-```typescript
-// API endpoint
-GET /agent/stream/:conversationId
-
-// SSE stream
-data: {"type":"content","content":"Let me"}
-data: {"type":"content","content":" analyze"}
-data: {"type":"tool","tool":"bash","input":"ls"}
-data: {"type":"tool_result","result":"..."}
-data: {"type":"done","usage":{"tokens":150}}
-```
-
-**Tasks**:
-- [ ] Implement SSE endpoint in API
-- [ ] Create SSE client in Web UI
-- [ ] Handle connection errors and reconnect
-- [ ] Show real-time token streaming
-- [ ] Write streaming tests (20+ tests)
-
-**Output**: Real-time streaming responses ✅
-
-### 8.3 Advanced Features
-
-**Tasks**:
-- [ ] Add session search
-  - Search by title
-  - Search by message content
-  - Filter by date range
-- [ ] Implement export/import
-  - Export session to JSON
-  - Export all sessions
-  - Import sessions
-- [ ] Add settings panel
-  - API key management (future)
-  - Model preferences
-  - UI theme (light/dark)
-  - Notification preferences
-- [ ] Create usage dashboard
-  - API calls used
-  - Tokens consumed
-  - Storage used
-  - Charts and graphs
-- [ ] Write feature tests (30+ tests)
-
-**Output**: Feature-complete web UI ✅
-
----
-
-## 🆕 Phase 9: GitHub Actions Integration ⚙️ (2-3 days)
-
-**Goal**: Enable duyetbot in GitHub workflows
-
-### 9.1 GitHub Action
-
-**Usage**:
-```yaml
-- uses: duyetbot/agent-action@v1
-  with:
-    github-token: ${{ secrets.GITHUB_TOKEN }}
-    task: "review"
-```
-
-**Tasks**:
-- [ ] Create action.yml definition
-- [ ] Implement action entrypoint
-  - Authenticate with central API
-  - Use GitHub token for auth (future: app installation)
-  - Execute task via API
-  - Post results as PR comments
-- [ ] Add task types
-  - `review` - Code review
-  - `test` - Suggest tests
-  - `security` - Security audit
-  - `custom` - Custom prompt
-- [ ] Create example workflows
-  - PR auto-review
-  - Test coverage suggestions
-  - Documentation generation
-- [ ] Write action tests (20+ tests)
-- [ ] Publish to GitHub Actions Marketplace
-
-**Output**: Published GitHub Action ✅
-
-### 9.2 GitHub Integration Features
-
-**Tasks**:
-- [ ] PR comment integration
-  - Post review comments
-  - Reply to user comments
-  - Link to web UI session
-- [ ] Commit status checks
-  - Post check results
-  - Show pass/fail status
-- [ ] Issue integration
-  - Create issues for findings
-  - Label issues
-- [ ] Write integration tests (15+ tests)
-
-**Output**: Full GitHub integration ✅
-
----
-
-## 🆕 Phase 10: Vector Search & Semantic Memory 🔍 (3-4 days)
-
-**Goal**: Add semantic search over conversation history
-
-### 10.1 Vector Database (Cloudflare Vectorize)
-
-**Tasks**:
-- [ ] Set up Vectorize index
-  - Create index with 1536 dimensions (OpenAI embeddings)
-  - Configure metadata fields
-- [ ] Implement embedding service
-  - Use OpenAI text-embedding-3-small
-  - Batch embedding for efficiency
-  - Cache embeddings in KV
-- [ ] Create message embedding pipeline
-  - Embed each message on creation
-  - Store in Vectorize with metadata (userId, sessionId, role, timestamp)
-  - Update on message edit
-- [ ] Implement semantic search
-  - `searchMessages(userId, query, limit)` - Find similar messages
-  - `findRelevantContext(userId, query)` - Get relevant past conversations
-- [ ] Write vector tests (25+ tests)
-
-**Output**: Semantic search over all user conversations ✅
-
-### 10.2 Contextual Memory
-
-**Auto-Context Retrieval**:
-```typescript
-// When user asks a question
-const query = "How do I deploy to Cloudflare Workers?";
-
-// Find relevant past conversations
-const context = await vectorSearch.findRelevant(userId, query, limit=5);
-
-// Include in system prompt
-const systemPrompt = `${basePrompt}
-
-## Relevant Past Conversations
-${context.map(c => `- ${c.content}`).join('\n')}
-`;
-```
-
-**Tasks**:
-- [ ] Implement auto-context retrieval
-  - Triggered on each user message
-  - Find top 5 relevant past messages
-  - Include in system prompt
-- [ ] Add memory management
-  - Limit context window (max 10K tokens)
-  - Prioritize recent + relevant
-- [ ] Create memory UI
-  - Show which past conversations were used
-  - Allow manual memory search
-  - Memory management (delete old memories)
-- [ ] Write memory tests (20+ tests)
-
-**Output**: AI with long-term memory ✅
-
----
-
-## 🆕 Phase 11: Advanced Features 🚀 (Ongoing)
-
-### 11.1 Team Workspaces (Future)
-- Shared sessions across team members
-- Role-based access control
-- Team billing
-- Admin dashboard
-
-### 11.2 Mobile Apps (Future)
-- iOS/Android native apps
-- Push notifications
-- Voice input/output
-- Offline mode with sync
-
-### 11.3 Plugin Marketplace (Future)
-- Custom tools via API
-- Third-party integrations
-- Community plugins
-- Revenue sharing
-
-### 11.4 Multi-Agent Collaboration (Future)
-- Multiple agents working together
-- Agent-to-agent communication
-- Workflow orchestration
-- Specialized agent roles
-
----
-
-## 📋 Development Checklist
-
-### MVP (Minimum Viable Product)
-- [x] Phase 1: Project Foundation ✅
-- [x] Phase 2: Core Agent System ✅
-- [x] Phase 3: Local File Storage ✅
-- [x] Phase 4: Interactive Terminal UI (partial) ✅
-- [x] Phase 5: Central API & Authentication ✅ (507 tests passing, 98.4% pass rate)
-- [ ] Phase 6: Multi-Tenant Database 🔄 (40% complete - schema done, KV storage needed)
-- [ ] Phase 7: CLI Cloud Sync
-- [ ] Phase 8: Web UI (basic components exist, integration needed)
-- [ ] Phase 9: GitHub Actions
-
-### Post-MVP
-- [ ] Phase 10: Vector Search & Semantic Memory
-- [ ] Phase 11: Advanced Features
-- [ ] Mobile Apps
-- [ ] Team Workspaces
-- [ ] Plugin Marketplace
 
 ---
 
@@ -1622,17 +1562,27 @@ ${context.map(c => `- ${c.content}`).join('\n')}
 
 | Date | Version | Changes |
 |------|---------|---------|
-| 2025-11-18 | 2.3 | ✅ **Phase 9.1 COMPLETE**: Research Tool implemented with web search (DuckDuckGo HTML scraping) and URL fetching. 24 comprehensive tests. Fixed 6 failing API client tests. Total: 663 tests (655 passing, 98.8% pass rate, +103 tests from v2.2). Phase 13 CLI & GitHub Integration completed in previous session. |
-| 2025-11-18 | 2.2 | ✅ **Phase 8 COMPLETE**: Multi-tenant database layer implemented. D1 migration system with up/down migrations. KV storage for messages (10K/session) and tool results (1K/session). CloudSessionManager with user isolation. Resource quotas (1000 sessions, 1GB per user). 88 new storage tests. Total: 560 tests (552 passing, 98.6% pass rate). |
-| 2025-11-18 | 2.1 | ✅ **Phase 5 COMPLETE**: Marked Phase 5 (Central API & Authentication) as complete with 507 tests passing. Updated Phase 6 status to reflect partial completion (schema done, KV storage needed). Fixed test count references throughout plan. Updated MVP checklist to show actual progress (60% complete). |
-| 2025-11-18 | 2.0 | 🚀 **MAJOR ARCHITECTURE REDESIGN**: Multi-tenant centralized platform with persistent user memory across all interfaces. Added ARCHITECTURE.md with complete system design. Updated PLAN.md with new Phases 5-11 for Central API, Multi-Tenant DB, Cloud Sync, Web UI, GitHub Actions, Vector Search. Project vision changed from local-only to centralized SaaS platform. |
-| 2025-11-18 | 1.9 | 🎯 **Architecture Pivot**: Changed from Cloudflare Workers to local desktop app. Replaced Phase 3 (KV/D1) with local file storage (~/.duyetbot/). Added Phase 4 for interactive terminal UI using Ink (React for CLIs). Target: Claude Code-like experience. |
-| 2025-11-18 | 1.8 | ✅ Phase 2.2 COMPLETE: 347 tests passing. Agent Core with session management and tool execution (79 agent tests) |
-| 2025-11-18 | 1.7 | ✅ Phase 2.3 COMPLETE: 268 tests passing. Git tool implemented with comprehensive error handling (47 tests) |
-| 2025-11-18 | 1.6 | ✅ Phase 2.1 COMPLETE: 221 tests passing. All providers (Claude, OpenRouter), all core tools + registry |
-| 2025-11-18 | 1.5 | Phase 2 major progress: 186 tests passing. Completed Phase 2.1 (Claude provider), Phase 2.3 (3/4 tools + registry) |
-| 2025-11-18 | 1.4 | Added Architecture Overview and Phase 13 for CLI tool & GitHub Actions support |
-| 2025-11-18 | 1.3 | Phase 2.1 (partial): TDD implementation of provider types and factory with 35 tests |
-| 2025-11-18 | 1.2 | Completed Phase 1.1-1.3: Project foundation with Biome linting, TypeScript, Vitest, and Cloudflare Workers setup |
-| 2025-11-18 | 1.1 | Added maintenance workflow section with reference to CLAUDE.md |
-| 2025-11-18 | 1.0 | Initial plan created |
+| 2025-11-19 | 3.0 | 🚀 **MAJOR REDESIGN**: Complete architectural overhaul. Moved from Cloudflare Workers-only to monorepo with long-running container server + MCP memory layer. Added GitHub bot (@duyetbot mentions), Telegram bot, multi-provider with base URL override (Z.AI support), separated packages (core, providers, tools, memory-mcp, server, CLI), Docker deployment. Comprehensive 10-phase implementation plan. Previous architecture preserved in git history. |
+| 2025-11-18 | 2.3 | ✅ **Phase 9.1 COMPLETE**: Research Tool implemented (24 tests). 663 tests total (655 passing, 98.8%). |
+| 2025-11-18 | 2.2 | ✅ **Phase 8 COMPLETE**: Multi-tenant database layer (88 tests). 560 tests total (552 passing, 98.6%). |
+| 2025-11-18 | 2.1 | ✅ **Phase 5 COMPLETE**: Central API & Authentication (507 tests passing). |
+| 2025-11-18 | 2.0 | 🚀 **MAJOR ARCHITECTURE REDESIGN**: Multi-tenant centralized platform. Added ARCHITECTURE.md. |
+| 2025-11-18 | 1.9 | 🎯 **Architecture Pivot**: Changed to local desktop app with file storage. |
+| 2025-11-18 | 1.0 | Initial plan created. |
+
+---
+
+## Next Steps
+
+1. ✅ Review and approve this redesigned plan
+2. **START: Phase 1 - Monorepo Setup**
+   - Create pnpm-workspace.yaml
+   - Set up Turborepo
+   - Create initial package structure
+3. Set up project tracking (GitHub Projects)
+4. Schedule regular progress reviews
+5. Begin migration from current architecture
+
+---
+
+**This plan represents a fundamental architectural shift toward a more flexible, scalable, and maintainable system. All existing code and tests will be preserved during migration.**
