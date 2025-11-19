@@ -114,7 +114,7 @@ export class KVMessageStore implements MessageStore {
     // In production, you would list all keys with prefix and delete them
     // For now, this is a placeholder that would need to be implemented
     // using KV list() with prefix filtering
-    const _prefix = `users:${userId}:`;
+    const _ = `users:${userId}:`;
 
     // This is a simplified implementation
     // In production, you'd need to:

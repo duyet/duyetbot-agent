@@ -120,7 +120,7 @@ export class KVToolResultStore implements ToolResultStore {
   async deleteAllForUser(userId: string): Promise<void> {
     // Note: KV doesn't support prefix deletion directly
     // See KVMessageStore for implementation notes
-    const _prefix = `users:${userId}:`;
+    const _ = `users:${userId}:`;
     console.warn(`deleteAllForUser called for ${userId} - implement KV list/delete`);
   }
 }

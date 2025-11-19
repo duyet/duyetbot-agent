@@ -5,7 +5,7 @@
  */
 
 import type { SessionRepository } from '@/api/repositories/session';
-import type { D1Database } from '@cloudflare/workers-types';
+
 import type { MessageStore } from './kv-message-store';
 
 /**

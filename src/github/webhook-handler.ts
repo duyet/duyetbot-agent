@@ -7,8 +7,8 @@
 import crypto from 'node:crypto';
 import type { Context } from 'hono';
 import { getLogger } from '../api/middleware/logger';
-import type { Env } from '../api/types';
-import { type ParsedComment, parseIssueComment, parsePullRequestComment } from './parser';
+import type { AppEnv } from '../api/types';
+import { parseIssueComment, parsePullRequestComment } from './parser';
 
 /**
  * GitHub webhook event types

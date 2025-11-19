@@ -1,6 +1,6 @@
 import { generateAccessToken, generateRefreshToken, verifyToken } from '@/api/auth/jwt';
 import type { User } from '@/api/types';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 describe('JWT Authentication', () => {
   const mockUser: User = {
