@@ -14,17 +14,17 @@ const crypto = webcrypto as unknown as Crypto;
 
 export interface QueuedMessage {
   id: string;
-  sessionId?: string;
+  sessionId?: string | undefined;
   message: string;
-  model?: string;
+  model?: string | undefined;
   timestamp: number;
   retries: number;
 }
 
 export interface OfflineQueueStats {
   totalMessages: number;
-  oldestMessage?: number;
-  newestMessage?: number;
+  oldestMessage?: number | undefined;
+  newestMessage?: number | undefined;
 }
 
 /**

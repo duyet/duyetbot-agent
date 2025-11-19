@@ -127,24 +127,13 @@ export function createHealthRoutes(): Hono<AppEnv> {
     };
 
     const statusCode = overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503;
-
-    if (overallStatus === 'unhealthy') {
-      return c.json<APIResponse<HealthStatus>>(
-        {
-          success: false,
-          error: 'Health Check Failed',
-          message: 'System is unhealthy',
-          code: 'UNHEALTHY',
-        },
-        statusCode
-      );
-    }
+    const success = overallStatus !== 'unhealthy';
 
     return c.json<APIResponse<HealthStatus>>(
       {
-        success: true,
+        success,
         data: health,
-      },
+      } as APIResponse<HealthStatus>,
       statusCode
     );
   });

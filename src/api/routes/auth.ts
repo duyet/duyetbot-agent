@@ -14,11 +14,11 @@ import { RefreshTokenRepository } from '../repositories/refresh-token';
 import { UserRepository } from '../repositories/user';
 import type {
   APIResponse,
+  AppEnv,
   AuthResponse,
   DeviceAuthorizationResponse,
   DevicePendingAuthorization,
   DeviceTokenRequest,
-  Env,
   RefreshTokenRequest,
 } from '../types';
 
