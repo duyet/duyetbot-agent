@@ -304,8 +304,13 @@ describe('Rate Limit Middleware', () => {
 
     // Mock KV with in-memory store
     env.KV = {
-      get: vi.fn(async (key: string) => {
-        return kvStore.get(key) || null;
+      get: vi.fn(async (key: string, type?: string) => {
+        const value = kvStore.get(key);
+        if (!value) return null;
+        if (type === 'json') {
+          return JSON.parse(value);
+        }
+        return value;
       }),
       put: vi.fn(async (key: string, value: string) => {
         kvStore.set(key, value);

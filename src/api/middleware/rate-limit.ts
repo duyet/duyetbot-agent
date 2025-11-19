@@ -19,7 +19,7 @@ const DEFAULT_RATE_LIMIT: RateLimitConfig = {
 /**
  * Rate limiting middleware
  */
-export async function rateLimitMiddleware(config: Partial<RateLimitConfig> = {}) {
+export function rateLimitMiddleware(config: Partial<RateLimitConfig> = {}) {
   const finalConfig: RateLimitConfig = {
     ...DEFAULT_RATE_LIMIT,
     ...config,

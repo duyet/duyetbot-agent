@@ -69,8 +69,8 @@ export interface JWTClaims {
   name: string | null;
   picture: string | null;
   provider: OAuthProvider;
-  iat: number; // Issued at
-  exp: number; // Expiration
+  iat?: number; // Issued at (set by jose)
+  exp?: number; // Expiration (set by jose)
 }
 
 /**
@@ -198,7 +198,7 @@ export interface Env {
   R2: R2Bucket;
 
   // Environment variables
-  ENVIRONMENT: 'development' | 'staging' | 'production';
+  ENVIRONMENT: 'development' | 'staging' | 'production' | 'test';
   API_URL: string;
   WEB_URL: string;
 
