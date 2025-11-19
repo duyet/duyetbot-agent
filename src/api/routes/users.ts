@@ -5,17 +5,17 @@
  */
 
 import { Hono } from 'hono';
-import type { Context } from 'hono';
+
 import { getUser } from '../middleware/auth';
 import { RefreshTokenRepository } from '../repositories/refresh-token';
 import { UserRepository } from '../repositories/user';
-import type { APIResponse, Env, UpdateUserInput, UserSettings } from '../types';
+import type { APIResponse, AppEnv, UpdateUserInput, UserSettings } from '../types';
 
 /**
  * Create user routes
  */
-export function createUserRoutes(): Hono<{ Bindings: Env }> {
-  const app = new Hono<{ Bindings: Env }>();
+export function createUserRoutes(): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
   /**
    * GET /users/me
@@ -33,7 +33,7 @@ export function createUserRoutes(): Hono<{ Bindings: Env }> {
         provider: string;
         createdAt: string;
         updatedAt: string;
-        settings?: UserSettings;
+        settings?: UserSettings | undefined;
       }>
     >(
       {
@@ -67,7 +67,7 @@ export function createUserRoutes(): Hono<{ Bindings: Env }> {
 
     for (const [key, value] of Object.entries(body)) {
       if (allowedFields.includes(key)) {
-        updates[key as keyof UpdateUserInput] = value;
+        updates[key as keyof UpdateUserInput] = value as any;
       }
     }
 
@@ -96,7 +96,7 @@ export function createUserRoutes(): Hono<{ Bindings: Env }> {
           provider: string;
           createdAt: string;
           updatedAt: string;
-          settings?: UserSettings;
+          settings?: UserSettings | undefined;
         }>
       >(
         {

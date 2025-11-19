@@ -108,7 +108,20 @@ npm test
 # Code quality
 npm run lint
 npm run type-check
+
+# Install git hooks (auto-runs on npm install)
+npm run prepare-hooks
 ```
+
+**Git Hooks**: The project includes automatic quality checks before `git push`:
+- Runs linting and auto-fixes issues
+- Runs type checking
+- Runs all tests
+- Prevents push if checks fail
+
+Hooks are automatically installed via `npm install`. To bypass temporarily: `git push --no-verify`
+
+See [`.claude/README.md`](./.claude/README.md) for hook configuration details.
 
 ### Deployment
 

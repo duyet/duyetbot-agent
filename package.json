@@ -5,7 +5,7 @@
   "main": "dist/index.js",
   "type": "module",
   "bin": {
-    "duyetbot": "./src/ui/cli.tsx"
+    "duyetbot": "./src/cli/index.ts"
   },
   "scripts": {
     "start": "tsx src/ui/cli.tsx",
@@ -23,7 +23,9 @@
     "format": "biome format --write .",
     "check": "biome check --write . && tsc --noEmit",
     "demo": "tsx examples/demo.ts",
-    "demo:stream": "tsx examples/demo-streaming.ts"
+    "demo:stream": "tsx examples/demo-streaming.ts",
+    "prepare-hooks": "bash scripts/install-hooks.sh",
+    "prepare": "bash scripts/install-hooks.sh || true"
   },
   "keywords": [
     "agent",
@@ -46,6 +48,7 @@
     "hono": "^4.10.6",
     "ink": "^6.5.0",
     "jose": "^6.1.2",
+    "ora": "^9.0.0",
     "react": "^19.2.0",
     "zod": "^3.23.8"
   },

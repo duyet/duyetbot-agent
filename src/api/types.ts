@@ -4,6 +4,8 @@
  * Type definitions for API, authentication, and user management
  */
 
+import type { R2Bucket, VectorizeIndex } from '@cloudflare/workers-types';
+
 /**
  * OAuth provider types
  */
@@ -21,7 +23,7 @@ export interface User {
   providerId: string;
   createdAt: Date;
   updatedAt: Date;
-  settings?: UserSettings;
+  settings?: UserSettings | undefined;
 }
 
 /**
@@ -46,7 +48,7 @@ export interface CreateUserInput {
   picture: string | null;
   provider: OAuthProvider;
   providerId: string;
-  settings?: UserSettings;
+  settings?: UserSettings | undefined;
 }
 
 /**
@@ -67,8 +69,8 @@ export interface JWTClaims {
   name: string | null;
   picture: string | null;
   provider: OAuthProvider;
-  iat: number; // Issued at
-  exp: number; // Expiration
+  iat?: number; // Issued at (set by jose)
+  exp?: number; // Expiration (set by jose)
 }
 
 /**
@@ -78,6 +80,35 @@ export interface TokenPair {
   accessToken: string;
   refreshToken: string;
   expiresIn: number; // seconds
+}
+
+/**
+ * Device flow authorization request
+ */
+export interface DeviceAuthorizationResponse {
+  deviceCode: string;
+  userCode: string;
+  verificationUri: string;
+  expiresIn: number; // seconds
+  interval: number; // seconds
+}
+
+/**
+ * Device flow token request
+ */
+export interface DeviceTokenRequest {
+  deviceCode: string;
+}
+
+/**
+ * Device flow pending authorization (stored in KV)
+ */
+export interface DevicePendingAuthorization {
+  deviceCode: string;
+  userCode: string;
+  userId?: string; // Set when user authorizes
+  createdAt: number; // timestamp
+  expiresAt: number; // timestamp
 }
 
 /**
@@ -136,6 +167,7 @@ export interface UsageStats {
  * API error response
  */
 export interface APIError {
+  success: false;
   error: string;
   message: string;
   code: string;
@@ -148,6 +180,40 @@ export interface APIError {
 export interface APISuccess<T = unknown> {
   success: true;
   data: T;
+}
+
+/**
+ * API response (success or error)
+ */
+export type APIResponse<T = unknown> = APISuccess<T> | APIError;
+
+/**
+ * Auth response with tokens
+ */
+/**
+ * Public user info (safe to send to client)
+ */
+export interface PublicUser {
+  id: string;
+  email: string;
+  name: string | null;
+  picture: string | null;
+  provider: OAuthProvider;
+}
+
+export interface AuthResponse {
+  user: PublicUser;
+  accessToken: string;
+  refreshToken: string;
+  expiresIn: number;
+  tokenType: string;
+}
+
+/**
+ * Refresh token request
+ */
+export interface RefreshTokenRequest {
+  refreshToken: string;
 }
 
 /**
@@ -167,7 +233,7 @@ export interface Env {
   R2: R2Bucket;
 
   // Environment variables
-  ENVIRONMENT: 'development' | 'staging' | 'production';
+  ENVIRONMENT: 'development' | 'staging' | 'production' | 'test';
   API_URL: string;
   WEB_URL: string;
 
@@ -175,9 +241,15 @@ export interface Env {
   JWT_SECRET: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
+  GITHUB_REDIRECT_URI: string;
+  GITHUB_WEBHOOK_SECRET: string;
   GOOGLE_CLIENT_ID: string;
   GOOGLE_CLIENT_SECRET: string;
+  GOOGLE_REDIRECT_URI: string;
   ANTHROPIC_API_KEY: string;
+  OPENAI_API_KEY: string;
+  OPENROUTER_API_KEY: string;
+  FRONTEND_URL: string;
 }
 
 /**
@@ -222,3 +294,12 @@ export interface RequestContext {
   // From timing middleware
   timer: import('./middleware/timing').PerformanceTimer;
 }
+
+/**
+ * Hono app environment type
+ * Combines bindings (Cloudflare env) and variables (request context)
+ */
+export type AppEnv = {
+  Bindings: Env;
+  Variables: RequestContext;
+};

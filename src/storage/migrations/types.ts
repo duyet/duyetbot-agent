@@ -18,7 +18,7 @@ export interface MigrationFile {
 export interface MigrationResult {
   id: number;
   name: string;
-  status: "success" | "failed";
+  status: 'success' | 'failed';
   error?: string;
   executedAt: Date;
 }

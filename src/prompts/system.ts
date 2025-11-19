@@ -251,7 +251,6 @@ export function getSystemPrompt(
       return CODE_REVIEWER_PROMPT;
     case 'planner':
       return TASK_PLANNER_PROMPT;
-    case 'default':
     default:
       return DUYETBOT_SYSTEM_PROMPT;
   }

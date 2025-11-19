@@ -5,8 +5,7 @@
  */
 
 import { Hono } from 'hono';
-import type { Context } from 'hono';
-import type { APIResponse, Env } from '../types';
+import type { APIResponse, AppEnv } from '../types';
 
 /**
  * Health check status
@@ -39,8 +38,8 @@ const startupTime = Date.now();
 /**
  * Create health routes
  */
-export function createHealthRoutes(): Hono<{ Bindings: Env }> {
-  const app = new Hono<{ Bindings: Env }>();
+export function createHealthRoutes(): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
   /**
    * GET /health
@@ -128,12 +127,13 @@ export function createHealthRoutes(): Hono<{ Bindings: Env }> {
     };
 
     const statusCode = overallStatus === 'healthy' ? 200 : overallStatus === 'degraded' ? 200 : 503;
+    const success = overallStatus !== 'unhealthy';
 
     return c.json<APIResponse<HealthStatus>>(
       {
-        success: overallStatus !== 'unhealthy',
+        success,
         data: health,
-      },
+      } as APIResponse<HealthStatus>,
       statusCode
     );
   });

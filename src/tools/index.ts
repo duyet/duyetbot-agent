@@ -14,7 +14,5 @@ export * from './sleep';
 export * from './plan';
 export * from './bash';
 export * from './git';
+export * from './research';
 export * from './registry';
-
-// TODO: Implement remaining tool modules
-// export * from './research';
