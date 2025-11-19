@@ -6,10 +6,9 @@
 
 import { webcrypto } from 'node:crypto';
 import { Hono } from 'hono';
-import type { Context } from 'hono';
 import { completeGitHubOAuth, getGitHubAuthUrl } from '../auth/github';
 import { completeGoogleOAuth, getGoogleAuthUrl } from '../auth/google';
-import { generateAccessToken, generateRefreshToken, verifyToken } from '../auth/jwt';
+import { generateAccessToken, generateRefreshToken } from '../auth/jwt';
 import { authMiddleware, getUser } from '../middleware/auth';
 import { RefreshTokenRepository } from '../repositories/refresh-token';
 import { UserRepository } from '../repositories/user';
@@ -68,11 +67,14 @@ export function createAuthRoutes(): Hono<{ Bindings: Env }> {
     }
 
     const state = crypto.randomUUID();
-    const authUrl = getGitHubAuthUrl({
-      clientId,
-      redirectUri,
-      state,
-    });
+    const authUrl = getGitHubAuthUrl(
+      {
+        clientId,
+        redirectUri,
+        clientSecret: '', // Not needed for authorization URL
+      },
+      state
+    );
 
     // Store state in cookie for CSRF protection
     c.header(
@@ -205,11 +207,14 @@ export function createAuthRoutes(): Hono<{ Bindings: Env }> {
     }
 
     const state = crypto.randomUUID();
-    const authUrl = getGoogleAuthUrl({
-      clientId,
-      redirectUri,
-      state,
-    });
+    const authUrl = getGoogleAuthUrl(
+      {
+        clientId,
+        redirectUri,
+        clientSecret: '', // Not needed for authorization URL
+      },
+      state
+    );
 
     // Store state in cookie for CSRF protection
     c.header(
