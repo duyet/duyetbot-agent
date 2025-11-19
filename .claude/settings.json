@@ -1,0 +1,13 @@
+{
+  "$schema": "https://docs.claude.com/schemas/claude-settings.json",
+  "hooks": {
+    "bash": {
+      "post": {
+        "pattern": "^git push",
+        "command": ".claude/hooks/pre-push.sh",
+        "blocking": true,
+        "description": "Run lint and test checks before git push"
+      }
+    }
+  }
+}

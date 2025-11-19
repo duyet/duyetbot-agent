@@ -4,8 +4,8 @@
  * JWT token generation and verification using jose library
  */
 
-import * as jose from 'jose';
 import { webcrypto } from 'node:crypto';
+import * as jose from 'jose';
 import type { JWTClaims, TokenPair, User } from '../types';
 
 // Use Node.js crypto for compatibility with Node 18
