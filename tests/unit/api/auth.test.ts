@@ -51,8 +51,8 @@ describe('JWT Authentication', () => {
 
     it('should generate different tokens for the same user', async () => {
       const token1 = await generateAccessToken(mockUser, testSecret);
-      // Wait a bit to ensure different timestamp
-      await new Promise((resolve) => setTimeout(resolve, 10));
+      // Wait 1 second to ensure different timestamp (iat is in seconds)
+      await new Promise((resolve) => setTimeout(resolve, 1000));
       const token2 = await generateAccessToken(mockUser, testSecret);
 
       expect(token1).not.toBe(token2);
