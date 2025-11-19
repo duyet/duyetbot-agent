@@ -102,8 +102,7 @@ export async function startDeviceFlow(apiUrl: string): Promise<DeviceCodeRespons
     throw new Error('Failed to start device flow');
   }
 
-  // biome-ignore lint/suspicious/noExplicitAny: Response body type unknown
-    const data = (await response.json()) as any;
+  const data = (await response.json()) as any;
   return data.data as DeviceCodeResponse;
 }
 
