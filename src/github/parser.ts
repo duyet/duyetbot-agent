@@ -187,10 +187,6 @@ export function extractIssueReferences(
       ...(match[1] ? { repository: match[1] } : {}),
       issue: Number.parseInt(match[2] || '0', 10),
     });
-    references.push({
-      ...(match[1] ? { repository: match[1] } : {}),
-      issue: Number.parseInt(match[2] || '0', 10),
-    });
     match = regex.exec(text);
   }
 
