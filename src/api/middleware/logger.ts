@@ -34,7 +34,7 @@ export interface LogEntry {
     stack?: string | undefined;
     code?: string | undefined;
   } | undefined;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 /**

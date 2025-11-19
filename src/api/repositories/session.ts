@@ -82,7 +82,7 @@ export class SessionRepository {
       .bind(sessionId, userId)
       .first();
 
-    return result ? (result as SessionRow) : null;
+    return result ? (result as unknown as SessionRow) : null;
   }
 
   /**
@@ -163,7 +163,7 @@ export class SessionRepository {
       .bind(...values)
       .all();
 
-    return (result.results || []) as SessionRow[];
+    return (result.results || []) as unknown as SessionRow[];
   }
 
   /**
