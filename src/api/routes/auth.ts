@@ -4,9 +4,9 @@
  * OAuth callbacks and token management endpoints
  */
 
+import { webcrypto } from 'node:crypto';
 import { Hono } from 'hono';
 import type { Context } from 'hono';
-import { webcrypto } from 'node:crypto';
 import { completeGitHubOAuth, getGitHubAuthorizationUrl } from '../auth/github';
 import { completeGoogleOAuth, getGoogleAuthorizationUrl } from '../auth/google';
 import { generateAccessToken, generateRefreshToken, verifyToken } from '../auth/jwt';
