@@ -106,7 +106,6 @@ export function createGitHubRoutes(): Hono<AppEnv> {
     }
 
     // Handle webhook
-    // biome-ignore lint/suspicious/noExplicitAny: Payload from JSON.parse is unknown
     return await handleGitHubWebhook(c, event, payload as any);
   });
 

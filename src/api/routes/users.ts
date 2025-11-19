@@ -67,7 +67,6 @@ export function createUserRoutes(): Hono<AppEnv> {
 
     for (const [key, value] of Object.entries(body)) {
       if (allowedFields.includes(key)) {
-        // biome-ignore lint/suspicious/noExplicitAny: Dynamic key-value assignment
         updates[key as keyof UpdateUserInput] = value as any;
       }
     }

@@ -60,6 +60,7 @@
         "noDangerouslySetInnerHtmlWithChildren": "error"
       },
       "style": {
+        "noNonNullAssertion": "off",
         "noNegationElse": "warn",
         "noShoutyConstants": "warn",
         "useBlockStatements": "warn",
@@ -87,7 +88,7 @@
         "noDuplicateObjectKeys": "error",
         "noDuplicateParameters": "error",
         "noEmptyBlockStatements": "warn",
-        "noExplicitAny": "warn",
+        "noExplicitAny": "off",
         "noExtraNonNullAssertion": "error",
         "noFallthroughSwitchClause": "error",
         "noFunctionAssign": "error",

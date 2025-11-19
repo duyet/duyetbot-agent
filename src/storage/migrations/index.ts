@@ -137,7 +137,7 @@ export class D1MigrationRunner implements MigrationRunner {
     }
 
     // biome-ignore lint/style/noNonNullAssertion: Array guaranteed non-empty by if condition
-  const lastMigration = executed[executed.length - 1]!;
+    const lastMigration = executed[executed.length - 1]!;
     const migrationFile = this.migrations.find((m) => m.id === lastMigration.id);
 
     if (!migrationFile) {
