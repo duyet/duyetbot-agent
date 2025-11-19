@@ -5,7 +5,7 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Env, RateLimitConfig, RateLimitResult } from '../types';
+import type { AppEnv, RateLimitConfig, RateLimitResult } from '../types';
 import { getOptionalUser } from './auth';
 
 /**
@@ -25,7 +25,7 @@ export function rateLimitMiddleware(config: Partial<RateLimitConfig> = {}) {
     ...config,
   };
 
-  return async (c: Context<{ Bindings: Env }>, next: Next) => {
+  return async (c: Context<AppEnv>, next: Next) => {
     const env = c.env;
     const user = getOptionalUser(c);
 

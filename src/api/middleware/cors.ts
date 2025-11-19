@@ -5,12 +5,12 @@
  */
 
 import type { Context, Next } from 'hono';
-import type { Env } from '../types';
+import type { AppEnv, Env } from '../types';
 
 /**
  * CORS middleware
  */
-export async function corsMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function corsMiddleware(c: Context<AppEnv>, next: Next) {
   const env = c.env;
   const origin = c.req.header('Origin');
 

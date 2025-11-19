@@ -5,8 +5,7 @@
  */
 
 import { Hono } from 'hono';
-import type { Context } from 'hono';
-import { authMiddleware, getOptionalUser, getUser } from './middleware/auth';
+import { authMiddleware } from './middleware/auth';
 import { corsMiddleware } from './middleware/cors';
 import { getLogger, loggerMiddleware } from './middleware/logger';
 import { rateLimitMiddleware } from './middleware/rate-limit';
@@ -16,13 +15,13 @@ import { createAuthRoutes } from './routes/auth';
 import { createGitHubRoutes } from './routes/github';
 import { createHealthRoutes } from './routes/health';
 import { createUserRoutes } from './routes/users';
-import type { APIResponse, Env } from './types';
+import type { APIResponse, AppEnv } from './types';
 
 /**
  * Create main API router
  */
-export function createRouter(): Hono<{ Bindings: Env }> {
-  const app = new Hono<{ Bindings: Env }>();
+export function createRouter(): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
   // Global middleware (order matters!)
   // 1. Request ID - first, so all logs have it
@@ -95,14 +94,14 @@ export function createRouter(): Hono<{ Bindings: Env }> {
   app.route('/users', createUserRoutes());
 
   // Protected session routes
-  const sessions = new Hono<{ Bindings: Env }>();
+  const sessions = new Hono<AppEnv>();
   sessions.use('*', authMiddleware);
   sessions.use('*', rateLimitMiddleware());
 
   app.route('/sessions', sessions);
 
   // Protected agent routes
-  const agent = new Hono<{ Bindings: Env }>();
+  const agent = new Hono<AppEnv>();
   agent.use('*', authMiddleware);
   agent.use('*', rateLimitMiddleware({ maxRequests: 50, windowSeconds: 60 }));
 

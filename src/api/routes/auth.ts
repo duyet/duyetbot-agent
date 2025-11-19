@@ -43,8 +43,8 @@ function generateUserCode(): string {
 /**
  * Create auth routes
  */
-export function createAuthRoutes(): Hono<{ Bindings: Env }> {
-  const app = new Hono<{ Bindings: Env }>();
+export function createAuthRoutes(): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
   /**
    * GET /auth/github

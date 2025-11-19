@@ -5,7 +5,7 @@
  */
 
 import { Hono } from 'hono';
-import type { Context } from 'hono';
+
 import { getUser } from '../middleware/auth';
 import { RefreshTokenRepository } from '../repositories/refresh-token';
 import { UserRepository } from '../repositories/user';
@@ -14,8 +14,8 @@ import type { APIResponse, Env, UpdateUserInput, UserSettings } from '../types';
 /**
  * Create user routes
  */
-export function createUserRoutes(): Hono<{ Bindings: Env }> {
-  const app = new Hono<{ Bindings: Env }>();
+export function createUserRoutes(): Hono<AppEnv> {
+  const app = new Hono<AppEnv>();
 
   /**
    * GET /users/me

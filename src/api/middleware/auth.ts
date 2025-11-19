@@ -7,14 +7,14 @@
 import type { Context, Next } from 'hono';
 import { extractToken, verifyToken } from '../auth/jwt';
 import { UserRepository } from '../repositories/user';
-import type { Env, User } from '../types';
+import type { AppEnv, User } from '../types';
 
 /**
  * Authentication middleware
  *
  * Verifies JWT and attaches user to context
  */
-export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function authMiddleware(c: Context<AppEnv>, next: Next) {
   const authHeader = c.req.header('Authorization');
   const token = extractToken(authHeader || null);
 
@@ -57,7 +57,7 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
       );
     }
 
-    if (error.code === 'TOKEN_INVALID') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'TOKEN_INVALID') {
       return c.json(
         {
           error: 'Unauthorized',
@@ -84,7 +84,7 @@ export async function authMiddleware(c: Context<{ Bindings: Env }>, next: Next) 
  *
  * Verifies JWT if present, but doesn't require it
  */
-export async function optionalAuthMiddleware(c: Context<{ Bindings: Env }>, next: Next) {
+export async function optionalAuthMiddleware(c: Context<AppEnv>, next: Next) {
   const authHeader = c.req.header('Authorization');
   const token = extractToken(authHeader || null);
 
@@ -110,17 +110,17 @@ export async function optionalAuthMiddleware(c: Context<{ Bindings: Env }>, next
 /**
  * Get authenticated user from context
  */
-export function getUser(c: Context): User {
+export function getUser(c: Context<AppEnv>): User {
   const user = c.get('user');
   if (!user) {
     throw new Error('User not found in context. Did you forget to use authMiddleware?');
   }
-  return user as User;
+  return user;
 }
 
 /**
  * Get optional user from context
  */
-export function getOptionalUser(c: Context): User | null {
-  return (c.get('user') as User) || null;
+export function getOptionalUser(c: Context<AppEnv>): User | null {
+  return c.get('user') || null;
 }
