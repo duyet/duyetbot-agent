@@ -6,7 +6,7 @@
 
 import type { LLMMessage } from '@/providers/types';
 import { Box, Text } from 'ink';
-import React from 'react';
+import type React from 'react';
 
 interface ChatViewProps {
   messages: LLMMessage[];

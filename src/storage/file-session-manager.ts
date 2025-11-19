@@ -68,14 +68,14 @@ export class FileSessionManager implements SessionManager {
       metadata?: Session['metadata'];
     };
 
-    return ({
+    return {
       ...serializedSession,
       createdAt: new Date(serializedSession.createdAt),
       updatedAt: new Date(serializedSession.updatedAt),
       ...(serializedSession.completedAt && {
         completedAt: new Date(serializedSession.completedAt),
       }),
-    }) as Session;
+    } as Session;
   }
 
   /**

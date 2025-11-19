@@ -5,7 +5,8 @@
  */
 
 import { Box, Text, useInput } from 'ink';
-import React, { useState } from 'react';
+import type React from 'react';
+import { useState } from 'react';
 
 interface InputBoxProps {
   value: string;

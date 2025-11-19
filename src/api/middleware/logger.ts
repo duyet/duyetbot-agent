@@ -29,11 +29,13 @@ export interface LogEntry {
   duration?: number;
   ip?: string;
   userAgent?: string | undefined;
-  error?: {
-    message: string;
-    stack?: string | undefined;
-    code?: string | undefined;
-  } | undefined;
+  error?:
+    | {
+        message: string;
+        stack?: string | undefined;
+        code?: string | undefined;
+      }
+    | undefined;
   metadata?: Record<string, unknown> | undefined;
 }
 

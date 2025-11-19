@@ -158,10 +158,7 @@ export async function handleGitHubWebhook(
 /**
  * Handle issue comment
  */
-async function handleIssueComment(
-  c: Context<AppEnv>,
-  payload: WebhookPayload
-): Promise<Response> {
+async function handleIssueComment(c: Context<AppEnv>, payload: WebhookPayload): Promise<Response> {
   const logger = getLogger(c);
 
   // Check if comment exists and mentions @duyetbot
@@ -232,10 +229,7 @@ async function handlePullRequestComment(
 /**
  * Handle new issue
  */
-async function handleNewIssue(
-  c: Context<AppEnv>,
-  payload: WebhookPayload
-): Promise<Response> {
+async function handleNewIssue(c: Context<AppEnv>, payload: WebhookPayload): Promise<Response> {
   const logger = getLogger(c);
 
   // Check if issue body mentions @duyetbot
