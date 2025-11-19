@@ -5,7 +5,11 @@
  */
 
 import * as jose from 'jose';
+import { webcrypto } from 'node:crypto';
 import type { JWTClaims, TokenPair, User } from '../types';
+
+// Use Node.js crypto for compatibility with Node 18
+const crypto = webcrypto as Crypto;
 
 /**
  * JWT configuration
