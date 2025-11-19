@@ -306,7 +306,9 @@ describe('Rate Limit Middleware', () => {
     env.KV = {
       get: vi.fn(async (key: string, type?: string) => {
         const value = kvStore.get(key);
-        if (!value) return null;
+        if (!value) {
+          return null;
+        }
         if (type === 'json') {
           return JSON.parse(value);
         }

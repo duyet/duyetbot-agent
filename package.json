@@ -23,7 +23,9 @@
     "format": "biome format --write .",
     "check": "biome check --write . && tsc --noEmit",
     "demo": "tsx examples/demo.ts",
-    "demo:stream": "tsx examples/demo-streaming.ts"
+    "demo:stream": "tsx examples/demo-streaming.ts",
+    "prepare-hooks": "bash scripts/install-hooks.sh",
+    "prepare": "bash scripts/install-hooks.sh || true"
   },
   "keywords": [
     "agent",
