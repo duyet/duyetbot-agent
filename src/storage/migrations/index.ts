@@ -136,7 +136,6 @@ export class D1MigrationRunner implements MigrationRunner {
       throw new Error('No migrations to rollback');
     }
 
-    // biome-ignore lint/style/noNonNullAssertion: Array guaranteed non-empty by if condition
     const lastMigration = executed[executed.length - 1]!;
     const migrationFile = this.migrations.find((m) => m.id === lastMigration.id);
 

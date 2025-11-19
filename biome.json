@@ -61,6 +61,7 @@
       },
       "style": {
         "noNonNullAssertion": "off",
+        "useImportType": "off",
         "noNegationElse": "warn",
         "noShoutyConstants": "warn",
         "useBlockStatements": "warn",
