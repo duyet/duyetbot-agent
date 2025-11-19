@@ -7,6 +7,10 @@
 import * as fs from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
+import { webcrypto } from 'node:crypto';
+
+// Use Node.js crypto for compatibility with Node 18
+const crypto = webcrypto as Crypto;
 
 export interface QueuedMessage {
   id: string;

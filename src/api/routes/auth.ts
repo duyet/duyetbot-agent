@@ -6,6 +6,7 @@
 
 import { Hono } from 'hono';
 import type { Context } from 'hono';
+import { webcrypto } from 'node:crypto';
 import { completeGitHubOAuth, getGitHubAuthorizationUrl } from '../auth/github';
 import { completeGoogleOAuth, getGoogleAuthorizationUrl } from '../auth/google';
 import { generateAccessToken, generateRefreshToken, verifyToken } from '../auth/jwt';
@@ -21,6 +22,9 @@ import type {
   Env,
   RefreshTokenRequest,
 } from '../types';
+
+// Use Node.js crypto for compatibility with Node 18
+const crypto = webcrypto as Crypto;
 
 /**
  * Generate a user-friendly code (e.g., "ABCD-1234")
