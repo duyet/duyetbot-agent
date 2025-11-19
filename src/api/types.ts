@@ -23,7 +23,7 @@ export interface User {
   providerId: string;
   createdAt: Date;
   updatedAt: Date;
-  settings?: UserSettings;
+  settings?: UserSettings | undefined;
 }
 
 /**
@@ -48,7 +48,7 @@ export interface CreateUserInput {
   picture: string | null;
   provider: OAuthProvider;
   providerId: string;
-  settings?: UserSettings;
+  settings?: UserSettings | undefined;
 }
 
 /**

@@ -11,9 +11,9 @@ import type { SDKMessage } from '@anthropic-ai/claude-agent-sdk';
  */
 export interface APIClientConfig {
   apiUrl: string;
-  accessToken?: string;
-  refreshToken?: string;
-  onTokenRefresh?: (accessToken: string, refreshToken: string) => void;
+  accessToken?: string | undefined;
+  refreshToken?: string | undefined;
+  onTokenRefresh?: ((accessToken: string, refreshToken: string) => void) | undefined;
 }
 
 /**
@@ -37,16 +37,16 @@ export interface SessionResponse {
   title: string | null;
   createdAt: string;
   updatedAt: string;
-  metadata?: Record<string, unknown>;
+  metadata?: Record<string, unknown> | undefined;
 }
 
 /**
  * Chat message request
  */
 export interface ChatRequest {
-  sessionId?: string;
+  sessionId?: string | undefined;
   message: string;
-  model?: string;
+  model?: string | undefined;
 }
 
 /**
