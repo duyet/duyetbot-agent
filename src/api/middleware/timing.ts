@@ -20,7 +20,10 @@ interface TimingEntry {
  * Performance timer class
  */
 export class PerformanceTimer {
-  private timings: Map<string, { start: number; end?: number | undefined; description?: string | undefined }> = new Map();
+  private timings: Map<
+    string,
+    { start: number; end?: number | undefined; description?: string | undefined }
+  > = new Map();
 
   /**
    * Start a timer

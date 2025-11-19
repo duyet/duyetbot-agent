@@ -182,7 +182,7 @@ describe('OfflineQueue', () => {
     it('should remove messages older than maxAge', async () => {
       // Enqueue a message and manually set old timestamp
       // @ts-expect-error unused variable
-    const _messageId = await queue.enqueue({ message: 'Old message' });
+      const _messageId = await queue.enqueue({ message: 'Old message' });
       const messages = await queue.getAll();
       messages[0]!.timestamp = Date.now() - 10000; // 10 seconds ago
 

@@ -18,10 +18,12 @@ export interface ToolResult {
   toolName: string;
   status: 'success' | 'error';
   output?: unknown;
-  error?: {
-    message: string;
-    code: string;
-  } | undefined;
+  error?:
+    | {
+        message: string;
+        code: string;
+      }
+    | undefined;
   timestamp?: Date | undefined;
 }
 
@@ -39,11 +41,13 @@ export interface Session {
   provider?: ProviderConfig | undefined;
   messages?: LLMMessage[] | undefined;
   metadata?: Record<string, unknown> | undefined;
-  error?: {
-    message: string;
-    code: string;
-    details?: unknown;
-  } | undefined;
+  error?:
+    | {
+        message: string;
+        code: string;
+        details?: unknown;
+      }
+    | undefined;
   toolResults?: ToolResult[] | undefined;
   resumeToken?: string | undefined;
   completedAt?: Date | undefined;
