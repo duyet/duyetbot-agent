@@ -1,6 +1,10 @@
 {
   "$schema": "https://docs.claude.com/schemas/claude-settings.json",
   "hooks": {
+    "sessionStart": {
+      "command": ".claude/hooks/session-start.sh",
+      "description": "Setup development environment on session start"
+    },
     "bash": {
       "post": {
         "pattern": "^git push",

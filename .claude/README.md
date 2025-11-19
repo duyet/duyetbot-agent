@@ -4,6 +4,15 @@ This directory contains Claude Code configuration files and hooks for the duyetb
 
 ## Hooks
 
+### Session Start Hook (`hooks/session-start.sh`)
+
+Automatically runs when a new Claude Code session starts:
+
+1. **Dependency Installation**: Runs `npm install` if `node_modules/` doesn't exist
+2. **Git Hooks Setup**: Runs `npm run prepare-hooks` to install git hooks
+
+This ensures the development environment is ready immediately when you start working.
+
 ### Pre-Push Hook (`hooks/pre-push.sh`)
 
 Automatically runs quality checks before git push operations with auto-fix and retry:
