@@ -9,7 +9,7 @@ import * as jose from 'jose';
 import type { JWTClaims, TokenPair, User } from '../types';
 
 // Use Node.js crypto for compatibility with Node 18
-const crypto = webcrypto as Crypto;
+const crypto = webcrypto as unknown as Crypto;
 
 /**
  * JWT configuration
@@ -112,7 +112,7 @@ export class JWTError extends Error {
   constructor(
     message: string,
     public code: string,
-    public cause?: unknown
+    public override cause?: unknown
   ) {
     super(message);
     this.name = 'JWTError';

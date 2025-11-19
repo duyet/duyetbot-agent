@@ -9,7 +9,7 @@ import type { Context, Next } from 'hono';
 import type { Env } from '../types';
 
 // Use Node.js crypto for compatibility with Node 18
-const crypto = webcrypto as Crypto;
+const crypto = webcrypto as unknown as Crypto;
 
 /**
  * Request ID middleware

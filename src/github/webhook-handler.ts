@@ -62,6 +62,22 @@ export interface WebhookPayload {
 }
 
 /**
+ * Issue comment webhook payload
+ */
+export interface IssueCommentPayload extends WebhookPayload {
+  issue: NonNullable<WebhookPayload['issue']>;
+  comment: NonNullable<WebhookPayload['comment']>;
+}
+
+/**
+ * Pull request review comment webhook payload
+ */
+export interface PullRequestReviewCommentPayload extends WebhookPayload {
+  pull_request: NonNullable<WebhookPayload['pull_request']>;
+  comment: NonNullable<WebhookPayload['comment']>;
+}
+
+/**
  * Verify GitHub webhook signature
  */
 export function verifyWebhookSignature(

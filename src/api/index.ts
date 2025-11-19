@@ -12,8 +12,8 @@ export type * from './types';
 
 // Auth utilities
 export { generateAccessToken, generateRefreshToken, verifyToken } from './auth/jwt';
-export { getGitHubAuthorizationUrl, completeGitHubOAuth } from './auth/github';
-export { getGoogleAuthorizationUrl, completeGoogleOAuth } from './auth/google';
+export { getGitHubAuthUrl, completeGitHubOAuth } from './auth/github';
+export { getGoogleAuthUrl, completeGoogleOAuth } from './auth/google';
 
 // Repositories
 export { UserRepository } from './repositories/user';
