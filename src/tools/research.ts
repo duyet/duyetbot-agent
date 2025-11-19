@@ -240,9 +240,9 @@ export class ResearchTool implements Tool {
       const titleRegex = /<a.*?class="result__a"[^>]*>(.*?)<\/a>/;
       const snippetRegex = /<a class="result__snippet"[^>]*>(.*?)<\/a>/;
 
-      let match;
+      let match: RegExpExecArray | null = resultRegex.exec(html);
       let count = 0;
-      while ((match = resultRegex.exec(html)) !== null && count < maxResults) {
+      while (match !== null && count < maxResults) {
         const block = match[0];
         const urlMatch = block.match(/href="([^"]*)"/);
         const titleMatch = block.match(titleRegex);
@@ -261,6 +261,7 @@ export class ResearchTool implements Tool {
             count++;
           }
         }
+        match = resultRegex.exec(html);
       }
 
       return results;
