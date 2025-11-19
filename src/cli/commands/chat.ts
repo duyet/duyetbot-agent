@@ -210,10 +210,15 @@ export async function chatCommand(options: ChatOptions) {
               message: input,
               model: currentModel,
             })) {
+              // biome-ignore lint/suspicious/noExplicitAny: Message type union narrowing requires type assertion
               if ((message as any).type === 'text') {
+                // biome-ignore lint/suspicious/noExplicitAny: Access narrowed type property
                 process.stdout.write((message as any).text);
+                // biome-ignore lint/suspicious/noExplicitAny: Access narrowed type property
                 _responseText += (message as any).text;
+                // biome-ignore lint/suspicious/noExplicitAny: Message type union narrowing requires type assertion
               } else if ((message as any).type === 'tool_use') {
+                // biome-ignore lint/suspicious/noExplicitAny: Access narrowed type property
                 process.stdout.write(chalk.gray(`\n[Using tool: ${(message as any).name}]\n`));
               }
             }

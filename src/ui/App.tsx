@@ -8,7 +8,7 @@ import type { Agent } from '@/agent/core';
 import type { Session } from '@/agent/session';
 import type { LLMMessage } from '@/providers/types';
 import { Box, Text, useApp, useInput } from 'ink';
-import type React from 'react';
+import React from 'react';
 import { useEffect, useState } from 'react';
 import { ChatView } from './components/ChatView';
 import { InputBox } from './components/InputBox';

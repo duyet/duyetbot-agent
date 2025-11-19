@@ -133,7 +133,8 @@ export class GitTool implements Tool {
           return this.handleStatus(result, startTime, input);
 
         case 'clone':
-          if (typeof data !== 'string' && !(data as any).url) {
+          // biome-ignore lint/suspicious/noExplicitAny: Union type property access
+      if (typeof data !== 'string' && !(data as any).url) {
             return this.error('Clone requires URL parameter', 'MISSING_PARAMETER');
           }
           gitCommand = this.buildCloneCommand(data as GitCommandOptions);
