@@ -1,0 +1,64 @@
+{
+  "name": "@duyetbot/tools",
+  "version": "0.1.0",
+  "description": "Tool implementations for duyetbot-agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./bash": {
+      "types": "./dist/bash.d.ts",
+      "import": "./dist/bash.js"
+    },
+    "./git": {
+      "types": "./dist/git.d.ts",
+      "import": "./dist/git.js"
+    },
+    "./github": {
+      "types": "./dist/github.d.ts",
+      "import": "./dist/github.js"
+    },
+    "./plan": {
+      "types": "./dist/plan.d.ts",
+      "import": "./dist/plan.js"
+    },
+    "./research": {
+      "types": "./dist/research.d.ts",
+      "import": "./dist/research.js"
+    },
+    "./sleep": {
+      "types": "./dist/sleep.d.ts",
+      "import": "./dist/sleep.js"
+    },
+    "./registry": {
+      "types": "./dist/registry.d.ts",
+      "import": "./dist/registry.js"
+    }
+  },
+  "files": ["dist", "src"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": ["tools", "agent", "bash", "git", "github", "duyetbot"],
+  "author": "duyet",
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@duyetbot/types": "workspace:*",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
