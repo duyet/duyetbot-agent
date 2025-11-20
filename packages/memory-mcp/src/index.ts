@@ -1,14 +1,14 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import type { Env } from './types.js';
 import { D1Storage } from './storage/d1.js';
 import { KVStorage } from './storage/kv.js';
+import type { Env } from './types.js';
 
 import { authenticate, authenticateSchema } from './tools/authenticate.js';
 import { getMemory, getMemorySchema } from './tools/get-memory.js';
+import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 import { saveMemory, saveMemorySchema } from './tools/save-memory.js';
 import { searchMemory, searchMemorySchema } from './tools/search-memory.js';
-import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 
 type Variables = {
   userId: string;

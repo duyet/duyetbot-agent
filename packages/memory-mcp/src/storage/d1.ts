@@ -1,15 +1,12 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { User, Session, SessionToken } from '../types.js';
+import type { Session, SessionToken, User } from '../types.js';
 
 export class D1Storage {
   constructor(private db: D1Database) {}
 
   // User operations
   async getUser(id: string): Promise<User | null> {
-    const result = await this.db
-      .prepare('SELECT * FROM users WHERE id = ?')
-      .bind(id)
-      .first<User>();
+    const result = await this.db.prepare('SELECT * FROM users WHERE id = ?').bind(id).first<User>();
     return result || null;
   }
 
@@ -95,7 +92,10 @@ export class D1Storage {
     selectQuery += ' ORDER BY updated_at DESC LIMIT ? OFFSET ?';
 
     const [countResult, sessions] = await Promise.all([
-      this.db.prepare(countQuery).bind(...params).first<{ count: number }>(),
+      this.db
+        .prepare(countQuery)
+        .bind(...params)
+        .first<{ count: number }>(),
       this.db
         .prepare(selectQuery)
         .bind(...params, limit, offset)
@@ -180,16 +180,10 @@ export class D1Storage {
   }
 
   async deleteToken(token: string): Promise<void> {
-    await this.db
-      .prepare('DELETE FROM session_tokens WHERE token = ?')
-      .bind(token)
-      .run();
+    await this.db.prepare('DELETE FROM session_tokens WHERE token = ?').bind(token).run();
   }
 
   async deleteExpiredTokens(): Promise<void> {
-    await this.db
-      .prepare('DELETE FROM session_tokens WHERE expires_at < ?')
-      .bind(Date.now())
-      .run();
+    await this.db.prepare('DELETE FROM session_tokens WHERE expires_at < ?').bind(Date.now()).run();
   }
 }

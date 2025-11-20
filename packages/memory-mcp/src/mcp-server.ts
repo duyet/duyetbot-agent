@@ -1,19 +1,16 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import {
-  CallToolRequestSchema,
-  ListToolsRequestSchema,
-} from '@modelcontextprotocol/sdk/types.js';
+import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 
-import type { Env } from './types.js';
 import { D1Storage } from './storage/d1.js';
 import { KVStorage } from './storage/kv.js';
+import type { Env } from './types.js';
 
 import { authenticate, authenticateSchema } from './tools/authenticate.js';
 import { getMemory, getMemorySchema } from './tools/get-memory.js';
+import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 import { saveMemory, saveMemorySchema } from './tools/save-memory.js';
 import { searchMemory, searchMemorySchema } from './tools/search-memory.js';
-import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 
 export function createMCPServer(env: Env) {
   const d1Storage = new D1Storage(env.DB);

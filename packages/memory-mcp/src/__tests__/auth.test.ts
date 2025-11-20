@@ -1,10 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  verifyGitHubToken,
-  githubUserToUser,
-  generateUserId,
-  generateSessionToken,
   generateSessionId,
+  generateSessionToken,
+  generateUserId,
+  githubUserToUser,
+  verifyGitHubToken,
 } from '../auth/github.js';
 
 // Mock fetch globally

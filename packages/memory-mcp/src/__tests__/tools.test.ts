@@ -1,12 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { authenticate } from '../tools/authenticate.js';
-import { getMemory } from '../tools/get-memory.js';
-import { saveMemory } from '../tools/save-memory.js';
-import { searchMemory } from '../tools/search-memory.js';
-import { listSessions } from '../tools/list-sessions.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { D1Storage } from '../storage/d1.js';
 import type { KVStorage } from '../storage/kv.js';
-import type { User, Session, LLMMessage } from '../types.js';
+import { authenticate } from '../tools/authenticate.js';
+import { getMemory } from '../tools/get-memory.js';
+import { listSessions } from '../tools/list-sessions.js';
+import { saveMemory } from '../tools/save-memory.js';
+import { searchMemory } from '../tools/search-memory.js';
+import type { LLMMessage, Session, User } from '../types.js';
 
 // Mock fetch for GitHub API
 const mockFetch = vi.fn();
@@ -33,8 +33,7 @@ function createMockD1Storage() {
     updateUser: vi.fn(),
     getSession: vi.fn(async (id: string) => sessions.get(id) || null),
     listSessions: vi.fn(async (userId: string, options?: any) => {
-      const userSessions = Array.from(sessions.values())
-        .filter(s => s.user_id === userId);
+      const userSessions = Array.from(sessions.values()).filter((s) => s.user_id === userId);
       return { sessions: userSessions, total: userSessions.length };
     }),
     createSession: vi.fn(async (session: Session) => {
@@ -117,15 +116,15 @@ describe('authenticate tool', () => {
   it('should reject invalid GitHub token', async () => {
     mockFetch.mockResolvedValueOnce({ ok: false });
 
-    await expect(
-      authenticate({ github_token: 'invalid' }, d1Storage)
-    ).rejects.toThrow('Invalid GitHub token');
+    await expect(authenticate({ github_token: 'invalid' }, d1Storage)).rejects.toThrow(
+      'Invalid GitHub token'
+    );
   });
 
   it('should reject OAuth code (not implemented)', async () => {
-    await expect(
-      authenticate({ oauth_code: 'code' }, d1Storage)
-    ).rejects.toThrow('OAuth code flow not yet implemented');
+    await expect(authenticate({ oauth_code: 'code' }, d1Storage)).rejects.toThrow(
+      'OAuth code flow not yet implemented'
+    );
   });
 
   it('should update existing user', async () => {
@@ -168,12 +167,7 @@ describe('getMemory tool', () => {
   });
 
   it('should return empty memory for non-existent session', async () => {
-    const result = await getMemory(
-      { session_id: 'nonexistent' },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await getMemory({ session_id: 'nonexistent' }, d1Storage, kvStorage, 'user_123');
 
     expect(result.messages).toEqual([]);
     expect(result.metadata).toEqual({});
@@ -197,12 +191,7 @@ describe('getMemory tool', () => {
     ];
     kvStorage._messages.set('sess_123', messages);
 
-    const result = await getMemory(
-      { session_id: 'sess_123' },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await getMemory({ session_id: 'sess_123' }, d1Storage, kvStorage, 'user_123');
 
     expect(result.messages).toEqual(messages);
     expect(result.metadata).toEqual({ key: 'value' });
@@ -272,12 +261,7 @@ describe('saveMemory tool', () => {
       { role: 'assistant', content: 'Hi!' },
     ];
 
-    const result = await saveMemory(
-      { messages },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await saveMemory({ messages }, d1Storage, kvStorage, 'user_123');
 
     expect(result.session_id).toBeDefined();
     expect(result.saved_count).toBe(2);
@@ -380,12 +364,7 @@ describe('searchMemory tool', () => {
     ];
     kvStorage._messages.set('sess_123', messages);
 
-    const result = await searchMemory(
-      { query: 'TypeScript' },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await searchMemory({ query: 'TypeScript' }, d1Storage, kvStorage, 'user_123');
 
     expect(result.results).toHaveLength(1);
     expect(result.results[0].message.content).toContain('TypeScript');
@@ -403,16 +382,9 @@ describe('searchMemory tool', () => {
     };
     d1Storage._sessions.set(session.id, session);
 
-    kvStorage._messages.set('sess_123', [
-      { role: 'user', content: 'Hello' },
-    ]);
+    kvStorage._messages.set('sess_123', [{ role: 'user', content: 'Hello' }]);
 
-    const result = await searchMemory(
-      { query: 'Python' },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await searchMemory({ query: 'Python' }, d1Storage, kvStorage, 'user_123');
 
     expect(result.results).toHaveLength(0);
   });

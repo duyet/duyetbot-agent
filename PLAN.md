@@ -1222,14 +1222,14 @@ bot.launch();
 - [x] Move src/agent/ → packages/core/
   - [x] Extract Agent core
   - [x] Extract Session management
-  - [ ] Add MCP client integration for memory
+  - [x] Add MCP client integration for memory
   - [ ] Write core tests (maintain 79 existing tests)
 - [x] Update import paths across all packages
 - [ ] Run all tests (maintain 507+ passing tests)
 
 **Output**: Modular packages with maintained test coverage ✅
 
-**Progress**: Base URL override support and Z.AI helpers added to providers (2025-11-20). GitHub tool created. Tests pending - current total 93 tests in memory-mcp package.
+**Progress**: Base URL override support and Z.AI helpers added to providers (2025-11-20). GitHub tool created with 10 actions. MCP client added to core package. Tests pending - current total 93 tests in memory-mcp package.
 
 ---
 
@@ -1570,6 +1570,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-20 | 3.4 | 🔧 **Phase 3 IN PROGRESS**: Added MCP client integration to core package. MCPMemoryClient class for memory server operations (authenticate, getMemory, saveMemory, searchMemory, listSessions). Tests pending. |
 | 2025-11-20 | 3.3 | 🔧 **Phase 3 IN PROGRESS**: Refactored providers with base URL override support. Added createZAIConfig and createProviderConfig helpers for Z.AI support. Created GitHub tool with 10 actions (get_pr, get_issue, create_comment, etc.). All packages building successfully. |
 | 2025-11-20 | 3.2 | 🔧 **Phase 2 IN PROGRESS**: MCP Memory Server core implementation complete. Created @duyetbot/memory-mcp package with: Hono HTTP API, D1Storage and KVStorage classes, 5 MCP tools (authenticate, get_memory, save_memory, search_memory, list_sessions), rate limiting, GitHub token auth. 93 tests passing. Deployment pending. |
 | 2025-11-19 | 3.1 | ✅ **Phase 1 COMPLETE**: Monorepo setup with pnpm workspaces + Turborepo. Created packages: @duyetbot/types, @duyetbot/providers, @duyetbot/tools, @duyetbot/core. Migrated existing code from src/ to packages. Updated imports to use workspace packages. All packages building successfully. |
@@ -1595,7 +1596,7 @@ pnpm run dev
    - [x] Providers with base URL support
    - [x] GitHub tool created
    - [ ] Write tests for providers/tools/core
-   - [ ] Add MCP client integration to core
+   - [x] Add MCP client integration to core
 5. **Next: Phase 4 - Long-Running Agent Server**
 
 ---

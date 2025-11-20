@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { KVStorage } from '../storage/kv.js';
 import type { LLMMessage } from '../types.js';
 
@@ -12,9 +12,11 @@ function createMockKV() {
       if (!entry) return null;
       return entry.value;
     }),
-    put: vi.fn(async (key: string, value: string, options?: { metadata?: Record<string, unknown> }) => {
-      data.set(key, { value, metadata: options?.metadata });
-    }),
+    put: vi.fn(
+      async (key: string, value: string, options?: { metadata?: Record<string, unknown> }) => {
+        data.set(key, { value, metadata: options?.metadata });
+      }
+    ),
     delete: vi.fn(async (key: string) => {
       data.delete(key);
     }),
@@ -47,7 +49,7 @@ describe('KVStorage', () => {
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi there!' },
       ];
-      const jsonl = testMessages.map(m => JSON.stringify(m)).join('\n');
+      const jsonl = testMessages.map((m) => JSON.stringify(m)).join('\n');
       mockKV._data.set('sessions:sess_123:messages', { value: jsonl });
 
       const messages = await storage.getMessages('sess_123');
@@ -88,7 +90,7 @@ describe('KVStorage', () => {
   describe('appendMessages', () => {
     it('should append to existing messages', async () => {
       const existing: LLMMessage[] = [{ role: 'user', content: 'Hello' }];
-      const jsonl = existing.map(m => JSON.stringify(m)).join('\n');
+      const jsonl = existing.map((m) => JSON.stringify(m)).join('\n');
       mockKV._data.set('sessions:sess_123:messages', { value: jsonl });
 
       const newMessages: LLMMessage[] = [{ role: 'assistant', content: 'Hi!' }];
@@ -128,7 +130,7 @@ describe('KVStorage', () => {
         { role: 'user', content: 'Hello' },
         { role: 'assistant', content: 'Hi' },
       ];
-      const jsonl = messages.map(m => JSON.stringify(m)).join('\n');
+      const jsonl = messages.map((m) => JSON.stringify(m)).join('\n');
       mockKV._data.set('sessions:sess_123:messages', { value: jsonl });
 
       const count = await storage.getMessageCount('sess_123');

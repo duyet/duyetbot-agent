@@ -69,10 +69,7 @@ export interface GitHubToolDefinition {
 /**
  * Create GitHub tool definition
  */
-export function createGitHubTool(
-  client: GitHubClient,
-  context: RepoContext
-): GitHubToolDefinition {
+export function createGitHubTool(client: GitHubClient, context: RepoContext): GitHubToolDefinition {
   return {
     name: 'github',
     description: `Interact with GitHub API for repository operations on ${context.owner}/${context.repo}`,
