@@ -49,7 +49,9 @@ export class D1Storage {
       }
     }
 
-    if (fields.length === 0) return;
+    if (fields.length === 0) {
+      return;
+    }
 
     values.push(id);
     await this.db
@@ -65,7 +67,9 @@ export class D1Storage {
       .bind(id)
       .first<Session & { metadata: string }>();
 
-    if (!result) return null;
+    if (!result) {
+      return null;
+    }
 
     return {
       ...result,
@@ -146,7 +150,9 @@ export class D1Storage {
       }
     }
 
-    if (fields.length === 0) return;
+    if (fields.length === 0) {
+      return;
+    }
 
     values.push(id);
     await this.db

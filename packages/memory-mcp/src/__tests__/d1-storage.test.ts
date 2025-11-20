@@ -19,7 +19,9 @@ function createMockD1() {
           }
           if (sql.includes('FROM users WHERE github_id')) {
             for (const user of data.users.values()) {
-              if (user.github_id === args[0]) return user as T;
+              if (user.github_id === args[0]) {
+                return user as T;
+              }
             }
             return null;
           }
@@ -86,7 +88,9 @@ function createMockD1() {
           if (sql.includes('DELETE FROM session_tokens WHERE expires_at')) {
             const now = args[0] as number;
             for (const [key, token] of data.tokens) {
-              if (token.expires_at < now) data.tokens.delete(key);
+              if (token.expires_at < now) {
+                data.tokens.delete(key);
+              }
             }
           }
           return { success: true };

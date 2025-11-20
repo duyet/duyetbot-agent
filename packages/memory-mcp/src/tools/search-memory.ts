@@ -51,7 +51,9 @@ export async function searchMemory(
 
     for (let i = 0; i < messages.length; i++) {
       const message = messages[i];
-      if (!message) continue;
+      if (!message) {
+        continue;
+      }
 
       // Apply date filter
       if (filter?.date_range) {

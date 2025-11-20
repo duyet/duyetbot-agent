@@ -10,7 +10,9 @@ export class KVStorage {
 
   async getMessages(sessionId: string): Promise<LLMMessage[]> {
     const data = await this.kv.get(this.getMessagesKey(sessionId), 'text');
-    if (!data) return [];
+    if (!data) {
+      return [];
+    }
 
     // Parse JSONL format (one message per line)
     const lines = data.split('\n').filter((line) => line.trim());

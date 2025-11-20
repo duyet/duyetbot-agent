@@ -7,9 +7,11 @@ function createMockKV() {
   const data = new Map<string, { value: string; metadata?: Record<string, unknown> }>();
 
   return {
-    get: vi.fn(async (key: string, type?: string) => {
+    get: vi.fn(async (key: string, _type?: string) => {
       const entry = data.get(key);
-      if (!entry) return null;
+      if (!entry) {
+        return null;
+      }
       return entry.value;
     }),
     put: vi.fn(
@@ -22,7 +24,9 @@ function createMockKV() {
     }),
     getWithMetadata: vi.fn(async (key: string) => {
       const entry = data.get(key);
-      if (!entry) return { value: null, metadata: null };
+      if (!entry) {
+        return { value: null, metadata: null };
+      }
       return { value: entry.value, metadata: entry.metadata };
     }),
     _data: data,
