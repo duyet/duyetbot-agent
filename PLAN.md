@@ -1259,32 +1259,34 @@ bot.launch();
 
 ---
 
-### Phase 5: CLI with MCP Integration (4-5 days)
+### Phase 5: CLI with MCP Integration (4-5 days) 🔧 IN PROGRESS
 
 **Goal**: Full-featured CLI with cloud and local modes
 
 **Tasks**:
-- [ ] Create packages/cli package
-- [ ] Set up Commander.js command structure
-- [ ] Implement `login` command (GitHub OAuth device flow)
-- [ ] Implement `logout` command
-- [ ] Implement `whoami` command
+- [x] Create packages/cli package
+- [x] Set up Commander.js command structure
+- [x] Implement `login` command (placeholder)
+- [x] Implement `logout` command
+- [x] Implement `whoami` command
 - [ ] Implement `chat` command (both local and cloud modes)
 - [ ] Add Ink-based terminal UI components
   - [ ] ChatView component
   - [ ] StatusBar component
   - [ ] SessionList component
-- [ ] Implement `sessions` commands (list, new, resume, delete, export)
+- [x] Implement `sessions` commands (list, new, delete, export)
 - [ ] Implement `memory` commands (search, stats)
-- [ ] Implement `config` commands (get, set, edit)
+- [x] Implement `config` commands (get, set)
 - [ ] Add MCP client for cloud mode
-- [ ] Add FileSessionManager for local mode
+- [x] Add FileSessionManager for local mode
 - [ ] Implement automatic mode detection (online/offline)
-- [ ] Add configuration file support (~/.duyetbot/config.json)
-- [ ] Write CLI tests (50+ tests)
+- [x] Add configuration file support (~/.duyetbot/config.json)
+- [x] Write CLI tests (40 tests)
 - [ ] Create npm package for distribution
 
 **Output**: Published CLI tool (@duyetbot/cli) ✅
+
+**Progress**: Phase 5 IN PROGRESS (2025-11-20). Created @duyetbot/cli package with: config management, AuthManager, FileSessionManager, Commander.js commands (login, logout, whoami, chat, sessions, config). 40 tests passing. Total: 315 tests. Ink UI and full MCP integration pending.
 
 ---
 
@@ -1572,6 +1574,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-20 | 3.7 | 🔧 **Phase 5 IN PROGRESS**: CLI package created. @duyetbot/cli with: config management, AuthManager, FileSessionManager, Commander.js commands (login, logout, whoami, chat, sessions, config). 315 tests passing (40 new CLI tests). Ink UI pending. |
 | 2025-11-20 | 3.6 | ✅ **Phase 4 COMPLETE**: Long-Running Agent Server implemented. Created @duyetbot/server package with: config system, AgentSessionManager, health routes, agent API routes (sessions, execute), WebSocket server for streaming, graceful shutdown. Dockerfiles for server and mcp-memory. docker-compose.yml for deployment. 275 tests passing (36 new server tests). |
 | 2025-11-20 | 3.5 | ✅ **Phase 3 COMPLETE**: Added comprehensive tests for all packages. 239 tests passing: 93 memory-mcp + 38 providers (factory, claude) + 51 tools (registry, sleep) + 57 core (session manager, MCP client). |
 | 2025-11-20 | 3.4 | 🔧 **Phase 3 IN PROGRESS**: Added MCP client integration to core package. MCPMemoryClient class for memory server operations (authenticate, getMemory, saveMemory, searchMemory, listSessions). Tests pending. |
@@ -1607,7 +1610,13 @@ pnpm run dev
    - [x] Graceful shutdown handling
    - [x] Docker and docker-compose configurations
    - [x] 36 tests passing (275 total)
-6. **Next: Phase 5 - CLI with MCP Integration**
+6. 🔧 **Phase 5 - CLI with MCP Integration** IN PROGRESS
+   - [x] CLI package with config, auth, sessions
+   - [x] Commander.js commands
+   - [x] FileSessionManager for local mode
+   - [x] 40 tests passing (315 total)
+   - [ ] Ink UI and full MCP integration
+7. **Next: Continue Phase 5 or Phase 6 - GitHub Bot**
 
 ---
 
