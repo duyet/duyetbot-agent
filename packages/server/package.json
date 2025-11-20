@@ -1,0 +1,32 @@
+{
+  "name": "@duyetbot/server",
+  "version": "0.1.0",
+  "description": "Long-running agent server with WebSocket support",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/index.ts",
+    "start": "node dist/index.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duyetbot/core": "workspace:*",
+    "@duyetbot/providers": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
+    "hono": "^4.6.0",
+    "ws": "^8.18.0",
+    "zod": "^3.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/ws": "^8.5.13",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0",
+    "vitest": "^2.1.0"
+  }
+}
