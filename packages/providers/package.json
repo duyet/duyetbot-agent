@@ -29,7 +29,7 @@
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
   "keywords": ["llm", "provider", "claude", "openai", "openrouter", "duyetbot"],

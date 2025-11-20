@@ -59,3 +59,7 @@ Thumbs.db
 .parcel-cache/
 .eslintcache
 .stylelintcache
+.turbo/
+
+# Monorepo build outputs
+packages/*/dist/
