@@ -92,6 +92,57 @@ export class ProviderFactory {
 export const providerFactory = new ProviderFactory();
 
 /**
+ * Configuration for custom provider endpoints
+ */
+export interface CustomProviderConfig {
+  type: 'anthropic' | 'openai' | 'openrouter';
+  apiKey: string;
+  baseURL?: string;
+  models?: {
+    haiku?: string;
+    sonnet?: string;
+    opus?: string;
+  };
+}
+
+/**
+ * Create a provider configuration for Z.AI (Claude-compatible API)
+ * Z.AI uses GLM models with Claude-compatible API
+ */
+export function createZAIConfig(apiKey: string): CustomProviderConfig {
+  return {
+    type: 'anthropic',
+    apiKey,
+    baseURL: 'https://api.z.ai/api/anthropic',
+    models: {
+      haiku: 'glm-4.5-air',
+      sonnet: 'glm-4.6',
+      opus: 'glm-4.6',
+    },
+  };
+}
+
+/**
+ * Create provider config from custom provider configuration
+ */
+export function createProviderConfig(
+  custom: CustomProviderConfig,
+  model: string
+): ProviderConfig {
+  const config: ProviderConfig = {
+    provider: custom.type,
+    model,
+    apiKey: custom.apiKey,
+  };
+
+  if (custom.baseURL) {
+    config.baseURL = custom.baseURL;
+  }
+
+  return config;
+}
+
+/**
  * Re-export types from @duyetbot/types
  */
 export type {

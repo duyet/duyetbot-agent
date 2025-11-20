@@ -15,3 +15,4 @@ export * from './bash.js';
 export * from './git.js';
 export * from './research.js';
 export * from './registry.js';
+export * from './github.js';

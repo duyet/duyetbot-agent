@@ -40,10 +40,22 @@ export class ClaudeProvider implements LLMProvider {
       timeout: config.timeout ?? DEFAULT_TIMEOUT,
     };
 
-    this.client = new Anthropic({
+    // Create Anthropic client with optional baseURL override
+    const clientOptions: { apiKey: string; timeout?: number; baseURL?: string } = {
       apiKey: this.config.apiKey,
-      timeout: this.config.timeout,
-    });
+    };
+
+    // Add timeout if provided
+    if (this.config.timeout !== undefined) {
+      clientOptions.timeout = this.config.timeout;
+    }
+
+    // Add baseURL if provided (for Z.AI or other Claude-compatible APIs)
+    if (this.config.baseURL) {
+      clientOptions.baseURL = this.config.baseURL;
+    }
+
+    this.client = new Anthropic(clientOptions);
   }
 
   /**

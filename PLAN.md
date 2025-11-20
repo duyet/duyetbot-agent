@@ -1202,32 +1202,34 @@ bot.launch();
 
 ---
 
-### Phase 3: Refactor Core Packages (3-4 days)
+### Phase 3: Refactor Core Packages (3-4 days) ✅ IN PROGRESS
 
 **Goal**: Extract and refactor existing code into monorepo packages
 
 **Tasks**:
-- [ ] Move src/providers/ → packages/providers/
-  - [ ] Refactor ClaudeProvider with base URL override support
-  - [ ] Refactor OpenRouterProvider
-  - [ ] Create Z.AI provider (uses ClaudeProvider with custom base URL)
-  - [ ] Update ProviderFactory to support base URL config
+- [x] Move src/providers/ → packages/providers/
+  - [x] Refactor ClaudeProvider with base URL override support
+  - [x] Refactor OpenRouterProvider
+  - [x] Create Z.AI provider helper (createZAIConfig, createProviderConfig)
+  - [x] Update ProviderFactory to support base URL config
   - [ ] Add provider configuration loader
   - [ ] Write provider tests (maintain 102 existing tests)
-- [ ] Move src/tools/ → packages/tools/
-  - [ ] Extract bash, git, plan, sleep, research tools
-  - [ ] Create new `github` tool for GitHub API operations
-  - [ ] Add ToolRegistry
+- [x] Move src/tools/ → packages/tools/
+  - [x] Extract bash, git, plan, sleep, research tools
+  - [x] Create new `github` tool for GitHub API operations
+  - [x] Add ToolRegistry
   - [ ] Write tool tests (maintain 151 existing tests)
-- [ ] Move src/agent/ → packages/core/
-  - [ ] Extract Agent core
-  - [ ] Extract Session management
+- [x] Move src/agent/ → packages/core/
+  - [x] Extract Agent core
+  - [x] Extract Session management
   - [ ] Add MCP client integration for memory
   - [ ] Write core tests (maintain 79 existing tests)
-- [ ] Update import paths across all packages
+- [x] Update import paths across all packages
 - [ ] Run all tests (maintain 507+ passing tests)
 
 **Output**: Modular packages with maintained test coverage ✅
+
+**Progress**: Base URL override support and Z.AI helpers added to providers (2025-11-20). GitHub tool created. Tests pending - current total 93 tests in memory-mcp package.
 
 ---
 
@@ -1568,6 +1570,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-20 | 3.3 | 🔧 **Phase 3 IN PROGRESS**: Refactored providers with base URL override support. Added createZAIConfig and createProviderConfig helpers for Z.AI support. Created GitHub tool with 10 actions (get_pr, get_issue, create_comment, etc.). All packages building successfully. |
 | 2025-11-20 | 3.2 | 🔧 **Phase 2 IN PROGRESS**: MCP Memory Server core implementation complete. Created @duyetbot/memory-mcp package with: Hono HTTP API, D1Storage and KVStorage classes, 5 MCP tools (authenticate, get_memory, save_memory, search_memory, list_sessions), rate limiting, GitHub token auth. 93 tests passing. Deployment pending. |
 | 2025-11-19 | 3.1 | ✅ **Phase 1 COMPLETE**: Monorepo setup with pnpm workspaces + Turborepo. Created packages: @duyetbot/types, @duyetbot/providers, @duyetbot/tools, @duyetbot/core. Migrated existing code from src/ to packages. Updated imports to use workspace packages. All packages building successfully. |
 | 2025-11-19 | 3.0 | 🚀 **MAJOR REDESIGN**: Complete architectural overhaul. Moved from Cloudflare Workers-only to monorepo with long-running container server + MCP memory layer. Added GitHub bot (@duyetbot mentions), Telegram bot, multi-provider with base URL override (Z.AI support), separated packages (core, providers, tools, memory-mcp, server, CLI), Docker deployment. Comprehensive 10-phase implementation plan. Previous architecture preserved in git history. |
@@ -1588,9 +1591,12 @@ pnpm run dev
    - [x] Core implementation complete (93 tests)
    - [ ] Deploy to Cloudflare Workers
    - [ ] Document MCP API
-4. **Next: Phase 3 - Refactor Core Packages**
-   - Move providers, tools, core to monorepo packages
-   - Maintain existing 507+ tests
+4. 🔧 **Phase 3 - Refactor Core Packages** IN PROGRESS
+   - [x] Providers with base URL support
+   - [x] GitHub tool created
+   - [ ] Write tests for providers/tools/core
+   - [ ] Add MCP client integration to core
+5. **Next: Phase 4 - Long-Running Agent Server**
 
 ---
 
