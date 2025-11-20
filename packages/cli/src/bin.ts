@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import { loadConfig, saveConfig } from './config.js';
 import { FileSessionManager } from './sessions.js';
 import type { ListSessionsOptions } from './sessions.js';
+import { startChat, runPrompt } from './chat.js';
 
 const program = new Command();
 
@@ -54,11 +55,45 @@ program
   .command('chat')
   .description('Start interactive chat')
   .option('-l, --local', 'Use local mode')
+  .option('-s, --session <id>', 'Resume session')
   .action(async (options) => {
     const config = loadConfig();
     const mode = options.local ? 'local' : config.mode;
-    console.log(`Starting chat in ${mode} mode...`);
-    console.log('Chat UI not yet implemented');
+
+    const chatOptions: Parameters<typeof startChat>[0] = {
+      mode,
+      sessionsDir: config.sessionsDir,
+    };
+    if (options.session) {
+      chatOptions.sessionId = options.session;
+    }
+    if (config.mcpServerUrl) {
+      chatOptions.mcpServerUrl = config.mcpServerUrl;
+    }
+
+    await startChat(chatOptions);
+  });
+
+// Ask command (single prompt)
+program
+  .command('ask <prompt>')
+  .description('Ask a single question')
+  .option('-l, --local', 'Use local mode')
+  .action(async (prompt, options) => {
+    const config = loadConfig();
+    const mode = options.local ? 'local' : config.mode;
+
+    const promptOptions: Parameters<typeof runPrompt>[1] = {
+      mode,
+      sessionsDir: config.sessionsDir,
+    };
+    if (config.mcpServerUrl) {
+      promptOptions.mcpServerUrl = config.mcpServerUrl;
+    }
+
+    const response = await runPrompt(prompt, promptOptions);
+
+    console.log(response);
   });
 
 // Sessions commands

@@ -10,3 +10,6 @@ export { AuthManager } from './auth.js';
 
 export type { LocalSession, SessionState, CreateSessionInput, UpdateSessionInput, ListSessionsOptions } from './sessions.js';
 export { FileSessionManager } from './sessions.js';
+
+export type { ChatOptions, ChatContext } from './chat.js';
+export { startChat, runPrompt } from './chat.js';
