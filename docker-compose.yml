@@ -1,0 +1,37 @@
+version: '3.8'
+
+services:
+  agent-server:
+    build:
+      context: .
+      dockerfile: packages/server/Dockerfile
+    ports:
+      - "3000:3000"
+      - "8080:8080"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - WS_PORT=8080
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - MCP_SERVER_URL=http://mcp-memory:3001
+    depends_on:
+      - mcp-memory
+    restart: unless-stopped
+
+  mcp-memory:
+    build:
+      context: .
+      dockerfile: packages/mcp-memory/Dockerfile
+    ports:
+      - "3001:3001"
+    environment:
+      - PORT=3001
+      - STORAGE_PATH=/data/memory.json
+    volumes:
+      - mcp-data:/data
+    restart: unless-stopped
+
+volumes:
+  mcp-data:
