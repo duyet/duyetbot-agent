@@ -1259,14 +1259,14 @@ bot.launch();
 
 ---
 
-### Phase 5: CLI with MCP Integration (4-5 days) 🔧 IN PROGRESS
+### Phase 5: CLI with MCP Integration (4-5 days) ✅ COMPLETED
 
 **Goal**: Full-featured CLI with cloud and local modes
 
 **Tasks**:
 - [x] Create packages/cli package
 - [x] Set up Commander.js command structure
-- [x] Implement `login` command (placeholder)
+- [x] Implement `login` command (wired to GitHubDeviceAuth)
 - [x] Implement `logout` command
 - [x] Implement `whoami` command
 - [x] Implement `chat` command (both local and cloud modes)
@@ -1274,21 +1274,21 @@ bot.launch();
   - [x] ChatView component
   - [x] StatusBar component
   - [x] App component
-  - [ ] SessionList component
+  - [x] SessionList component
 - [x] Implement `sessions` commands (list, new, delete, export)
-- [ ] Implement `memory` commands (search, stats)
+- [x] Implement `memory` commands (search, stats)
 - [x] Implement `config` commands (get, set)
 - [x] Add MCP client for cloud mode (CloudSessionManager)
 - [x] Add FileSessionManager for local mode
 - [x] Implement GitHub OAuth device flow
-- [ ] Implement automatic mode detection (online/offline)
+- [x] Implement automatic mode detection (online/offline)
 - [x] Add configuration file support (~/.duyetbot/config.json)
 - [x] Write CLI tests (67 tests)
 - [ ] Create npm package for distribution
 
 **Output**: Published CLI tool (@duyetbot/cli) ✅
 
-**Progress**: Phase 5 IN PROGRESS (2025-11-20). Created @duyetbot/cli package with: config management, AuthManager, FileSessionManager, CloudSessionManager, GitHub OAuth device flow, Commander.js commands, Ink-based UI (ChatView, StatusBar, App). 67 tests passing. Total: 342 tests. SessionList component and npm package distribution pending.
+**Progress**: Phase 5 COMPLETE (2025-11-20). Created @duyetbot/cli package with: config management, AuthManager, FileSessionManager, CloudSessionManager, GitHub OAuth device flow (wired to login), Commander.js commands, Ink-based UI (ChatView, StatusBar, App, SessionList), memory commands (search, stats), auto mode detection. 67 tests passing. Total: 342 tests. npm package distribution pending.
 
 ---
 
@@ -1576,6 +1576,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-20 | 3.9 | ✅ **Phase 5 COMPLETE**: Wired login command to GitHubDeviceAuth, added memory commands (search, stats), created SessionList UI component, implemented auto mode detection (mode-detector.ts). 342 tests passing (67 CLI tests). npm package distribution pending. |
 | 2025-11-20 | 3.8 | 🔧 **Phase 5 IN PROGRESS**: Added Ink-based terminal UI (ChatView, StatusBar, App), CloudSessionManager with MCP client, GitHub OAuth device flow. Fixed tsconfig issues across packages. 342 tests passing (67 CLI tests). SessionList and npm distribution pending. |
 | 2025-11-20 | 3.7 | 🔧 **Phase 5 IN PROGRESS**: CLI package created. @duyetbot/cli with: config management, AuthManager, FileSessionManager, Commander.js commands (login, logout, whoami, chat, sessions, config). 315 tests passing (40 new CLI tests). Ink UI pending. |
 | 2025-11-20 | 3.6 | ✅ **Phase 4 COMPLETE**: Long-Running Agent Server implemented. Created @duyetbot/server package with: config system, AgentSessionManager, health routes, agent API routes (sessions, execute), WebSocket server for streaming, graceful shutdown. Dockerfiles for server and mcp-memory. docker-compose.yml for deployment. 275 tests passing (36 new server tests). |
@@ -1613,13 +1614,20 @@ pnpm run dev
    - [x] Graceful shutdown handling
    - [x] Docker and docker-compose configurations
    - [x] 36 tests passing (275 total)
-6. 🔧 **Phase 5 - CLI with MCP Integration** IN PROGRESS
+6. ✅ **Phase 5 - CLI with MCP Integration** COMPLETE
    - [x] CLI package with config, auth, sessions
-   - [x] Commander.js commands
+   - [x] Commander.js commands with login wired to GitHubDeviceAuth
    - [x] FileSessionManager for local mode
-   - [x] 40 tests passing (315 total)
-   - [ ] Ink UI and full MCP integration
-7. **Next: Continue Phase 5 or Phase 6 - GitHub Bot**
+   - [x] SessionList UI component
+   - [x] Memory commands (search, stats)
+   - [x] Auto mode detection
+   - [x] 67 tests passing (342 total)
+   - [ ] npm package distribution
+7. **Next: Phase 6 - GitHub Bot Integration**
+   - [ ] Create apps/github-bot package
+   - [ ] Register GitHub App
+   - [ ] Implement @duyetbot mention parser
+   - [ ] Create webhook handlers
 
 ---
 
