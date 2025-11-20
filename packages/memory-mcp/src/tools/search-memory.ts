@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { D1Storage } from '../storage/d1.js';
 import type { KVStorage } from '../storage/kv.js';
-import type { SearchResult } from '../types.js';
+import type { SearchResult, Session } from '../types.js';
 
 export const searchMemorySchema = z.object({
   query: z.string(),
@@ -30,7 +30,7 @@ export async function searchMemory(
   const { query, limit = 10, filter } = input;
 
   // Get user's sessions
-  let sessions;
+  let sessions: Session[];
   if (filter?.session_id) {
     const session = await d1Storage.getSession(filter.session_id);
     if (!session || session.user_id !== userId) {

@@ -125,10 +125,7 @@ export function createZAIConfig(apiKey: string): CustomProviderConfig {
 /**
  * Create provider config from custom provider configuration
  */
-export function createProviderConfig(
-  custom: CustomProviderConfig,
-  model: string
-): ProviderConfig {
+export function createProviderConfig(custom: CustomProviderConfig, model: string): ProviderConfig {
   const config: ProviderConfig = {
     provider: custom.type,
     model,

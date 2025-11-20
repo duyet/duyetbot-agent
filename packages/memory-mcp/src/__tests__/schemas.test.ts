@@ -1,9 +1,9 @@
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { authenticateSchema } from '../tools/authenticate.js';
 import { getMemorySchema } from '../tools/get-memory.js';
+import { listSessionsSchema } from '../tools/list-sessions.js';
 import { saveMemorySchema } from '../tools/save-memory.js';
 import { searchMemorySchema } from '../tools/search-memory.js';
-import { listSessionsSchema } from '../tools/list-sessions.js';
 
 describe('Schema Validation', () => {
   describe('authenticateSchema', () => {

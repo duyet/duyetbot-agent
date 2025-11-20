@@ -22,7 +22,7 @@ export async function verifyGitHubToken(token: string): Promise<GitHubUser | nul
       return null;
     }
 
-    const data = await response.json() as GitHubUser;
+    const data = (await response.json()) as GitHubUser;
     return data;
   } catch {
     return null;

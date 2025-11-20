@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { D1Storage } from '../storage/d1.js';
-import type { User, Session, SessionToken } from '../types.js';
+import type { Session, SessionToken, User } from '../types.js';
 
 // Mock D1 database
 function createMockD1() {
@@ -37,8 +37,7 @@ function createMockD1() {
         all: vi.fn(async <T>() => {
           if (sql.includes('FROM sessions WHERE user_id')) {
             const userId = args[0];
-            const results = Array.from(data.sessions.values())
-              .filter(s => s.user_id === userId);
+            const results = Array.from(data.sessions.values()).filter((s) => s.user_id === userId);
             return { results } as { results: T[] };
           }
           return { results: [] };

@@ -1,8 +1,8 @@
 import { z } from 'zod';
+import { generateSessionId } from '../auth/github.js';
 import type { D1Storage } from '../storage/d1.js';
 import type { KVStorage } from '../storage/kv.js';
-import type { SaveMemoryResult, LLMMessage } from '../types.js';
-import { generateSessionId } from '../auth/github.js';
+import type { LLMMessage, SaveMemoryResult } from '../types.js';
 
 const messageSchema = z.object({
   role: z.enum(['user', 'assistant', 'system']),
@@ -26,7 +26,7 @@ export async function saveMemory(
   userId: string
 ): Promise<SaveMemoryResult> {
   const { messages, metadata } = input;
-  let sessionId = input.session_id;
+  const sessionId = input.session_id;
 
   const now = Date.now();
 
@@ -44,8 +44,8 @@ export async function saveMemory(
   });
 
   // Get or create session
-  let session = sessionId ? await d1Storage.getSession(sessionId) : null;
-  let finalSessionId = sessionId || generateSessionId();
+  const session = sessionId ? await d1Storage.getSession(sessionId) : null;
+  const finalSessionId = sessionId || generateSessionId();
 
   if (session) {
     // Verify user owns the session
@@ -61,9 +61,7 @@ export async function saveMemory(
   } else {
     // Generate title from first user message
     const firstUserMessage = messages.find((m) => m.role === 'user');
-    const title = firstUserMessage
-      ? firstUserMessage.content.slice(0, 100)
-      : 'New Session';
+    const title = firstUserMessage ? firstUserMessage.content.slice(0, 100) : 'New Session';
 
     await d1Storage.createSession({
       id: finalSessionId,

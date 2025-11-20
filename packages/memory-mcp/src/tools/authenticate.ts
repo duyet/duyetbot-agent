@@ -1,12 +1,12 @@
 import { z } from 'zod';
+import {
+  generateSessionToken,
+  generateUserId,
+  githubUserToUser,
+  verifyGitHubToken,
+} from '../auth/github.js';
 import type { D1Storage } from '../storage/d1.js';
 import type { AuthResult } from '../types.js';
-import {
-  verifyGitHubToken,
-  githubUserToUser,
-  generateUserId,
-  generateSessionToken,
-} from '../auth/github.js';
 
 export const authenticateSchema = z.object({
   github_token: z.string().optional(),
@@ -46,14 +46,7 @@ export async function authenticate(
   // Get or create user
   let user = await storage.getUserByGitHubId(String(githubUser.id));
 
-  if (!user) {
-    // Create new user
-    const userData = githubUserToUser(githubUser);
-    user = await storage.createUser({
-      id: generateUserId(),
-      ...userData,
-    });
-  } else {
+  if (user) {
     // Update user info
     await storage.updateUser(user.id, {
       github_login: githubUser.login,
@@ -61,6 +54,13 @@ export async function authenticate(
       name: githubUser.name,
       avatar_url: githubUser.avatar_url,
       updated_at: Date.now(),
+    });
+  } else {
+    // Create new user
+    const userData = githubUserToUser(githubUser);
+    user = await storage.createUser({
+      id: generateUserId(),
+      ...userData,
     });
   }
 
