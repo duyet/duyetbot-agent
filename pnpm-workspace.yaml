@@ -1,0 +1,10 @@
+# pnpm workspace configuration for duyetbot-agent monorepo
+packages:
+  # Core packages
+  - 'packages/*'
+
+  # Applications
+  - 'apps/*'
+
+  # Infrastructure and tooling
+  - 'infrastructure/*'

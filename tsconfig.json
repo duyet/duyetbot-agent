@@ -57,12 +57,20 @@
       "@scheduler/*": ["src/scheduler/*"],
       "@config/*": ["src/config/*"],
       "@storage/*": ["src/storage/*"],
-      "@ui/*": ["src/ui/*"]
+      "@ui/*": ["src/ui/*"],
+      "@duyetbot/types": ["packages/types/src"],
+      "@duyetbot/types/*": ["packages/types/src/*"],
+      "@duyetbot/providers": ["packages/providers/src"],
+      "@duyetbot/providers/*": ["packages/providers/src/*"],
+      "@duyetbot/tools": ["packages/tools/src"],
+      "@duyetbot/tools/*": ["packages/tools/src/*"],
+      "@duyetbot/core": ["packages/core/src"],
+      "@duyetbot/core/*": ["packages/core/src/*"]
     },
 
     /* Cloudflare Workers */
     "types": ["@cloudflare/workers-types", "vitest/globals"]
   },
-  "include": ["src/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "dist", ".wrangler", "coverage"]
+  "include": ["src/**/*", "tests/**/*", "packages/**/*"],
+  "exclude": ["node_modules", "dist", ".wrangler", "coverage", "**/node_modules", "**/dist"]
 }

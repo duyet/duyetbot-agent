@@ -1,29 +1,20 @@
 {
   "name": "duyetbot-agent",
   "version": "0.1.0",
-  "description": "Autonomous bot agent system with multi-LLM support running on Cloudflare Workers",
-  "main": "dist/index.js",
+  "description": "Autonomous bot agent system with multi-LLM support - Monorepo",
+  "private": true,
   "type": "module",
-  "bin": {
-    "duyetbot": "./src/cli/index.ts"
-  },
   "scripts": {
-    "start": "tsx src/ui/cli.tsx",
-    "dev": "wrangler dev",
-    "build": "tsc",
-    "deploy": "wrangler deploy",
-    "deploy:staging": "wrangler deploy --env staging",
-    "test": "vitest run",
-    "test:watch": "vitest",
-    "test:unit": "vitest run --dir tests/unit",
-    "test:integration": "vitest run --dir tests/integration",
-    "type-check": "tsc --noEmit",
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "test": "turbo run test",
+    "test:watch": "turbo run test:watch",
+    "type-check": "turbo run type-check",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
     "format": "biome format --write .",
-    "check": "biome check --write . && tsc --noEmit",
-    "demo": "tsx examples/demo.ts",
-    "demo:stream": "tsx examples/demo-streaming.ts",
+    "check": "biome check --write . && turbo run type-check",
+    "clean": "turbo run clean && rm -rf node_modules",
     "prepare-hooks": "bash scripts/install-hooks.sh",
     "prepare": "bash scripts/install-hooks.sh || true"
   },
@@ -56,13 +47,17 @@
     "@biomejs/biome": "^1.9.4",
     "@cloudflare/vitest-pool-workers": "^0.5.18",
     "@hono/node-server": "^1.19.6",
+    "@types/node": "^20.0.0",
     "@types/react": "^19.2.6",
     "tsx": "^4.20.6",
+    "turbo": "^2.0.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
     "wrangler": "^3.94.0"
   },
   "engines": {
-    "node": ">=18.0.0"
-  }
+    "node": ">=18.0.0",
+    "pnpm": ">=9.0.0"
+  },
+  "packageManager": "pnpm@10.22.0"
 }
