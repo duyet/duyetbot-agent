@@ -5,7 +5,7 @@
  */
 
 import type { Server } from 'node:http';
-import { WebSocketServer, WebSocket } from 'ws';
+import { WebSocket, WebSocketServer } from 'ws';
 import type { AgentSessionManager } from './session-manager.js';
 
 export interface WebSocketMessage {
@@ -117,7 +117,7 @@ export class AgentWebSocketServer {
       this.send(ws, {
         type: 'chunk',
         session_id: message.session_id,
-        data: chunk + ' ',
+        data: `${chunk} `,
       });
       await new Promise((resolve) => setTimeout(resolve, 50));
     }

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { ServerConfig, loadConfig, validateConfig, getDefaultConfig } from '../config.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { ServerConfig, getDefaultConfig, loadConfig, validateConfig } from '../config.js';
 
 describe('ServerConfig', () => {
   const originalEnv = process.env;
@@ -44,8 +44,8 @@ describe('ServerConfig', () => {
     });
 
     it('should use defaults when env vars not set', () => {
-      delete process.env.PORT;
-      delete process.env.HOST;
+      process.env.PORT = undefined;
+      process.env.HOST = undefined;
 
       const config = loadConfig();
 

@@ -1,5 +1,5 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { AgentSessionManager, AgentSession } from '../session-manager.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AgentSession, AgentSessionManager } from '../session-manager.js';
 
 describe('AgentSessionManager', () => {
   let manager: AgentSessionManager;
@@ -80,9 +80,9 @@ describe('AgentSessionManager', () => {
     });
 
     it('should throw for non-existent session', async () => {
-      await expect(
-        manager.updateSession('non-existent', { state: 'paused' })
-      ).rejects.toThrow('Session not found');
+      await expect(manager.updateSession('non-existent', { state: 'paused' })).rejects.toThrow(
+        'Session not found'
+      );
     });
   });
 

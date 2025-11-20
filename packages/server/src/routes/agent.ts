@@ -6,7 +6,11 @@
 
 import { Hono } from 'hono';
 import { z } from 'zod';
-import type { AgentSessionManager, CreateSessionInput, ListSessionsOptions } from '../session-manager.js';
+import type {
+  AgentSessionManager,
+  CreateSessionInput,
+  ListSessionsOptions,
+} from '../session-manager.js';
 
 // Request schemas
 const createSessionSchema = z.object({

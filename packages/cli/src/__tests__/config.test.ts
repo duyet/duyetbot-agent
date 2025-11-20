@@ -2,11 +2,11 @@
  * CLI Config Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { CLIConfig, getDefaultConfig, loadConfig, saveConfig } from '../config.js';
 import * as fs from 'node:fs';
-import * as path from 'node:path';
 import * as os from 'node:os';
+import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { CLIConfig, getDefaultConfig, loadConfig, saveConfig } from '../config.js';
 
 // Mock fs and os
 vi.mock('node:fs');
@@ -112,10 +112,7 @@ describe('CLIConfig', () => {
 
       saveConfig(config);
 
-      expect(fs.writeFileSync).toHaveBeenCalledWith(
-        configPath,
-        JSON.stringify(config, null, 2)
-      );
+      expect(fs.writeFileSync).toHaveBeenCalledWith(configPath, JSON.stringify(config, null, 2));
     });
 
     it('should not recreate directory if exists', () => {

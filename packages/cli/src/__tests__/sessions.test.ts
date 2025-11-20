@@ -2,10 +2,10 @@
  * CLI Sessions Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { FileSessionManager, LocalSession } from '../sessions.js';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { FileSessionManager, LocalSession } from '../sessions.js';
 
 // Mock fs
 vi.mock('node:fs');
@@ -117,9 +117,9 @@ describe('FileSessionManager', () => {
     it('should throw error for non-existent session', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      await expect(
-        sessionManager.updateSession('non-existent', { title: 'New' })
-      ).rejects.toThrow('Session not found');
+      await expect(sessionManager.updateSession('non-existent', { title: 'New' })).rejects.toThrow(
+        'Session not found'
+      );
     });
 
     it('should update messages', async () => {
@@ -154,17 +154,13 @@ describe('FileSessionManager', () => {
 
       await sessionManager.deleteSession('session-1');
 
-      expect(fs.unlinkSync).toHaveBeenCalledWith(
-        path.join(sessionsDir, 'session-1.json')
-      );
+      expect(fs.unlinkSync).toHaveBeenCalledWith(path.join(sessionsDir, 'session-1.json'));
     });
 
     it('should not throw for non-existent session', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      await expect(
-        sessionManager.deleteSession('non-existent')
-      ).resolves.not.toThrow();
+      await expect(sessionManager.deleteSession('non-existent')).resolves.not.toThrow();
     });
   });
 
@@ -290,7 +286,7 @@ describe('FileSessionManager', () => {
 
       vi.mocked(fs.existsSync).mockReturnValue(true);
       vi.mocked(fs.readdirSync).mockReturnValue(
-        sessions.map(s => `${s.id}.json` as unknown as fs.Dirent)
+        sessions.map((s) => `${s.id}.json` as unknown as fs.Dirent)
       );
 
       let readIndex = 0;
@@ -331,9 +327,9 @@ describe('FileSessionManager', () => {
     it('should throw for non-existent session', async () => {
       vi.mocked(fs.existsSync).mockReturnValue(false);
 
-      await expect(
-        sessionManager.exportSession('non-existent')
-      ).rejects.toThrow('Session not found');
+      await expect(sessionManager.exportSession('non-existent')).rejects.toThrow(
+        'Session not found'
+      );
     });
   });
 });

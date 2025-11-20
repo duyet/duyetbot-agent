@@ -4,11 +4,11 @@
  * Ink-based chat interface
  */
 
-import React, { useState } from 'react';
-import { Box, Text, useInput, useApp } from 'ink';
-import TextInput from 'ink-text-input';
-import Spinner from 'ink-spinner';
 import type { LLMMessage } from '@duyetbot/types';
+import { Box, Text, useApp, useInput } from 'ink';
+import Spinner from 'ink-spinner';
+import TextInput from 'ink-text-input';
+import React, { useState } from 'react';
 
 export interface ChatViewProps {
   messages: LLMMessage[];
@@ -36,7 +36,9 @@ export function ChatView({
   });
 
   const handleSubmit = async (value: string): Promise<void> => {
-    if (!value.trim() || isLoading) return;
+    if (!value.trim() || isLoading) {
+      return;
+    }
 
     setInput('');
     await onSendMessage(value.trim());
@@ -65,7 +67,7 @@ export function ChatView({
           <Text dimColor>No messages yet. Type something to start!</Text>
         ) : (
           messages.map((msg, i) => (
-            <Box key={i} marginBottom={1}>
+            <Box key={`${msg.role}-${i}-${msg.content.slice(0, 10)}`} marginBottom={1}>
               <Text bold color={msg.role === 'user' ? 'green' : 'blue'}>
                 {msg.role === 'user' ? 'You' : 'Assistant'}:{' '}
               </Text>

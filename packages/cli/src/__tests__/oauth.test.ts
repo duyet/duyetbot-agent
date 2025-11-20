@@ -2,12 +2,8 @@
  * GitHub OAuth Device Flow Tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
-import {
-  GitHubDeviceAuth,
-  DeviceCodeResponse,
-  AccessTokenResponse,
-} from '../oauth.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { AccessTokenResponse, DeviceCodeResponse, GitHubDeviceAuth } from '../oauth.js';
 
 // Mock fetch
 global.fetch = vi.fn();
@@ -101,8 +97,7 @@ describe('GitHubDeviceAuth', () => {
       vi.mocked(fetch)
         .mockResolvedValueOnce({
           ok: true,
-          json: () =>
-            Promise.resolve({ error: 'authorization_pending' }),
+          json: () => Promise.resolve({ error: 'authorization_pending' }),
         } as Response)
         .mockResolvedValueOnce({
           ok: true,
@@ -147,9 +142,9 @@ describe('GitHubDeviceAuth', () => {
         json: () => Promise.resolve({ error: 'expired_token' }),
       } as Response);
 
-      await expect(
-        auth.pollForAccessToken('device-code', 100)
-      ).rejects.toThrow('Device code expired');
+      await expect(auth.pollForAccessToken('device-code', 100)).rejects.toThrow(
+        'Device code expired'
+      );
     });
 
     it('should throw on access_denied', async () => {
@@ -158,9 +153,7 @@ describe('GitHubDeviceAuth', () => {
         json: () => Promise.resolve({ error: 'access_denied' }),
       } as Response);
 
-      await expect(
-        auth.pollForAccessToken('device-code', 100)
-      ).rejects.toThrow('Access denied');
+      await expect(auth.pollForAccessToken('device-code', 100)).rejects.toThrow('Access denied');
     });
   });
 

@@ -4,12 +4,12 @@
  * Ink-based chat application
  */
 
-import React, { useState, useCallback } from 'react';
+import type { LLMMessage } from '@duyetbot/types';
 import { Box } from 'ink';
+import React, { useState, useCallback } from 'react';
+import { FileSessionManager } from '../sessions.js';
 import { ChatView } from './ChatView.js';
 import { StatusBar } from './StatusBar.js';
-import type { LLMMessage } from '@duyetbot/types';
-import { FileSessionManager } from '../sessions.js';
 
 export interface AppProps {
   sessionId?: string;
@@ -49,7 +49,9 @@ export function App({
 
   const handleSendMessage = useCallback(
     async (content: string): Promise<void> => {
-      if (!sessionId) return;
+      if (!sessionId) {
+        return;
+      }
 
       // Add user message
       const userMessage: LLMMessage = { role: 'user', content };

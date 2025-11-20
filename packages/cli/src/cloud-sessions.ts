@@ -5,7 +5,12 @@
  */
 
 import { MCPMemoryClient } from '@duyetbot/core';
-import type { LocalSession, CreateSessionInput, UpdateSessionInput, ListSessionsOptions } from './sessions.js';
+import type {
+  CreateSessionInput,
+  ListSessionsOptions,
+  LocalSession,
+  UpdateSessionInput,
+} from './sessions.js';
 
 /**
  * Cloud-based session manager using MCP Memory Server
@@ -82,10 +87,12 @@ export class CloudSessionManager {
           id: memory.session_id,
           title: metadata.title || 'Untitled',
           state: metadata.state || 'active',
-          messages: memory.messages.map((m: { role: 'user' | 'assistant' | 'system'; content: string }) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: memory.messages.map(
+            (m: { role: 'user' | 'assistant' | 'system'; content: string }) => ({
+              role: m.role,
+              content: m.content,
+            })
+          ),
           createdAt: metadata.createdAt || Date.now(),
           updatedAt: metadata.updatedAt || Date.now(),
         };
@@ -160,7 +167,11 @@ export class CloudSessionManager {
    * List sessions
    */
   async listSessions(options?: ListSessionsOptions): Promise<LocalSession[]> {
-    const listOptions: { limit?: number; offset?: number; state?: 'active' | 'paused' | 'completed' } = {};
+    const listOptions: {
+      limit?: number;
+      offset?: number;
+      state?: 'active' | 'paused' | 'completed';
+    } = {};
     if (options?.limit) {
       listOptions.limit = options.limit;
     }
