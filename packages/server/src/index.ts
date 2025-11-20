@@ -15,3 +15,7 @@ export type {
   ListSessionsOptions,
 } from './session-manager.js';
 export { createHealthRoutes, createAgentRoutes } from './routes/index.js';
+export { createWebSocketServer, AgentWebSocketServer } from './websocket.js';
+export type { WebSocketMessage, WebSocketResponse } from './websocket.js';
+export { startServer, main } from './server.js';
+export type { ServerInstance } from './server.js';
