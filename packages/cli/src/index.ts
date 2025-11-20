@@ -13,3 +13,8 @@ export { FileSessionManager } from './sessions.js';
 
 export type { ChatOptions, ChatContext } from './chat.js';
 export { startChat, runPrompt } from './chat.js';
+
+export { startInkChat } from './chat-ink.js';
+
+export type { ChatViewProps, StatusBarProps, AppProps } from './ui/index.js';
+export { ChatView, StatusBar, App } from './ui/index.js';
