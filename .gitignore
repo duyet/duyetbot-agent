@@ -64,3 +64,4 @@ Thumbs.db
 # Monorepo build outputs
 packages/*/dist/
 .turbo/
+.turbo
