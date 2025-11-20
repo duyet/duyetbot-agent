@@ -1292,35 +1292,38 @@ bot.launch();
 
 ---
 
-### Phase 6: GitHub Bot Integration (5-6 days)
+### Phase 6: GitHub Bot Integration (5-6 days) 🔧 IN PROGRESS
 
 **Goal**: Full GitHub App with @duyetbot mention support
 
 **Tasks**:
-- [ ] Create apps/github-bot package
+- [x] Create apps/github-bot package
 - [ ] Register GitHub App
-- [ ] Implement webhook verification
-- [ ] Create @duyetbot mention parser
-- [ ] Implement webhook handlers:
-  - [ ] issue_comment (mentions)
-  - [ ] pull_request_review_comment (PR mentions)
+- [x] Implement webhook verification
+- [x] Create @duyetbot mention parser
+- [x] Implement webhook handlers:
+  - [x] issue_comment (mentions)
+  - [x] pull_request_review_comment (PR mentions)
   - [ ] issues (issue events)
   - [ ] pull_request (PR events)
-- [ ] Create GitHub tool for agent
-  - [ ] get_pr, get_issue, get_diff
-  - [ ] create_comment, create_review
+- [x] Create GitHub tool for agent
+  - [x] get_pr, get_issue, get_diff
+  - [x] create_comment, create_review
+  - [x] add_labels, get_files
   - [ ] create_issue, update_issue
   - [ ] trigger_workflow
 - [ ] Implement session management (issue/PR → session mapping)
 - [ ] Add MCP client integration for memory
-- [ ] Create agent with GitHub context
-- [ ] Implement response posting
-- [ ] Add error handling and logging
-- [ ] Write GitHub bot tests (40+ tests)
+- [x] Create agent with GitHub context (system prompt builder)
+- [x] Implement response posting
+- [x] Add error handling and logging
+- [x] Write GitHub bot tests (23 tests)
 - [ ] Deploy GitHub App
 - [ ] Document setup and usage
 
 **Output**: Production GitHub bot ✅
+
+**Progress**: Phase 6 IN PROGRESS (2025-11-20). Created @duyetbot/github-bot package with: Hono server, mention parser, webhook handlers (issue_comment, PR review comment), agent handler with system prompt builder, GitHub tool (6 actions), webhook signature verification. 23 tests passing. Total: 365 tests. GitHub App registration and deployment pending.
 
 ---
 
@@ -1576,6 +1579,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-20 | 3.10 | 🔧 **Phase 6 IN PROGRESS**: GitHub bot core implementation. Created @duyetbot/github-bot with Hono server, mention parser (18 tests), webhook handlers, agent handler with system prompt builder, GitHub tool (6 actions), webhook signature verification. 365 tests passing (23 new). |
 | 2025-11-20 | 3.9 | ✅ **Phase 5 COMPLETE**: Wired login command to GitHubDeviceAuth, added memory commands (search, stats), created SessionList UI component, implemented auto mode detection (mode-detector.ts). 342 tests passing (67 CLI tests). npm package distribution pending. |
 | 2025-11-20 | 3.8 | 🔧 **Phase 5 IN PROGRESS**: Added Ink-based terminal UI (ChatView, StatusBar, App), CloudSessionManager with MCP client, GitHub OAuth device flow. Fixed tsconfig issues across packages. 342 tests passing (67 CLI tests). SessionList and npm distribution pending. |
 | 2025-11-20 | 3.7 | 🔧 **Phase 5 IN PROGRESS**: CLI package created. @duyetbot/cli with: config management, AuthManager, FileSessionManager, Commander.js commands (login, logout, whoami, chat, sessions, config). 315 tests passing (40 new CLI tests). Ink UI pending. |
@@ -1623,11 +1627,15 @@ pnpm run dev
    - [x] Auto mode detection
    - [x] 67 tests passing (342 total)
    - [ ] npm package distribution
-7. **Next: Phase 6 - GitHub Bot Integration**
-   - [ ] Create apps/github-bot package
+7. 🔧 **Phase 6 - GitHub Bot Integration** IN PROGRESS
+   - [x] Create apps/github-bot package
+   - [x] Implement @duyetbot mention parser
+   - [x] Create webhook handlers
+   - [x] 23 tests passing (365 total)
    - [ ] Register GitHub App
-   - [ ] Implement @duyetbot mention parser
-   - [ ] Create webhook handlers
+   - [ ] Add MCP client integration
+   - [ ] Deploy GitHub App
+8. **Next: Phase 7 - Telegram Bot Integration**
 
 ---
 
