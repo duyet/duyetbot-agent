@@ -22,7 +22,9 @@ function createMockD1Storage() {
     getUser: vi.fn(async (id: string) => users.get(id) || null),
     getUserByGitHubId: vi.fn(async (id: string) => {
       for (const user of users.values()) {
-        if (user.github_id === id) return user;
+        if (user.github_id === id) {
+          return user;
+        }
       }
       return null;
     }),
@@ -32,7 +34,7 @@ function createMockD1Storage() {
     }),
     updateUser: vi.fn(),
     getSession: vi.fn(async (id: string) => sessions.get(id) || null),
-    listSessions: vi.fn(async (userId: string, options?: any) => {
+    listSessions: vi.fn(async (userId: string, _options?: any) => {
       const userSessions = Array.from(sessions.values()).filter((s) => s.user_id === userId);
       return { sessions: userSessions, total: userSessions.length };
     }),

@@ -173,7 +173,7 @@ export class MCPMemoryClient {
     };
 
     if (auth && this.token) {
-      headers['Authorization'] = `Bearer ${this.token}`;
+      headers.Authorization = `Bearer ${this.token}`;
     }
 
     const fetchOptions: RequestInit = {
