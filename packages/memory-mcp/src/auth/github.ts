@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import type { User } from '../types.js';
 
 interface GitHubUser {
@@ -43,13 +44,13 @@ export function githubUserToUser(githubUser: GitHubUser): Omit<User, 'id'> {
 }
 
 export function generateUserId(): string {
-  return `user_${crypto.randomUUID().replace(/-/g, '')}`;
+  return `user_${randomUUID().replace(/-/g, '')}`;
 }
 
 export function generateSessionToken(): string {
-  return `st_${crypto.randomUUID().replace(/-/g, '')}`;
+  return `st_${randomUUID().replace(/-/g, '')}`;
 }
 
 export function generateSessionId(): string {
-  return `sess_${crypto.randomUUID().replace(/-/g, '')}`;
+  return `sess_${randomUUID().replace(/-/g, '')}`;
 }
