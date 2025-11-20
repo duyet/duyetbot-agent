@@ -5,12 +5,12 @@
  */
 
 import { createServer } from 'node:http';
-import { Hono } from 'hono';
 import { serve } from '@hono/node-server';
+import { Hono } from 'hono';
 import { loadConfig, validateConfig } from './config.js';
+import { createAgentRoutes, createHealthRoutes } from './routes/index.js';
 import { AgentSessionManager } from './session-manager.js';
-import { createHealthRoutes, createAgentRoutes } from './routes/index.js';
-import { createWebSocketServer, type AgentWebSocketServer } from './websocket.js';
+import { type AgentWebSocketServer, createWebSocketServer } from './websocket.js';
 
 export interface ServerInstance {
   httpServer: ReturnType<typeof serve>;

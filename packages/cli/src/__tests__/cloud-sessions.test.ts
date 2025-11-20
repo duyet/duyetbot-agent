@@ -2,14 +2,18 @@
  * Cloud Session Manager Tests
  */
 
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CloudSessionManager } from '../cloud-sessions.js';
 
 // Mock MCPMemoryClient
 vi.mock('@duyetbot/core', () => ({
   MCPMemoryClient: vi.fn().mockImplementation(() => ({
     setToken: vi.fn(),
-    authenticate: vi.fn().mockResolvedValue({ session_token: 'test-token', user_id: 'user-1', expires_at: Date.now() + 3600000 }),
+    authenticate: vi.fn().mockResolvedValue({
+      session_token: 'test-token',
+      user_id: 'user-1',
+      expires_at: Date.now() + 3600000,
+    }),
     saveMemory: vi.fn().mockResolvedValue({}),
     getMemory: vi.fn().mockResolvedValue(null),
     listSessions: vi.fn().mockResolvedValue({ sessions: [], total: 0 }),
@@ -89,9 +93,7 @@ describe('CloudSessionManager', () => {
 
   describe('exportSession', () => {
     it('should throw for non-existent session', async () => {
-      await expect(manager.exportSession('non-existent')).rejects.toThrow(
-        'Session not found'
-      );
+      await expect(manager.exportSession('non-existent')).rejects.toThrow('Session not found');
     });
   });
 });

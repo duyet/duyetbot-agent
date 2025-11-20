@@ -5,9 +5,9 @@
  */
 
 import * as readline from 'node:readline';
+import type { LLMMessage } from '@duyetbot/types';
 import { FileSessionManager } from './sessions.js';
 import type { LocalSession } from './sessions.js';
-import type { LLMMessage } from '@duyetbot/types';
 
 export interface ChatOptions {
   sessionId?: string;
@@ -160,10 +160,7 @@ async function generateResponse(messages: LLMMessage[], _options: ChatOptions): 
 /**
  * Run a single prompt (non-interactive)
  */
-export async function runPrompt(
-  prompt: string,
-  options: ChatOptions
-): Promise<string> {
+export async function runPrompt(prompt: string, options: ChatOptions): Promise<string> {
   const sessionManager = new FileSessionManager(options.sessionsDir);
 
   // Create temporary session

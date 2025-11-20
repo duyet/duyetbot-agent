@@ -2,9 +2,9 @@
  * Chat Tests
  */
 
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { runPrompt } from '../chat.js';
 import * as fs from 'node:fs';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { runPrompt } from '../chat.js';
 
 // Mock fs
 vi.mock('node:fs');
@@ -19,7 +19,9 @@ describe('Chat', () => {
     // Mock existsSync to check our saved sessions
     vi.mocked(fs.existsSync).mockImplementation((path) => {
       const pathStr = String(path);
-      if (pathStr === sessionsDir) return true;
+      if (pathStr === sessionsDir) {
+        return true;
+      }
       return savedSessions.has(pathStr);
     });
 
@@ -33,7 +35,9 @@ describe('Chat', () => {
     // Read sessions from our store
     vi.mocked(fs.readFileSync).mockImplementation((path) => {
       const content = savedSessions.get(String(path));
-      if (content) return content;
+      if (content) {
+        return content;
+      }
       return '[]';
     });
   });

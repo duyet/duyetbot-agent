@@ -59,8 +59,8 @@ export class GitHubDeviceAuth {
    */
   async pollForAccessToken(
     deviceCode: string,
-    intervalMs: number = 5000,
-    maxAttempts: number = 60
+    intervalMs = 5000,
+    maxAttempts = 60
   ): Promise<AccessTokenResponse> {
     let attempts = 0;
     let currentInterval = intervalMs;
@@ -109,7 +109,9 @@ export class GitHubDeviceAuth {
           throw new Error('Access denied. User cancelled authorization.');
 
         default:
-          throw new Error(`OAuth error: ${errorData.error} - ${errorData.error_description || 'Unknown error'}`);
+          throw new Error(
+            `OAuth error: ${errorData.error} - ${errorData.error_description || 'Unknown error'}`
+          );
       }
     }
 

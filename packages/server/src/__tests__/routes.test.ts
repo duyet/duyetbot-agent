@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { Hono } from 'hono';
-import { createHealthRoutes } from '../routes/health.js';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { createAgentRoutes } from '../routes/agent.js';
+import { createHealthRoutes } from '../routes/health.js';
 import { AgentSessionManager } from '../session-manager.js';
 
 describe('Health Routes', () => {

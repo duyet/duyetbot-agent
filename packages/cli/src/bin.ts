@@ -5,17 +5,14 @@
  */
 
 import { Command } from 'commander';
+import { runPrompt, startChat } from './chat.js';
 import { loadConfig, saveConfig } from './config.js';
 import { FileSessionManager } from './sessions.js';
 import type { ListSessionsOptions } from './sessions.js';
-import { startChat, runPrompt } from './chat.js';
 
 const program = new Command();
 
-program
-  .name('duyetbot')
-  .description('CLI tool for duyetbot agent')
-  .version('0.1.0');
+program.name('duyetbot').description('CLI tool for duyetbot agent').version('0.1.0');
 
 // Login command
 program
@@ -32,8 +29,8 @@ program
   .description('Clear authentication')
   .action(() => {
     const config = loadConfig();
-    delete config.auth;
-    saveConfig(config);
+    const { auth: _, ...configWithoutAuth } = config;
+    saveConfig(configWithoutAuth as typeof config);
     console.log('Logged out successfully');
   });
 
@@ -97,9 +94,7 @@ program
   });
 
 // Sessions commands
-const sessions = program
-  .command('sessions')
-  .description('Manage sessions');
+const sessions = program.command('sessions').description('Manage sessions');
 
 sessions
   .command('list')
@@ -164,9 +159,7 @@ sessions
   });
 
 // Config commands
-const configCmd = program
-  .command('config')
-  .description('Manage configuration');
+const configCmd = program.command('config').description('Manage configuration');
 
 configCmd
   .command('get')

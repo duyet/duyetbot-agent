@@ -4,10 +4,10 @@
  * Terminal UI chat using Ink
  */
 
-import React from 'react';
 import { render } from 'ink';
-import { App } from './ui/App.js';
+import React from 'react';
 import type { ChatOptions } from './chat.js';
+import { App } from './ui/App.js';
 
 /**
  * Start Ink-based chat interface
