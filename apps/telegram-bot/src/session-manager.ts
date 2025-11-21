@@ -33,7 +33,9 @@ export function createSessionId(userId: number, chatId: number): string {
  */
 export function parseSessionId(sessionId: string): { userId: number; chatId: number } | null {
   const match = sessionId.match(/^telegram:(\d+):(\d+)$/);
-  if (!match) return null;
+  if (!match) {
+    return null;
+  }
   return {
     userId: Number.parseInt(match[1], 10),
     chatId: Number.parseInt(match[2], 10),
@@ -175,7 +177,9 @@ export function createMCPClient(url: string, authToken?: string): MCPMemoryClien
       });
 
       if (!response.ok) {
-        if (response.status === 404) return null;
+        if (response.status === 404) {
+          return null;
+        }
         throw new Error(`MCP server error: ${response.status}`);
       }
 
