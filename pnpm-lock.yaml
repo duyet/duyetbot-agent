@@ -7,11 +7,11 @@ settings:
 catalogs:
   default:
     '@anthropic-ai/claude-agent-sdk':
-      specifier: ^0.1.0
-      version: 0.1.46
+      specifier: ^0.1.49
+      version: 0.1.49
     '@anthropic-ai/sdk':
-      specifier: ^0.69.0
-      version: 0.69.0
+      specifier: ^0.70.1
+      version: 0.70.1
     '@biomejs/biome':
       specifier: ^1.9.4
       version: 1.9.4
@@ -180,10 +180,10 @@ importers:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
         specifier: 'catalog:'
-        version: 0.1.46(zod@3.25.76)
+        version: 0.1.49(zod@3.25.76)
       '@anthropic-ai/sdk':
         specifier: 'catalog:'
-        version: 0.69.0(zod@3.25.76)
+        version: 0.70.1(zod@3.25.76)
       '@duyetbot/providers':
         specifier: workspace:*
         version: link:../providers
@@ -220,8 +220,8 @@ importers:
         version: 3.25.76
     devDependencies:
       '@cloudflare/workers-types':
-        specifier: ^4.20241127.0
-        version: 4.20251119.0
+        specifier: ^4.20251121.0
+        version: 4.20251121.0
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.25
@@ -233,13 +233,13 @@ importers:
         version: 2.1.9(@types/node@20.19.25)
       wrangler:
         specifier: ^3.93.0
-        version: 3.114.15(@cloudflare/workers-types@4.20251119.0)
+        version: 3.114.15(@cloudflare/workers-types@4.20251121.0)
 
   packages/providers:
     dependencies:
       '@anthropic-ai/sdk':
         specifier: 'catalog:'
-        version: 0.69.0(zod@3.25.76)
+        version: 0.70.1(zod@3.25.76)
       '@duyetbot/types':
         specifier: workspace:*
         version: link:../types
@@ -304,7 +304,7 @@ importers:
     dependencies:
       '@anthropic-ai/claude-agent-sdk':
         specifier: 'catalog:'
-        version: 0.1.46(zod@3.25.76)
+        version: 0.1.49(zod@3.25.76)
       '@duyetbot/types':
         specifier: workspace:*
         version: link:../types
@@ -338,14 +338,14 @@ packages:
     resolution: {integrity: sha512-mkOh+Wwawzuf5wa30bvc4nA+Qb6DIrGWgBhRR/Pw4T9nsgYait8izvXkNyU78D6Wcu3Z+KUdwCmLCxlWjEotYA==}
     engines: {node: '>=18'}
 
-  '@anthropic-ai/claude-agent-sdk@0.1.46':
-    resolution: {integrity: sha512-2Jf8ODvZ8rAciQyal2s/ky2E83BRlWmIs66/aAzgb37OzP04uI47HWMuHj+GYlk19QakJRqN74L3+JT2bIj5Gg==}
+  '@anthropic-ai/claude-agent-sdk@0.1.49':
+    resolution: {integrity: sha512-IncluOweBpv+sgHir3n3KVuz/gh2/AsAe132v+OXOVPSxdIDkNvPpaj/TFDF0c10ix21rPr3qkCgTYmNjeIOow==}
     engines: {node: '>=18.0.0'}
     peerDependencies:
       zod: ^3.24.1
 
-  '@anthropic-ai/sdk@0.69.0':
-    resolution: {integrity: sha512-L92d2q47BSq+7slUqHBL1d2DwloulZotYGCTDt9AYRtPmYF+iK6rnwq9JaZwPPJgk+LenbcbQ/nj6gfaDFsl9w==}
+  '@anthropic-ai/sdk@0.70.1':
+    resolution: {integrity: sha512-AGEhifuvE22VxfQ5ROxViTgM8NuVQzEvqcN8bttR4AP24ythmNE/cL/SrOz79xiv7/osrsmCyErjsistJi7Z8A==}
     hasBin: true
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
@@ -453,8 +453,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@cloudflare/workers-types@4.20251119.0':
-    resolution: {integrity: sha512-DfCMGhqhvOow3NDViL3T9SgAtogc+xjtAKCfL+aWpVcAcct31P8FSFFRqlZCjcXJ5Kqw/TOjD/87UEAXAqaQZA==}
+  '@cloudflare/workers-types@4.20251121.0':
+    resolution: {integrity: sha512-jzFg7hEGKzpEalxTCanN6lM8IdkvO/brsERp/+OyMms4Zi0nhDPUAg9dUcKU8wDuDUnzbjkplY6YRwle7Cq6gA==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -2344,7 +2344,7 @@ snapshots:
       ansi-styles: 6.2.3
       is-fullwidth-code-point: 5.1.0
 
-  '@anthropic-ai/claude-agent-sdk@0.1.46(zod@3.25.76)':
+  '@anthropic-ai/claude-agent-sdk@0.1.49(zod@3.25.76)':
     dependencies:
       zod: 3.25.76
     optionalDependencies:
@@ -2355,7 +2355,7 @@ snapshots:
       '@img/sharp-linux-x64': 0.33.5
       '@img/sharp-win32-x64': 0.33.5
 
-  '@anthropic-ai/sdk@0.69.0(zod@3.25.76)':
+  '@anthropic-ai/sdk@0.70.1(zod@3.25.76)':
     dependencies:
       json-schema-to-ts: 3.1.1
     optionalDependencies:
@@ -2423,7 +2423,7 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20250718.0':
     optional: true
 
-  '@cloudflare/workers-types@4.20251119.0': {}
+  '@cloudflare/workers-types@4.20251121.0': {}
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -4118,7 +4118,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20250718.0
       '@cloudflare/workerd-windows-64': 1.20250718.0
 
-  wrangler@3.114.15(@cloudflare/workers-types@4.20251119.0):
+  wrangler@3.114.15(@cloudflare/workers-types@4.20251121.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.3.4
       '@cloudflare/unenv-preset': 2.0.2(unenv@2.0.0-rc.14)(workerd@1.20250718.0)
@@ -4131,7 +4131,7 @@ snapshots:
       unenv: 2.0.0-rc.14
       workerd: 1.20250718.0
     optionalDependencies:
-      '@cloudflare/workers-types': 4.20251119.0
+      '@cloudflare/workers-types': 4.20251121.0
       fsevents: 2.3.3
       sharp: 0.33.5
     transitivePeerDependencies:
