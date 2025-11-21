@@ -31,6 +31,8 @@ jobs:
             dockerfile: ./infrastructure/docker/github-bot.Dockerfile
           - name: agent-server
             dockerfile: ./infrastructure/docker/agent-server.Dockerfile
+          - name: memory-mcp
+            dockerfile: ./infrastructure/docker/memory-mcp.Dockerfile
 
     steps:
       - name: Checkout repository
