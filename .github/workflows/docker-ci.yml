@@ -1,0 +1,52 @@
+name: Docker Build CI
+
+on:
+  pull_request:
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'infrastructure/docker/**'
+      - 'bun.lock'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/docker-ci.yml'
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'apps/**'
+      - 'packages/**'
+      - 'infrastructure/docker/**'
+      - 'bun.lock'
+      - 'pnpm-lock.yaml'
+
+jobs:
+  build-test:
+    name: Test Docker Build
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        image:
+          - name: github-bot
+            dockerfile: ./infrastructure/docker/github-bot.Dockerfile
+          - name: agent-server
+            dockerfile: ./infrastructure/docker/agent-server.Dockerfile
+          - name: memory-mcp
+            dockerfile: ./infrastructure/docker/memory-mcp.Dockerfile
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build ${{ matrix.image.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ${{ matrix.image.dockerfile }}
+          push: false
+          tags: ${{ matrix.image.name }}:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
