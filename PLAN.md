@@ -1388,14 +1388,18 @@ bot.launch();
   - [x] Add `interrupt()` method for streaming queries
   - [ ] Integrate with WebSocket server for real-time cancellation
   - [x] Add timeout and graceful shutdown handling
-- [ ] Update CLI to use SDK streaming
-  - [ ] Refactor chat command to use async generator streaming
+- [x] Update CLI to use SDK streaming
+  - [x] Refactor chat command to use async generator streaming
   - [ ] Implement real-time message display with Ink
-  - [ ] Add interrupt support (Ctrl+C handling)
+  - [x] Add interrupt support (Ctrl+C handling)
 - [ ] Update server to use SDK patterns
   - [ ] Refactor execute endpoint to use query() function
   - [ ] Implement proper streaming over WebSocket
   - [ ] Add message type handling for all SDK message types
+- [x] Integrate Anthropic API with SDK query
+  - [x] Direct API calls with retry logic (exponential backoff)
+  - [x] Tool execution with Zod validation
+  - [x] Token usage and duration tracking
 - [x] Write comprehensive SDK integration tests (50+ tests)
   - [x] Test query() function with various inputs
   - [x] Test tool execution with Zod schemas
@@ -1404,12 +1408,21 @@ bot.launch();
   - [x] Test subagent delegation
   - [x] Test permission modes
   - [x] Test interrupt capability
-- [ ] Update documentation
-  - [ ] Document SDK patterns used
+- [x] Update documentation
+  - [x] Document SDK patterns used (ARCHITECTURE.md)
+  - [x] Add execution flow diagram
+  - [x] Document error handling and retry strategy
   - [ ] Add examples for custom tool creation
   - [ ] Document subagent configuration
 
-**Progress**: Phase 7 IN PROGRESS (2025-11-21). Created SDK integration layer with: query() function pattern, sdkTool() with Zod schemas, QueryOptions with model/permissions/MCP/subagents, SubagentRegistry with 5 predefined agents, permission modes, interrupt capability. 44 SDK tests passing (101 total core tests). CLI/server integration and documentation pending.
+**Progress**: Phase 7 NEARLY COMPLETE (2025-11-21). Implemented:
+- ✅ SDK integration layer (query.ts, tool.ts, options.ts, subagent.ts, types.ts)
+- ✅ Anthropic API integration with retry logic (exponential backoff)
+- ✅ Complete tool execution loop with Zod validation
+- ✅ CLI chat with SDK streaming and interrupt support
+- ✅ Token usage and duration tracking
+- ✅ Architecture documentation with execution flow diagram
+- 📝 Remaining: Server SDK integration, Ink UI, WebSocket streaming
 
 **Output**: Core agent system fully integrated with Claude Code Agent SDK patterns ✅
 
@@ -2138,6 +2151,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-21 | 3.14 | 🔧 **Phase 7 NEARLY COMPLETE**: Integrated Anthropic API with SDK query - direct API calls with retry logic (exponential backoff), complete tool execution loop with Zod validation, CLI chat with SDK streaming and interrupt support (Ctrl+C), token usage and duration tracking. Updated ARCHITECTURE.md with SDK execution flow diagram, error handling strategy, environment configuration. 443 tests passing. Remaining: Server SDK integration, Ink UI. |
 | 2025-11-21 | 3.13 | 🔧 **Phase 7 IN PROGRESS**: SDK integration layer implemented. Created packages/core/src/sdk with: query() function with async generator streaming, sdkTool() with Zod schemas, QueryOptions (model, permissions, MCP, subagents), SubagentRegistry with 5 predefined agents (researcher, codeReviewer, planner, gitOperator, githubAgent), permission modes, interrupt capability with QueryController. 44 SDK tests passing (101 total core tests). CLI/server integration pending. |
 | 2025-11-21 | 3.12 | 🆕 **Added Phase 7 - Claude Code Agent SDK Integration**: New phase to fully leverage SDK patterns (query() function, tool() with Zod, session management with resume/fork, MCP server config, subagents, permission modes, interrupt capability). Updated phase numbering (7→8→9→10→11). Removed OpenAI provider - focusing on Claude-compatible APIs only (Claude, Z.AI, OpenRouter). |
 | 2025-11-21 | 3.11 | 🔧 **Phase 6 NEARLY COMPLETE**: Added webhook handlers for issues and pull_request events, trigger_workflow and other GitHub tool actions (14 total), GitHubSessionManager with MCP client integration for persistent sessions, comprehensive tests. 57 github-bot tests passing. GitHub App registration and deployment pending. |
