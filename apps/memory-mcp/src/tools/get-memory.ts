@@ -1,6 +1,5 @@
 import { z } from 'zod';
 import type { D1Storage } from '../storage/d1.js';
-import type { KVStorage } from '../storage/kv.js';
 import type { MemoryData } from '../types.js';
 
 export const getMemorySchema = z.object({
@@ -14,7 +13,6 @@ export type GetMemoryInput = z.infer<typeof getMemorySchema>;
 export async function getMemory(
   input: GetMemoryInput,
   d1Storage: D1Storage,
-  kvStorage: KVStorage,
   userId: string
 ): Promise<MemoryData> {
   const { session_id, limit, offset = 0 } = input;
@@ -36,16 +34,12 @@ export async function getMemory(
     throw new Error('Unauthorized: session belongs to another user');
   }
 
-  // Get messages from KV
-  let messages = await kvStorage.getMessages(session_id);
-
-  // Apply pagination
-  if (offset > 0) {
-    messages = messages.slice(offset);
-  }
+  // Get messages from D1 with pagination
+  const options: { limit?: number; offset?: number } = { offset };
   if (limit !== undefined) {
-    messages = messages.slice(0, limit);
+    options.limit = limit;
   }
+  const messages = await d1Storage.getMessages(session_id, options);
 
   return {
     session_id,

@@ -11,11 +11,6 @@ binding = "DB"
 database_name = "duyetbot-memory"
 database_id = "placeholder-will-be-set-after-creation"
 
-# KV Namespace binding
-[[kv_namespaces]]
-binding = "KV"
-id = "placeholder-will-be-set-after-creation"
-
 # Vectorize binding (for semantic search)
 # [[vectorize]]
 # binding = "VECTORIZE"

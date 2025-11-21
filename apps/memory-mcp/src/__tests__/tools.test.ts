@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { D1Storage } from '../storage/d1.js';
-import type { KVStorage } from '../storage/kv.js';
 import { authenticate } from '../tools/authenticate.js';
 import { getMemory } from '../tools/get-memory.js';
 import { listSessions } from '../tools/list-sessions.js';
@@ -12,11 +11,12 @@ import type { LLMMessage, Session, User } from '../types.js';
 const mockFetch = vi.fn();
 global.fetch = mockFetch;
 
-// Create mock storages
+// Create mock D1 storage with message operations
 function createMockD1Storage() {
   const users = new Map<string, User>();
   const sessions = new Map<string, Session>();
   const tokens = new Map<string, { user_id: string; expires_at: number }>();
+  const messages = new Map<string, LLMMessage[]>();
 
   return {
     getUser: vi.fn(async (id: string) => users.get(id) || null),
@@ -51,33 +51,74 @@ function createMockD1Storage() {
     }),
     deleteToken: vi.fn(),
     deleteExpiredTokens: vi.fn(),
-    _users: users,
-    _sessions: sessions,
-    _tokens: tokens,
-  } as unknown as D1Storage & {
-    _users: Map<string, User>;
-    _sessions: Map<string, Session>;
-    _tokens: Map<string, any>;
-  };
-}
-
-function createMockKVStorage() {
-  const messages = new Map<string, LLMMessage[]>();
-
-  return {
-    getMessages: vi.fn(async (sessionId: string) => messages.get(sessionId) || []),
+    // Message operations
+    getMessages: vi.fn(async (sessionId: string, options?: { limit?: number; offset?: number }) => {
+      let msgs = messages.get(sessionId) || [];
+      if (options?.offset) {
+        msgs = msgs.slice(options.offset);
+      }
+      if (options?.limit !== undefined) {
+        msgs = msgs.slice(0, options.limit);
+      }
+      return msgs;
+    }),
     saveMessages: vi.fn(async (sessionId: string, msgs: LLMMessage[]) => {
       messages.set(sessionId, msgs);
       return msgs.length;
     }),
-    appendMessages: vi.fn(),
-    deleteMessages: vi.fn(),
+    appendMessages: vi.fn(async (sessionId: string, newMsgs: LLMMessage[]) => {
+      const existing = messages.get(sessionId) || [];
+      messages.set(sessionId, [...existing, ...newMsgs]);
+      return newMsgs.length;
+    }),
+    deleteMessages: vi.fn(async (sessionId: string) => {
+      messages.delete(sessionId);
+    }),
     getMessageCount: vi.fn(async (sessionId: string) => {
       const msgs = messages.get(sessionId);
       return msgs ? msgs.length : 0;
     }),
+    searchMessages: vi.fn(
+      async (
+        userId: string,
+        query: string,
+        options?: { sessionId?: string; dateRange?: { start: number; end: number }; limit?: number }
+      ) => {
+        const results: Array<{ sessionId: string; message: LLMMessage; messageIndex: number }> = [];
+        const queryLower = query.toLowerCase();
+
+        for (const [sessionId, msgs] of messages) {
+          const session = sessions.get(sessionId);
+          if (!session || session.user_id !== userId) continue;
+          if (options?.sessionId && sessionId !== options.sessionId) continue;
+
+          for (let i = 0; i < msgs.length; i++) {
+            const msg = msgs[i];
+            if (msg.content.toLowerCase().includes(queryLower)) {
+              if (options?.dateRange) {
+                const timestamp = msg.timestamp || session.created_at;
+                if (timestamp < options.dateRange.start || timestamp > options.dateRange.end) {
+                  continue;
+                }
+              }
+              results.push({ sessionId, message: msg, messageIndex: i });
+            }
+          }
+        }
+
+        return results.slice(0, options?.limit || 100);
+      }
+    ),
+    _users: users,
+    _sessions: sessions,
+    _tokens: tokens,
     _messages: messages,
-  } as unknown as KVStorage & { _messages: Map<string, LLMMessage[]> };
+  } as unknown as D1Storage & {
+    _users: Map<string, User>;
+    _sessions: Map<string, Session>;
+    _tokens: Map<string, any>;
+    _messages: Map<string, LLMMessage[]>;
+  };
 }
 
 describe('authenticate tool', () => {
@@ -161,15 +202,13 @@ describe('authenticate tool', () => {
 
 describe('getMemory tool', () => {
   let d1Storage: ReturnType<typeof createMockD1Storage>;
-  let kvStorage: ReturnType<typeof createMockKVStorage>;
 
   beforeEach(() => {
     d1Storage = createMockD1Storage();
-    kvStorage = createMockKVStorage();
   });
 
   it('should return empty memory for non-existent session', async () => {
-    const result = await getMemory({ session_id: 'nonexistent' }, d1Storage, kvStorage, 'user_123');
+    const result = await getMemory({ session_id: 'nonexistent' }, d1Storage, 'user_123');
 
     expect(result.messages).toEqual([]);
     expect(result.metadata).toEqual({});
@@ -191,9 +230,9 @@ describe('getMemory tool', () => {
       { role: 'user', content: 'Hello' },
       { role: 'assistant', content: 'Hi!' },
     ];
-    kvStorage._messages.set('sess_123', messages);
+    d1Storage._messages.set('sess_123', messages);
 
-    const result = await getMemory({ session_id: 'sess_123' }, d1Storage, kvStorage, 'user_123');
+    const result = await getMemory({ session_id: 'sess_123' }, d1Storage, 'user_123');
 
     expect(result.messages).toEqual(messages);
     expect(result.metadata).toEqual({ key: 'value' });
@@ -211,9 +250,9 @@ describe('getMemory tool', () => {
     };
     d1Storage._sessions.set(session.id, session);
 
-    await expect(
-      getMemory({ session_id: 'sess_123' }, d1Storage, kvStorage, 'user_123')
-    ).rejects.toThrow('Unauthorized');
+    await expect(getMemory({ session_id: 'sess_123' }, d1Storage, 'user_123')).rejects.toThrow(
+      'Unauthorized'
+    );
   });
 
   it('should apply limit and offset', async () => {
@@ -234,14 +273,9 @@ describe('getMemory tool', () => {
       { role: 'user', content: 'Message 3' },
       { role: 'assistant', content: 'Message 4' },
     ];
-    kvStorage._messages.set('sess_123', messages);
+    d1Storage._messages.set('sess_123', messages);
 
-    const result = await getMemory(
-      { session_id: 'sess_123', limit: 2, offset: 1 },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await getMemory({ session_id: 'sess_123', limit: 2, offset: 1 }, d1Storage, 'user_123');
 
     expect(result.messages).toHaveLength(2);
     expect(result.messages[0].content).toBe('Message 2');
@@ -250,11 +284,9 @@ describe('getMemory tool', () => {
 
 describe('saveMemory tool', () => {
   let d1Storage: ReturnType<typeof createMockD1Storage>;
-  let kvStorage: ReturnType<typeof createMockKVStorage>;
 
   beforeEach(() => {
     d1Storage = createMockD1Storage();
-    kvStorage = createMockKVStorage();
   });
 
   it('should create new session and save messages', async () => {
@@ -263,12 +295,12 @@ describe('saveMemory tool', () => {
       { role: 'assistant', content: 'Hi!' },
     ];
 
-    const result = await saveMemory({ messages }, d1Storage, kvStorage, 'user_123');
+    const result = await saveMemory({ messages }, d1Storage, 'user_123');
 
     expect(result.session_id).toBeDefined();
     expect(result.saved_count).toBe(2);
     expect(d1Storage.createSession).toHaveBeenCalled();
-    expect(kvStorage.saveMessages).toHaveBeenCalled();
+    expect(d1Storage.saveMessages).toHaveBeenCalled();
   });
 
   it('should update existing session', async () => {
@@ -285,12 +317,7 @@ describe('saveMemory tool', () => {
 
     const messages: LLMMessage[] = [{ role: 'user', content: 'Updated' }];
 
-    const result = await saveMemory(
-      { session_id: 'sess_123', messages },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await saveMemory({ session_id: 'sess_123', messages }, d1Storage, 'user_123');
 
     expect(result.session_id).toBe('sess_123');
     expect(d1Storage.updateSession).toHaveBeenCalled();
@@ -309,21 +336,14 @@ describe('saveMemory tool', () => {
     d1Storage._sessions.set(session.id, session);
 
     await expect(
-      saveMemory(
-        { session_id: 'sess_123', messages: [{ role: 'user', content: 'Test' }] },
-        d1Storage,
-        kvStorage,
-        'user_123'
-      )
+      saveMemory({ session_id: 'sess_123', messages: [{ role: 'user', content: 'Test' }] }, d1Storage, 'user_123')
     ).rejects.toThrow('Unauthorized');
   });
 
   it('should generate title from first user message', async () => {
-    const messages: LLMMessage[] = [
-      { role: 'user', content: 'This is my question about TypeScript' },
-    ];
+    const messages: LLMMessage[] = [{ role: 'user', content: 'This is my question about TypeScript' }];
 
-    await saveMemory({ messages }, d1Storage, kvStorage, 'user_123');
+    await saveMemory({ messages }, d1Storage, 'user_123');
 
     const createCall = (d1Storage.createSession as any).mock.calls[0][0];
     expect(createCall.title).toBe('This is my question about TypeScript');
@@ -332,20 +352,18 @@ describe('saveMemory tool', () => {
   it('should add timestamps to messages', async () => {
     const messages: LLMMessage[] = [{ role: 'user', content: 'Test' }];
 
-    await saveMemory({ messages }, d1Storage, kvStorage, 'user_123');
+    await saveMemory({ messages }, d1Storage, 'user_123');
 
-    const saveCall = (kvStorage.saveMessages as any).mock.calls[0][1];
+    const saveCall = (d1Storage.saveMessages as any).mock.calls[0][1];
     expect(saveCall[0].timestamp).toBeDefined();
   });
 });
 
 describe('searchMemory tool', () => {
   let d1Storage: ReturnType<typeof createMockD1Storage>;
-  let kvStorage: ReturnType<typeof createMockKVStorage>;
 
   beforeEach(() => {
     d1Storage = createMockD1Storage();
-    kvStorage = createMockKVStorage();
   });
 
   it('should search across user sessions', async () => {
@@ -364,9 +382,9 @@ describe('searchMemory tool', () => {
       { role: 'user', content: 'Hello TypeScript' },
       { role: 'assistant', content: 'Hi there!' },
     ];
-    kvStorage._messages.set('sess_123', messages);
+    d1Storage._messages.set('sess_123', messages);
 
-    const result = await searchMemory({ query: 'TypeScript' }, d1Storage, kvStorage, 'user_123');
+    const result = await searchMemory({ query: 'TypeScript' }, d1Storage, 'user_123');
 
     expect(result.results).toHaveLength(1);
     expect(result.results[0].message.content).toContain('TypeScript');
@@ -384,9 +402,9 @@ describe('searchMemory tool', () => {
     };
     d1Storage._sessions.set(session.id, session);
 
-    kvStorage._messages.set('sess_123', [{ role: 'user', content: 'Hello' }]);
+    d1Storage._messages.set('sess_123', [{ role: 'user', content: 'Hello' }]);
 
-    const result = await searchMemory({ query: 'Python' }, d1Storage, kvStorage, 'user_123');
+    const result = await searchMemory({ query: 'Python' }, d1Storage, 'user_123');
 
     expect(result.results).toHaveLength(0);
   });
@@ -413,13 +431,12 @@ describe('searchMemory tool', () => {
     d1Storage._sessions.set(session1.id, session1);
     d1Storage._sessions.set(session2.id, session2);
 
-    kvStorage._messages.set('sess_1', [{ role: 'user', content: 'Search term here' }]);
-    kvStorage._messages.set('sess_2', [{ role: 'user', content: 'Search term here' }]);
+    d1Storage._messages.set('sess_1', [{ role: 'user', content: 'Search term here' }]);
+    d1Storage._messages.set('sess_2', [{ role: 'user', content: 'Search term here' }]);
 
     const result = await searchMemory(
       { query: 'Search', filter: { session_id: 'sess_1' } },
       d1Storage,
-      kvStorage,
       'user_123'
     );
 
@@ -439,18 +456,13 @@ describe('searchMemory tool', () => {
     };
     d1Storage._sessions.set(session.id, session);
 
-    kvStorage._messages.set('sess_123', [
+    d1Storage._messages.set('sess_123', [
       { role: 'user', content: 'Match 1' },
       { role: 'user', content: 'Match 2' },
       { role: 'user', content: 'Match 3' },
     ]);
 
-    const result = await searchMemory(
-      { query: 'Match', limit: 2 },
-      d1Storage,
-      kvStorage,
-      'user_123'
-    );
+    const result = await searchMemory({ query: 'Match', limit: 2 }, d1Storage, 'user_123');
 
     expect(result.results).toHaveLength(2);
   });
@@ -458,11 +470,9 @@ describe('searchMemory tool', () => {
 
 describe('listSessions tool', () => {
   let d1Storage: ReturnType<typeof createMockD1Storage>;
-  let kvStorage: ReturnType<typeof createMockKVStorage>;
 
   beforeEach(() => {
     d1Storage = createMockD1Storage();
-    kvStorage = createMockKVStorage();
   });
 
   it('should list user sessions with message counts', async () => {
@@ -476,12 +486,12 @@ describe('listSessions tool', () => {
       metadata: null,
     };
     d1Storage._sessions.set(session.id, session);
-    kvStorage._messages.set('sess_123', [
+    d1Storage._messages.set('sess_123', [
       { role: 'user', content: 'Test' },
       { role: 'assistant', content: 'Response' },
     ]);
 
-    const result = await listSessions({}, d1Storage, kvStorage, 'user_123');
+    const result = await listSessions({}, d1Storage, 'user_123');
 
     expect(result.sessions).toHaveLength(1);
     expect(result.sessions[0].id).toBe('sess_123');
@@ -490,7 +500,7 @@ describe('listSessions tool', () => {
   });
 
   it('should return empty list for user with no sessions', async () => {
-    const result = await listSessions({}, d1Storage, kvStorage, 'user_123');
+    const result = await listSessions({}, d1Storage, 'user_123');
     expect(result.sessions).toHaveLength(0);
     expect(result.total).toBe(0);
   });

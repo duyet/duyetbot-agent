@@ -1,8 +1,7 @@
-import type { D1Database, KVNamespace } from '@cloudflare/workers-types';
+import type { D1Database } from '@cloudflare/workers-types';
 
 export interface Env {
   DB: D1Database;
-  KV: KVNamespace;
   ENVIRONMENT: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
