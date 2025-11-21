@@ -1,5 +1,7 @@
 # Architecture
 
+**Related:** [Getting Started](README.md) | [Deployment](DEPLOY.md)
+
 ## Overview
 
 duyetbot-agent is a personal AI agent system with a containerized architecture: long-running agent server + Cloudflare MCP memory layer + monorepo structure.
@@ -200,9 +202,14 @@ MCP_AUTH_TOKEN=xxx
 
 ## Deployment
 
-See [Deployment Guide](DEPLOY.md) for:
-- Railway
-- Fly.io
-- Render
-- AWS ECS/Fargate
-- Docker Compose
+See [Deployment Guide](DEPLOY.md) for detailed instructions on:
+- [Railway](DEPLOY.md#deploy-to-railway)
+- [Fly.io](DEPLOY.md#deploy-to-flyio)
+- [Render](DEPLOY.md#deploy-to-render)
+- [AWS ECS/Fargate](DEPLOY.md#deploy-to-aws-ecsfargate)
+- [Docker Compose](DEPLOY.md#deploy-with-docker-compose)
+
+## Next Steps
+
+- [Getting Started](README.md) - Installation and quick start
+- [Report Issues](https://github.com/duyet/duyetbot-agent/issues)

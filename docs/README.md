@@ -2,6 +2,8 @@
 
 Autonomous bot agent system built on Claude Agent SDK.
 
+**Related:** [Architecture](ARCHITECTURE.md) | [Deployment](DEPLOY.md)
+
 ## Getting Started
 
 ### Prerequisites
@@ -63,11 +65,11 @@ duyetbot-agent/
 
 ## Features
 
-- **Multi-LLM Support**: Claude, OpenAI, OpenRouter
-- **GitHub Bot**: Responds to mentions in issues/PRs
-- **Session Management**: Persistent conversation history
-- **MCP Integration**: Memory server for context storage
-- **Extensible Tools**: bash, git, research, plan, sleep
+- **Multi-LLM Support**: Claude, OpenAI, OpenRouter (see [Providers](ARCHITECTURE.md#providers-packagesproviders))
+- **GitHub Bot**: Responds to mentions in issues/PRs (see [GitHub Bot](ARCHITECTURE.md#github-bot-appsgithub-bot))
+- **Session Management**: Persistent conversation history (see [Session Management](ARCHITECTURE.md#session-management))
+- **MCP Integration**: Memory server for context storage (see [Memory MCP](ARCHITECTURE.md#memory-mcp-packagesmemory-mcp))
+- **Extensible Tools**: bash, git, research, plan, sleep (see [Tools](ARCHITECTURE.md#tools-packagestools))
 
 ## Quick Links
 
