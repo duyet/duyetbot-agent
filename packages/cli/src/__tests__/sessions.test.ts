@@ -8,7 +8,14 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileSessionManager, LocalSession } from '../sessions.js';
 
 // Mock fs
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn(),
+  readdirSync: vi.fn(),
+  unlinkSync: vi.fn(),
+}));
 
 describe('FileSessionManager', () => {
   const sessionsDir = '/mock/sessions';

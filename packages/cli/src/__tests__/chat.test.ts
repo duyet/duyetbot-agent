@@ -6,8 +6,37 @@ import * as fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runPrompt } from '../chat.js';
 
+// Mock @duyetbot/core
+vi.mock('@duyetbot/core', () => ({
+  createDefaultOptions: vi.fn().mockReturnValue({
+    model: 'claude-3-5-sonnet-20241022',
+    maxTokens: 4096,
+    systemPrompt: 'You are a helpful assistant.',
+  }),
+  createQueryController: vi.fn().mockReturnValue({
+    abort: vi.fn(),
+  }),
+  query: vi.fn().mockImplementation(async function* () {
+    yield {
+      type: 'assistant',
+      content: 'This is a placeholder response from the mock SDK.',
+    };
+    yield {
+      type: 'result',
+      content: 'This is a placeholder response from the mock SDK.',
+    };
+  }),
+}));
+
 // Mock fs
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn(),
+  readdirSync: vi.fn(),
+  unlinkSync: vi.fn(),
+}));
 
 describe('Chat', () => {
   const sessionsDir = '/mock/sessions';
