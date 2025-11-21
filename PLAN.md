@@ -1901,29 +1901,35 @@ packages/core/src/
 
 ---
 
-### Phase 8: Telegram Bot Integration (3-4 days)
+### Phase 8: Telegram Bot Integration (3-4 days) 🔧 IN PROGRESS
 
 **Goal**: Telegram bot for chat and notifications
 
 **Tasks**:
-- [ ] Create apps/telegram-bot package
-- [ ] Register Telegram bot
-- [ ] Set up Telegraf framework
-- [ ] Implement commands:
-  - [ ] /start
-  - [ ] /chat
-  - [ ] /status
-  - [ ] /sessions
-  - [ ] /help
-- [ ] Create message handler
-- [ ] Add MCP client integration
-- [ ] Implement session management
-- [ ] Add notification system (for GitHub events)
-- [ ] Write Telegram bot tests (25+ tests)
+- [x] Create apps/telegram-bot package
+- [ ] Register Telegram bot (external setup)
+- [x] Set up Telegraf framework with Hono webhook server
+- [x] Implement commands:
+  - [x] /start
+  - [x] /chat
+  - [x] /status
+  - [x] /sessions
+  - [x] /help
+  - [x] /clear
+- [x] Create message handler
+- [x] Add MCP client integration
+- [x] Implement session management (TelegramSessionManager)
+- [x] Add notification system (for GitHub events)
+  - [x] NotificationManager with subscribe/unsubscribe
+  - [x] GitHub webhook to notification converter
+  - [x] Broadcast functionality
+- [x] Write Telegram bot tests (62 tests passing)
 - [ ] Deploy bot
 - [ ] Document usage
 
 **Output**: Production Telegram bot ✅
+
+**Progress**: Phase 8 NEARLY COMPLETE (2025-11-21). Created @duyetbot/telegram-bot package with: Telegraf bot with all commands, Hono webhook server, TelegramSessionManager with MCP client, NotificationManager with GitHub event notifications, message handler. 62 tests passing. Total: 505 tests. Bot registration and deployment pending.
 
 ---
 
@@ -2153,6 +2159,7 @@ bun run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-21 | 3.17 | 🔧 **Phase 8 NEARLY COMPLETE**: Telegram Bot implementation. Created @duyetbot/telegram-bot package with: Telegraf bot with all commands (/start, /chat, /status, /sessions, /help, /clear), Hono webhook server, TelegramSessionManager with MCP client integration, NotificationManager with GitHub event notifications (pr_merged, ci_failed, etc.), message handler. 62 tests passing. Total: 505 tests. Bot registration and deployment pending. |
 | 2025-11-21 | 3.16 | ✅ **Phase 7 COMPLETE**: Server SDK integration implemented. Updated /execute endpoint to use SDK query() function. WebSocket handleChat now streams SDK messages (assistant, tool_use, tool_result, tokens). Created sdk-adapter.ts with toSDKTool/toSDKTools for tool conversion, executeQuery/streamQuery helpers, and createQueryController for interruption. Added AgentRoutesConfig and WebSocketConfig for tool/prompt/model configuration. All 443+ tests passing. |
 | 2025-11-21 | 3.15 | 🏗️ **Monorepo Refactor**: World-class monorepo structure. Removed legacy /src/, duplicate /packages/mcp-memory/. Created shared config packages (@duyetbot/config-typescript, @duyetbot/config-vitest). Added pnpm catalog for dependency version sync. Updated all package.json files to use catalog: references. Standardized exports, added clean scripts, removed src from files field. Updated turbo.json with proper task definitions. Fixed root tsconfig - removed legacy path aliases. |
 | 2025-11-21 | 3.14 | 🔧 **Phase 7 NEARLY COMPLETE**: Integrated Anthropic API with SDK query - direct API calls with retry logic (exponential backoff), complete tool execution loop with Zod validation, CLI chat with SDK streaming and interrupt support (Ctrl+C), token usage and duration tracking. Updated ARCHITECTURE.md with SDK execution flow diagram, error handling strategy, environment configuration. 443 tests passing. Remaining: Server SDK integration, Ink UI. |
@@ -2226,7 +2233,17 @@ bun run dev
    - [x] Add permission modes and interrupt capability
    - [x] Update CLI and server to use SDK streaming
    - [x] Write SDK integration tests (50+ tests)
-9. **Phase 8 - Telegram Bot Integration**
+9. 🔧 **Phase 8 - Telegram Bot Integration** NEARLY COMPLETE
+   - [x] Create apps/telegram-bot package
+   - [x] Set up Telegraf framework with Hono webhook server
+   - [x] Implement all commands (/start, /chat, /status, /sessions, /help, /clear)
+   - [x] Create message handler
+   - [x] TelegramSessionManager with MCP client
+   - [x] NotificationManager with GitHub event notifications
+   - [x] 62 tests passing (505 total)
+   - [ ] Register Telegram bot (external setup)
+   - [ ] Deploy bot
+   - [ ] Document usage
 10. **Phase 9 - API Gateway**
 11. **Phase 10 - Integration & Testing**
 12. **Phase 11 - Documentation & Deployment**
