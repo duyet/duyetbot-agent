@@ -63,7 +63,9 @@ export async function searchMemory(
       // Calculate simple relevance score
       const queryLower = query.toLowerCase();
       const contentLower = message.content.toLowerCase();
-      const occurrences = (contentLower.match(new RegExp(queryLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []).length;
+      const occurrences = (
+        contentLower.match(new RegExp(queryLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []
+      ).length;
       const score = occurrences / message.content.length;
 
       // Get context (surrounding messages)

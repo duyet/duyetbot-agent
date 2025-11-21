@@ -200,7 +200,8 @@ export class D1Storage {
   ): Promise<LLMMessage[]> {
     const { limit, offset = 0 } = options;
 
-    let query = 'SELECT role, content, timestamp, metadata FROM messages WHERE session_id = ? ORDER BY timestamp ASC';
+    let query =
+      'SELECT role, content, timestamp, metadata FROM messages WHERE session_id = ? ORDER BY timestamp ASC';
     const params: unknown[] = [sessionId];
 
     if (limit !== undefined) {

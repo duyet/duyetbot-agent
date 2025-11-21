@@ -8,7 +8,17 @@ function createMockD1() {
     users: new Map<string, User>(),
     sessions: new Map<string, Session & { metadata: string }>(),
     tokens: new Map<string, SessionToken>(),
-    messages: new Map<string, Array<{ id: number; session_id: string; role: string; content: string; timestamp: number; metadata: string | null }>>(),
+    messages: new Map<
+      string,
+      Array<{
+        id: number;
+        session_id: string;
+        role: string;
+        content: string;
+        timestamp: number;
+        metadata: string | null;
+      }>
+    >(),
   };
 
   return {
@@ -55,7 +65,9 @@ function createMockD1() {
             const results: any[] = [];
             for (const [sessionId, msgs] of data.messages) {
               const session = data.sessions.get(sessionId);
-              if (!session || session.user_id !== userId) continue;
+              if (!session || session.user_id !== userId) {
+                continue;
+              }
               for (let i = 0; i < msgs.length; i++) {
                 if (msgs[i].content.toLowerCase().includes(query.toLowerCase())) {
                   results.push({ ...msgs[i], msg_index: i });
@@ -318,14 +330,17 @@ describe('D1Storage', () => {
     });
 
     it('should get messages', async () => {
-      mockDb._data.messages.set('sess_123', testMessages.map((m, i) => ({
-        id: i + 1,
-        session_id: 'sess_123',
-        role: m.role,
-        content: m.content,
-        timestamp: m.timestamp || Date.now(),
-        metadata: null,
-      })));
+      mockDb._data.messages.set(
+        'sess_123',
+        testMessages.map((m, i) => ({
+          id: i + 1,
+          session_id: 'sess_123',
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp || Date.now(),
+          metadata: null,
+        }))
+      );
       const result = await storage.getMessages('sess_123');
       expect(result).toHaveLength(2);
     });
@@ -354,7 +369,14 @@ describe('D1Storage', () => {
       };
       mockDb._data.sessions.set('sess_123', testSession);
       mockDb._data.messages.set('sess_123', [
-        { id: 1, session_id: 'sess_123', role: 'user', content: 'Hello TypeScript', timestamp: Date.now(), metadata: null },
+        {
+          id: 1,
+          session_id: 'sess_123',
+          role: 'user',
+          content: 'Hello TypeScript',
+          timestamp: Date.now(),
+          metadata: null,
+        },
       ]);
 
       const results = await storage.searchMessages('user_123', 'TypeScript');
