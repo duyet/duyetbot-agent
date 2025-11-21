@@ -149,7 +149,6 @@ duyetbot-agent/
 │   │   ├── src/
 │   │   │   ├── base.ts            # Base provider interface
 │   │   │   ├── claude.ts          # Claude provider
-│   │   │   ├── openai.ts          # OpenAI provider
 │   │   │   ├── openrouter.ts      # OpenRouter provider
 │   │   │   ├── zai.ts             # Z.AI provider (base URL override)
 │   │   │   └── factory.ts         # Provider factory with URL override
@@ -374,7 +373,7 @@ export ANTHROPIC_DEFAULT_OPUS_MODEL="$MODEL_OPUS"
 ```typescript
 // packages/providers/src/factory.ts
 interface ProviderConfig {
-  type: 'anthropic' | 'openai' | 'openrouter' | 'custom';
+  type: 'anthropic' | 'openrouter' | 'custom';
   apiKey: string;
   baseUrl?: string;  // Optional base URL override
   models?: Record<string, string>;  // Model name mappings
@@ -388,11 +387,6 @@ class ProviderFactory {
           apiKey: config.apiKey,
           baseUrl: config.baseUrl || 'https://api.anthropic.com',
           models: config.models,
-        });
-      case 'openai':
-        return new OpenAIProvider({
-          apiKey: config.apiKey,
-          baseUrl: config.baseUrl || 'https://api.openai.com/v1',
         });
       case 'openrouter':
         return new OpenRouterProvider({
@@ -1360,7 +1354,552 @@ bot.launch();
 
 ---
 
-### Phase 7: Telegram Bot Integration (3-4 days)
+### Phase 7: Claude Code Agent SDK Integration (4-5 days) 🔧 IN PROGRESS
+
+**Goal**: Refactor core agent system to fully leverage Claude Code Agent SDK patterns
+
+**Tasks**:
+- [x] Refactor packages/core to use SDK's `query()` function pattern
+  - [x] Replace custom agent execution with SDK query function
+  - [x] Implement proper async generator message streaming
+  - [x] Add support for both single-mode and streaming-mode inputs
+- [x] Update tool system to use SDK's `tool()` function
+  - [x] Migrate all tools to use Zod schema definitions via SDK
+  - [x] Ensure type-safe tool handlers with structured results
+  - [x] Update tool registry to export SDK-compatible tools
+- [x] Implement SDK session management
+  - [x] Use SDK's session ID, resume, and forkSession patterns
+  - [ ] Integrate with existing FileSessionManager and CloudSessionManager
+  - [x] Add session forking capability for parallel workflows
+- [x] Add MCP server configuration via SDK
+  - [x] Configure memory-mcp server as SDK MCP connection
+  - [x] Support multiple MCP server types (stdio, SSE, HTTP)
+  - [x] Add tool allowlists per MCP server
+- [x] Implement subagent system using SDK's `agents` option
+  - [x] Define subagents programmatically with descriptions
+  - [x] Configure tool subsets per subagent
+  - [x] Add custom prompts and model overrides per agent
+  - [ ] Update GitHub bot and CLI to use subagent patterns
+- [x] Add permission modes support
+  - [x] Implement "default", "acceptEdits", "bypassPermissions" modes
+  - [x] Add permission mode configuration per use case
+  - [ ] Integrate with CLI and server configuration
+- [x] Implement interrupt capability
+  - [x] Add `interrupt()` method for streaming queries
+  - [ ] Integrate with WebSocket server for real-time cancellation
+  - [x] Add timeout and graceful shutdown handling
+- [x] Update CLI to use SDK streaming
+  - [x] Refactor chat command to use async generator streaming
+  - [ ] Implement real-time message display with Ink
+  - [x] Add interrupt support (Ctrl+C handling)
+- [ ] Update server to use SDK patterns
+  - [ ] Refactor execute endpoint to use query() function
+  - [ ] Implement proper streaming over WebSocket
+  - [ ] Add message type handling for all SDK message types
+- [x] Integrate Anthropic API with SDK query
+  - [x] Direct API calls with retry logic (exponential backoff)
+  - [x] Tool execution with Zod validation
+  - [x] Token usage and duration tracking
+- [x] Write comprehensive SDK integration tests (50+ tests)
+  - [x] Test query() function with various inputs
+  - [x] Test tool execution with Zod schemas
+  - [x] Test session management (resume, fork)
+  - [x] Test MCP server integration
+  - [x] Test subagent delegation
+  - [x] Test permission modes
+  - [x] Test interrupt capability
+- [x] Update documentation
+  - [x] Document SDK patterns used (ARCHITECTURE.md)
+  - [x] Add execution flow diagram
+  - [x] Document error handling and retry strategy
+  - [ ] Add examples for custom tool creation
+  - [ ] Document subagent configuration
+
+**Progress**: Phase 7 NEARLY COMPLETE (2025-11-21). Implemented:
+- ✅ SDK integration layer (query.ts, tool.ts, options.ts, subagent.ts, types.ts)
+- ✅ Anthropic API integration with retry logic (exponential backoff)
+- ✅ Complete tool execution loop with Zod validation
+- ✅ CLI chat with SDK streaming and interrupt support
+- ✅ Token usage and duration tracking
+- ✅ Architecture documentation with execution flow diagram
+- 📝 Remaining: Server SDK integration, Ink UI, WebSocket streaming
+
+**Output**: Core agent system fully integrated with Claude Code Agent SDK patterns ✅
+
+**Key SDK Patterns to Implement**:
+
+```typescript
+// Query function pattern
+import { query, tool, Options } from '@anthropic-ai/claude-agent-sdk';
+
+// Tool definition with Zod
+const bashTool = tool(
+  'bash',
+  'Execute shell commands',
+  z.object({ command: z.string() }),
+  async ({ command }) => {
+    // Execute and return result
+    return { output: '...' };
+  }
+);
+
+// Agent execution with SDK
+const options: Options = {
+  model: 'sonnet',
+  tools: [bashTool, gitTool, githubTool],
+  systemPrompt: 'You are @duyetbot...',
+  permissionMode: 'default',
+  mcpServers: [{
+    type: 'http',
+    url: 'https://memory.duyetbot.workers.dev',
+  }],
+  agents: [{
+    name: 'researcher',
+    description: 'Research and gather information',
+    tools: ['research', 'web_search'],
+    prompt: 'You are a research assistant...',
+    model: 'haiku',
+  }],
+};
+
+// Streaming query
+for await (const message of query(userInput, options)) {
+  if (message.type === 'assistant') {
+    // Handle assistant response
+    stream.write(message.content);
+  }
+}
+```
+
+---
+
+## Claude Agent SDK as Core Engine - Architecture Design
+
+### Overview
+
+This section describes the architectural approach to make the **Claude Agent SDK** (`@anthropic-ai/claude-agent-sdk`) the core engine of duyetbot-agent, replacing the custom agent implementation with the official SDK.
+
+### Design Principles
+
+1. **SDK-First**: Use Claude Agent SDK's `query()` as the primary execution engine
+2. **Thin Wrapper**: Minimize abstraction layers between SDK and application code
+3. **MCP Integration**: Connect duyetbot's memory server as an MCP server to the SDK
+4. **Tool Compatibility**: Convert existing tools to SDK-compatible format
+5. **Streaming Native**: Leverage SDK's async generator streaming throughout
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                         duyetbot-agent System                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│   ┌─────────────┐     ┌─────────────┐     ┌─────────────┐               │
+│   │   CLI App   │     │ GitHub Bot  │     │  Telegram   │               │
+│   │  (packages/ │     │   (apps/    │     │   Bot       │               │
+│   │    cli)     │     │ github-bot) │     │             │               │
+│   └──────┬──────┘     └──────┬──────┘     └──────┬──────┘               │
+│          │                   │                   │                       │
+│          └───────────────────┼───────────────────┘                       │
+│                              │                                           │
+│                    ┌─────────▼──────────┐                               │
+│                    │   Agent Runner     │                               │
+│                    │  (packages/core)   │                               │
+│                    │                    │                               │
+│                    │  ┌──────────────┐  │                               │
+│                    │  │ SDK Adapter  │  │   ← Thin adapter layer        │
+│                    │  └──────┬───────┘  │                               │
+│                    └─────────┼──────────┘                               │
+│                              │                                           │
+│    ┌─────────────────────────┼─────────────────────────┐                │
+│    │                         │                         │                │
+│    │         ╔═══════════════▼════════════════╗        │                │
+│    │         ║   Claude Agent SDK (Core)      ║        │                │
+│    │         ║   @anthropic-ai/claude-agent-  ║        │                │
+│    │         ║              sdk               ║        │                │
+│    │         ║                                ║        │                │
+│    │         ║  • query() - main execution    ║        │                │
+│    │         ║  • tool() - tool definitions   ║        │                │
+│    │         ║  • Streaming via AsyncGen      ║        │                │
+│    │         ║  • MCP server connections      ║        │                │
+│    │         ║  • Subagent delegation         ║        │                │
+│    │         ╚════════════════════════════════╝        │                │
+│    │                         │                         │                │
+│    └─────────────────────────┼─────────────────────────┘                │
+│                              │                                           │
+│          ┌───────────────────┼───────────────────┐                      │
+│          │                   │                   │                      │
+│    ┌─────▼─────┐       ┌─────▼─────┐       ┌─────▼─────┐                │
+│    │  Tools    │       │   MCP     │       │  Claude   │                │
+│    │  (bash,   │       │  Memory   │       │   API     │                │
+│    │  git,     │       │  Server   │       │           │                │
+│    │  github)  │       │           │       │           │                │
+│    └───────────┘       └───────────┘       └───────────┘                │
+│                                                                          │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Core Components
+
+#### 1. SDK Adapter (`packages/core/src/sdk-engine/`)
+
+A thin adapter that configures and invokes the Claude Agent SDK:
+
+```typescript
+// packages/core/src/sdk-engine/engine.ts
+import { query as sdkQuery, tool as sdkTool } from '@anthropic-ai/claude-agent-sdk';
+import type { Options, Message } from '@anthropic-ai/claude-agent-sdk';
+
+export interface DuyetbotConfig {
+  // API configuration
+  apiKey?: string;
+  baseUrl?: string;
+  model?: 'haiku' | 'sonnet' | 'opus' | string;
+
+  // Memory MCP server
+  memoryServerUrl?: string;
+
+  // Tools
+  tools?: SDKTool[];
+
+  // Context
+  systemPrompt?: string;
+  sessionId?: string;
+
+  // Subagents
+  agents?: SubagentConfig[];
+}
+
+/**
+ * Create SDK options from duyetbot config
+ */
+export function createSDKOptions(config: DuyetbotConfig): Options {
+  const options: Options = {
+    model: config.model || 'sonnet',
+    systemPrompt: config.systemPrompt,
+    tools: config.tools,
+    agents: config.agents,
+  };
+
+  // Connect to MCP memory server
+  if (config.memoryServerUrl) {
+    options.mcpServers = [{
+      type: 'http',
+      url: config.memoryServerUrl,
+      toolAllowlist: ['get_memory', 'save_memory', 'search_memory', 'list_sessions'],
+    }];
+  }
+
+  // Session management
+  if (config.sessionId) {
+    options.sessionId = config.sessionId;
+  }
+
+  return options;
+}
+
+/**
+ * Execute query using Claude Agent SDK
+ */
+export async function* executeQuery(
+  input: string | AsyncIterable<UserMessage>,
+  config: DuyetbotConfig
+): AsyncGenerator<Message> {
+  const options = createSDKOptions(config);
+
+  // Direct passthrough to SDK
+  yield* sdkQuery(input, options);
+}
+
+/**
+ * Single-shot query execution
+ */
+export async function executeSingle(
+  input: string,
+  config: DuyetbotConfig
+): Promise<Message> {
+  const options = createSDKOptions(config);
+  let result: Message | undefined;
+
+  for await (const message of sdkQuery(input, options)) {
+    if (message.type === 'result') {
+      result = message;
+    }
+  }
+
+  if (!result) {
+    throw new Error('No result from query');
+  }
+
+  return result;
+}
+```
+
+#### 2. Tool Conversion Layer
+
+Convert existing duyetbot tools to SDK format:
+
+```typescript
+// packages/core/src/sdk-engine/tools.ts
+import { tool as sdkTool } from '@anthropic-ai/claude-agent-sdk';
+import { bashTool, gitTool, planTool, researchTool } from '@duyetbot/tools';
+
+/**
+ * Convert duyetbot tool to SDK tool
+ */
+export function toSDKTool(duyetbotTool: DuyetbotTool): SDKTool {
+  return sdkTool(
+    duyetbotTool.name,
+    duyetbotTool.description,
+    duyetbotTool.inputSchema,
+    async (input) => {
+      const result = await duyetbotTool.execute({ content: input });
+      return {
+        content: result.content,
+        isError: result.status !== 'success',
+      };
+    }
+  );
+}
+
+/**
+ * Get all duyetbot tools as SDK tools
+ */
+export function getAllSDKTools(): SDKTool[] {
+  return [
+    toSDKTool(bashTool),
+    toSDKTool(gitTool),
+    toSDKTool(planTool),
+    toSDKTool(researchTool),
+    // GitHub tool requires context, created per-request
+  ];
+}
+```
+
+#### 3. Application Layer Integration
+
+##### CLI Application
+
+```typescript
+// packages/cli/src/commands/chat.ts
+import { executeQuery, createSDKOptions } from '@duyetbot/core/sdk-engine';
+import { getAllSDKTools } from '@duyetbot/core/sdk-engine/tools';
+
+export async function chatCommand(options: ChatOptions) {
+  const config: DuyetbotConfig = {
+    model: options.model || 'sonnet',
+    memoryServerUrl: options.cloudMode
+      ? 'https://memory.duyetbot.workers.dev'
+      : undefined,
+    tools: getAllSDKTools(),
+    systemPrompt: 'You are duyetbot, a helpful AI assistant.',
+    sessionId: options.sessionId,
+  };
+
+  // Stream responses to terminal
+  for await (const message of executeQuery(userInput, config)) {
+    switch (message.type) {
+      case 'assistant':
+        process.stdout.write(message.content);
+        break;
+      case 'tool_use':
+        console.log(`\nUsing tool: ${message.toolName}`);
+        break;
+      case 'result':
+        console.log(`\nCompleted (${message.totalTokens} tokens)`);
+        break;
+    }
+  }
+}
+```
+
+##### GitHub Bot
+
+```typescript
+// apps/github-bot/src/handlers/mention.ts
+import { executeQuery } from '@duyetbot/core/sdk-engine';
+import { getAllSDKTools, createGitHubTool } from '@duyetbot/core/sdk-engine/tools';
+
+export async function handleMention(event: GitHubMentionEvent) {
+  const { repository, issue, comment } = event;
+
+  // Create GitHub-specific tool with context
+  const githubTool = createGitHubTool(octokit, repository);
+
+  const config: DuyetbotConfig = {
+    model: 'sonnet',
+    memoryServerUrl: process.env.MCP_MEMORY_URL,
+    tools: [...getAllSDKTools(), githubTool],
+    systemPrompt: buildGitHubSystemPrompt(repository, issue),
+    sessionId: `github:${repository.full_name}:${issue.number}`,
+    agents: [
+      {
+        name: 'code_reviewer',
+        description: 'Review code for quality and issues',
+        tools: ['bash', 'git', 'github'],
+        model: 'sonnet',
+      },
+      {
+        name: 'researcher',
+        description: 'Research and gather information',
+        tools: ['research'],
+        model: 'haiku',
+      },
+    ],
+  };
+
+  // Collect full response
+  let response = '';
+  for await (const message of executeQuery(comment.body, config)) {
+    if (message.type === 'assistant') {
+      response += message.content;
+    }
+  }
+
+  // Post response as comment
+  await octokit.issues.createComment({
+    owner: repository.owner.login,
+    repo: repository.name,
+    issue_number: issue.number,
+    body: response,
+  });
+}
+```
+
+##### Long-Running Server
+
+```typescript
+// packages/server/src/agent-runner.ts
+import { executeQuery, createQueryController } from '@duyetbot/core/sdk-engine';
+
+export class AgentRunner {
+  private activeQueries = new Map<string, QueryController>();
+
+  async execute(sessionId: string, input: string, ws: WebSocket) {
+    const controller = createQueryController();
+    this.activeQueries.set(sessionId, controller);
+
+    const config: DuyetbotConfig = {
+      model: 'sonnet',
+      memoryServerUrl: process.env.MCP_MEMORY_URL,
+      tools: getAllSDKTools(),
+      sessionId,
+    };
+
+    try {
+      for await (const message of executeQuery(input, config, controller)) {
+        // Stream to WebSocket
+        ws.send(JSON.stringify(message));
+
+        if (message.type === 'result') {
+          break;
+        }
+      }
+    } finally {
+      this.activeQueries.delete(sessionId);
+    }
+  }
+
+  interrupt(sessionId: string) {
+    const controller = this.activeQueries.get(sessionId);
+    if (controller) {
+      controller.interrupt();
+    }
+  }
+}
+```
+
+### MCP Memory Integration
+
+The memory MCP server (`packages/memory-mcp`) becomes a first-class MCP server that the SDK connects to:
+
+```typescript
+// SDK automatically calls MCP server tools
+const config: DuyetbotConfig = {
+  memoryServerUrl: 'https://memory.duyetbot.workers.dev',
+  // SDK can now use: get_memory, save_memory, search_memory, list_sessions
+};
+```
+
+The agent can naturally reference memory in conversations:
+- "Search my previous conversations about React hooks"
+- "Save this solution to memory for later"
+- "What did we discuss last time about deployment?"
+
+### Subagent Delegation
+
+SDK handles subagent routing automatically:
+
+```typescript
+const config: DuyetbotConfig = {
+  agents: [
+    {
+      name: 'researcher',
+      description: 'Research topics and gather information',
+      tools: ['research', 'web_search'],
+      prompt: 'You are a research assistant. Provide comprehensive, well-sourced information.',
+      model: 'haiku',
+    },
+    {
+      name: 'code_reviewer',
+      description: 'Review code for quality, security, and best practices',
+      tools: ['bash', 'git'],
+      prompt: 'You are a code reviewer. Focus on bugs, security issues, and improvements.',
+      model: 'sonnet',
+    },
+  ],
+};
+
+// When user says "research the best practices for error handling"
+// SDK automatically delegates to the researcher subagent
+```
+
+### Migration Steps
+
+1. **Phase 7.1**: Create `sdk-engine` module with thin adapter
+2. **Phase 7.2**: Convert existing tools to SDK format
+3. **Phase 7.3**: Update CLI to use SDK directly
+4. **Phase 7.4**: Update GitHub bot to use SDK
+5. **Phase 7.5**: Update server to use SDK
+6. **Phase 7.6**: Remove old Agent class (deprecated)
+7. **Phase 7.7**: Update tests to use SDK patterns
+
+### Benefits
+
+1. **Reduced Complexity**: Remove custom agent loop, rely on SDK
+2. **Feature Parity**: Get all SDK features (streaming, tools, subagents, MCP)
+3. **Maintenance**: SDK updates automatically improve duyetbot
+4. **Reliability**: Battle-tested execution engine
+5. **Consistency**: Same patterns across CLI, server, and bots
+
+### Key Decisions
+
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| **Adapter thickness** | Thin (config only) | Maximize SDK features, minimize maintenance |
+| **Tool format** | SDK native | Use `tool()` function directly |
+| **Memory access** | MCP server | SDK's native MCP support |
+| **Session management** | SDK + MCP | Session ID passed to SDK, persisted via MCP |
+| **Error handling** | SDK-managed | Let SDK handle retries and errors |
+
+### File Structure
+
+```
+packages/core/src/
+├── sdk-engine/
+│   ├── index.ts           # Main exports
+│   ├── engine.ts          # Query execution using SDK
+│   ├── tools.ts           # Tool conversion and registry
+│   ├── config.ts          # Configuration helpers
+│   └── subagents.ts       # Predefined subagent configs
+├── agent/                  # DEPRECATED - to be removed
+├── mcp/                    # MCP client (for direct calls if needed)
+└── sdk/                    # Current wrapper - to be replaced
+```
+
+---
+
+### Phase 8: Telegram Bot Integration (3-4 days)
 
 **Goal**: Telegram bot for chat and notifications
 
@@ -1386,7 +1925,7 @@ bot.launch();
 
 ---
 
-### Phase 8: API Gateway (3-4 days)
+### Phase 9: API Gateway (3-4 days)
 
 **Goal**: HTTP API for web UI and external integrations
 
@@ -1412,7 +1951,7 @@ bot.launch();
 
 ---
 
-### Phase 9: Integration & Testing (4-5 days)
+### Phase 10: Integration & Testing (4-5 days)
 
 **Goal**: End-to-end testing and integration
 
@@ -1436,7 +1975,7 @@ bot.launch();
 
 ---
 
-### Phase 10: Documentation & Deployment (2-3 days)
+### Phase 11: Documentation & Deployment (2-3 days)
 
 **Goal**: Production deployment and documentation
 
@@ -1517,7 +2056,7 @@ bot.launch();
 - [ ] Telegram bot functional
 - [ ] CLI works in local and cloud modes
 - [ ] MCP memory server stores/retrieves sessions
-- [ ] Multi-provider support works (Claude, Z.AI, OpenRouter)
+- [ ] Multi-provider support works (Claude, Z.AI via base URL, OpenRouter)
 - [ ] Container deployment successful
 
 ---
@@ -1534,7 +2073,7 @@ bot.launch();
 | **Telegram Bot** | Telegraf | Best TypeScript bot framework |
 | **API Gateway** | Hono | Fast, lightweight, edge-compatible |
 | **Testing** | Vitest | Fast, modern, great DX |
-| **LLM** | Claude/OpenAI/Z.AI | Multi-provider flexibility |
+| **LLM** | Claude/Z.AI/OpenRouter | Claude-compatible APIs only |
 | **Protocol** | MCP | Standardized tool/resource protocol |
 
 ---
@@ -1612,6 +2151,9 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-21 | 3.14 | 🔧 **Phase 7 NEARLY COMPLETE**: Integrated Anthropic API with SDK query - direct API calls with retry logic (exponential backoff), complete tool execution loop with Zod validation, CLI chat with SDK streaming and interrupt support (Ctrl+C), token usage and duration tracking. Updated ARCHITECTURE.md with SDK execution flow diagram, error handling strategy, environment configuration. 443 tests passing. Remaining: Server SDK integration, Ink UI. |
+| 2025-11-21 | 3.13 | 🔧 **Phase 7 IN PROGRESS**: SDK integration layer implemented. Created packages/core/src/sdk with: query() function with async generator streaming, sdkTool() with Zod schemas, QueryOptions (model, permissions, MCP, subagents), SubagentRegistry with 5 predefined agents (researcher, codeReviewer, planner, gitOperator, githubAgent), permission modes, interrupt capability with QueryController. 44 SDK tests passing (101 total core tests). CLI/server integration pending. |
+| 2025-11-21 | 3.12 | 🆕 **Added Phase 7 - Claude Code Agent SDK Integration**: New phase to fully leverage SDK patterns (query() function, tool() with Zod, session management with resume/fork, MCP server config, subagents, permission modes, interrupt capability). Updated phase numbering (7→8→9→10→11). Removed OpenAI provider - focusing on Claude-compatible APIs only (Claude, Z.AI, OpenRouter). |
 | 2025-11-21 | 3.11 | 🔧 **Phase 6 NEARLY COMPLETE**: Added webhook handlers for issues and pull_request events, trigger_workflow and other GitHub tool actions (14 total), GitHubSessionManager with MCP client integration for persistent sessions, comprehensive tests. 57 github-bot tests passing. GitHub App registration and deployment pending. |
 | 2025-11-20 | 3.10 | 🔧 **Phase 6 IN PROGRESS**: GitHub bot core implementation. Created @duyetbot/github-bot with Hono server, mention parser (18 tests), webhook handlers, agent handler with system prompt builder, GitHub tool (6 actions), webhook signature verification. 365 tests passing (23 new). |
 | 2025-11-20 | 3.9 | ✅ **Phase 5 COMPLETE**: Wired login command to GitHubDeviceAuth, added memory commands (search, stats), created SessionList UI component, implemented auto mode detection (mode-detector.ts). 342 tests passing (67 CLI tests). npm package distribution pending. |
@@ -1671,7 +2213,19 @@ pnpm run dev
    - [ ] Register GitHub App (external setup)
    - [ ] Deploy GitHub App
    - [ ] Document setup and usage
-8. **Next: Phase 7 - Telegram Bot Integration**
+8. 🆕 **Next: Phase 7 - Claude Code Agent SDK Integration**
+   - [ ] Refactor core to use SDK's `query()` function pattern
+   - [ ] Update tools to use SDK's `tool()` function with Zod
+   - [ ] Implement SDK session management (resume, fork)
+   - [ ] Add MCP server configuration via SDK
+   - [ ] Implement subagent system using SDK's `agents` option
+   - [ ] Add permission modes and interrupt capability
+   - [ ] Update CLI and server to use SDK streaming
+   - [ ] Write SDK integration tests (50+ tests)
+9. **Phase 8 - Telegram Bot Integration**
+10. **Phase 9 - API Gateway**
+11. **Phase 10 - Integration & Testing**
+12. **Phase 11 - Documentation & Deployment**
 
 ---
 

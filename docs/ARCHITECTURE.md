@@ -4,7 +4,7 @@
 
 ## Overview
 
-duyetbot-agent is a personal AI agent system with a containerized architecture: long-running agent server + Cloudflare MCP memory layer + monorepo structure.
+duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as its core engine**. It features a containerized architecture with long-running agent server + Cloudflare MCP memory layer + monorepo structure.
 
 ## High-Level System Design
 
@@ -16,22 +16,37 @@ duyetbot-agent is a personal AI agent system with a containerized architecture: 
 └────────┬───────┴────────┬───────┴──────┬───────┴─────────────────┘
          │                │              │
          │                │              │
-    ┌────▼────────────────▼──────────────▼─────┐
-    │       HTTP API Gateway (Hono)             │
-    │   - Authentication (GitHub user context)  │
-    │   - Rate limiting                         │
-    │   - Request routing                       │
-    └────────────────────┬──────────────────────┘
-                         │
-         ┌───────────────┼───────────────┐
-         │               │               │
-    ┌────▼────┐     ┌────▼────┐    ┌────▼────────┐
-    │ GitHub  │     │Telegram │    │   Agent     │
-    │  Bot    │     │  Bot    │    │   Server    │
-    │ Handler │     │ Handler │    │ (Container) │
-    └────┬────┘     └────┬────┘    └──────┬──────┘
-         │               │                 │
-         └───────────────┼─────────────────┘
+    ┌────▼────────────────▼──────────────│─────┐
+    │       HTTP API Gateway (Hono)      │     │
+    │   - Authentication                 │     │
+    │   - Rate limiting                  │     │
+    │   - Request routing                │     │
+    └────────────────────┬───────────────│─────┘
+                         │               │
+         ┌───────────────┼───────────┐   │
+         │               │           │   │
+    ┌────▼────┐     ┌────▼────┐      │   │
+    │ GitHub  │     │Telegram │      │   │
+    │  Bot    │     │  Bot    │      │   │
+    │ Handler │     │ Handler │      │   │
+    └────┬────┘     └────┬────┘      │   │
+         │               │           │   │
+         └───────────────┼───────────┘   │
+                         │               │
+                         │      ┌────────▼────────┐
+                         │      │   CLI Tool      │
+                         │      │ (SDK embedded)  │
+                         │      └────────┬────────┘
+                         │               │
+              ┌──────────▼───────────────▼─┐
+              │   Claude Agent SDK         │  ← Core Engine
+              │   (packages/core/sdk)      │
+              ├────────────────────────────┤
+              │ • query() execution        │
+              │ • tool() definitions       │
+              │ • Subagent system          │
+              │ • MCP connections          │
+              └──────────┬─────────────────┘
                          │
               ┌──────────▼──────────┐
               │  MCP Memory Server   │
@@ -51,16 +66,166 @@ duyetbot-agent is a personal AI agent system with a containerized architecture: 
     └─────────┘    └─────────┘      └─────────┘
 ```
 
+## Claude Agent SDK as Core Engine
+
+The Claude Agent SDK is the **primary execution engine** for all agent operations:
+
+```typescript
+// SDK query with streaming
+import { query, createDefaultOptions } from '@duyetbot/core';
+
+// Execute with tools and streaming
+const options = createDefaultOptions({
+  model: 'sonnet',
+  tools: [bashTool, gitTool],
+  systemPrompt: 'You are a helpful assistant.',
+});
+
+for await (const message of query('Help me review this PR', options)) {
+  switch (message.type) {
+    case 'assistant':
+      console.log(message.content);  // Stream response
+      break;
+    case 'tool_use':
+      console.log(`Using: ${message.toolName}`);
+      break;
+    case 'result':
+      console.log(`Tokens: ${message.totalTokens}, Time: ${message.duration}ms`);
+      break;
+  }
+}
+```
+
+### Benefits
+
+1. **Reduced Complexity** - No custom agent loop
+2. **Feature Parity** - Get all SDK features automatically
+3. **Maintenance** - SDK updates improve duyetbot
+4. **Reliability** - Battle-tested execution engine
+
+### SDK Integration Layer (`packages/core/src/sdk/`)
+
+- `query.ts` - Query execution with Anthropic API integration
+- `tool.ts` - Tool definitions with Zod schemas
+- `options.ts` - Configuration (model, permissions, MCP, subagents)
+- `subagent.ts` - Predefined subagents (researcher, codeReviewer, etc.)
+- `types.ts` - SDK message types
+
+### SDK Execution Flow
+
+```
+User Input → query()
+     │
+     ▼
+┌─────────────────┐
+│ Validate Options│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Build Messages  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐
+│ Call Anthropic  │────►│  Retry Logic    │
+│      API        │◄────│ (exp backoff)   │
+└────────┬────────┘     └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Parse Response  │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+[Text]    [Tool Use]
+    │         │
+    │         ▼
+    │    ┌─────────────┐
+    │    │Execute Tools│
+    │    │ (validate,  │
+    │    │  run, yield)│
+    │    └──────┬──────┘
+    │          │
+    │    ┌─────▼──────┐
+    │    │Tool Results│
+    │    └─────┬──────┘
+    │          │
+    └────┬─────┘
+         │ (loop until end_turn)
+         ▼
+┌─────────────────┐
+│  Result Message │
+│ (tokens, time)  │
+└─────────────────┘
+```
+
+### Error Handling & Retry Strategy
+
+The SDK implements automatic retry with exponential backoff:
+
+```typescript
+// Retryable errors (automatic retry up to 3 times)
+- 429: Rate limit exceeded
+- 500: Server error
+- 502: Bad gateway
+- 503: Service unavailable
+- 504: Gateway timeout
+- Network errors (timeout, connection refused)
+
+// Backoff: 1s → 2s → 4s (with ±20% jitter)
+```
+
+### Environment Configuration
+
+```env
+# Required for LLM
+ANTHROPIC_API_KEY=sk-ant-xxx
+
+# Optional: Alternative endpoint (Z.AI, proxy)
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+
+# Model shortcuts
+# haiku  → claude-3-5-haiku-20241022
+# sonnet → claude-sonnet-4-20250514
+# opus   → claude-3-opus-20240229
+```
+
 ## Key Architectural Decisions
 
 | Component | Design Choice | Rationale |
 |-----------|--------------|-----------|
+| **Core Engine** | Claude Agent SDK | Battle-tested, feature-rich, maintained by Anthropic |
 | **Main Runtime** | Node.js/Bun Container | Long-running stateful sessions, no CPU limits |
 | **Memory Layer** | MCP Server (CF Workers) | Standardized protocol, reusable across clients |
 | **Project Structure** | Monorepo (pnpm) | Separated concerns, independent deployments |
 | **Provider System** | Base URL override support | Flexible (Z.AI, custom endpoints) |
+| **LLM Providers** | Claude-compatible only | Focused support (Claude, Z.AI, OpenRouter) |
 
 ## Components
+
+### Core (`packages/core`)
+
+Agent orchestration with SDK integration:
+- **SDK adapter layer** (`sdk/`) - Thin wrapper around Claude Agent SDK
+- **Session management** - Conversation state tracking
+- **MCP client** - Memory server integration
+
+Key SDK patterns:
+```typescript
+// Query execution
+for await (const message of query(input, options)) {
+  // Stream responses
+}
+
+// Tool definition
+const tool = sdkTool('name', 'description', zodSchema, handler);
+
+// Subagent delegation
+const options = { agents: [{ name: 'researcher', ... }] };
+```
 
 ### GitHub Bot (`apps/github-bot`)
 
@@ -76,25 +241,17 @@ Key files:
 - `mention-parser.ts` - Extract tasks from mentions
 - `agent-handler.ts` - System prompt builder and response generation
 
-### Core (`packages/core`)
-
-Agent orchestration and session management:
-- Multi-turn conversation handling
-- Tool execution engine
-- MCP client integration
-
 ### Providers (`packages/providers`)
 
 LLM provider adapters with base URL override:
 - **Claude** - Anthropic API (supports Z.AI via base URL)
-- **OpenAI** - GPT models
 - **OpenRouter** - Multi-provider gateway
 
 Format: `<provider>:<model_id>` (e.g., `claude:claude-3-5-sonnet-20241022`)
 
 ### Tools (`packages/tools`)
 
-Built-in tool implementations:
+Built-in tool implementations (SDK-compatible):
 - `bash` - Shell command execution
 - `git` - Repository operations
 - `github` - API operations (14 actions)
@@ -141,7 +298,7 @@ Command-line interface:
 3. Mention parser extracts task from comment
 4. Session manager loads/creates session from MCP
 5. Agent handler builds system prompt with context
-6. Core agent processes task with tools
+6. **Claude Agent SDK** processes task with tools
 7. Response posted as GitHub comment
 8. Session saved to MCP memory
 
@@ -189,16 +346,28 @@ MCP_AUTH_TOKEN=xxx
 
 ## Technology Stack
 
-| Component | Technology |
-|-----------|-----------|
-| **Monorepo** | pnpm workspaces + Turborepo |
-| **Agent Server** | Node.js/Bun + Docker |
-| **MCP Memory** | Cloudflare Workers + D1 + KV |
-| **CLI** | Node.js + Ink + Commander |
-| **GitHub Bot** | Hono + Octokit |
-| **API Gateway** | Hono |
-| **Testing** | Vitest |
-| **LLM** | Claude/OpenAI/Z.AI |
+| Component | Technology | Notes |
+|-----------|-----------|-------|
+| **Agent Engine** | Claude Agent SDK | Core execution engine |
+| **Monorepo** | pnpm workspaces + Turborepo | Build orchestration |
+| **Agent Server** | Node.js/Bun + Docker | Long-running container |
+| **MCP Memory** | Cloudflare Workers + D1 + KV | Edge-based persistence |
+| **CLI** | Node.js + Ink + Commander | Terminal UI |
+| **GitHub Bot** | Hono + Octokit | Webhook handling |
+| **API Gateway** | Hono | Fast, edge-compatible |
+| **Testing** | Vitest | 443+ tests |
+| **LLM** | Claude/Z.AI/OpenRouter | Claude-compatible APIs |
+
+## Test Coverage
+
+- **443 tests** across all packages
+- Core: 101 tests (44 SDK tests)
+- Providers: 38 tests
+- Tools: 51 tests
+- Memory-MCP: 93 tests
+- CLI: 67 tests
+- GitHub-Bot: 57 tests
+- Server: 36 tests
 
 ## Deployment
 
