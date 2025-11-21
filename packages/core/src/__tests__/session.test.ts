@@ -120,7 +120,7 @@ describe('InMemorySessionManager', () => {
     });
 
     it('should not throw when deleting non-existent session', async () => {
-      await expect(manager.delete('non-existent')).resolves.not.toThrow();
+      await expect(manager.delete('non-existent')).resolves.toBeUndefined();
     });
   });
 

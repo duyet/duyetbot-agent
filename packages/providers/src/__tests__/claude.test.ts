@@ -198,10 +198,12 @@ describe('ClaudeProvider', () => {
     it('should throw error when not configured', async () => {
       const messages = [{ role: 'user' as const, content: 'Hello' }];
 
-      await expect(async () => {
-        const generator = provider.query(messages);
-        await generator.next();
-      }).rejects.toThrow('Provider not configured');
+      await expect(
+        (async () => {
+          const generator = provider.query(messages);
+          await generator.next();
+        })()
+      ).rejects.toThrow('Provider not configured');
     });
 
     it('should throw error with empty messages', async () => {
@@ -211,10 +213,12 @@ describe('ClaudeProvider', () => {
         apiKey: 'test-key',
       });
 
-      await expect(async () => {
-        const generator = provider.query([]);
-        await generator.next();
-      }).rejects.toThrow('Messages array cannot be empty');
+      await expect(
+        (async () => {
+          const generator = provider.query([]);
+          await generator.next();
+        })()
+      ).rejects.toThrow('Messages array cannot be empty');
     });
   });
 });

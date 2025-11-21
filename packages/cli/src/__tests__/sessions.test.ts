@@ -170,7 +170,7 @@ describe('FileSessionManager', () => {
     it('should not throw for non-existent session', async () => {
       (fs.existsSync as MockFn).mockReturnValue(false);
 
-      await expect(sessionManager.deleteSession('non-existent')).resolves.not.toThrow();
+      await expect(sessionManager.deleteSession('non-existent')).resolves.toBeUndefined();
     });
   });
 
