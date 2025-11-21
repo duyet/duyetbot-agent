@@ -32,6 +32,24 @@
         "vitest": "^2.1.8",
       },
     },
+    "apps/api": {
+      "name": "@duyetbot/api",
+      "version": "0.1.0",
+      "dependencies": {
+        "@duyetbot/core": "workspace:*",
+        "@duyetbot/tools": "workspace:*",
+        "@duyetbot/types": "workspace:*",
+        "hono": "^4.6.0",
+        "zod": "^3.23.0",
+      },
+      "devDependencies": {
+        "@duyetbot/config-typescript": "workspace:*",
+        "@duyetbot/config-vitest": "workspace:*",
+        "@types/bun": "latest",
+        "typescript": "^5.0.0",
+        "vitest": "^2.0.0",
+      },
+    },
     "apps/github-bot": {
       "name": "@duyetbot/github-bot",
       "version": "0.1.0",
@@ -237,6 +255,8 @@
 
     "@duyetbot/agent-server": ["@duyetbot/agent-server@workspace:apps/agent-server"],
 
+    "@duyetbot/api": ["@duyetbot/api@workspace:apps/api"],
+
     "@duyetbot/cli": ["@duyetbot/cli@workspace:packages/cli"],
 
     "@duyetbot/config-typescript": ["@duyetbot/config-typescript@workspace:packages/config-typescript"],
@@ -441,6 +461,8 @@
 
     "@telegraf/types": ["@telegraf/types@7.1.0", "", {}, "sha512-kGevOIbpMcIlCDeorKGpwZmdH7kHbqlk/Yj6dEpJMKEQw5lk0KVQY0OLXaCswy8GqlIVLd5625OB+rAntP9xVw=="],
 
+    "@types/bun": ["@types/bun@1.3.3", "", { "dependencies": { "bun-types": "1.3.3" } }, "sha512-ogrKbJ2X5N0kWLLFKeytG0eHDleBYtngtlbu9cyBKFtNL3cnpDZkNdQj8flVf6WTZUX5ulI9AY1oa7ljhSrp+g=="],
+
     "@types/estree": ["@types/estree@1.0.8", "", {}, "sha512-dWHzHa2WqEXI/O1E9OjrocMTKJl2mSrEolh1Iomrv6U+JuNwaHXsXx9bLu5gG7BUWFIN0skIQJQ/L1rIex4X6w=="],
 
     "@types/node": ["@types/node@22.19.1", "", { "dependencies": { "undici-types": "~6.21.0" } }, "sha512-LCCV0HdSZZZb34qifBsyWlUmok6W7ouER+oQIGBScS8EsZsQbrtFTUrDX4hOl+CS6p7cnNC4td+qrSVGSCTUfQ=="],
@@ -500,6 +522,8 @@
     "buffer-alloc-unsafe": ["buffer-alloc-unsafe@1.1.0", "", {}, "sha512-TEM2iMIEQdJ2yjPJoSIsldnleVaAk1oW3DBVUykyOLsEsFmEc9kn+SFFPz+gl54KQNxlDnAwCXosOS9Okx2xAg=="],
 
     "buffer-fill": ["buffer-fill@1.0.0", "", {}, "sha512-T7zexNBwiiaCOGDg9xNX9PBmjrubblRkENuptryuI64URkXDFum9il/JGL8Lm8wYfAXpredVXXZz7eMHilimiQ=="],
+
+    "bun-types": ["bun-types@1.3.3", "", { "dependencies": { "@types/node": "*" } }, "sha512-z3Xwlg7j2l9JY27x5Qn3Wlyos8YAp0kKRlrePAOjgjMGS5IG6E7Jnlx736vH9UVI4wUICwwhC9anYL++XeOgTQ=="],
 
     "bundle-name": ["bundle-name@4.1.0", "", { "dependencies": { "run-applescript": "^7.0.0" } }, "sha512-tjwM5exMg6BGRI+kNmTntNsvdZS1X8BFYS6tnJ2hdH0kVxM6/eVZ2xy+FqStSWvYmtfFMDLIxurorHwDKfDz5Q=="],
 

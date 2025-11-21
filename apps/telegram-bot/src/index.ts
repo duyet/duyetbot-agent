@@ -42,7 +42,9 @@ export function createTelegramBot(config: BotConfig): {
   const getUser = (ctx: {
     from?: { id: number; username?: string; first_name: string; last_name?: string };
   }): TelegramUser | null => {
-    if (!ctx.from) return null;
+    if (!ctx.from) {
+      return null;
+    }
     return {
       id: ctx.from.id,
       username: ctx.from.username,
@@ -87,7 +89,9 @@ export function createTelegramBot(config: BotConfig): {
   // /clear command
   bot.command('clear', async (ctx) => {
     const user = getUser(ctx);
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     const sessionId = createSessionId(user.id, ctx.chat.id);
     const result = await clearCommand(sessionId, sessionManager);
@@ -97,7 +101,9 @@ export function createTelegramBot(config: BotConfig): {
   // /sessions command
   bot.command('sessions', async (ctx) => {
     const user = getUser(ctx);
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     const sessionId = createSessionId(user.id, ctx.chat.id);
     const result = sessionsCommand(sessionId);
@@ -107,7 +113,9 @@ export function createTelegramBot(config: BotConfig): {
   // /chat command with inline message
   bot.command('chat', async (ctx) => {
     const user = getUser(ctx);
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     const text = ctx.message.text.replace(/^\/chat\s*/, '').trim();
     if (!text) {
@@ -128,7 +136,9 @@ export function createTelegramBot(config: BotConfig): {
   // Handle regular text messages
   bot.on('text', async (ctx) => {
     const user = getUser(ctx);
-    if (!user) return;
+    if (!user) {
+      return;
+    }
 
     const text = ctx.message.text;
 
