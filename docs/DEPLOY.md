@@ -1,5 +1,7 @@
 # Deployment Guide
 
+**Related:** [Getting Started](README.md) | [Architecture](ARCHITECTURE.md)
+
 This guide covers deploying the @duyetbot GitHub App to various platforms.
 
 ## Prerequisites
@@ -370,3 +372,12 @@ Go to your GitHub App settings and update:
 | AWS Fargate | No | $10-15/month | Most control |
 
 **Recommendation**: Start with **Fly.io** for the free tier or **Railway** for simplicity.
+
+---
+
+## Next Steps
+
+- [Getting Started](README.md) - Installation and development setup
+- [Architecture](ARCHITECTURE.md) - System design and components
+- [GitHub Repository](https://github.com/duyet/duyetbot-agent) - Source code
+- [Report Issues](https://github.com/duyet/duyetbot-agent/issues) - Bug reports and feature requests
