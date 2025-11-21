@@ -1,0 +1,4 @@
+title: duyetbot-agent
+description: Autonomous bot agent system built on Claude Agent SDK
+theme: jekyll-theme-minimal
+markdown: kramdown
