@@ -5,65 +5,35 @@
  */
 
 import { Octokit } from '@octokit/rest';
+import { loadAndRenderTemplate } from './template-loader.js';
 import type { BotConfig, MentionContext } from './types.js';
 
 /**
  * Build system prompt for GitHub context
  */
 export function buildSystemPrompt(context: MentionContext): string {
-  const parts: string[] = [];
+  // Prepare template context with pre-computed values
+  const templateContext: Record<string, unknown> = {
+    repository: context.repository,
+    task: context.task,
+    mentionedBy: context.mentionedBy,
+  };
 
-  parts.push('You are @duyetbot, an AI assistant helping with GitHub tasks.');
-  parts.push('');
-
-  // Repository context
-  parts.push('## Repository');
-  parts.push(`- Name: ${context.repository.full_name}`);
-  parts.push('');
-
-  // Issue/PR context
+  // Add pull request context if present
   if (context.pullRequest) {
-    parts.push(`## Pull Request #${context.pullRequest.number}`);
-    parts.push(`- Title: ${context.pullRequest.title}`);
-    parts.push(`- State: ${context.pullRequest.state}`);
-    parts.push(`- Author: @${context.pullRequest.user.login}`);
-    parts.push(`- Base: ${context.pullRequest.base.ref} <- Head: ${context.pullRequest.head.ref}`);
-    parts.push(
-      `- Changes: +${context.pullRequest.additions} -${context.pullRequest.deletions} (${context.pullRequest.changed_files} files)`
-    );
-    if (context.pullRequest.body) {
-      parts.push('');
-      parts.push('### Description');
-      parts.push(context.pullRequest.body);
-    }
-  } else if (context.issue) {
-    parts.push(`## Issue #${context.issue.number}`);
-    parts.push(`- Title: ${context.issue.title}`);
-    parts.push(`- State: ${context.issue.state}`);
-    parts.push(`- Author: @${context.issue.user.login}`);
-    if (context.issue.labels.length > 0) {
-      parts.push(`- Labels: ${context.issue.labels.map((l) => l.name).join(', ')}`);
-    }
-    if (context.issue.body) {
-      parts.push('');
-      parts.push('### Description');
-      parts.push(context.issue.body);
-    }
+    templateContext.pullRequest = context.pullRequest;
   }
 
-  parts.push('');
-  parts.push(`## Task from @${context.mentionedBy.login}`);
-  parts.push(context.task);
-  parts.push('');
+  // Add issue context if present (and no PR, since PR takes precedence in template)
+  if (context.issue && !context.pullRequest) {
+    templateContext.issue = {
+      ...context.issue,
+      // Pre-compute labels string for template
+      labelsString: context.issue.labels.map((l) => l.name).join(', '),
+    };
+  }
 
-  parts.push('## Guidelines');
-  parts.push('- Provide clear, actionable responses');
-  parts.push('- Use GitHub-flavored Markdown for formatting');
-  parts.push('- Reference specific files, lines, or commits when relevant');
-  parts.push('- If you need more information, ask clarifying questions');
-  parts.push('- Be concise but thorough');
-
-  return parts.join('\n');
+  return loadAndRenderTemplate('system-prompt.txt', templateContext);
 }
 
 /**
