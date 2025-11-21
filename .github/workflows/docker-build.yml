@@ -9,7 +9,7 @@ on:
       - 'apps/**'
       - 'packages/**'
       - 'infrastructure/docker/**'
-      - 'pnpm-lock.yaml'
+      - 'bun.lock'
   workflow_dispatch:
 
 env:
