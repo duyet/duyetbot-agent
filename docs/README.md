@@ -8,7 +8,7 @@
 
 duyetbot is your personal AI assistant that remembers context across all interfaces. Unlike traditional chatbots that forget between sessions, duyetbot maintains persistent memory of your conversations, code context, and preferences.
 
-**Built with:** Claude Agent SDK, Cloudflare Workers, TypeScript
+**Built with:** Claude Agent SDK (core engine), Cloudflare Workers, TypeScript
 
 ---
 
@@ -39,9 +39,9 @@ Your conversations are stored securely in Cloudflare D1. Ask follow-up questions
 
 ### Multi-LLM Support
 
-Choose your preferred model:
+Choose your preferred Claude-compatible model:
 - **Claude** - Best for code and reasoning
-- **OpenAI GPT-4** - Fast general tasks
+- **Z.AI** - Claude via alternative endpoint
 - **OpenRouter** - Access multiple models
 
 ### Edge Deployment
@@ -117,9 +117,9 @@ duyetbot-agent/
 
 ## Status
 
-**Phase 6 Complete**: GitHub Bot with webhook handlers, session management, and Docker deployment.
+**Phase 7 In Progress**: Claude Agent SDK as core engine with SDK integration layer (44 tests), query execution, tool definitions, subagent system.
 
-**Next**: Phase 7 - Telegram Bot Integration
+**Next**: Complete CLI/server SDK integration, then Phase 8 - Telegram Bot Integration
 
 See [PLAN.md](https://github.com/duyet/duyetbot-agent/blob/main/PLAN.md) for full roadmap.
 
@@ -133,4 +133,4 @@ See [PLAN.md](https://github.com/duyet/duyetbot-agent/blob/main/PLAN.md) for ful
 
 ---
 
-**399 tests passing** | **MIT License** | **Built with Claude Code**
+**443 tests passing** | **MIT License** | **Built with Claude Code**
