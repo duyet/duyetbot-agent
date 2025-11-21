@@ -1,0 +1,17 @@
+{
+  "name": "@duyetbot/integration-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@duyetbot/api": "workspace:*",
+    "@duyetbot/core": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
+    "vitest": "^2.0.0"
+  }
+}
