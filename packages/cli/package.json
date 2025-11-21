@@ -5,13 +5,21 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist"],
   "bin": {
     "duyetbot": "./dist/bin.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
   },
   "scripts": {
     "build": "tsc",
     "dev": "tsx src/bin.ts",
     "start": "node dist/bin.js",
+    "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
@@ -21,20 +29,20 @@
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
-    "commander": "^12.1.0",
+    "commander": "catalog:",
     "conf": "^13.0.0",
-    "ink": "^5.0.1",
+    "ink": "catalog:",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
     "open": "^10.1.0",
-    "ora": "^8.1.0",
-    "react": "^18.3.1"
+    "ora": "catalog:",
+    "react": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
-    "@types/react": "^18.3.0",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }
