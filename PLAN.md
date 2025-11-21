@@ -2041,7 +2041,7 @@ packages/core/src/
 
 ---
 
-### Phase 11: Documentation & Deployment (2-3 days)
+### Phase 11: Documentation & Deployment (2-3 days) 🔧 IN PROGRESS
 
 **Goal**: Production deployment and documentation
 
@@ -2059,14 +2059,16 @@ packages/core/src/
   - [ ] Telegram bot usage
 - [ ] Create example configurations
 - [ ] Write troubleshooting guide
-- [ ] Set up CI/CD pipelines
+- [x] Set up CI/CD pipelines
+  - [x] .github/workflows/ci.yml (lint, typecheck, test, build, integration tests)
   - [ ] .github/workflows/deploy-mcp.yml
   - [ ] .github/workflows/deploy-server.yml
-  - [ ] .github/workflows/tests.yml
 - [ ] Deploy all components to production
 - [ ] Monitor and verify
 
-**Output**: Production deployment with documentation ✅
+**Output**: Production deployment with documentation
+
+**Progress**: CI workflow created (2025-11-21). GitHub Actions pipeline with lint, typecheck, test, build, and integration test jobs.
 
 ---
 
@@ -2220,6 +2222,7 @@ bun run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-21 | 3.18 | 🔧 **Phases 8-11 IN PROGRESS**: Phase 8 (Telegram Bot), Phase 9 (API Gateway), Phase 10 (Integration Tests), Phase 11 (CI/CD workflow). Created .github/workflows/ci.yml with lint, typecheck, test, build, and integration test jobs. 515 tests passing (494 unit + 21 integration). |
 | 2025-11-21 | 3.17 | 🏗️ **ARCHITECTURE UPDATE**: Updated to Hybrid Supervisor-Worker Model based on durable execution research. Cloudflare Workflows as Supervisor (orchestration, state, HITL), Fly.io Machines as Worker (compute, filesystem, SDK). Added Volume-as-Session pattern for state persistence. Human-in-the-Loop via GitHub Checks API action_required. Cost model: ~$3.66/mo vs $58/mo always-on. Updated docs/architecture.md and PLAN.md. |
 | 2025-11-21 | 3.16 | ✅ **Phase 7 COMPLETE**: Server SDK integration implemented. Updated /execute endpoint to use SDK query() function. WebSocket handleChat now streams SDK messages (assistant, tool_use, tool_result, tokens). Created sdk-adapter.ts with toSDKTool/toSDKTools for tool conversion, executeQuery/streamQuery helpers, and createQueryController for interruption. Added AgentRoutesConfig and WebSocketConfig for tool/prompt/model configuration. All 443+ tests passing. |
 | 2025-11-21 | 3.15 | 🏗️ **Monorepo Refactor**: World-class monorepo structure. Removed legacy /src/, duplicate /packages/mcp-memory/. Created shared config packages (@duyetbot/config-typescript, @duyetbot/config-vitest). Added pnpm catalog for dependency version sync. Updated all package.json files to use catalog: references. Standardized exports, added clean scripts, removed src from files field. Updated turbo.json with proper task definitions. Fixed root tsconfig - removed legacy path aliases. |
