@@ -39,6 +39,7 @@
         "@duyetbot/core": "workspace:*",
         "@duyetbot/providers": "workspace:*",
         "@duyetbot/tools": "workspace:*",
+        "@duyetbot/types": "workspace:*",
         "@octokit/rest": "^21.0.0",
         "@octokit/webhooks": "^13.0.0",
         "hono": "^4.0.0",
