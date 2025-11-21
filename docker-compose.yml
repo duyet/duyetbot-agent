@@ -4,7 +4,7 @@ services:
   agent-server:
     build:
       context: .
-      dockerfile: packages/server/Dockerfile
+      dockerfile: infrastructure/docker/agent-server.Dockerfile
     ports:
       - "3000:3000"
       - "8080:8080"
@@ -23,7 +23,7 @@ services:
   mcp-memory:
     build:
       context: .
-      dockerfile: packages/mcp-memory/Dockerfile
+      dockerfile: infrastructure/docker/memory-mcp.Dockerfile
     ports:
       - "3001:3001"
     environment:

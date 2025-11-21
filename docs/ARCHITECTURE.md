@@ -259,7 +259,7 @@ Built-in tool implementations (SDK-compatible):
 - `plan` - Task planning
 - `sleep` - Execution delay
 
-### Memory MCP (`packages/memory-mcp`)
+### Memory MCP (`apps/memory-mcp`)
 
 MCP-compatible memory server on Cloudflare Workers:
 - **D1** - Session metadata, users, tokens
@@ -273,7 +273,7 @@ MCP Tools:
 - `search_memory` - Text/semantic search
 - `list_sessions` - List user sessions
 
-### Server (`packages/server`)
+### Agent Server (`apps/agent-server`)
 
 Long-running agent server:
 - WebSocket support for streaming
