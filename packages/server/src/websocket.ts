@@ -5,8 +5,19 @@
  */
 
 import type { Server } from 'node:http';
+import type { QueryOptions, SDKTool } from '@duyetbot/core/sdk';
 import { WebSocket, WebSocketServer } from 'ws';
-import type { AgentSessionManager } from './session-manager.js';
+import { createQueryController, streamQuery } from './sdk-adapter';
+import type { AgentSessionManager } from './session-manager';
+
+/**
+ * WebSocket server configuration
+ */
+export interface WebSocketConfig {
+  tools?: SDKTool[];
+  systemPrompt?: string;
+  model?: string;
+}
 
 export interface WebSocketMessage {
   type: 'chat' | 'subscribe' | 'unsubscribe' | 'ping';
@@ -16,10 +27,23 @@ export interface WebSocketMessage {
 }
 
 export interface WebSocketResponse {
-  type: 'chunk' | 'done' | 'error' | 'pong' | 'subscribed' | 'unsubscribed';
+  type:
+    | 'chunk'
+    | 'done'
+    | 'error'
+    | 'pong'
+    | 'subscribed'
+    | 'unsubscribed'
+    | 'tool_use'
+    | 'tool_result'
+    | 'tokens';
   session_id?: string;
   data?: string;
   error?: string;
+  tool_name?: string;
+  tool_input?: unknown;
+  tokens?: { input: number; output: number; total: number };
+  duration?: number;
 }
 
 /**
@@ -29,9 +53,12 @@ export class AgentWebSocketServer {
   private wss: WebSocketServer;
   private sessionManager: AgentSessionManager;
   private subscriptions = new Map<WebSocket, Set<string>>();
+  private activeControllers = new Map<string, ReturnType<typeof createQueryController>>();
+  private config: WebSocketConfig;
 
-  constructor(server: Server, sessionManager: AgentSessionManager) {
+  constructor(server: Server, sessionManager: AgentSessionManager, config?: WebSocketConfig) {
     this.sessionManager = sessionManager;
+    this.config = config || {};
     this.wss = new WebSocketServer({ server });
 
     this.wss.on('connection', this.handleConnection.bind(this));
@@ -108,37 +135,135 @@ export class AgentWebSocketServer {
     const userMessage = { role: 'user' as const, content: message.message };
     const updatedMessages = [...session.messages, userMessage];
 
-    // TODO: Implement actual agent streaming
-    // For now, simulate streaming response
-    const responseText = `Echo: ${message.message}`;
-    const chunks = responseText.split(' ');
+    // Create query controller for interruption
+    const controller = createQueryController();
+    this.activeControllers.set(message.session_id, controller);
 
-    for (const chunk of chunks) {
-      this.send(ws, {
+    try {
+      // Build context from previous messages
+      const systemPrompt = this.config.systemPrompt || 'You are a helpful AI assistant.';
+      const contextPrompt =
+        session.messages.length > 0
+          ? `${systemPrompt}\n\nPrevious conversation:\n${session.messages.map((m) => `${m.role}: ${m.content}`).join('\n')}`
+          : systemPrompt;
+
+      // Build query options
+      const queryOptions: QueryOptions = {
+        model: this.config.model || 'sonnet',
+        tools: this.config.tools || [],
+        systemPrompt: contextPrompt,
+        sessionId: session.id,
+      };
+
+      // Stream SDK messages
+      let fullResponse = '';
+      for await (const sdkMessage of streamQuery(message.message, queryOptions, controller)) {
+        switch (sdkMessage.type) {
+          case 'assistant':
+            // Stream assistant content
+            this.send(ws, {
+              type: 'chunk',
+              session_id: message.session_id,
+              data: sdkMessage.content,
+            });
+            fullResponse = sdkMessage.content;
+            break;
+
+          case 'tool_use':
+            // Notify about tool usage
+            this.send(ws, {
+              type: 'tool_use',
+              session_id: message.session_id,
+              tool_name: sdkMessage.toolName,
+              tool_input: sdkMessage.toolInput,
+            });
+            break;
+
+          case 'tool_result':
+            // Notify about tool result
+            if (sdkMessage.isError) {
+              this.send(ws, {
+                type: 'tool_result',
+                session_id: message.session_id,
+                data: sdkMessage.content,
+                error: sdkMessage.content,
+              });
+            } else {
+              this.send(ws, {
+                type: 'tool_result',
+                session_id: message.session_id,
+                data: sdkMessage.content,
+              });
+            }
+            break;
+
+          case 'result': {
+            // Final result with tokens
+            fullResponse = sdkMessage.content;
+            const tokenResponse: WebSocketResponse = {
+              type: 'tokens',
+              session_id: message.session_id,
+              tokens: {
+                input: sdkMessage.inputTokens || 0,
+                output: sdkMessage.outputTokens || 0,
+                total: sdkMessage.totalTokens || 0,
+              },
+            };
+            if (sdkMessage.duration !== undefined) {
+              tokenResponse.duration = sdkMessage.duration;
+            }
+            this.send(ws, tokenResponse);
+            break;
+          }
+
+          case 'system':
+            // System messages (errors, etc.)
+            if (sdkMessage.content.startsWith('Error:')) {
+              this.send(ws, {
+                type: 'error',
+                session_id: message.session_id,
+                error: sdkMessage.content,
+              });
+            }
+            break;
+        }
+      }
+
+      // Add assistant message
+      const assistantMessage = { role: 'assistant' as const, content: fullResponse };
+      updatedMessages.push(assistantMessage);
+
+      // Update session
+      await this.sessionManager.updateSession(message.session_id, {
+        messages: updatedMessages,
+      });
+
+      this.send(ws, { type: 'done', session_id: message.session_id });
+
+      // Notify subscribers
+      this.broadcast(message.session_id, {
         type: 'chunk',
         session_id: message.session_id,
-        data: `${chunk} `,
+        data: fullResponse,
       });
-      await new Promise((resolve) => setTimeout(resolve, 50));
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      this.send(ws, { type: 'error', session_id: message.session_id, error: errorMessage });
+    } finally {
+      this.activeControllers.delete(message.session_id);
     }
+  }
 
-    // Add assistant message
-    const assistantMessage = { role: 'assistant' as const, content: responseText };
-    updatedMessages.push(assistantMessage);
-
-    // Update session
-    await this.sessionManager.updateSession(message.session_id, {
-      messages: updatedMessages,
-    });
-
-    this.send(ws, { type: 'done', session_id: message.session_id });
-
-    // Notify subscribers
-    this.broadcast(message.session_id, {
-      type: 'chunk',
-      session_id: message.session_id,
-      data: responseText,
-    });
+  /**
+   * Interrupt an active query
+   */
+  interrupt(sessionId: string): boolean {
+    const controller = this.activeControllers.get(sessionId);
+    if (controller) {
+      controller.interrupt();
+      return true;
+    }
+    return false;
   }
 
   private send(ws: WebSocket, response: WebSocketResponse): void {
@@ -178,7 +303,8 @@ export class AgentWebSocketServer {
  */
 export function createWebSocketServer(
   server: Server,
-  sessionManager: AgentSessionManager
+  sessionManager: AgentSessionManager,
+  config?: WebSocketConfig
 ): AgentWebSocketServer {
-  return new AgentWebSocketServer(server, sessionManager);
+  return new AgentWebSocketServer(server, sessionManager, config);
 }

@@ -8,9 +8,19 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLIConfig, getDefaultConfig, loadConfig, saveConfig } from '../config.js';
 
-// Mock fs and os
-vi.mock('node:fs');
-vi.mock('node:os');
+// Mock fs and os with factory functions
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn(),
+}));
+vi.mock('node:os', () => ({
+  homedir: vi.fn(),
+}));
+
+// Helper type for mocked functions
+type MockFn = ReturnType<typeof vi.fn>;
 
 describe('CLIConfig', () => {
   const mockHomeDir = '/mock/home';
@@ -18,11 +28,11 @@ describe('CLIConfig', () => {
   const configPath = path.join(configDir, 'config.json');
 
   beforeEach(() => {
-    vi.mocked(os.homedir).mockReturnValue(mockHomeDir);
-    vi.mocked(fs.existsSync).mockReturnValue(false);
-    vi.mocked(fs.mkdirSync).mockImplementation(() => undefined);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => undefined);
-    vi.mocked(fs.readFileSync).mockReturnValue('{}');
+    (os.homedir as MockFn).mockReturnValue(mockHomeDir);
+    (fs.existsSync as MockFn).mockReturnValue(false);
+    (fs.mkdirSync as MockFn).mockImplementation(() => undefined);
+    (fs.writeFileSync as MockFn).mockImplementation(() => undefined);
+    (fs.readFileSync as MockFn).mockReturnValue('{}');
   });
 
   afterEach(() => {
@@ -49,7 +59,7 @@ describe('CLIConfig', () => {
 
   describe('loadConfig', () => {
     it('should return default config if file does not exist', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      (fs.existsSync as MockFn).mockReturnValue(false);
 
       const config = loadConfig();
 
@@ -63,8 +73,8 @@ describe('CLIConfig', () => {
         mode: 'cloud',
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedConfig));
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readFileSync as MockFn).mockReturnValue(JSON.stringify(savedConfig));
 
       const config = loadConfig();
 
@@ -75,8 +85,8 @@ describe('CLIConfig', () => {
     it('should merge with defaults for missing fields', () => {
       const partialConfig = { defaultProvider: 'openai' };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(partialConfig));
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readFileSync as MockFn).mockReturnValue(JSON.stringify(partialConfig));
 
       const config = loadConfig();
 
@@ -85,8 +95,8 @@ describe('CLIConfig', () => {
     });
 
     it('should handle invalid JSON gracefully', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue('invalid json');
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readFileSync as MockFn).mockReturnValue('invalid json');
 
       const config = loadConfig();
 
@@ -96,7 +106,7 @@ describe('CLIConfig', () => {
 
   describe('saveConfig', () => {
     it('should create config directory if not exists', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      (fs.existsSync as MockFn).mockReturnValue(false);
 
       const config = getDefaultConfig();
       saveConfig(config);
@@ -116,7 +126,7 @@ describe('CLIConfig', () => {
     });
 
     it('should not recreate directory if exists', () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      (fs.existsSync as MockFn).mockReturnValue(true);
 
       const config = getDefaultConfig();
       saveConfig(config);

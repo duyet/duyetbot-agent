@@ -1,2 +1,3 @@
-export { createHealthRoutes } from './health.js';
-export { createAgentRoutes } from './agent.js';
+export { createHealthRoutes } from './health';
+export { createAgentRoutes } from './agent';
+export type { AgentRoutesConfig } from './agent';

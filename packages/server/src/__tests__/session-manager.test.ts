@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { AgentSession, AgentSessionManager } from '../session-manager.js';
+import { AgentSession, AgentSessionManager } from '../session-manager';
 
 describe('AgentSessionManager', () => {
   let manager: AgentSessionManager;

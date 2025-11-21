@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { createAgentRoutes } from '../routes/agent.js';
-import { createHealthRoutes } from '../routes/health.js';
-import { AgentSessionManager } from '../session-manager.js';
+import { createAgentRoutes } from '../routes/agent';
+import { createHealthRoutes } from '../routes/health';
+import { AgentSessionManager } from '../session-manager';
 
 describe('Health Routes', () => {
   let app: Hono;

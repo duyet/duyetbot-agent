@@ -8,6 +8,6 @@
   "main": "vitest.config.ts",
   "files": ["*.ts"],
   "devDependencies": {
-    "vitest": "catalog:"
+    "vitest": "^2.1.8"
   }
 }

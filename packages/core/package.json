@@ -17,6 +17,10 @@
     "./session": {
       "types": "./dist/session/index.d.ts",
       "import": "./dist/session/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js"
     }
   },
   "files": ["dist"],
@@ -32,16 +36,16 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "catalog:",
-    "@anthropic-ai/sdk": "catalog:",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@anthropic-ai/sdk": "^0.69.0",
     "@duyetbot/types": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
-    "zod": "catalog:"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }
