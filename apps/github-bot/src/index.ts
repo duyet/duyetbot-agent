@@ -9,10 +9,10 @@ import { Octokit } from '@octokit/rest';
 import { Hono } from 'hono';
 import { handleMention } from './agent-handler.js';
 import type { BotConfig, MentionContext } from './types.js';
-import { handleIssueComment, handlePRReviewComment } from './webhooks/mention.js';
-import type { IssueCommentEvent, PRReviewCommentEvent } from './webhooks/mention.js';
 import { handleIssueEvent } from './webhooks/issues.js';
 import type { IssueEvent, IssueHandlerConfig } from './webhooks/issues.js';
+import { handleIssueComment, handlePRReviewComment } from './webhooks/mention.js';
+import type { IssueCommentEvent, PRReviewCommentEvent } from './webhooks/mention.js';
 import { handlePullRequestEvent } from './webhooks/pull-request.js';
 import type { PullRequestEvent, PullRequestHandlerConfig } from './webhooks/pull-request.js';
 

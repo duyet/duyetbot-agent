@@ -2,12 +2,12 @@
  * Tests for webhook handlers (issues and pull_request events)
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { handleIssueEvent } from '../webhooks/issues.js';
-import { handlePullRequestEvent } from '../webhooks/pull-request.js';
-import type { IssueEvent } from '../webhooks/issues.js';
-import type { PullRequestEvent } from '../webhooks/pull-request.js';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import type { MentionContext } from '../types.js';
+import { handleIssueEvent } from '../webhooks/issues.js';
+import type { IssueEvent } from '../webhooks/issues.js';
+import { handlePullRequestEvent } from '../webhooks/pull-request.js';
+import type { PullRequestEvent } from '../webhooks/pull-request.js';
 
 // Mock Octokit
 const mockCreateComment = vi.fn();

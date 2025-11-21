@@ -5,8 +5,8 @@
  */
 
 import { Octokit } from '@octokit/rest';
+import { GitHubSessionManager, createMCPClient } from './session-manager.js';
 import { loadAndRenderTemplate } from './template-loader.js';
-import { createMCPClient, GitHubSessionManager } from './session-manager.js';
 import type { BotConfig, MentionContext } from './types.js';
 
 /**
@@ -145,7 +145,7 @@ export async function handleMention(context: MentionContext, config: BotConfig):
   }
 
   // Get or create session based on context
-  let session;
+  let session: Awaited<ReturnType<typeof sessionManager.getPRSession>>;
   if (context.pullRequest) {
     session = await sessionManager.getPRSession(
       context.repository,
@@ -171,6 +171,7 @@ export async function handleMention(context: MentionContext, config: BotConfig):
           fullName: context.repository.full_name,
         },
         number: 0,
+        title: undefined,
         createdAt: Date.now(),
         updatedAt: Date.now(),
       },
@@ -203,7 +204,7 @@ ${systemPrompt.slice(0, 200)}...
 \`\`\`
 
 **Available GitHub Actions:**
-${['get_pr', 'get_issue', 'create_comment', 'get_diff', 'get_files', 'add_labels', 'create_review'].map(a => `- \`${a}\``).join('\n')}
+${['get_pr', 'get_issue', 'create_comment', 'get_diff', 'get_files', 'add_labels', 'create_review'].map((a) => `- \`${a}\``).join('\n')}
 
 I'm processing your request. Full agent integration is in progress.
 
