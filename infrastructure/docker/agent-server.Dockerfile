@@ -10,7 +10,12 @@ COPY packages/types/package.json ./packages/types/
 COPY packages/providers/package.json ./packages/providers/
 COPY packages/tools/package.json ./packages/tools/
 COPY packages/core/package.json ./packages/core/
+COPY packages/cli/package.json ./packages/cli/
 COPY packages/server/package.json ./packages/server/
+COPY packages/memory-mcp/package.json ./packages/memory-mcp/
+COPY packages/config-typescript/package.json ./packages/config-typescript/
+COPY packages/config-vitest/package.json ./packages/config-vitest/
+COPY apps/github-bot/package.json ./apps/github-bot/
 
 RUN bun install --frozen-lockfile
 
