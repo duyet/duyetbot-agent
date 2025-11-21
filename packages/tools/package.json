@@ -52,13 +52,13 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "catalog:",
+    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
     "@duyetbot/types": "workspace:*",
-    "zod": "catalog:"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }
