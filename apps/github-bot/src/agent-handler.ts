@@ -5,7 +5,7 @@
  */
 
 import { Octokit } from '@octokit/rest';
-import type { MentionContext, BotConfig } from './types.js';
+import type { BotConfig, MentionContext } from './types.js';
 
 /**
  * Build system prompt for GitHub context
@@ -13,11 +13,11 @@ import type { MentionContext, BotConfig } from './types.js';
 export function buildSystemPrompt(context: MentionContext): string {
   const parts: string[] = [];
 
-  parts.push(`You are @duyetbot, an AI assistant helping with GitHub tasks.`);
+  parts.push('You are @duyetbot, an AI assistant helping with GitHub tasks.');
   parts.push('');
 
   // Repository context
-  parts.push(`## Repository`);
+  parts.push('## Repository');
   parts.push(`- Name: ${context.repository.full_name}`);
   parts.push('');
 
@@ -28,7 +28,9 @@ export function buildSystemPrompt(context: MentionContext): string {
     parts.push(`- State: ${context.pullRequest.state}`);
     parts.push(`- Author: @${context.pullRequest.user.login}`);
     parts.push(`- Base: ${context.pullRequest.base.ref} <- Head: ${context.pullRequest.head.ref}`);
-    parts.push(`- Changes: +${context.pullRequest.additions} -${context.pullRequest.deletions} (${context.pullRequest.changed_files} files)`);
+    parts.push(
+      `- Changes: +${context.pullRequest.additions} -${context.pullRequest.deletions} (${context.pullRequest.changed_files} files)`
+    );
     if (context.pullRequest.body) {
       parts.push('');
       parts.push('### Description');
@@ -40,7 +42,7 @@ export function buildSystemPrompt(context: MentionContext): string {
     parts.push(`- State: ${context.issue.state}`);
     parts.push(`- Author: @${context.issue.user.login}`);
     if (context.issue.labels.length > 0) {
-      parts.push(`- Labels: ${context.issue.labels.map(l => l.name).join(', ')}`);
+      parts.push(`- Labels: ${context.issue.labels.map((l) => l.name).join(', ')}`);
     }
     if (context.issue.body) {
       parts.push('');
@@ -54,7 +56,7 @@ export function buildSystemPrompt(context: MentionContext): string {
   parts.push(context.task);
   parts.push('');
 
-  parts.push(`## Guidelines`);
+  parts.push('## Guidelines');
   parts.push('- Provide clear, actionable responses');
   parts.push('- Use GitHub-flavored Markdown for formatting');
   parts.push('- Reference specific files, lines, or commits when relevant');
@@ -105,7 +107,7 @@ export function createGitHubTool(octokit: Octokit, repo: { owner: string; name: 
             repo: repo.name,
             pull_number: params.number as number,
           });
-          return data.map(f => ({
+          return data.map((f) => ({
             filename: f.filename,
             status: f.status,
             additions: f.additions,
@@ -158,10 +160,7 @@ export function createGitHubTool(octokit: Octokit, repo: { owner: string; name: 
 /**
  * Handle mention and generate response
  */
-export async function handleMention(
-  context: MentionContext,
-  config: BotConfig
-): Promise<string> {
+export async function handleMention(context: MentionContext, config: BotConfig): Promise<string> {
   // TODO: Use these when integrating with @duyetbot/core agent
   const _octokit = new Octokit({ auth: config.githubToken });
   const _systemPrompt = buildSystemPrompt(context);

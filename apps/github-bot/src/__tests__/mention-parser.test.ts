@@ -2,13 +2,13 @@
  * Mention Parser Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
-  parseMention,
-  hasMention,
   extractAllMentions,
+  hasMention,
   isCommand,
   parseCommand,
+  parseMention,
 } from '../mention-parser.js';
 
 describe('parseMention', () => {

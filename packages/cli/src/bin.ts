@@ -6,10 +6,10 @@
 
 import { Command } from 'commander';
 import { runPrompt, startChat } from './chat.js';
-import { loadConfig, saveConfig } from './config.js';
-import { FileSessionManager } from './sessions.js';
 import { CloudSessionManager } from './cloud-sessions.js';
+import { loadConfig, saveConfig } from './config.js';
 import { startDeviceLogin } from './oauth.js';
+import { FileSessionManager } from './sessions.js';
 import type { ListSessionsOptions } from './sessions.js';
 
 const program = new Command();
@@ -33,15 +33,12 @@ program
     console.log('Starting GitHub OAuth device flow...\n');
 
     try {
-      const token = await startDeviceLogin(
-        clientId,
-        (code, url) => {
-          console.log('Please visit the following URL to authenticate:');
-          console.log(`\n  ${url}\n`);
-          console.log(`Your code: ${code}\n`);
-          console.log('Waiting for authorization...');
-        }
-      );
+      const token = await startDeviceLogin(clientId, (code, url) => {
+        console.log('Please visit the following URL to authenticate:');
+        console.log(`\n  ${url}\n`);
+        console.log(`Your code: ${code}\n`);
+        console.log('Waiting for authorization...');
+      });
 
       // Save token to config
       const config = loadConfig();
@@ -320,8 +317,11 @@ memory
     for (const session of sessions) {
       totalMessages += session.messages.length;
       for (const msg of session.messages) {
-        if (msg.role === 'user') userMessages++;
-        else if (msg.role === 'assistant') assistantMessages++;
+        if (msg.role === 'user') {
+          userMessages++;
+        } else if (msg.role === 'assistant') {
+          assistantMessages++;
+        }
       }
       stateCount[session.state] = (stateCount[session.state] || 0) + 1;
     }
@@ -339,8 +339,12 @@ memory
     if (sessions.length > 0) {
       const newest = sessions.reduce((a, b) => (a.updatedAt > b.updatedAt ? a : b));
       const oldest = sessions.reduce((a, b) => (a.createdAt < b.createdAt ? a : b));
-      console.log(`\nNewest session: ${newest.title} (${new Date(newest.updatedAt).toLocaleDateString()})`);
-      console.log(`Oldest session: ${oldest.title} (${new Date(oldest.createdAt).toLocaleDateString()})`);
+      console.log(
+        `\nNewest session: ${newest.title} (${new Date(newest.updatedAt).toLocaleDateString()})`
+      );
+      console.log(
+        `Oldest session: ${oldest.title} (${new Date(oldest.createdAt).toLocaleDateString()})`
+      );
     }
   });
 
