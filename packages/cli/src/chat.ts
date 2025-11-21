@@ -1,11 +1,17 @@
 /**
  * Chat Implementation
  *
- * Simple readline-based chat interface
+ * SDK-based chat interface with streaming support
  */
 
 import * as readline from 'node:readline';
 import type { LLMMessage } from '@duyetbot/types';
+import {
+  createDefaultOptions,
+  createQueryController,
+  query,
+  type QueryOptions,
+} from '@duyetbot/core';
 import { FileSessionManager } from './sessions.js';
 import type { LocalSession } from './sessions.js';
 
@@ -14,12 +20,15 @@ export interface ChatOptions {
   mode: 'local' | 'cloud';
   sessionsDir: string;
   mcpServerUrl?: string;
+  model?: string;
+  systemPrompt?: string;
 }
 
 export interface ChatContext {
   session: LocalSession;
   sessionManager: FileSessionManager;
   rl: readline.Interface;
+  queryOptions: QueryOptions;
 }
 
 /**
@@ -45,7 +54,18 @@ export async function startChat(options: ChatOptions): Promise<void> {
 
   console.log(`\nChat session: ${session.id}`);
   console.log(`Mode: ${options.mode}`);
+  console.log(`Model: ${options.model || 'sonnet'}`);
   console.log('Type "exit" to quit, "history" to show messages\n');
+
+  // Create query options
+  const queryOpts: Parameters<typeof createDefaultOptions>[0] = {
+    model: options.model || 'sonnet',
+    sessionId: session.id,
+  };
+  if (options.systemPrompt) {
+    queryOpts.systemPrompt = options.systemPrompt;
+  }
+  const queryOptions = createDefaultOptions(queryOpts);
 
   // Create readline interface
   const rl = readline.createInterface({
@@ -57,6 +77,7 @@ export async function startChat(options: ChatOptions): Promise<void> {
     session,
     sessionManager,
     rl,
+    queryOptions,
   };
 
   // Start chat loop
@@ -66,8 +87,8 @@ export async function startChat(options: ChatOptions): Promise<void> {
 /**
  * Main chat loop
  */
-async function chatLoop(context: ChatContext, options: ChatOptions): Promise<void> {
-  const { rl, session, sessionManager } = context;
+async function chatLoop(context: ChatContext, _options: ChatOptions): Promise<void> {
+  const { rl, session, sessionManager, queryOptions } = context;
 
   const prompt = (): void => {
     rl.question('You: ', async (input) => {
@@ -103,8 +124,8 @@ async function chatLoop(context: ChatContext, options: ChatOptions): Promise<voi
       const userMessage: LLMMessage = { role: 'user', content: trimmed };
       session.messages.push(userMessage);
 
-      // Generate response (placeholder - would call LLM)
-      const response = await generateResponse(session.messages, options);
+      // Generate response using SDK streaming
+      const response = await generateSDKResponse(trimmed, queryOptions);
 
       // Add assistant message
       const assistantMessage: LLMMessage = { role: 'assistant', content: response };
@@ -115,7 +136,7 @@ async function chatLoop(context: ChatContext, options: ChatOptions): Promise<voi
         messages: session.messages,
       });
 
-      console.log(`\nAssistant: ${response}\n`);
+      console.log('\n');
       prompt();
     });
   };
@@ -140,21 +161,70 @@ function showHistory(messages: LLMMessage[]): void {
 }
 
 /**
- * Generate response (placeholder)
+ * Generate response using SDK streaming
  */
-async function generateResponse(messages: LLMMessage[], _options: ChatOptions): Promise<string> {
-  // TODO: Integrate with actual LLM provider
-  // For now, return echo response
-  const lastMessage = messages[messages.length - 1];
-  if (!lastMessage) {
-    return 'No message to respond to';
+async function generateSDKResponse(input: string, options: QueryOptions): Promise<string> {
+  const controller = createQueryController();
+  let fullResponse = '';
+  let isFirstChunk = true;
+
+  // Handle Ctrl+C to interrupt
+  const sigintHandler = () => {
+    controller.interrupt();
+  };
+  process.on('SIGINT', sigintHandler);
+
+  try {
+    process.stdout.write('\nAssistant: ');
+
+    for await (const message of query(input, options, controller)) {
+      switch (message.type) {
+        case 'assistant':
+          if (message.content) {
+            if (isFirstChunk) {
+              isFirstChunk = false;
+            }
+            process.stdout.write(message.content);
+            fullResponse = message.content;
+          }
+          break;
+
+        case 'tool_use':
+          process.stdout.write(`\n[Using tool: ${message.toolName}]`);
+          break;
+
+        case 'tool_result':
+          if (message.isError) {
+            process.stdout.write(`\n[Tool error: ${message.content}]`);
+          } else {
+            process.stdout.write(`\n[Tool result received]`);
+          }
+          break;
+
+        case 'result':
+          // Final result - use this as the complete response
+          if (message.content) {
+            fullResponse = message.content;
+          }
+          if (message.duration) {
+            const seconds = (message.duration / 1000).toFixed(1);
+            process.stdout.write(`\n[${seconds}s, ${message.totalTokens || 0} tokens]`);
+          }
+          break;
+
+        case 'system':
+          // System messages (errors)
+          if (message.content?.startsWith('Error:')) {
+            console.error(`\n${message.content}`);
+          }
+          break;
+      }
+    }
+
+    return fullResponse;
+  } finally {
+    process.removeListener('SIGINT', sigintHandler);
   }
-
-  // Simulate some processing time
-  await new Promise((resolve) => setTimeout(resolve, 100));
-
-  // Echo response for now
-  return `[Echo] ${lastMessage.content}`;
 }
 
 /**
@@ -168,12 +238,27 @@ export async function runPrompt(prompt: string, options: ChatOptions): Promise<s
     title: `Prompt ${new Date().toISOString()}`,
   });
 
+  // Create query options
+  const queryOpts: Parameters<typeof createDefaultOptions>[0] = {
+    model: options.model || 'sonnet',
+    sessionId: session.id,
+  };
+  if (options.systemPrompt) {
+    queryOpts.systemPrompt = options.systemPrompt;
+  }
+  const queryOptions = createDefaultOptions(queryOpts);
+
   // Add user message
   const userMessage: LLMMessage = { role: 'user', content: prompt };
   session.messages.push(userMessage);
 
-  // Generate response
-  const response = await generateResponse(session.messages, options);
+  // Generate response using SDK
+  let response = '';
+  for await (const message of query(prompt, queryOptions)) {
+    if (message.type === 'result' && message.content) {
+      response = message.content;
+    }
+  }
 
   // Add assistant message and save
   const assistantMessage: LLMMessage = { role: 'assistant', content: response };
@@ -185,4 +270,36 @@ export async function runPrompt(prompt: string, options: ChatOptions): Promise<s
   });
 
   return response;
+}
+
+/**
+ * Stream a single prompt to stdout
+ */
+export async function streamPrompt(prompt: string, options: ChatOptions): Promise<void> {
+  const queryOpts: Parameters<typeof createDefaultOptions>[0] = {
+    model: options.model || 'sonnet',
+  };
+  if (options.systemPrompt) {
+    queryOpts.systemPrompt = options.systemPrompt;
+  }
+  const queryOptions = createDefaultOptions(queryOpts);
+
+  const controller = createQueryController();
+
+  // Handle Ctrl+C to interrupt
+  const sigintHandler = () => {
+    controller.interrupt();
+  };
+  process.on('SIGINT', sigintHandler);
+
+  try {
+    for await (const message of query(prompt, queryOptions, controller)) {
+      if (message.type === 'assistant' && message.content) {
+        process.stdout.write(message.content);
+      }
+    }
+    console.log('');
+  } finally {
+    process.removeListener('SIGINT', sigintHandler);
+  }
 }
