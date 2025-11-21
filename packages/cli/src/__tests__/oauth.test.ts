@@ -6,7 +6,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AccessTokenResponse, DeviceCodeResponse, GitHubDeviceAuth } from '../oauth.js';
 
 // Mock fetch
-global.fetch = vi.fn();
+const mockFetch = vi.fn();
+global.fetch = mockFetch;
 
 describe('GitHubDeviceAuth', () => {
   const clientId = 'test-client-id';
@@ -27,7 +28,7 @@ describe('GitHubDeviceAuth', () => {
         interval: 5,
       };
 
-      vi.mocked(fetch).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       } as Response);
@@ -40,7 +41,7 @@ describe('GitHubDeviceAuth', () => {
     });
 
     it('should include correct scopes', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () =>
           Promise.resolve({
@@ -64,7 +65,7 @@ describe('GitHubDeviceAuth', () => {
     });
 
     it('should throw on API error', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 400,
         statusText: 'Bad Request',
@@ -82,7 +83,7 @@ describe('GitHubDeviceAuth', () => {
         scope: 'repo,user',
       };
 
-      vi.mocked(fetch).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve(mockResponse),
       } as Response);
@@ -94,7 +95,7 @@ describe('GitHubDeviceAuth', () => {
     });
 
     it('should handle authorization_pending', async () => {
-      vi.mocked(fetch)
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ error: 'authorization_pending' }),
@@ -116,7 +117,7 @@ describe('GitHubDeviceAuth', () => {
     });
 
     it('should handle slow_down by increasing interval', async () => {
-      vi.mocked(fetch)
+      mockFetch
         .mockResolvedValueOnce({
           ok: true,
           json: () => Promise.resolve({ error: 'slow_down' }),
@@ -137,7 +138,7 @@ describe('GitHubDeviceAuth', () => {
     }, 10000);
 
     it('should throw on expired_token', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ error: 'expired_token' }),
       } as Response);
@@ -148,7 +149,7 @@ describe('GitHubDeviceAuth', () => {
     });
 
     it('should throw on access_denied', async () => {
-      vi.mocked(fetch).mockResolvedValueOnce({
+      mockFetch.mockResolvedValueOnce({
         ok: true,
         json: () => Promise.resolve({ error: 'access_denied' }),
       } as Response);

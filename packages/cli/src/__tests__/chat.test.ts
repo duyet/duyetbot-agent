@@ -38,6 +38,9 @@ vi.mock('node:fs', () => ({
   unlinkSync: vi.fn(),
 }));
 
+// Helper type for mocked functions
+type MockFn = ReturnType<typeof vi.fn>;
+
 describe('Chat', () => {
   const sessionsDir = '/mock/sessions';
   const savedSessions = new Map<string, string>();
@@ -46,7 +49,7 @@ describe('Chat', () => {
     savedSessions.clear();
 
     // Mock existsSync to check our saved sessions
-    vi.mocked(fs.existsSync).mockImplementation((path) => {
+    (fs.existsSync as MockFn).mockImplementation((path) => {
       const pathStr = String(path);
       if (pathStr === sessionsDir) {
         return true;
@@ -54,15 +57,15 @@ describe('Chat', () => {
       return savedSessions.has(pathStr);
     });
 
-    vi.mocked(fs.mkdirSync).mockImplementation(() => undefined);
+    (fs.mkdirSync as MockFn).mockImplementation(() => undefined);
 
     // Save sessions when written
-    vi.mocked(fs.writeFileSync).mockImplementation((path, content) => {
+    (fs.writeFileSync as MockFn).mockImplementation((path, content) => {
       savedSessions.set(String(path), String(content));
     });
 
     // Read sessions from our store
-    vi.mocked(fs.readFileSync).mockImplementation((path) => {
+    (fs.readFileSync as MockFn).mockImplementation((path) => {
       const content = savedSessions.get(String(path));
       if (content) {
         return content;
