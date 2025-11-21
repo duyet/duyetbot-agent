@@ -1,6 +1,6 @@
-import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
-import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
+import { z } from 'zod';
 
 import { D1Storage } from './storage/d1.js';
 import { KVStorage } from './storage/kv.js';
@@ -12,230 +12,186 @@ import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 import { saveMemory, saveMemorySchema } from './tools/save-memory.js';
 import { searchMemory, searchMemorySchema } from './tools/search-memory.js';
 
+// Context for authenticated requests
+interface AuthContext {
+  userId?: string;
+}
+
 export function createMCPServer(env: Env) {
   const d1Storage = new D1Storage(env.DB);
   const kvStorage = new KVStorage(env.KV);
 
-  const server = new Server(
+  const server = new McpServer({
+    name: 'duyetbot-memory',
+    version: '1.0.0',
+  });
+
+  // Register authenticate tool
+  server.tool(
+    'authenticate',
+    'Authenticate user via GitHub token',
     {
-      name: 'duyetbot-memory',
-      version: '1.0.0',
+      github_token: z.string().optional().describe('GitHub personal access token'),
+      oauth_code: z.string().optional().describe('OAuth authorization code (not yet implemented)'),
     },
-    {
-      capabilities: {
-        tools: {},
-      },
+    async (args) => {
+      try {
+        const input = authenticateSchema.parse(args);
+        const result = await authenticate(input, d1Storage);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
+          isError: true,
+        };
+      }
     }
   );
 
-  // List available tools
-  server.setRequestHandler(ListToolsRequestSchema, async () => {
-    return {
-      tools: [
-        {
-          name: 'authenticate',
-          description: 'Authenticate user via GitHub token',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              github_token: {
-                type: 'string',
-                description: 'GitHub personal access token',
-              },
-              oauth_code: {
-                type: 'string',
-                description: 'OAuth authorization code (not yet implemented)',
-              },
-            },
-          },
-        },
-        {
-          name: 'get_memory',
-          description: 'Retrieve session messages and context',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              session_id: {
-                type: 'string',
-                description: 'The session ID to retrieve',
-              },
-              limit: {
-                type: 'number',
-                description: 'Maximum number of messages to return',
-              },
-              offset: {
-                type: 'number',
-                description: 'Number of messages to skip',
-              },
-            },
-            required: ['session_id'],
-          },
-        },
-        {
-          name: 'save_memory',
-          description: 'Save messages to session',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              session_id: {
-                type: 'string',
-                description: 'Session ID (creates new if not provided)',
-              },
-              messages: {
-                type: 'array',
-                description: 'Array of messages to save',
-                items: {
-                  type: 'object',
-                  properties: {
-                    role: {
-                      type: 'string',
-                      enum: ['user', 'assistant', 'system'],
-                    },
-                    content: { type: 'string' },
-                    timestamp: { type: 'number' },
-                  },
-                  required: ['role', 'content'],
-                },
-              },
-              metadata: {
-                type: 'object',
-                description: 'Additional metadata to store',
-              },
-            },
-            required: ['messages'],
-          },
-        },
-        {
-          name: 'search_memory',
-          description: 'Search across all user sessions',
-          inputSchema: {
-            type: 'object',
-            properties: {
-              query: {
-                type: 'string',
-                description: 'Search query',
-              },
-              limit: {
-                type: 'number',
-                description: 'Maximum results to return',
-              },
-              filter: {
-                type: 'object',
-                properties: {
-                  session_id: { type: 'string' },
-                  date_range: {
-                    type: 'object',
-                    properties: {
-                      start: { type: 'number' },
-                      end: { type: 'number' },
-                    },
-                  },
-                },
-              },
-            },
-            required: ['query'],
-          },
-        },
-        {
-          name: 'list_sessions',
-          description: "List user's sessions",
-          inputSchema: {
-            type: 'object',
-            properties: {
-              limit: {
-                type: 'number',
-                description: 'Maximum sessions to return',
-              },
-              offset: {
-                type: 'number',
-                description: 'Number of sessions to skip',
-              },
-              state: {
-                type: 'string',
-                enum: ['active', 'paused', 'completed'],
-                description: 'Filter by session state',
-              },
-            },
-          },
-        },
-      ],
-    };
-  });
-
-  // Handle tool calls
-  server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name, arguments: args } = request.params;
-
-    try {
-      switch (name) {
-        case 'authenticate': {
-          const input = authenticateSchema.parse(args);
-          const result = await authenticate(input, d1Storage);
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result) }],
-          };
+  // Register get_memory tool
+  server.tool(
+    'get_memory',
+    'Retrieve session messages and context',
+    {
+      session_id: z.string().describe('The session ID to retrieve'),
+      limit: z.number().optional().describe('Maximum number of messages to return'),
+      offset: z.number().optional().describe('Number of messages to skip'),
+    },
+    async (args, extra) => {
+      try {
+        const input = getMemorySchema.parse(args);
+        const userId = (extra as AuthContext).userId;
+        if (!userId) {
+          throw new Error('Authentication required');
         }
-
-        case 'get_memory': {
-          const input = getMemorySchema.parse(args);
-          // Get user ID from request context (will be set by HTTP handler)
-          const userId = (request as { userId?: string }).userId;
-          if (!userId) {
-            throw new Error('Authentication required');
-          }
-          const result = await getMemory(input, d1Storage, kvStorage, userId);
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result) }],
-          };
-        }
-
-        case 'save_memory': {
-          const input = saveMemorySchema.parse(args);
-          const userId = (request as { userId?: string }).userId;
-          if (!userId) {
-            throw new Error('Authentication required');
-          }
-          const result = await saveMemory(input, d1Storage, kvStorage, userId);
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result) }],
-          };
-        }
-
-        case 'search_memory': {
-          const input = searchMemorySchema.parse(args);
-          const userId = (request as { userId?: string }).userId;
-          if (!userId) {
-            throw new Error('Authentication required');
-          }
-          const result = await searchMemory(input, d1Storage, kvStorage, userId);
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result) }],
-          };
-        }
-
-        case 'list_sessions': {
-          const input = listSessionsSchema.parse(args);
-          const userId = (request as { userId?: string }).userId;
-          if (!userId) {
-            throw new Error('Authentication required');
-          }
-          const result = await listSessions(input, d1Storage, kvStorage, userId);
-          return {
-            content: [{ type: 'text', text: JSON.stringify(result) }],
-          };
-        }
-
-        default:
-          throw new Error(`Unknown tool: ${name}`);
+        const result = await getMemory(input, d1Storage, kvStorage, userId);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
+          isError: true,
+        };
       }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return {
-        content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
-        isError: true,
-      };
     }
-  });
+  );
+
+  // Register save_memory tool
+  server.tool(
+    'save_memory',
+    'Save messages to session',
+    {
+      session_id: z.string().optional().describe('Session ID (creates new if not provided)'),
+      messages: z
+        .array(
+          z.object({
+            role: z.enum(['user', 'assistant', 'system']),
+            content: z.string(),
+            timestamp: z.number().optional(),
+          })
+        )
+        .describe('Array of messages to save'),
+      metadata: z.record(z.unknown()).optional().describe('Additional metadata to store'),
+    },
+    async (args, extra) => {
+      try {
+        const input = saveMemorySchema.parse(args);
+        const userId = (extra as AuthContext).userId;
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+        const result = await saveMemory(input, d1Storage, kvStorage, userId);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Register search_memory tool
+  server.tool(
+    'search_memory',
+    'Search across all user sessions',
+    {
+      query: z.string().describe('Search query'),
+      limit: z.number().optional().describe('Maximum results to return'),
+      filter: z
+        .object({
+          session_id: z.string().optional(),
+          date_range: z
+            .object({
+              start: z.number().optional(),
+              end: z.number().optional(),
+            })
+            .optional(),
+        })
+        .optional()
+        .describe('Filter options'),
+    },
+    async (args, extra) => {
+      try {
+        const input = searchMemorySchema.parse(args);
+        const userId = (extra as AuthContext).userId;
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+        const result = await searchMemory(input, d1Storage, kvStorage, userId);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
+
+  // Register list_sessions tool
+  server.tool(
+    'list_sessions',
+    "List user's sessions",
+    {
+      limit: z.number().optional().describe('Maximum sessions to return'),
+      offset: z.number().optional().describe('Number of sessions to skip'),
+      state: z
+        .enum(['active', 'paused', 'completed'])
+        .optional()
+        .describe('Filter by session state'),
+    },
+    async (args, extra) => {
+      try {
+        const input = listSessionsSchema.parse(args);
+        const userId = (extra as AuthContext).userId;
+        if (!userId) {
+          throw new Error('Authentication required');
+        }
+        const result = await listSessions(input, d1Storage, kvStorage, userId);
+        return {
+          content: [{ type: 'text', text: JSON.stringify(result) }],
+        };
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return {
+          content: [{ type: 'text', text: JSON.stringify({ error: message }) }],
+          isError: true,
+        };
+      }
+    }
+  );
 
   return server;
 }
