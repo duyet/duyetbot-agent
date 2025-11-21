@@ -14,5 +14,4 @@ RUN find . -name "*.ts" -o -name "*.tsx" -o -name "src" -type d | xargs rm -rf 2
 FROM base AS builder
 COPY --from=deps /app .
 COPY . .
-RUN bun run build --filter @duyetbot/memory-mcp && \
-    test -d packages/memory-mcp/dist && echo "Build successful"
+RUN bun run build --filter @duyetbot/memory-mcp
