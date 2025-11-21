@@ -75,7 +75,7 @@ duyetbot run "What's new in TypeScript 5.4?"
 @duyetbot analyze why tests are failing
 @duyetbot suggest tests for this function
 @duyetbot check test coverage for this PR
-@duyetbot run benchmarks and compare with main
+@duyetbot run benchmarks and compare with master
 ```
 
 ### Release Management

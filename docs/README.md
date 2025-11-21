@@ -123,7 +123,7 @@ duyetbot-agent/
 
 **Next**: Phase 8 - Telegram Bot Integration
 
-See [PLAN.md](https://github.com/duyet/duyetbot-agent/blob/main/PLAN.md) for full roadmap.
+See [PLAN.md](https://github.com/duyet/duyetbot-agent/blob/master/PLAN.md) for full roadmap.
 
 ---
 
