@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { ServerConfig, getDefaultConfig, loadConfig, validateConfig } from '../config.js';
+import { ServerConfig, getDefaultConfig, loadConfig, validateConfig } from '../config';
 
 describe('ServerConfig', () => {
   const originalEnv = process.env;

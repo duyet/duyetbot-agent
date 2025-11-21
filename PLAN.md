@@ -1193,7 +1193,7 @@ bot.launch();
 - [x] Copy src files to appropriate packages
 - [x] Update import paths to use @duyetbot/* packages
 - [x] Configure root package.json with monorepo scripts
-- [x] Run pnpm install
+- [x] Run bun install
 - [x] Build all packages successfully with turbo
 
 **Output**: Working monorepo with build system ✅
@@ -2113,19 +2113,19 @@ git commit -m "chore: update dependencies"
 
 ```bash
 # Install all dependencies
-pnpm install
+bun install
 
 # Build all packages
-pnpm run build
+bun run build
 
 # Test all packages
-pnpm run test
+bun run test
 
 # Test specific package
-pnpm run test --filter @duyetbot/core
+bun run test --filter @duyetbot/core
 
 # Build specific package
-pnpm run build --filter @duyetbot/memory-mcp
+bun run build --filter @duyetbot/memory-mcp
 
 # Add dependency to package
 cd packages/core
@@ -2135,16 +2135,16 @@ pnpm add zod
 pnpm add -D vitest --filter @duyetbot/core
 
 # Run CLI locally
-pnpm --filter @duyetbot/cli dev
+bun --filter @duyetbot/cli dev
 
 # Deploy MCP server
-pnpm --filter @duyetbot/memory-mcp deploy
+bun --filter @duyetbot/memory-mcp deploy
 
 # Start agent server locally
-pnpm --filter @duyetbot/server dev
+bun --filter @duyetbot/server dev
 
 # Watch mode for all packages
-pnpm run dev
+bun run dev
 ```
 
 ---

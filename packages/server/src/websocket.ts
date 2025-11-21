@@ -7,8 +7,8 @@
 import type { Server } from 'node:http';
 import type { QueryOptions, SDKTool } from '@duyetbot/core/sdk';
 import { WebSocket, WebSocketServer } from 'ws';
-import { createQueryController, streamQuery } from './sdk-adapter.js';
-import type { AgentSessionManager } from './session-manager.js';
+import { createQueryController, streamQuery } from './sdk-adapter';
+import type { AgentSessionManager } from './session-manager';
 
 /**
  * WebSocket server configuration
