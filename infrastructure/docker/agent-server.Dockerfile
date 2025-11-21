@@ -1,21 +1,18 @@
 # Agent Server Dockerfile
-FROM node:20-alpine AS base
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM oven/bun:1-alpine AS base
 
 WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json bun.lock ./
 COPY packages/types/package.json ./packages/types/
 COPY packages/providers/package.json ./packages/providers/
 COPY packages/tools/package.json ./packages/tools/
 COPY packages/core/package.json ./packages/core/
 COPY packages/server/package.json ./packages/server/
 
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Build
 FROM base AS builder
@@ -27,7 +24,7 @@ COPY --from=deps /app/packages/core/node_modules ./packages/core/node_modules
 COPY --from=deps /app/packages/server/node_modules ./packages/server/node_modules
 
 COPY . .
-RUN pnpm run build --filter @duyetbot/server
+RUN bun run build --filter @duyetbot/server
 
 # Production
 FROM base AS runner
@@ -50,6 +47,6 @@ COPY --from=builder /app/packages/server/package.json ./packages/server/
 EXPOSE 3000 8080
 
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
-  CMD node -e "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
+  CMD bun -e "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"
 
-CMD ["node", "packages/server/dist/index.js"]
+CMD ["bun", "run", "packages/server/dist/index.js"]
