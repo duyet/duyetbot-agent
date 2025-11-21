@@ -9,8 +9,12 @@ import { Octokit } from '@octokit/rest';
 import { Hono } from 'hono';
 import { handleMention } from './agent-handler.js';
 import type { BotConfig, MentionContext } from './types.js';
+import { handleIssueEvent } from './webhooks/issues.js';
+import type { IssueEvent, IssueHandlerConfig } from './webhooks/issues.js';
 import { handleIssueComment, handlePRReviewComment } from './webhooks/mention.js';
 import type { IssueCommentEvent, PRReviewCommentEvent } from './webhooks/mention.js';
+import { handlePullRequestEvent } from './webhooks/pull-request.js';
+import type { PullRequestEvent, PullRequestHandlerConfig } from './webhooks/pull-request.js';
 
 export {
   parseMention,
@@ -20,8 +24,25 @@ export {
   parseCommand,
 } from './mention-parser.js';
 export { handleIssueComment, handlePRReviewComment } from './webhooks/mention.js';
+export { handleIssueEvent } from './webhooks/issues.js';
+export type { IssueEvent, IssueHandlerConfig } from './webhooks/issues.js';
+export { handlePullRequestEvent } from './webhooks/pull-request.js';
+export type { PullRequestEvent, PullRequestHandlerConfig } from './webhooks/pull-request.js';
 export { buildSystemPrompt, createGitHubTool, handleMention } from './agent-handler.js';
 export { loadTemplate, renderTemplate, loadAndRenderTemplate } from './template-loader.js';
+export {
+  GitHubSessionManager,
+  createMCPClient,
+  createIssueSessionId,
+  createPRSessionId,
+  createDiscussionSessionId,
+  parseSessionId,
+} from './session-manager.js';
+export type {
+  GitHubSessionType,
+  GitHubSessionMetadata,
+  MCPMemoryClient,
+} from './session-manager.js';
 export type {
   BotConfig,
   MentionContext,
@@ -91,6 +112,26 @@ export function createGitHubBot(config: BotConfig) {
             octokit,
             config.botUsername,
             onMention
+          );
+          break;
+
+        case 'issues':
+          await handleIssueEvent(
+            payload as IssueEvent,
+            octokit,
+            config.botUsername,
+            onMention,
+            config.issueHandlerConfig
+          );
+          break;
+
+        case 'pull_request':
+          await handlePullRequestEvent(
+            payload as PullRequestEvent,
+            octokit,
+            config.botUsername,
+            onMention,
+            config.pullRequestHandlerConfig
           );
           break;
 
