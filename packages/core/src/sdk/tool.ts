@@ -4,6 +4,7 @@
  * Create SDK-compatible tools with Zod schemas
  */
 
+import type { Tool, ToolInput } from '@duyetbot/types';
 import type { z } from 'zod';
 import type { SDKTool, SDKToolResult } from './types.js';
 
@@ -172,4 +173,35 @@ export function getAllToolMetadata(
   tools: SDKTool[]
 ): Array<{ name: string; description: string; input_schema: unknown }> {
   return tools.map(getToolMetadata);
+}
+
+/**
+ * Convert an array of legacy tools to SDK format
+ *
+ * @example
+ * ```typescript
+ * import { getAllBuiltinTools } from '@duyetbot/tools';
+ * import { toSDKTools } from '@duyetbot/core';
+ *
+ * const sdkTools = toSDKTools(getAllBuiltinTools());
+ * ```
+ */
+export function toSDKTools(tools: Tool[]): SDKTool[] {
+  return tools.map((tool) => ({
+    name: tool.name,
+    description: tool.description,
+    inputSchema: tool.inputSchema,
+    handler: async (input: unknown): Promise<SDKToolResult> => {
+      const result = await tool.execute({ content: input } as ToolInput);
+      const sdkResult: SDKToolResult = {
+        content:
+          typeof result.content === 'string' ? result.content : JSON.stringify(result.content),
+        isError: result.status !== 'success',
+      };
+      if (result.metadata) {
+        sdkResult.metadata = result.metadata;
+      }
+      return sdkResult;
+    },
+  }));
 }

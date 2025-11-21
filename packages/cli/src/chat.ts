@@ -10,10 +10,15 @@ import {
   createDefaultOptions,
   createQueryController,
   query,
+  toSDKTools,
 } from '@duyetbot/core';
+import { getAllBuiltinTools } from '@duyetbot/tools';
 import type { LLMMessage } from '@duyetbot/types';
 import { FileSessionManager } from './sessions.js';
 import type { LocalSession } from './sessions.js';
+
+// Convert all built-in tools to SDK format once at startup
+const builtinSDKTools = toSDKTools(getAllBuiltinTools());
 
 export interface ChatOptions {
   sessionId?: string;
@@ -57,10 +62,11 @@ export async function startChat(options: ChatOptions): Promise<void> {
   console.log(`Model: ${options.model || 'sonnet'}`);
   console.log('Type "exit" to quit, "history" to show messages\n');
 
-  // Create query options
+  // Create query options with built-in tools
   const queryOpts: Parameters<typeof createDefaultOptions>[0] = {
     model: options.model || 'sonnet',
     sessionId: session.id,
+    tools: builtinSDKTools,
   };
   if (options.systemPrompt) {
     queryOpts.systemPrompt = options.systemPrompt;
@@ -238,10 +244,11 @@ export async function runPrompt(prompt: string, options: ChatOptions): Promise<s
     title: `Prompt ${new Date().toISOString()}`,
   });
 
-  // Create query options
+  // Create query options with built-in tools
   const queryOpts: Parameters<typeof createDefaultOptions>[0] = {
     model: options.model || 'sonnet',
     sessionId: session.id,
+    tools: builtinSDKTools,
   };
   if (options.systemPrompt) {
     queryOpts.systemPrompt = options.systemPrompt;
@@ -278,6 +285,7 @@ export async function runPrompt(prompt: string, options: ChatOptions): Promise<s
 export async function streamPrompt(prompt: string, options: ChatOptions): Promise<void> {
   const queryOpts: Parameters<typeof createDefaultOptions>[0] = {
     model: options.model || 'sonnet',
+    tools: builtinSDKTools,
   };
   if (options.systemPrompt) {
     queryOpts.systemPrompt = options.systemPrompt;
