@@ -6,6 +6,17 @@ This guide covers deploying the @duyetbot GitHub App to various platforms.
 
 ## Quick Summary
 
+### Deployable Components
+
+| Component | Location | Required | Description |
+|-----------|----------|----------|-------------|
+| **GitHub Bot** | `apps/github-bot` | Yes | Webhook handler for @mentions, PR reviews |
+| **Memory MCP** | `apps/memory-mcp` | No | Cloudflare Workers - session persistence |
+| **Telegram Bot** | `apps/telegram-bot` | No | Chat interface via Telegram |
+| **Agent Server** | `apps/agent-server` | No | Long-running server with WebSocket |
+
+This guide focuses on deploying the **GitHub Bot**. For MCP memory server, see `apps/memory-mcp/README.md`.
+
 ### Required Steps
 
 1. [Register GitHub App](#register-github-app) - Create and configure your GitHub App
