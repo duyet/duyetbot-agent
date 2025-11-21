@@ -18,15 +18,7 @@
     "prepare-hooks": "bash scripts/install-hooks.sh",
     "prepare": "bash scripts/install-hooks.sh || true"
   },
-  "keywords": [
-    "agent",
-    "bot",
-    "cloudflare-workers",
-    "llm",
-    "claude",
-    "automation",
-    "monorepo"
-  ],
+  "keywords": ["agent", "bot", "cloudflare-workers", "llm", "claude", "automation", "monorepo"],
   "author": "duyet",
   "license": "MIT",
   "devDependencies": {

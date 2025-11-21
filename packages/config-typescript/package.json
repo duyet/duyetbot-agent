@@ -4,9 +4,7 @@
   "private": true,
   "description": "Shared TypeScript configurations",
   "license": "MIT",
-  "files": [
-    "*.json"
-  ],
+  "files": ["*.json"],
   "devDependencies": {
     "typescript": "catalog:"
   }

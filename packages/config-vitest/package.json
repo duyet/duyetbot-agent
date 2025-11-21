@@ -6,9 +6,7 @@
   "license": "MIT",
   "type": "module",
   "main": "vitest.config.ts",
-  "files": [
-    "*.ts"
-  ],
+  "files": ["*.ts"],
   "devDependencies": {
     "vitest": "catalog:"
   }

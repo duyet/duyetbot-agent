@@ -33,6 +33,7 @@
   "license": "MIT",
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "catalog:",
+    "@anthropic-ai/sdk": "catalog:",
     "@duyetbot/types": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
