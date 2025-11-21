@@ -5,8 +5,14 @@
  */
 
 import { Octokit } from '@octokit/rest';
-import type { MentionContext, GitHubRepository, GitHubComment, GitHubIssue, GitHubPullRequest } from '../types.js';
 import { parseMention } from '../mention-parser.js';
+import type {
+  GitHubComment,
+  GitHubIssue,
+  GitHubPullRequest,
+  GitHubRepository,
+  MentionContext,
+} from '../types.js';
 
 export interface IssueCommentEvent {
   action: 'created' | 'edited' | 'deleted';

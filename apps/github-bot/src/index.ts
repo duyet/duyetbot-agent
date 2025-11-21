@@ -4,25 +4,39 @@
  * Hono-based webhook server for @duyetbot
  */
 
-import { Hono } from 'hono';
-import { Octokit } from '@octokit/rest';
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { Octokit } from '@octokit/rest';
+import { Hono } from 'hono';
+import { handleMention } from './agent-handler.js';
 import type { BotConfig, MentionContext } from './types.js';
 import { handleIssueComment, handlePRReviewComment } from './webhooks/mention.js';
 import type { IssueCommentEvent, PRReviewCommentEvent } from './webhooks/mention.js';
-import { handleMention } from './agent-handler.js';
 
-export { parseMention, hasMention, extractAllMentions, isCommand, parseCommand } from './mention-parser.js';
+export {
+  parseMention,
+  hasMention,
+  extractAllMentions,
+  isCommand,
+  parseCommand,
+} from './mention-parser.js';
 export { handleIssueComment, handlePRReviewComment } from './webhooks/mention.js';
 export { buildSystemPrompt, createGitHubTool, handleMention } from './agent-handler.js';
-export type { BotConfig, MentionContext, GitHubRepository, GitHubIssue, GitHubPullRequest, GitHubComment, GitHubUser } from './types.js';
+export type {
+  BotConfig,
+  MentionContext,
+  GitHubRepository,
+  GitHubIssue,
+  GitHubPullRequest,
+  GitHubComment,
+  GitHubUser,
+} from './types.js';
 
 /**
  * Verify GitHub webhook signature
  */
 function verifySignature(payload: string, signature: string, secret: string): boolean {
   const hmac = createHmac('sha256', secret);
-  const digest = 'sha256=' + hmac.update(payload).digest('hex');
+  const digest = `sha256=${hmac.update(payload).digest('hex')}`;
   return timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
 }
 

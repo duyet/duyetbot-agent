@@ -2,7 +2,7 @@
  * Agent Handler Tests
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { buildSystemPrompt } from '../agent-handler.js';
 import type { MentionContext } from '../types.js';
 

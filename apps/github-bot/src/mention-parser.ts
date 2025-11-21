@@ -16,10 +16,7 @@ export interface ParsedMention {
 export function parseMention(body: string, botUsername = 'duyetbot'): ParsedMention {
   // Match @duyetbot followed by task description
   // Supports multiline tasks up to next blank line or end of comment
-  const mentionRegex = new RegExp(
-    `@${botUsername}\\s+([^\\n]+(?:\\n(?!\\n)[^\\n]*)*)`,
-    'i'
-  );
+  const mentionRegex = new RegExp(`@${botUsername}\\s+([^\\n]+(?:\\n(?!\\n)[^\\n]*)*)`, 'i');
 
   const match = body.match(mentionRegex);
 
@@ -55,9 +52,10 @@ export function extractAllMentions(body: string, botUsername = 'duyetbot'): stri
   const regex = new RegExp(`@${botUsername}\\s+([^\\n]+)`, 'gi');
   const matches: string[] = [];
 
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(body)) !== null) {
+  let match = regex.exec(body);
+  while (match !== null) {
     matches.push(match[1].trim());
+    match = regex.exec(body);
   }
 
   return matches;
