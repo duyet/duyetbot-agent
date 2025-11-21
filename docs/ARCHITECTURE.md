@@ -16,32 +16,37 @@ duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as 
 └────────┬───────┴────────┬───────┴──────┬───────┴─────────────────┘
          │                │              │
          │                │              │
-    ┌────▼────────────────▼──────────────▼─────┐
-    │       HTTP API Gateway (Hono)             │
-    │   - Authentication (GitHub user context)  │
-    │   - Rate limiting                         │
-    │   - Request routing                       │
-    └────────────────────┬──────────────────────┘
-                         │
-         ┌───────────────┼───────────────┐
-         │               │               │
-    ┌────▼────┐     ┌────▼────┐    ┌────▼────────┐
-    │ GitHub  │     │Telegram │    │   Agent     │
-    │  Bot    │     │  Bot    │    │   Server    │
-    │ Handler │     │ Handler │    │ (Container) │
-    └────┬────┘     └────┬────┘    └──────┬──────┘
-         │               │                 │
-         └───────────────┼─────────────────┘
-                         │
-              ┌──────────▼──────────┐
-              │ Claude Agent SDK    │  ← Core Engine
-              │ (packages/core/sdk) │
-              ├──────────────────────┤
-              │ • query() execution  │
-              │ • tool() definitions │
-              │ • Subagent system    │
-              │ • MCP connections    │
-              └──────────┬───────────┘
+    ┌────▼────────────────▼──────────────│─────┐
+    │       HTTP API Gateway (Hono)      │     │
+    │   - Authentication                 │     │
+    │   - Rate limiting                  │     │
+    │   - Request routing                │     │
+    └────────────────────┬───────────────│─────┘
+                         │               │
+         ┌───────────────┼───────────┐   │
+         │               │           │   │
+    ┌────▼────┐     ┌────▼────┐      │   │
+    │ GitHub  │     │Telegram │      │   │
+    │  Bot    │     │  Bot    │      │   │
+    │ Handler │     │ Handler │      │   │
+    └────┬────┘     └────┬────┘      │   │
+         │               │           │   │
+         └───────────────┼───────────┘   │
+                         │               │
+                         │      ┌────────▼────────┐
+                         │      │   CLI Tool      │
+                         │      │ (SDK embedded)  │
+                         │      └────────┬────────┘
+                         │               │
+              ┌──────────▼───────────────▼─┐
+              │   Claude Agent SDK         │  ← Core Engine
+              │   (packages/core/sdk)      │
+              ├────────────────────────────┤
+              │ • query() execution        │
+              │ • tool() definitions       │
+              │ • Subagent system          │
+              │ • MCP connections          │
+              └──────────┬─────────────────┘
                          │
               ┌──────────▼──────────┐
               │  MCP Memory Server   │
