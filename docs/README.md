@@ -8,7 +8,20 @@
 
 duyetbot is your personal AI assistant that remembers context across all interfaces. Unlike traditional chatbots that forget between sessions, duyetbot maintains persistent memory of your conversations, code context, and preferences.
 
-**Built with:** Claude Agent SDK (core engine), Cloudflare Workers, TypeScript
+**Built with:** Claude Agent SDK + Cloudflare Workflows (Supervisor) + Fly.io Machines (Worker)
+
+---
+
+## Architecture
+
+duyetbot uses a **Hybrid Supervisor-Worker Model**:
+
+- **Supervisor (Cloudflare Workflows)** - Orchestration, state management, human-in-the-loop
+- **Worker (Fly.io Machines)** - Heavy compute, filesystem, Claude Agent SDK execution
+
+This enables multi-day agent conversations with pay-per-use pricing (~$3.66/mo vs $58/mo always-on).
+
+See [Architecture](architecture.md) for details.
 
 ---
 
@@ -44,9 +57,11 @@ Choose your preferred Claude-compatible model:
 - **Z.AI** - Claude via alternative endpoint
 - **OpenRouter** - Access multiple models
 
-### Edge Deployment
+### Hybrid Deployment
 
-Global low latency on Cloudflare Workers with D1, KV, and R2 storage.
+- **Cloudflare Workflows** - Durable orchestration, free sleep for days/weeks
+- **Fly.io Machines** - On-demand compute with persistent volumes
+- **MCP Memory** - Cross-session search on Cloudflare D1/KV
 
 ---
 
@@ -117,9 +132,9 @@ duyetbot-agent/
 
 ## Status
 
-**Phase 7 Nearly Complete**: Claude Agent SDK as core engine with full Anthropic API integration, retry logic, tool execution, CLI streaming with interrupt support, token tracking. 443 tests passing.
+**Architecture Updated**: Hybrid Supervisor-Worker Model with Cloudflare Workflows + Fly.io Machines. Volume-as-Session pattern for state persistence. Human-in-the-Loop via GitHub Checks API.
 
-**Remaining**: Server SDK integration, Ink UI improvements
+**Phase 7 Complete**: Claude Agent SDK as core engine with Anthropic API integration, retry logic, tool execution, CLI streaming with interrupt support. 443 tests passing.
 
 **Next**: Phase 8 - Telegram Bot Integration
 
