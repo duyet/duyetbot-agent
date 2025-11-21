@@ -21,6 +21,7 @@ export {
 } from './mention-parser.js';
 export { handleIssueComment, handlePRReviewComment } from './webhooks/mention.js';
 export { buildSystemPrompt, createGitHubTool, handleMention } from './agent-handler.js';
+export { loadTemplate, renderTemplate, loadAndRenderTemplate } from './template-loader.js';
 export type {
   BotConfig,
   MentionContext,
