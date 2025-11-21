@@ -309,16 +309,6 @@ FLY_ORG=personal
 MCP_SERVER_URL=https://memory.duyetbot.workers.dev
 ```
 
-## Test Coverage
-
-- **443 tests** across all packages
-- Core: 101 tests (44 SDK tests)
-- Providers: 38 tests
-- Tools: 51 tests
-- Memory-MCP: 93 tests
-- CLI: 67 tests
-- GitHub-Bot: 57 tests
-
 ## Deployment
 
 See [Deployment Guide](deploy.md) for component-specific instructions:
