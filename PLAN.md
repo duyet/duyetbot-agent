@@ -1304,26 +1304,26 @@ bot.launch();
 - [x] Implement webhook handlers:
   - [x] issue_comment (mentions)
   - [x] pull_request_review_comment (PR mentions)
-  - [ ] issues (issue events)
-  - [ ] pull_request (PR events)
+  - [x] issues (issue events)
+  - [x] pull_request (PR events)
 - [x] Create GitHub tool for agent
   - [x] get_pr, get_issue, get_diff
   - [x] create_comment, create_review
-  - [x] add_labels, get_files
-  - [ ] create_issue, update_issue
-  - [ ] trigger_workflow
-- [ ] Implement session management (issue/PR → session mapping)
-- [ ] Add MCP client integration for memory
+  - [x] add_labels, get_files, remove_labels
+  - [x] create_issue, update_issue
+  - [x] trigger_workflow, merge_pr
+- [x] Implement session management (issue/PR → session mapping)
+- [x] Add MCP client integration for memory
 - [x] Create agent with GitHub context (system prompt builder)
 - [x] Implement response posting
 - [x] Add error handling and logging
-- [x] Write GitHub bot tests (23 tests)
+- [x] Write GitHub bot tests (57 tests)
 - [ ] Deploy GitHub App
 - [ ] Document setup and usage
 
 **Output**: Production GitHub bot ✅
 
-**Progress**: Phase 6 IN PROGRESS (2025-11-20). Created @duyetbot/github-bot package with: Hono server, mention parser, webhook handlers (issue_comment, PR review comment), agent handler with system prompt builder, GitHub tool (6 actions), webhook signature verification. 23 tests passing. Total: 365 tests. GitHub App registration and deployment pending.
+**Progress**: Phase 6 NEARLY COMPLETE (2025-11-21). Created @duyetbot/github-bot package with: Hono server, mention parser (18 tests), webhook handlers (issue_comment, PR review comment, issues, pull_request), agent handler with system prompt builder and session management, GitHubSessionManager with MCP client integration, GitHub tool (14 actions including trigger_workflow, merge_pr, add/remove labels), webhook signature verification. 57 tests passing. GitHub App registration and deployment pending.
 
 ---
 
@@ -1579,6 +1579,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-21 | 3.11 | 🔧 **Phase 6 NEARLY COMPLETE**: Added webhook handlers for issues and pull_request events, trigger_workflow and other GitHub tool actions (14 total), GitHubSessionManager with MCP client integration for persistent sessions, comprehensive tests. 57 github-bot tests passing. GitHub App registration and deployment pending. |
 | 2025-11-20 | 3.10 | 🔧 **Phase 6 IN PROGRESS**: GitHub bot core implementation. Created @duyetbot/github-bot with Hono server, mention parser (18 tests), webhook handlers, agent handler with system prompt builder, GitHub tool (6 actions), webhook signature verification. 365 tests passing (23 new). |
 | 2025-11-20 | 3.9 | ✅ **Phase 5 COMPLETE**: Wired login command to GitHubDeviceAuth, added memory commands (search, stats), created SessionList UI component, implemented auto mode detection (mode-detector.ts). 342 tests passing (67 CLI tests). npm package distribution pending. |
 | 2025-11-20 | 3.8 | 🔧 **Phase 5 IN PROGRESS**: Added Ink-based terminal UI (ChatView, StatusBar, App), CloudSessionManager with MCP client, GitHub OAuth device flow. Fixed tsconfig issues across packages. 342 tests passing (67 CLI tests). SessionList and npm distribution pending. |
@@ -1627,14 +1628,16 @@ pnpm run dev
    - [x] Auto mode detection
    - [x] 67 tests passing (342 total)
    - [ ] npm package distribution
-7. 🔧 **Phase 6 - GitHub Bot Integration** IN PROGRESS
+7. 🔧 **Phase 6 - GitHub Bot Integration** NEARLY COMPLETE
    - [x] Create apps/github-bot package
    - [x] Implement @duyetbot mention parser
-   - [x] Create webhook handlers
-   - [x] 23 tests passing (365 total)
-   - [ ] Register GitHub App
-   - [ ] Add MCP client integration
+   - [x] Create webhook handlers (issues, pull_request, comments)
+   - [x] Session management with MCP client integration
+   - [x] GitHub tool (14 actions)
+   - [x] 57 tests passing
+   - [ ] Register GitHub App (external setup)
    - [ ] Deploy GitHub App
+   - [ ] Document setup and usage
 8. **Next: Phase 7 - Telegram Bot Integration**
 
 ---

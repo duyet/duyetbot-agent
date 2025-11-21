@@ -41,6 +41,10 @@ export const githubInputSchema = z.object({
     'create_review',
     'list_comments',
     'get_workflow_runs',
+    'trigger_workflow',
+    'add_labels',
+    'remove_labels',
+    'merge_pr',
   ]),
   params: z.record(z.unknown()).optional(),
 });
@@ -351,6 +355,92 @@ export function createGitHubTool(client: GitHubClient, context: RepoContext): Gi
                   url: r.html_url,
                 })),
               },
+            };
+          }
+
+          case 'trigger_workflow': {
+            const workflowId = params.workflow_id as string | number;
+            const ref = params.ref as string;
+            if (!workflowId || !ref) {
+              return {
+                success: false,
+                error: 'Workflow ID and ref (branch) are required',
+              };
+            }
+
+            await client.request(
+              'POST',
+              `/repos/${context.owner}/${context.repo}/actions/workflows/${workflowId}/dispatches`,
+              {
+                ref,
+                inputs: params.inputs || {},
+              }
+            );
+
+            return {
+              success: true,
+              data: { triggered: true, workflow_id: workflowId, ref },
+            };
+          }
+
+          case 'add_labels': {
+            const issueNumber = params.issue_number as number;
+            const labels = params.labels as string[];
+            if (!issueNumber || !labels || labels.length === 0) {
+              return {
+                success: false,
+                error: 'Issue number and labels are required',
+              };
+            }
+
+            await client.request(
+              'POST',
+              `/repos/${context.owner}/${context.repo}/issues/${issueNumber}/labels`,
+              { labels }
+            );
+
+            return { success: true, data: { added: labels } };
+          }
+
+          case 'remove_labels': {
+            const issueNumber = params.issue_number as number;
+            const labelName = params.label as string;
+            if (!issueNumber || !labelName) {
+              return {
+                success: false,
+                error: 'Issue number and label name are required',
+              };
+            }
+
+            await client.request(
+              'DELETE',
+              `/repos/${context.owner}/${context.repo}/issues/${issueNumber}/labels/${encodeURIComponent(labelName)}`
+            );
+
+            return { success: true, data: { removed: labelName } };
+          }
+
+          case 'merge_pr': {
+            const number = params.number as number;
+            if (!number) {
+              return { success: false, error: 'PR number is required' };
+            }
+
+            const response = await client.request(
+              'PUT',
+              `/repos/${context.owner}/${context.repo}/pulls/${number}/merge`,
+              {
+                commit_title: params.commit_title,
+                commit_message: params.commit_message,
+                merge_method: params.merge_method || 'merge',
+              }
+            );
+
+            const result = response.data as { sha: string; merged: boolean };
+
+            return {
+              success: true,
+              data: { merged: result.merged, sha: result.sha },
             };
           }
 
