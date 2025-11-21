@@ -1,6 +1,6 @@
 # Contributing
 
-**Related:** [Getting Started](GETTING_STARTED.md) | [Architecture](ARCHITECTURE.md) | [API Reference](API.md)
+**Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [API Reference](api.md)
 
 Thank you for your interest in contributing to duyetbot-agent!
 

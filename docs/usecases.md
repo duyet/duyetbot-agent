@@ -1,6 +1,6 @@
 # Use Cases
 
-**Related:** [Getting Started](GETTING_STARTED.md) | [Architecture](ARCHITECTURE.md) | [API Reference](API.md) | [Deployment](DEPLOY.md)
+**Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](deploy.md)
 
 duyetbot is your personal AI assistant that helps automate daily workflows across CLI, GitHub, and Telegram.
 

@@ -16,12 +16,12 @@ duyetbot is your personal AI assistant that remembers context across all interfa
 
 | | |
 |---|---|
-| [Getting Started](GETTING_STARTED.md) | Installation, setup, and configuration |
-| [Use Cases](USECASES.md) | What you can do with @duyetbot |
-| [Architecture](ARCHITECTURE.md) | System design and components |
-| [API Reference](API.md) | Endpoints and schemas |
-| [Deployment](DEPLOY.md) | Deploy to Railway, Fly.io, AWS |
-| [Contributing](CONTRIBUTING.md) | How to contribute |
+| [Getting Started](getting-started.md) | Installation, setup, and configuration |
+| [Use Cases](usecases.md) | What you can do with @duyetbot |
+| [Architecture](architecture.md) | System design and components |
+| [API Reference](api.md) | Endpoints and schemas |
+| [Deployment](deploy.md) | Deploy to Railway, Fly.io, AWS |
+| [Contributing](contributing.md) | How to contribute |
 
 ---
 

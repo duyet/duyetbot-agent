@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Related:** [Getting Started](GETTING_STARTED.md) | [Use Cases](USECASES.md) | [Architecture](ARCHITECTURE.md) | [Contributing](CONTRIBUTING.md)
+**Related:** [Getting Started](getting-started.md) | [Use Cases](usecases.md) | [Architecture](architecture.md) | [Contributing](contributing.md)
 
 This guide covers deploying the @duyetbot GitHub App to various platforms.
 
@@ -377,7 +377,7 @@ Go to your GitHub App settings and update:
 
 ## Next Steps
 
-- [Getting Started](README.md) - Installation and development setup
-- [Architecture](ARCHITECTURE.md) - System design and components
+- [Getting Started](getting-started.md) - Installation and development setup
+- [Architecture](architecture.md) - System design and components
 - [GitHub Repository](https://github.com/duyet/duyetbot-agent) - Source code
 - [Report Issues](https://github.com/duyet/duyetbot-agent/issues) - Bug reports and feature requests
