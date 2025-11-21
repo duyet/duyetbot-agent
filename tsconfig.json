@@ -1,63 +1,10 @@
 {
+  "extends": "./packages/config-typescript/base.json",
   "compilerOptions": {
-    /* Language and Environment */
-    "target": "ES2022",
-    "lib": ["ES2022"],
-    "jsx": "react",
-    "jsxFactory": "React.createElement",
-    "jsxFragmentFactory": "React.Fragment",
-    "moduleDetection": "force",
-
-    /* Modules */
-    "module": "ESNext",
-    "moduleResolution": "bundler",
-    "resolveJsonModule": true,
-    "allowImportingTsExtensions": true,
     "noEmit": true,
-
-    /* Type Checking */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true,
-    "noUncheckedIndexedAccess": true,
-    "noImplicitOverride": true,
-    "allowUnusedLabels": false,
-    "allowUnreachableCode": false,
-    "exactOptionalPropertyTypes": true,
-    "noPropertyAccessFromIndexSignature": false,
-
-    /* Emit */
-    "declaration": true,
-    "declarationMap": true,
-    "sourceMap": true,
-    "removeComments": false,
-    "importHelpers": false,
-    "downlevelIteration": true,
-    "preserveConstEnums": true,
-
-    /* Interop Constraints */
-    "esModuleInterop": true,
-    "allowSyntheticDefaultImports": true,
-    "forceConsistentCasingInFileNames": true,
-    "isolatedModules": true,
-    "verbatimModuleSyntax": true,
-
-    /* Completeness */
-    "skipLibCheck": true,
-
-    /* Path Mapping */
+    "types": ["vitest/globals"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@agent/*": ["src/agent/*"],
-      "@tools/*": ["src/tools/*"],
-      "@providers/*": ["src/providers/*"],
-      "@agents/*": ["src/agents/*"],
-      "@scheduler/*": ["src/scheduler/*"],
-      "@config/*": ["src/config/*"],
-      "@storage/*": ["src/storage/*"],
-      "@ui/*": ["src/ui/*"],
       "@duyetbot/types": ["packages/types/src"],
       "@duyetbot/types/*": ["packages/types/src/*"],
       "@duyetbot/providers": ["packages/providers/src"],
@@ -66,11 +13,8 @@
       "@duyetbot/tools/*": ["packages/tools/src/*"],
       "@duyetbot/core": ["packages/core/src"],
       "@duyetbot/core/*": ["packages/core/src/*"]
-    },
-
-    /* Cloudflare Workers */
-    "types": ["@cloudflare/workers-types", "vitest/globals"]
+    }
   },
-  "include": ["src/**/*", "tests/**/*", "packages/**/*"],
-  "exclude": ["node_modules", "dist", ".wrangler", "coverage", "**/node_modules", "**/dist"]
+  "include": ["packages/**/*", "apps/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "**/node_modules", "**/dist", "coverage"]
 }
