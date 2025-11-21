@@ -89,8 +89,12 @@ function createMockD1Storage() {
 
         for (const [sessionId, msgs] of messages) {
           const session = sessions.get(sessionId);
-          if (!session || session.user_id !== userId) continue;
-          if (options?.sessionId && sessionId !== options.sessionId) continue;
+          if (!session || session.user_id !== userId) {
+            continue;
+          }
+          if (options?.sessionId && sessionId !== options.sessionId) {
+            continue;
+          }
 
           for (let i = 0; i < msgs.length; i++) {
             const msg = msgs[i];
@@ -275,7 +279,11 @@ describe('getMemory tool', () => {
     ];
     d1Storage._messages.set('sess_123', messages);
 
-    const result = await getMemory({ session_id: 'sess_123', limit: 2, offset: 1 }, d1Storage, 'user_123');
+    const result = await getMemory(
+      { session_id: 'sess_123', limit: 2, offset: 1 },
+      d1Storage,
+      'user_123'
+    );
 
     expect(result.messages).toHaveLength(2);
     expect(result.messages[0].content).toBe('Message 2');
@@ -336,12 +344,18 @@ describe('saveMemory tool', () => {
     d1Storage._sessions.set(session.id, session);
 
     await expect(
-      saveMemory({ session_id: 'sess_123', messages: [{ role: 'user', content: 'Test' }] }, d1Storage, 'user_123')
+      saveMemory(
+        { session_id: 'sess_123', messages: [{ role: 'user', content: 'Test' }] },
+        d1Storage,
+        'user_123'
+      )
     ).rejects.toThrow('Unauthorized');
   });
 
   it('should generate title from first user message', async () => {
-    const messages: LLMMessage[] = [{ role: 'user', content: 'This is my question about TypeScript' }];
+    const messages: LLMMessage[] = [
+      { role: 'user', content: 'This is my question about TypeScript' },
+    ];
 
     await saveMemory({ messages }, d1Storage, 'user_123');
 
