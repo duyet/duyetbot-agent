@@ -1,6 +1,6 @@
 # Use Cases
 
-**Related:** [Getting Started](GETTING_STARTED.md) | [Architecture](ARCHITECTURE.md) | [API Reference](API.md) | [Deployment](DEPLOY.md)
+**Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](deploy.md)
 
 duyetbot is your personal AI assistant that helps automate daily workflows across CLI, GitHub, and Telegram.
 
@@ -75,7 +75,7 @@ duyetbot run "What's new in TypeScript 5.4?"
 @duyetbot analyze why tests are failing
 @duyetbot suggest tests for this function
 @duyetbot check test coverage for this PR
-@duyetbot run benchmarks and compare with main
+@duyetbot run benchmarks and compare with master
 ```
 
 ### Release Management

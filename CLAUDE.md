@@ -74,17 +74,7 @@ Built-in tools (SDK-compatible format):
 - OpenRouter provider
 - Z.AI support via base URL configuration
 
-**4. Memory MCP Server** (`packages/memory-mcp/`)
-- Cloudflare Workers deployment
-- D1 for metadata, KV for messages
-- MCP tools: authenticate, get_memory, save_memory, search_memory
-
-**5. Server Package** (`packages/server/`)
-- Long-running agent server
-- WebSocket streaming
-- Graceful shutdown
-
-**6. CLI Package** (`packages/cli/`)
+**4. CLI Package** (`packages/cli/`)
 - Interactive chat
 - Local and cloud modes
 - GitHub OAuth authentication
@@ -99,6 +89,16 @@ Built-in tools (SDK-compatible format):
 **2. Telegram Bot** (`apps/telegram-bot/`)
 - Chat interface
 - Notifications
+
+**3. Memory MCP Server** (`apps/memory-mcp/`)
+- Cloudflare Workers deployment
+- D1 for metadata, KV for messages
+- MCP tools: authenticate, get_memory, save_memory, search_memory
+
+**4. Agent Server** (`apps/agent-server/`)
+- Long-running agent server
+- WebSocket streaming
+- Graceful shutdown
 
 ## SDK Integration Pattern
 
@@ -181,8 +181,8 @@ bun run check                   # Run all checks (lint + type-check)
 
 ### Package-Specific Commands
 ```bash
-bun --filter @duyetbot/cli dev       # Run CLI in dev mode
-bun --filter @duyetbot/server dev    # Run server in dev mode
+bun --filter @duyetbot/cli dev            # Run CLI in dev mode
+bun --filter @duyetbot/agent-server dev   # Run server in dev mode
 bun --filter @duyetbot/memory-mcp deploy  # Deploy MCP server
 ```
 
@@ -264,20 +264,6 @@ duyetbot-agent/
 │   │   │   └── registry.ts
 │   │   └── package.json
 │   │
-│   ├── memory-mcp/              # MCP memory server (Cloudflare Workers)
-│   │   ├── src/
-│   │   │   ├── tools/          # MCP tools
-│   │   │   ├── storage/        # D1/KV operations
-│   │   │   └── auth/           # GitHub auth
-│   │   └── package.json
-│   │
-│   ├── server/                  # Long-running agent server
-│   │   ├── src/
-│   │   │   ├── routes/         # HTTP routes
-│   │   │   ├── websocket.ts    # WebSocket server
-│   │   │   └── session-manager.ts
-│   │   └── package.json
-│   │
 │   ├── cli/                     # CLI tool
 │   │   ├── src/
 │   │   │   ├── commands/       # CLI commands
@@ -295,7 +281,21 @@ duyetbot-agent/
 │   │   │   └── handlers/       # @duyetbot handlers
 │   │   └── package.json
 │   │
-│   └── telegram-bot/            # Telegram bot
+│   ├── telegram-bot/            # Telegram bot
+│   │   └── package.json
+│   │
+│   ├── memory-mcp/              # MCP memory server (Cloudflare Workers)
+│   │   ├── src/
+│   │   │   ├── tools/          # MCP tools
+│   │   │   ├── storage/        # D1/KV operations
+│   │   │   └── auth/           # GitHub auth
+│   │   └── package.json
+│   │
+│   └── agent-server/            # Long-running agent server
+│       ├── src/
+│       │   ├── routes/         # HTTP routes
+│       │   ├── websocket.ts    # WebSocket server
+│       │   └── session-manager.ts
 │       └── package.json
 │
 ├── infrastructure/
