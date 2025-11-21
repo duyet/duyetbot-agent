@@ -1,21 +1,18 @@
 # GitHub Bot Dockerfile
-FROM node:20-alpine AS base
-
-# Install pnpm
-RUN corepack enable && corepack prepare pnpm@latest --activate
+FROM oven/bun:1-alpine AS base
 
 WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY package.json bun.lock ./
 COPY packages/types/package.json ./packages/types/
 COPY packages/providers/package.json ./packages/providers/
 COPY packages/tools/package.json ./packages/tools/
 COPY packages/core/package.json ./packages/core/
 COPY apps/github-bot/package.json ./apps/github-bot/
 
-RUN pnpm install --frozen-lockfile
+RUN bun install --frozen-lockfile
 
 # Build
 FROM base AS builder
@@ -27,7 +24,7 @@ COPY --from=deps /app/packages/core/node_modules ./packages/core/node_modules
 COPY --from=deps /app/apps/github-bot/node_modules ./apps/github-bot/node_modules
 
 COPY . .
-RUN pnpm run build --filter @duyetbot/github-bot
+RUN bun run build --filter @duyetbot/github-bot
 
 # Production
 FROM base AS runner
@@ -48,4 +45,4 @@ COPY --from=builder /app/apps/github-bot/templates ./apps/github-bot/templates
 
 EXPOSE 3001
 
-CMD ["node", "apps/github-bot/dist/index.js"]
+CMD ["bun", "run", "apps/github-bot/dist/index.js"]
