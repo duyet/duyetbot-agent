@@ -4,7 +4,16 @@
 
 ## Overview
 
-duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as its core engine**. It features a containerized architecture with long-running agent server + Cloudflare MCP memory layer + monorepo structure.
+duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as its core engine**. It implements a **Hybrid Supervisor-Worker Architecture** where Cloudflare Workflows orchestrates durable execution while Fly.io Machines provide the compute environment for heavy LLM tasks.
+
+## The Hybrid Supervisor-Worker Model
+
+The core innovation is splitting responsibilities between two complementary platforms:
+
+- **Supervisor (Cloudflare Workflows)**: The "Brain" - handles state management, webhook ingestion, and human-in-the-loop orchestration
+- **Worker (Fly.io Machines)**: The "Hands" - provides filesystem and shell primitives required by the Claude Agent SDK
+
+This architecture solves the fundamental challenge: heavy LLM tasks need a "computer-like" environment, but we want serverless cost-efficiency.
 
 ## High-Level System Design
 
@@ -15,348 +24,290 @@ duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as 
 │ GitHub @mentions│ Telegram Bot   │  CLI Tool    │ Web UI (future) │
 └────────┬───────┴────────┬───────┴──────┬───────┴─────────────────┘
          │                │              │
-         │                │              │
-    ┌────▼────────────────▼──────────────│─────┐
-    │       HTTP API Gateway (Hono)      │     │
-    │   - Authentication                 │     │
-    │   - Rate limiting                  │     │
-    │   - Request routing                │     │
-    └────────────────────┬───────────────│─────┘
-                         │               │
-         ┌───────────────┼───────────┐   │
-         │               │           │   │
-    ┌────▼────┐     ┌────▼────┐      │   │
-    │ GitHub  │     │Telegram │      │   │
-    │  Bot    │     │  Bot    │      │   │
-    │ Handler │     │ Handler │      │   │
-    └────┬────┘     └────┬────┘      │   │
-         │               │           │   │
-         └───────────────┼───────────┘   │
-                         │               │
-                         │      ┌────────▼────────┐
-                         │      │   CLI Tool      │
-                         │      │ (SDK embedded)  │
-                         │      └────────┬────────┘
-                         │               │
-              ┌──────────▼───────────────▼─┐
-              │   Claude Agent SDK         │  ← Core Engine
-              │   (packages/core/sdk)      │
-              ├────────────────────────────┤
-              │ • query() execution        │
-              │ • tool() definitions       │
-              │ • Subagent system          │
-              │ • MCP connections          │
-              └──────────┬─────────────────┘
-                         │
-              ┌──────────▼──────────┐
-              │  MCP Memory Server   │
-              │ (Cloudflare Workers) │
-              ├──────────────────────┤
-              │ • Authentication     │
-              │ • Session Storage    │
-              │ • Message History    │
-              │ • Vector Search      │
-              └──────────┬───────────┘
-                         │
-         ┌───────────────┼────────────────┐
-         │               │                │
-    ┌────▼────┐    ┌────▼────┐      ┌────▼────┐
-    │   D1    │    │   KV    │      │Vectorize│
-    │(Metadata)│   │(Messages)│      │ (Search)│
-    └─────────┘    └─────────┘      └─────────┘
+         ▼                ▼              │
+┌─────────────────────────────────────────────────────────────────┐
+│              Ingress Worker (Cloudflare Worker)                  │
+│  • Webhook signature validation                                  │
+│  • Event routing                                                 │
+│  • Instance management                                           │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│           Workflow Supervisor (Cloudflare Durable Object)        │
+│  • State machine: status, machine_id, volume_id                  │
+│  • Provisions Fly.io resources                                   │
+│  • Manages Human-in-the-Loop wait states                         │
+│  • Can sleep for days/weeks without cost                         │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Agent Runner (Fly.io Machine)                       │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Docker Container                                          │ │
+│  │  • Node.js + git + gh + ripgrep                            │ │
+│  │  • Claude Agent SDK                                        │ │
+│  │  • Custom tools (GitHub, Research)                         │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Persistent Volume (NVMe)                                  │ │
+│  │  • Session state (/root/.claude)                           │ │
+│  │  • Conversation history                                    │ │
+│  │  • Cloned repositories                                     │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+              ┌───────────┼───────────┐
+              │           │           │
+              ▼           ▼           ▼
+         ┌────────┐  ┌────────┐  ┌────────┐
+         │ GitHub │  │Anthropic│  │  MCP   │
+         │  API   │  │   API   │  │ Memory │
+         └────────┘  └────────┘  └────────┘
 ```
 
-## Claude Agent SDK as Core Engine
+## Why Hybrid? Platform Comparison
 
-The Claude Agent SDK is the **primary execution engine** for all agent operations:
+| Feature | Cloudflare Workflows Only | Fly.io Only | Hybrid Model |
+|---------|---------------------------|-------------|--------------|
+| Filesystem Access | ❌ None (V8 Isolate) | ✅ Full Linux | ✅ Full Linux |
+| Shell Tools (git, bash) | ❌ Impossible | ✅ Native | ✅ Native |
+| Long Sleep (Days) | ✅ Up to 365 days | ❌ Pay for idle | ✅ Free (Cloudflare) |
+| Cold Start | ⚡ <10ms | 🐢 ~300ms-2s | 🚀 ~2s (Acceptable) |
+| Cost (Idle) | 💰 Free | 💸 Expensive | 💰 Free |
+| Orchestration | ✅ Built-in | ❌ DIY | ✅ Full power |
+
+## Claude Agent SDK Integration
+
+The Claude Agent SDK is the **primary execution engine** running on Fly.io Machines:
 
 ```typescript
 // SDK query with streaming
 import { query, createDefaultOptions } from '@duyetbot/core';
 
-// Execute with tools and streaming
 const options = createDefaultOptions({
   model: 'sonnet',
-  tools: [bashTool, gitTool],
+  tools: [bashTool, gitTool, githubTool],
   systemPrompt: 'You are a helpful assistant.',
 });
 
 for await (const message of query('Help me review this PR', options)) {
   switch (message.type) {
     case 'assistant':
-      console.log(message.content);  // Stream response
+      console.log(message.content);
       break;
     case 'tool_use':
       console.log(`Using: ${message.toolName}`);
       break;
     case 'result':
-      console.log(`Tokens: ${message.totalTokens}, Time: ${message.duration}ms`);
+      console.log(`Tokens: ${message.totalTokens}`);
       break;
   }
 }
 ```
 
-### Benefits
+### Why SDK Needs Full Environment
 
-1. **Reduced Complexity** - No custom agent loop
-2. **Feature Parity** - Get all SDK features automatically
-3. **Maintenance** - SDK updates improve duyetbot
-4. **Reliability** - Battle-tested execution engine
+The Claude Agent SDK requires:
+- **Bash tool**: Uses `child_process.spawn` to run shell commands
+- **Git operations**: Native git for cloning, diffing, committing
+- **Filesystem tools**: grep, find, read, write operations
 
-### SDK Integration Layer (`packages/core/src/sdk/`)
+These are impossible in Cloudflare Workers' V8 isolates.
 
-- `query.ts` - Query execution with Anthropic API integration
-- `tool.ts` - Tool definitions with Zod schemas
-- `options.ts` - Configuration (model, permissions, MCP, subagents)
-- `subagent.ts` - Predefined subagents (researcher, codeReviewer, etc.)
-- `types.ts` - SDK message types
+## Volume-as-Session Pattern
 
-### SDK Execution Flow
+The SDK relies on local filesystem for session state. We solve this with persistent volumes:
 
 ```
-User Input → query()
-     │
-     ▼
-┌─────────────────┐
-│ Validate Options│
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Build Messages  │
-└────────┬────────┘
-         │
-         ▼
-┌─────────────────┐     ┌─────────────────┐
-│ Call Anthropic  │────►│  Retry Logic    │
-│      API        │◄────│ (exp backoff)   │
-└────────┬────────┘     └─────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│ Parse Response  │
-└────────┬────────┘
-         │
-    ┌────┴────┐
-    │         │
-    ▼         ▼
-[Text]    [Tool Use]
-    │         │
-    │         ▼
-    │    ┌─────────────┐
-    │    │Execute Tools│
-    │    │ (validate,  │
-    │    │  run, yield)│
-    │    └──────┬──────┘
-    │          │
-    │    ┌─────▼──────┐
-    │    │Tool Results│
-    │    └─────┬──────┘
-    │          │
-    └────┬─────┘
-         │ (loop until end_turn)
-         ▼
-┌─────────────────┐
-│  Result Message │
-│ (tokens, time)  │
-└─────────────────┘
+Volume Creation:
+  PR #123 opened → Create vol_duyetbot_pr_123
+
+Mount on Run:
+  Machine boots → Mount volume to /root/.claude
+
+Session Persistence:
+  SDK writes → Actually writes to NVMe volume
+  Machine dies → Data survives
+
+Resume:
+  Next webhook → New machine, same volume
+  SDK boots → Finds existing state, resumes context
 ```
 
-### Error Handling & Retry Strategy
+This enables multi-day conversations without complex database serialization.
 
-The SDK implements automatic retry with exponential backoff:
+## Component Architecture
 
-```typescript
-// Retryable errors (automatic retry up to 3 times)
-- 429: Rate limit exceeded
-- 500: Server error
-- 502: Bad gateway
-- 503: Service unavailable
-- 504: Gateway timeout
-- Network errors (timeout, connection refused)
+### 1. Ingress Worker (Cloudflare)
 
-// Backoff: 1s → 2s → 4s (with ±20% jitter)
+Public entry point for webhooks:
+- Validates `X-Hub-Signature-256`
+- Routes events to appropriate Workflow
+- Maps PR ID → Workflow Instance ID
+
+### 2. Workflow Supervisor (Cloudflare Durable Object)
+
+State machine managing agent lifecycle:
+- **State**: `status`, `fly_machine_id`, `fly_volume_id`, `last_activity`
+- **Provisions**: Creates Fly.io volumes and machines
+- **Waits**: Uses `step.wait_for_event()` for HITL (free while waiting)
+- **Cleanup**: Destroys resources when PR closes
+
+### 3. Agent Runner (Fly.io Machine)
+
+Docker container with full environment:
+- **Image**: Node.js 20, git, gh CLI, ripgrep
+- **Runtime**: Mounts volume, runs SDK, streams logs
+- **Output**: Updates GitHub Checks API in real-time
+
+## Human-in-the-Loop via GitHub Checks API
+
+For tasks requiring human approval:
+
+```
+1. Agent Decision
+   → Agent reaches decision point requiring approval
+
+2. Check Update
+   → Status: completed, Conclusion: action_required
+   → Actions: [{ label: "Approve Fix", identifier: "approve" }]
+
+3. Workflow Sleep
+   → Runner exits
+   → Supervisor calls step.wait_for_event('requested_action')
+
+4. User Clicks Button
+   → GitHub sends check_run.requested_action webhook
+
+5. Resume
+   → Workflow wakes, provisions new machine
+   → Agent resumes with user's decision
 ```
 
-### Environment Configuration
+This allows the bot to wait days/weeks for user input without cost.
 
-```env
-# Required for LLM
-ANTHROPIC_API_KEY=sk-ant-xxx
+## Data Flow: PR Review
 
-# Optional: Alternative endpoint (Z.AI, proxy)
-ANTHROPIC_BASE_URL=https://api.anthropic.com
-
-# Model shortcuts
-# haiku  → claude-3-5-haiku-20241022
-# sonnet → claude-sonnet-4-20250514
-# opus   → claude-3-opus-20240229
+```
+1. GitHub webhook (pull_request.opened)
+   ↓
+2. Ingress Worker validates signature
+   ↓
+3. Workflow Supervisor receives event
+   ↓
+4. Supervisor provisions:
+   • Creates Fly.io Volume (vol_pr_123)
+   • Starts Fly.io Machine with volume mounted
+   ↓
+5. Agent Runner boots (~2s)
+   • Mounts /root/.claude to volume
+   • Creates GitHub Check Run (in_progress)
+   ↓
+6. Claude Agent SDK executes:
+   • Clones repository
+   • Analyzes diff
+   • Runs tests if needed
+   • Streams progress to Check Run
+   ↓
+7. Agent completes or requests input
+   • Posts review comments
+   • Updates Check Run (success/action_required)
+   ↓
+8. Machine stops, volume persists
+   ↓
+9. Supervisor sleeps (if awaiting input)
 ```
 
 ## Key Architectural Decisions
 
-| Component | Design Choice | Rationale |
-|-----------|--------------|-----------|
-| **Core Engine** | Claude Agent SDK | Battle-tested, feature-rich, maintained by Anthropic |
-| **Main Runtime** | Node.js/Bun Container | Long-running stateful sessions, no CPU limits |
-| **Memory Layer** | MCP Server (CF Workers) | Standardized protocol, reusable across clients |
-| **Project Structure** | Monorepo (pnpm) | Separated concerns, independent deployments |
-| **Provider System** | Base URL override support | Flexible (Z.AI, custom endpoints) |
-| **LLM Providers** | Claude-compatible only | Focused support (Claude, Z.AI, OpenRouter) |
+| Component | Choice | Rationale |
+|-----------|--------|-----------|
+| **Orchestration** | Cloudflare Workflows | Durable execution, free sleep, built-in retries |
+| **Compute** | Fly.io Machines | Full Linux, fast boot, API-driven lifecycle |
+| **State** | Fly.io Volumes | SDK requires filesystem, NVMe performance |
+| **Agent Engine** | Claude Agent SDK | Battle-tested, maintained by Anthropic |
+| **Feedback** | GitHub Checks API | Real-time streaming, action_required support |
+| **Memory** | MCP Server (CF Workers) | Cross-session search, user isolation |
 
-## Components
+## Cost Model
+
+### Scenario: 100 PRs/month, 10 min avg active time
+
+| Component | Calculation | Cost |
+|-----------|-------------|------|
+| Fly.io Compute | 60,000s × $0.000011/s | $0.66 |
+| Fly.io Storage | 100 PRs × 1GB × 5 days | $2.50 |
+| Cloudflare | Mostly routing | ~$0.50 |
+| **Total** | | **~$3.66/mo** |
+
+Compare to always-on containers: **~$58/mo** (2× machines)
+
+## Security
+
+### Authentication
+- Fly API token in Cloudflare secrets
+- Single-use callback tokens for Runner → Supervisor
+- GitHub webhook signature validation
+
+### Networking
+- Fly Machines use private IPv6 (no public IP)
+- Communication via public APIs (GitHub, Cloudflare)
+- Flycast for internal-only services
+
+### Volume Cleanup
+- Janitor Workflow runs daily via Cron
+- Cross-references volumes with PR status
+- Deletes orphaned volumes
+
+## Packages & Components
 
 ### Core (`packages/core`)
-
-Agent orchestration with SDK integration:
-- **SDK adapter layer** (`sdk/`) - Thin wrapper around Claude Agent SDK
-- **Session management** - Conversation state tracking
-- **MCP client** - Memory server integration
-
-Key SDK patterns:
-```typescript
-// Query execution
-for await (const message of query(input, options)) {
-  // Stream responses
-}
-
-// Tool definition
-const tool = sdkTool('name', 'description', zodSchema, handler);
-
-// Subagent delegation
-const options = { agents: [{ name: 'researcher', ... }] };
-```
-
-### GitHub Bot (`apps/github-bot`)
-
-Handles GitHub webhook events:
-- **Issue comments**: Responds to @duyetbot mentions
-- **PR comments**: Code review assistance
-- **Issues/PRs**: Auto-respond on open/label
-
-Key files:
-- `index.ts` - Hono HTTP server and webhook routing
-- `webhooks/` - Event handlers (issues.ts, pull-request.ts)
-- `session-manager.ts` - Conversation persistence with MCP
-- `mention-parser.ts` - Extract tasks from mentions
-- `agent-handler.ts` - System prompt builder and response generation
-
-### Providers (`packages/providers`)
-
-LLM provider adapters with base URL override:
-- **Claude** - Anthropic API (supports Z.AI via base URL)
-- **OpenRouter** - Multi-provider gateway
-
-Format: `<provider>:<model_id>` (e.g., `claude:claude-3-5-sonnet-20241022`)
+- SDK adapter layer (`sdk/`)
+- Session management
+- MCP client
 
 ### Tools (`packages/tools`)
-
-Built-in tool implementations (SDK-compatible):
-- `bash` - Shell command execution
+Built-in tools (SDK-compatible):
+- `bash` - Shell execution
 - `git` - Repository operations
-- `github` - API operations (14 actions)
+- `github` - API operations
 - `research` - Web research
 - `plan` - Task planning
-- `sleep` - Execution delay
 
 ### Memory MCP (`apps/memory-mcp`)
-
-MCP-compatible memory server on Cloudflare Workers:
-- **D1** - Session metadata, users, tokens
-- **KV** - Message history (JSONL format)
-- **Vectorize** - Semantic search (future)
-
-MCP Tools:
-- `authenticate` - GitHub token verification
-- `get_memory` - Load session messages
-- `save_memory` - Persist messages
-- `search_memory` - Text/semantic search
-- `list_sessions` - List user sessions
-
-### Agent Server (`apps/agent-server`)
-
-Long-running agent server:
-- WebSocket support for streaming
-- Session lifecycle management
-- Health check endpoints
-- Graceful shutdown
+Cloudflare Workers for cross-session memory:
+- D1 - Metadata, users
+- KV - Message history
+- Vectorize - Semantic search (future)
 
 ### CLI (`packages/cli`)
+Local development and testing:
+- Embeds SDK directly
+- File-based or MCP storage
 
-Command-line interface:
-- Local mode (file storage)
-- Cloud mode (MCP memory)
-- GitHub OAuth device flow
-- Ink-based terminal UI
-
-## Data Flow
-
-### GitHub Mention → Response
-
-1. GitHub sends webhook to `/webhook`
-2. Webhook handler validates signature
-3. Mention parser extracts task from comment
-4. Session manager loads/creates session from MCP
-5. Agent handler builds system prompt with context
-6. **Claude Agent SDK** processes task with tools
-7. Response posted as GitHub comment
-8. Session saved to MCP memory
-
-### Session Management
-
-Sessions are identified by deterministic IDs:
-```
-github:{owner}/{repo}:{type}:{number}
-```
-
-Example: `github:duyet/duyetbot-agent:issue:42`
-
-## Configuration
-
-### Environment Variables
+## Environment Configuration
 
 ```env
-# Required
-BOT_USERNAME=duyetbot
+# LLM Provider
+ANTHROPIC_API_KEY=sk-ant-xxx
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+
+# GitHub
 GITHUB_TOKEN=ghp_xxx
 WEBHOOK_SECRET=xxx
+BOT_USERNAME=duyetbot
 
-# LLM Provider
-ANTHROPIC_API_KEY=xxx
-ANTHROPIC_BASE_URL=https://api.anthropic.com  # or Z.AI URL
+# Fly.io (for Supervisor)
+FLY_API_TOKEN=xxx
+FLY_ORG=personal
 
-# Optional MCP Memory
+# MCP Memory (optional)
 MCP_SERVER_URL=https://memory.duyetbot.workers.dev
-MCP_AUTH_TOKEN=xxx
 ```
-
-### GitHub App Permissions
-
-- **Issues**: Read & Write
-- **Pull requests**: Read & Write
-- **Contents**: Read
-- **Actions**: Read & Write
-
-### Webhook Events
-
-- `issue_comment`
-- `pull_request_review_comment`
-- `issues`
-- `pull_request`
-
-## Technology Stack
-
-| Component | Technology | Notes |
-|-----------|-----------|-------|
-| **Agent Engine** | Claude Agent SDK | Core execution engine |
-| **Monorepo** | pnpm workspaces + Turborepo | Build orchestration |
-| **Agent Server** | Node.js/Bun + Docker | Long-running container |
-| **MCP Memory** | Cloudflare Workers + D1 + KV | Edge-based persistence |
-| **CLI** | Node.js + Ink + Commander | Terminal UI |
-| **GitHub Bot** | Hono + Octokit | Webhook handling |
-| **API Gateway** | Hono | Fast, edge-compatible |
-| **Testing** | Vitest | 443+ tests |
-| **LLM** | Claude/Z.AI/OpenRouter | Claude-compatible APIs |
 
 ## Test Coverage
 
@@ -367,18 +318,16 @@ MCP_AUTH_TOKEN=xxx
 - Memory-MCP: 93 tests
 - CLI: 67 tests
 - GitHub-Bot: 57 tests
-- Server: 36 tests
 
 ## Deployment
 
-See [Deployment Guide](deploy.md) for detailed instructions on:
-- [Railway](deploy.md#deploy-to-railway)
-- [Fly.io](deploy.md#deploy-to-flyio)
-- [Render](deploy.md#deploy-to-render)
-- [AWS ECS/Fargate](deploy.md#deploy-to-aws-ecsfargate)
-- [Docker Compose](deploy.md#deploy-with-docker-compose)
+See [Deployment Guide](deploy.md) for component-specific instructions:
+- [GitHub Bot](deployment/github-bot.md) - Webhook handler
+- [Memory MCP](deployment/memory-mcp.md) - Session persistence
+- [Agent Server](deployment/agent-server.md) - Long-running server
 
 ## Next Steps
 
 - [Getting Started](getting-started.md) - Installation and quick start
+- [Use Cases](usecases.md) - Common workflows
 - [Report Issues](https://github.com/duyet/duyetbot-agent/issues)
