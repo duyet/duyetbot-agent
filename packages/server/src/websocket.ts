@@ -5,8 +5,8 @@
  */
 
 import type { Server } from 'node:http';
-import { WebSocket, WebSocketServer } from 'ws';
 import type { QueryOptions, SDKTool } from '@duyetbot/core/sdk';
+import { WebSocket, WebSocketServer } from 'ws';
 import { createQueryController, streamQuery } from './sdk-adapter.js';
 import type { AgentSessionManager } from './session-manager.js';
 
@@ -27,7 +27,16 @@ export interface WebSocketMessage {
 }
 
 export interface WebSocketResponse {
-  type: 'chunk' | 'done' | 'error' | 'pong' | 'subscribed' | 'unsubscribed' | 'tool_use' | 'tool_result' | 'tokens';
+  type:
+    | 'chunk'
+    | 'done'
+    | 'error'
+    | 'pong'
+    | 'subscribed'
+    | 'unsubscribed'
+    | 'tool_use'
+    | 'tool_result'
+    | 'tokens';
   session_id?: string;
   data?: string;
   error?: string;
@@ -133,9 +142,10 @@ export class AgentWebSocketServer {
     try {
       // Build context from previous messages
       const systemPrompt = this.config.systemPrompt || 'You are a helpful AI assistant.';
-      const contextPrompt = session.messages.length > 0
-        ? `${systemPrompt}\n\nPrevious conversation:\n${session.messages.map(m => `${m.role}: ${m.content}`).join('\n')}`
-        : systemPrompt;
+      const contextPrompt =
+        session.messages.length > 0
+          ? `${systemPrompt}\n\nPrevious conversation:\n${session.messages.map((m) => `${m.role}: ${m.content}`).join('\n')}`
+          : systemPrompt;
 
       // Build query options
       const queryOptions: QueryOptions = {
@@ -187,7 +197,7 @@ export class AgentWebSocketServer {
             }
             break;
 
-          case 'result':
+          case 'result': {
             // Final result with tokens
             fullResponse = sdkMessage.content;
             const tokenResponse: WebSocketResponse = {
@@ -204,6 +214,7 @@ export class AgentWebSocketServer {
             }
             this.send(ws, tokenResponse);
             break;
+          }
 
           case 'system':
             // System messages (errors, etc.)

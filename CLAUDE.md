@@ -204,6 +204,22 @@ pnpm --filter @duyetbot/memory-mcp deploy  # Deploy MCP server
 2. **Update the Revision History** table
 3. **Commit PLAN.md** along with code changes
 
+### Pre-Commit Checks
+
+**IMPORTANT: Before committing and pushing, always ensure:**
+
+1. **Lint passes**: `pnpm run lint` or `pnpm run lint:fix`
+2. **Type check passes**: `pnpm run type-check`
+3. **Tests pass**: `pnpm run test`
+
+Or run all checks at once:
+```bash
+pnpm run check  # Runs lint + type-check
+pnpm run test   # Runs all tests
+```
+
+The repository has a pre-push hook that runs these checks automatically. If the hook fails, fix the issues before pushing.
+
 ### Commit Message Guidelines
 
 **Format**: `<type>: <description in lowercase>`

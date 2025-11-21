@@ -170,9 +170,10 @@ export function createAgentRoutes(
 
     try {
       // Build context from previous messages for system prompt
-      const contextPrompt = session.messages.length > 0
-        ? `${systemPrompt}\n\nPrevious conversation:\n${session.messages.map(m => `${m.role}: ${m.content}`).join('\n')}`
-        : systemPrompt;
+      const contextPrompt =
+        session.messages.length > 0
+          ? `${systemPrompt}\n\nPrevious conversation:\n${session.messages.map((m) => `${m.role}: ${m.content}`).join('\n')}`
+          : systemPrompt;
 
       // Execute agent using SDK
       const queryOptions: QueryOptions = {

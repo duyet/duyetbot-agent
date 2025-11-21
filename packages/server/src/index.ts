@@ -22,4 +22,10 @@ export { startServer, main } from './server.js';
 export type { ServerInstance } from './server.js';
 
 // SDK adapter exports
-export { toSDKTool, toSDKTools, executeQuery, streamQuery, createQueryController } from './sdk-adapter.js';
+export {
+  toSDKTool,
+  toSDKTools,
+  executeQuery,
+  streamQuery,
+  createQueryController,
+} from './sdk-adapter.js';
