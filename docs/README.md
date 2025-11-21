@@ -117,9 +117,11 @@ duyetbot-agent/
 
 ## Status
 
-**Phase 7 In Progress**: Claude Agent SDK as core engine with SDK integration layer (44 tests), query execution, tool definitions, subagent system.
+**Phase 7 Nearly Complete**: Claude Agent SDK as core engine with full Anthropic API integration, retry logic, tool execution, CLI streaming with interrupt support, token tracking. 443 tests passing.
 
-**Next**: Complete CLI/server SDK integration, then Phase 8 - Telegram Bot Integration
+**Remaining**: Server SDK integration, Ink UI improvements
+
+**Next**: Phase 8 - Telegram Bot Integration
 
 See [PLAN.md](https://github.com/duyet/duyetbot-agent/blob/main/PLAN.md) for full roadmap.
 

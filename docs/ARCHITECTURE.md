@@ -71,13 +71,28 @@ duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as 
 The Claude Agent SDK is the **primary execution engine** for all agent operations:
 
 ```typescript
-// SDK-first architecture
-import { query as sdkQuery, tool as sdkTool } from '@anthropic-ai/claude-agent-sdk';
+// SDK query with streaming
+import { query, createDefaultOptions } from '@duyetbot/core';
 
-// Thin adapter layer
-export async function* executeQuery(input: string, config: DuyetbotConfig) {
-  const options = createSDKOptions(config);
-  yield* sdkQuery(input, options);  // Direct passthrough
+// Execute with tools and streaming
+const options = createDefaultOptions({
+  model: 'sonnet',
+  tools: [bashTool, gitTool],
+  systemPrompt: 'You are a helpful assistant.',
+});
+
+for await (const message of query('Help me review this PR', options)) {
+  switch (message.type) {
+    case 'assistant':
+      console.log(message.content);  // Stream response
+      break;
+    case 'tool_use':
+      console.log(`Using: ${message.toolName}`);
+      break;
+    case 'result':
+      console.log(`Tokens: ${message.totalTokens}, Time: ${message.duration}ms`);
+      break;
+  }
 }
 ```
 
@@ -90,11 +105,93 @@ export async function* executeQuery(input: string, config: DuyetbotConfig) {
 
 ### SDK Integration Layer (`packages/core/src/sdk/`)
 
-- `query.ts` - Query execution using SDK's async generator
+- `query.ts` - Query execution with Anthropic API integration
 - `tool.ts` - Tool definitions with Zod schemas
 - `options.ts` - Configuration (model, permissions, MCP, subagents)
 - `subagent.ts` - Predefined subagents (researcher, codeReviewer, etc.)
 - `types.ts` - SDK message types
+
+### SDK Execution Flow
+
+```
+User Input → query()
+     │
+     ▼
+┌─────────────────┐
+│ Validate Options│
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Build Messages  │
+└────────┬────────┘
+         │
+         ▼
+┌─────────────────┐     ┌─────────────────┐
+│ Call Anthropic  │────►│  Retry Logic    │
+│      API        │◄────│ (exp backoff)   │
+└────────┬────────┘     └─────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ Parse Response  │
+└────────┬────────┘
+         │
+    ┌────┴────┐
+    │         │
+    ▼         ▼
+[Text]    [Tool Use]
+    │         │
+    │         ▼
+    │    ┌─────────────┐
+    │    │Execute Tools│
+    │    │ (validate,  │
+    │    │  run, yield)│
+    │    └──────┬──────┘
+    │          │
+    │    ┌─────▼──────┐
+    │    │Tool Results│
+    │    └─────┬──────┘
+    │          │
+    └────┬─────┘
+         │ (loop until end_turn)
+         ▼
+┌─────────────────┐
+│  Result Message │
+│ (tokens, time)  │
+└─────────────────┘
+```
+
+### Error Handling & Retry Strategy
+
+The SDK implements automatic retry with exponential backoff:
+
+```typescript
+// Retryable errors (automatic retry up to 3 times)
+- 429: Rate limit exceeded
+- 500: Server error
+- 502: Bad gateway
+- 503: Service unavailable
+- 504: Gateway timeout
+- Network errors (timeout, connection refused)
+
+// Backoff: 1s → 2s → 4s (with ±20% jitter)
+```
+
+### Environment Configuration
+
+```env
+# Required for LLM
+ANTHROPIC_API_KEY=sk-ant-xxx
+
+# Optional: Alternative endpoint (Z.AI, proxy)
+ANTHROPIC_BASE_URL=https://api.anthropic.com
+
+# Model shortcuts
+# haiku  → claude-3-5-haiku-20241022
+# sonnet → claude-sonnet-4-20250514
+# opus   → claude-3-opus-20240229
+```
 
 ## Key Architectural Decisions
 
