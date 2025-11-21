@@ -1,5 +1,5 @@
 import type { D1Database } from '@cloudflare/workers-types';
-import type { Session, SessionToken, User } from '../types.js';
+import type { LLMMessage, Session, SessionToken, User } from '../types.js';
 
 export class D1Storage {
   constructor(private db: D1Database) {}
@@ -191,5 +191,164 @@ export class D1Storage {
 
   async deleteExpiredTokens(): Promise<void> {
     await this.db.prepare('DELETE FROM session_tokens WHERE expires_at < ?').bind(Date.now()).run();
+  }
+
+  // Message operations
+  async getMessages(
+    sessionId: string,
+    options: { limit?: number; offset?: number } = {}
+  ): Promise<LLMMessage[]> {
+    const { limit, offset = 0 } = options;
+
+    let query = 'SELECT role, content, timestamp, metadata FROM messages WHERE session_id = ? ORDER BY timestamp ASC';
+    const params: unknown[] = [sessionId];
+
+    if (limit !== undefined) {
+      query += ' LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+    } else if (offset > 0) {
+      query += ' LIMIT -1 OFFSET ?';
+      params.push(offset);
+    }
+
+    const result = await this.db
+      .prepare(query)
+      .bind(...params)
+      .all<{ role: string; content: string; timestamp: number; metadata: string | null }>();
+
+    return result.results.map((row) => ({
+      role: row.role as 'user' | 'assistant' | 'system',
+      content: row.content,
+      timestamp: row.timestamp,
+      ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
+    }));
+  }
+
+  async saveMessages(sessionId: string, messages: LLMMessage[]): Promise<number> {
+    if (messages.length === 0) {
+      return 0;
+    }
+
+    // Delete existing messages and insert new ones in a batch
+    const statements = [
+      this.db.prepare('DELETE FROM messages WHERE session_id = ?').bind(sessionId),
+    ];
+
+    for (const msg of messages) {
+      statements.push(
+        this.db
+          .prepare(
+            'INSERT INTO messages (session_id, role, content, timestamp, metadata) VALUES (?, ?, ?, ?, ?)'
+          )
+          .bind(
+            sessionId,
+            msg.role,
+            msg.content,
+            msg.timestamp || Date.now(),
+            msg.metadata ? JSON.stringify(msg.metadata) : null
+          )
+      );
+    }
+
+    await this.db.batch(statements);
+    return messages.length;
+  }
+
+  async appendMessages(sessionId: string, newMessages: LLMMessage[]): Promise<number> {
+    if (newMessages.length === 0) {
+      return 0;
+    }
+
+    const statements = newMessages.map((msg) =>
+      this.db
+        .prepare(
+          'INSERT INTO messages (session_id, role, content, timestamp, metadata) VALUES (?, ?, ?, ?, ?)'
+        )
+        .bind(
+          sessionId,
+          msg.role,
+          msg.content,
+          msg.timestamp || Date.now(),
+          msg.metadata ? JSON.stringify(msg.metadata) : null
+        )
+    );
+
+    await this.db.batch(statements);
+    return newMessages.length;
+  }
+
+  async deleteMessages(sessionId: string): Promise<void> {
+    await this.db.prepare('DELETE FROM messages WHERE session_id = ?').bind(sessionId).run();
+  }
+
+  async getMessageCount(sessionId: string): Promise<number> {
+    const result = await this.db
+      .prepare('SELECT COUNT(*) as count FROM messages WHERE session_id = ?')
+      .bind(sessionId)
+      .first<{ count: number }>();
+    return result?.count || 0;
+  }
+
+  async searchMessages(
+    userId: string,
+    query: string,
+    options: {
+      sessionId?: string;
+      dateRange?: { start: number; end: number };
+      limit?: number;
+    } = {}
+  ): Promise<
+    Array<{
+      sessionId: string;
+      message: LLMMessage;
+      messageIndex: number;
+    }>
+  > {
+    const { sessionId, dateRange, limit = 100 } = options;
+
+    let sql = `
+      SELECT m.session_id, m.role, m.content, m.timestamp, m.metadata,
+             ROW_NUMBER() OVER (PARTITION BY m.session_id ORDER BY m.timestamp ASC) - 1 as msg_index
+      FROM messages m
+      JOIN sessions s ON m.session_id = s.id
+      WHERE s.user_id = ? AND m.content LIKE ?
+    `;
+    const params: unknown[] = [userId, `%${query}%`];
+
+    if (sessionId) {
+      sql += ' AND m.session_id = ?';
+      params.push(sessionId);
+    }
+
+    if (dateRange) {
+      sql += ' AND m.timestamp >= ? AND m.timestamp <= ?';
+      params.push(dateRange.start, dateRange.end);
+    }
+
+    sql += ' ORDER BY m.timestamp DESC LIMIT ?';
+    params.push(limit);
+
+    const result = await this.db
+      .prepare(sql)
+      .bind(...params)
+      .all<{
+        session_id: string;
+        role: string;
+        content: string;
+        timestamp: number;
+        metadata: string | null;
+        msg_index: number;
+      }>();
+
+    return result.results.map((row) => ({
+      sessionId: row.session_id,
+      message: {
+        role: row.role as 'user' | 'assistant' | 'system',
+        content: row.content,
+        timestamp: row.timestamp,
+        ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
+      },
+      messageIndex: row.msg_index,
+    }));
   }
 }

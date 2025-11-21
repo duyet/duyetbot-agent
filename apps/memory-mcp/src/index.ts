@@ -1,7 +1,6 @@
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { D1Storage } from './storage/d1.js';
-import { KVStorage } from './storage/kv.js';
 import type { Env } from './types.js';
 
 import { authenticate, authenticateSchema } from './tools/authenticate.js';
@@ -121,9 +120,8 @@ app.post('/api/memory/get', async (c) => {
     const body = await c.req.json();
     const input = getMemorySchema.parse(body);
     const d1Storage = new D1Storage(c.env.DB);
-    const kvStorage = new KVStorage(c.env.KV);
     const userId = c.get('userId');
-    const result = await getMemory(input, d1Storage, kvStorage, userId);
+    const result = await getMemory(input, d1Storage, userId);
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -136,9 +134,8 @@ app.post('/api/memory/save', async (c) => {
     const body = await c.req.json();
     const input = saveMemorySchema.parse(body);
     const d1Storage = new D1Storage(c.env.DB);
-    const kvStorage = new KVStorage(c.env.KV);
     const userId = c.get('userId');
-    const result = await saveMemory(input, d1Storage, kvStorage, userId);
+    const result = await saveMemory(input, d1Storage, userId);
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -151,9 +148,8 @@ app.post('/api/memory/search', async (c) => {
     const body = await c.req.json();
     const input = searchMemorySchema.parse(body);
     const d1Storage = new D1Storage(c.env.DB);
-    const kvStorage = new KVStorage(c.env.KV);
     const userId = c.get('userId');
-    const result = await searchMemory(input, d1Storage, kvStorage, userId);
+    const result = await searchMemory(input, d1Storage, userId);
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -166,9 +162,8 @@ app.post('/api/sessions/list', async (c) => {
     const body = await c.req.json();
     const input = listSessionsSchema.parse(body);
     const d1Storage = new D1Storage(c.env.DB);
-    const kvStorage = new KVStorage(c.env.KV);
     const userId = c.get('userId');
-    const result = await listSessions(input, d1Storage, kvStorage, userId);
+    const result = await listSessions(input, d1Storage, userId);
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
@@ -181,5 +176,4 @@ export default app;
 // Re-export types and utilities
 export * from './types.js';
 export { D1Storage } from './storage/d1.js';
-export { KVStorage } from './storage/kv.js';
 export { createMCPServer } from './mcp-server.js';
