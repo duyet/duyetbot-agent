@@ -4,6 +4,32 @@
 
 This guide covers deploying the @duyetbot GitHub App to various platforms.
 
+## Quick Summary
+
+### Required Steps
+
+1. [Register GitHub App](#register-github-app) - Create and configure your GitHub App
+2. [Environment Variables](#environment-variables) - Set up required secrets and config
+3. **Choose a platform** - Pick one deployment option below
+
+### Deployment Options
+
+| Platform | Difficulty | Cost | Best For |
+|----------|------------|------|----------|
+| [Railway](#deploy-to-railway) | Easy | $5/mo | Beginners, quick setup |
+| [Fly.io](#deploy-to-flyio) | Easy | Free-$5/mo | Free tier, good defaults |
+| [Render](#deploy-to-render) | Easy | Free-$7/mo | Simple Docker deploys |
+| [AWS ECS/Fargate](#deploy-to-aws-ecsfargate) | Advanced | $10-15/mo | Full control, enterprise |
+| [Docker Compose](#deploy-with-docker-compose) | Medium | VPS cost | Self-hosted, VPS |
+
+### After Deployment
+
+- [Post-Deployment](#post-deployment) - Update webhook URL and test **(required)**
+- [Troubleshooting](#troubleshooting) - Common issues and fixes
+- [Security Best Practices](#security-best-practices) - Production hardening
+
+---
+
 ## Prerequisites
 
 1. **GitHub App registered** (see [Register GitHub App](#register-github-app))
