@@ -4,13 +4,24 @@
  * HTTP API endpoints for agent operations
  */
 
+import type { QueryOptions, SDKTool } from '@duyetbot/core/sdk';
 import { Hono } from 'hono';
 import { z } from 'zod';
+import { executeQuery } from '../sdk-adapter.js';
 import type {
   AgentSessionManager,
   CreateSessionInput,
   ListSessionsOptions,
 } from '../session-manager.js';
+
+/**
+ * Agent routes configuration
+ */
+export interface AgentRoutesConfig {
+  tools?: SDKTool[];
+  systemPrompt?: string;
+  model?: string;
+}
 
 // Request schemas
 const createSessionSchema = z.object({
@@ -34,8 +45,14 @@ const executeSchema = z.object({
 /**
  * Create agent routes
  */
-export function createAgentRoutes(sessionManager: AgentSessionManager): Hono {
+export function createAgentRoutes(
+  sessionManager: AgentSessionManager,
+  config?: AgentRoutesConfig
+): Hono {
   const app = new Hono();
+  const tools = config?.tools || [];
+  const systemPrompt = config?.systemPrompt || 'You are a helpful AI assistant.';
+  const model = config?.model || 'sonnet';
 
   // Create session
   app.post('/sessions', async (c) => {
@@ -151,24 +168,45 @@ export function createAgentRoutes(sessionManager: AgentSessionManager): Hono {
     const userMessage = { role: 'user' as const, content: parsed.data.message };
     const updatedMessages = [...session.messages, userMessage];
 
-    // TODO: Actually execute agent here
-    // For now, return a mock response
-    const assistantMessage = {
-      role: 'assistant' as const,
-      content: `Echo: ${parsed.data.message}`,
-    };
-    updatedMessages.push(assistantMessage);
+    try {
+      // Build context from previous messages for system prompt
+      const contextPrompt = session.messages.length > 0
+        ? `${systemPrompt}\n\nPrevious conversation:\n${session.messages.map(m => `${m.role}: ${m.content}`).join('\n')}`
+        : systemPrompt;
 
-    // Update session
-    await sessionManager.updateSession(session.id, {
-      messages: updatedMessages,
-    });
+      // Execute agent using SDK
+      const queryOptions: QueryOptions = {
+        model,
+        tools,
+        systemPrompt: contextPrompt,
+        sessionId: session.id,
+      };
 
-    return c.json({
-      session_id: session.id,
-      response: assistantMessage.content,
-      messages: updatedMessages,
-    });
+      const result = await executeQuery(parsed.data.message, queryOptions);
+
+      // Add assistant message
+      const assistantMessage = {
+        role: 'assistant' as const,
+        content: result.response,
+      };
+      updatedMessages.push(assistantMessage);
+
+      // Update session
+      await sessionManager.updateSession(session.id, {
+        messages: updatedMessages,
+      });
+
+      return c.json({
+        session_id: session.id,
+        response: result.response,
+        messages: updatedMessages,
+        tokens: result.tokens,
+        duration: result.duration,
+      });
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      return c.json({ error: 'Execution failed', details: errorMessage }, 500);
+    }
   });
 
   return app;

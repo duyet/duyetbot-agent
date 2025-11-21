@@ -17,6 +17,10 @@
     "./session": {
       "types": "./dist/session/index.d.ts",
       "import": "./dist/session/index.js"
+    },
+    "./sdk": {
+      "types": "./dist/sdk/index.d.ts",
+      "import": "./dist/sdk/index.js"
     }
   },
   "files": ["dist"],
