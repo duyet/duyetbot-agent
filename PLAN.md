@@ -590,7 +590,7 @@ CREATE INDEX idx_tokens_expires ON session_tokens(expires_at);
 ### MCP Server Implementation
 
 ```typescript
-// packages/memory-mcp/src/mcp-server.ts
+// apps/memory-mcp/src/mcp-server.ts
 import { createMCPServer } from '@anthropic-ai/mcp-server';
 
 const mcpServer = createMCPServer({
@@ -670,7 +670,7 @@ The agent server runs as a long-lived Node.js/Bun process in a container. It mai
 ### Server Architecture
 
 ```typescript
-// packages/server/src/index.ts
+// apps/agent-server/src/index.ts
 import { createAgent } from '@duyetbot/core';
 import { MCPClient } from '@anthropic-ai/mcp-client';
 import { WebSocketServer } from 'ws';
@@ -806,7 +806,7 @@ RUN bun run build
 EXPOSE 3000 8080
 
 # Start server
-CMD ["bun", "run", "packages/server/src/index.ts"]
+CMD ["bun", "run", "apps/agent-server/src/index.ts"]
 ```
 
 ---
@@ -1207,7 +1207,7 @@ bot.launch();
 **Goal**: Implement MCP server on Cloudflare Workers with D1 + KV storage
 
 **Tasks**:
-- [x] Create packages/memory-mcp package
+- [x] Create apps/memory-mcp package
 - [x] Set up Cloudflare Workers entry point (Hono HTTP API)
 - [x] Implement MCP server using @modelcontextprotocol/sdk
 - [x] Create D1 schema (users, sessions, tokens)
@@ -1265,7 +1265,7 @@ bot.launch();
 **Goal**: Build containerized server with WebSocket support
 
 **Tasks**:
-- [x] Create packages/server package
+- [x] Create apps/agent-server package
 - [x] Implement server entry point
 - [ ] Add MCP client for memory server connection
 - [x] Implement AgentSessionManager (in-memory + MCP persistence)
@@ -1771,7 +1771,7 @@ export async function handleMention(event: GitHubMentionEvent) {
 ##### Long-Running Server
 
 ```typescript
-// packages/server/src/agent-runner.ts
+// apps/agent-server/src/agent-runner.ts
 import { executeQuery, createQueryController } from '@duyetbot/core/sdk-engine';
 
 export class AgentRunner {
@@ -1813,7 +1813,7 @@ export class AgentRunner {
 
 ### MCP Memory Integration
 
-The memory MCP server (`packages/memory-mcp`) becomes a first-class MCP server that the SDK connects to:
+The memory MCP server (`apps/memory-mcp`) becomes a first-class MCP server that the SDK connects to:
 
 ```typescript
 // SDK automatically calls MCP server tools
@@ -2141,7 +2141,7 @@ bun --filter @duyetbot/cli dev
 bun --filter @duyetbot/memory-mcp deploy
 
 # Start agent server locally
-bun --filter @duyetbot/server dev
+bun --filter @duyetbot/agent-server dev
 
 # Watch mode for all packages
 bun run dev
@@ -2163,7 +2163,7 @@ bun run dev
 | 2025-11-20 | 3.9 | ✅ **Phase 5 COMPLETE**: Wired login command to GitHubDeviceAuth, added memory commands (search, stats), created SessionList UI component, implemented auto mode detection (mode-detector.ts). 342 tests passing (67 CLI tests). npm package distribution pending. |
 | 2025-11-20 | 3.8 | 🔧 **Phase 5 IN PROGRESS**: Added Ink-based terminal UI (ChatView, StatusBar, App), CloudSessionManager with MCP client, GitHub OAuth device flow. Fixed tsconfig issues across packages. 342 tests passing (67 CLI tests). SessionList and npm distribution pending. |
 | 2025-11-20 | 3.7 | 🔧 **Phase 5 IN PROGRESS**: CLI package created. @duyetbot/cli with: config management, AuthManager, FileSessionManager, Commander.js commands (login, logout, whoami, chat, sessions, config). 315 tests passing (40 new CLI tests). Ink UI pending. |
-| 2025-11-20 | 3.6 | ✅ **Phase 4 COMPLETE**: Long-Running Agent Server implemented. Created @duyetbot/server package with: config system, AgentSessionManager, health routes, agent API routes (sessions, execute), WebSocket server for streaming, graceful shutdown. Dockerfiles for server and mcp-memory. docker-compose.yml for deployment. 275 tests passing (36 new server tests). |
+| 2025-11-20 | 3.6 | ✅ **Phase 4 COMPLETE**: Long-Running Agent Server implemented. Created @duyetbot/agent-server package with: config system, AgentSessionManager, health routes, agent API routes (sessions, execute), WebSocket server for streaming, graceful shutdown. Dockerfiles for server and mcp-memory. docker-compose.yml for deployment. 275 tests passing (36 new server tests). |
 | 2025-11-20 | 3.5 | ✅ **Phase 3 COMPLETE**: Added comprehensive tests for all packages. 239 tests passing: 93 memory-mcp + 38 providers (factory, claude) + 51 tools (registry, sleep) + 57 core (session manager, MCP client). |
 | 2025-11-20 | 3.4 | 🔧 **Phase 3 IN PROGRESS**: Added MCP client integration to core package. MCPMemoryClient class for memory server operations (authenticate, getMemory, saveMemory, searchMemory, listSessions). Tests pending. |
 | 2025-11-20 | 3.3 | 🔧 **Phase 3 IN PROGRESS**: Refactored providers with base URL override support. Added createZAIConfig and createProviderConfig helpers for Z.AI support. Created GitHub tool with 10 actions (get_pr, get_issue, create_comment, etc.). All packages building successfully. |
