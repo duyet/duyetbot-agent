@@ -1,5 +1,5 @@
 {
-  "name": "@duyetbot/server",
+  "name": "@duyetbot/agent-server",
   "version": "0.1.0",
   "description": "Long-running agent server with WebSocket support",
   "type": "module",

@@ -1,6 +1,6 @@
 # Getting Started
 
-**Related:** [Use Cases](USECASES.md) | [Architecture](ARCHITECTURE.md) | [API Reference](API.md) | [Deployment](DEPLOY.md)
+**Related:** [Use Cases](usecases.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](deploy.md)
 
 Complete guide to installing, configuring, and running duyetbot-agent.
 
@@ -115,7 +115,7 @@ pnpm run dev --filter @duyetbot/cli
 pnpm run dev --filter @duyetbot/github-bot
 
 # Server only
-pnpm run dev --filter @duyetbot/server
+pnpm run dev --filter @duyetbot/agent-server
 ```
 
 ### Code Quality
@@ -160,14 +160,15 @@ pnpm run test:coverage
 ```
 duyetbot-agent/
 ├── apps/
-│   └── github-bot/        # GitHub App webhook handler
+│   ├── github-bot/        # GitHub App webhook handler
+│   ├── telegram-bot/      # Telegram bot
+│   ├── memory-mcp/        # MCP memory server (Cloudflare Workers)
+│   └── agent-server/      # Long-running agent server
 ├── packages/
 │   ├── cli/               # Command-line interface
 │   ├── core/              # Agent core logic
 │   ├── providers/         # LLM provider adapters
 │   ├── tools/             # Tool implementations
-│   ├── server/            # HTTP API server
-│   ├── memory-mcp/        # MCP memory server
 │   └── types/             # Shared TypeScript types
 ├── infrastructure/
 │   └── docker/            # Dockerfiles
@@ -288,8 +289,8 @@ pnpm install
 
 ## Next Steps
 
-- [Use Cases](USECASES.md) - See what you can do with @duyetbot
-- [Architecture](ARCHITECTURE.md) - Understand the system design
-- [Deployment](DEPLOY.md) - Deploy to production
-- [API Reference](API.md) - Explore the API endpoints
-- [Contributing](CONTRIBUTING.md) - Contribute to the project
+- [Use Cases](usecases.md) - See what you can do with @duyetbot
+- [Architecture](architecture.md) - Understand the system design
+- [Deployment](deploy.md) - Deploy to production
+- [API Reference](api.md) - Explore the API endpoints
+- [Contributing](contributing.md) - Contribute to the project

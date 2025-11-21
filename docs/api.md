@@ -1,6 +1,6 @@
 # API Reference
 
-**Related:** [Getting Started](GETTING_STARTED.md) | [Architecture](ARCHITECTURE.md) | [Deployment](DEPLOY.md)
+**Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [Deployment](deploy.md)
 
 Complete API reference for duyetbot-agent endpoints.
 
