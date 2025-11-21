@@ -6,8 +6,40 @@ import * as fs from 'node:fs';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { runPrompt } from '../chat.js';
 
+// Mock @duyetbot/core
+vi.mock('@duyetbot/core', () => ({
+  createDefaultOptions: vi.fn().mockReturnValue({
+    model: 'claude-3-5-sonnet-20241022',
+    maxTokens: 4096,
+    systemPrompt: 'You are a helpful assistant.',
+  }),
+  createQueryController: vi.fn().mockReturnValue({
+    abort: vi.fn(),
+  }),
+  query: vi.fn().mockImplementation(async function* () {
+    yield {
+      type: 'assistant',
+      content: 'This is a placeholder response from the mock SDK.',
+    };
+    yield {
+      type: 'result',
+      content: 'This is a placeholder response from the mock SDK.',
+    };
+  }),
+}));
+
 // Mock fs
-vi.mock('node:fs');
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn(),
+  readdirSync: vi.fn(),
+  unlinkSync: vi.fn(),
+}));
+
+// Helper type for mocked functions
+type MockFn = ReturnType<typeof vi.fn>;
 
 describe('Chat', () => {
   const sessionsDir = '/mock/sessions';
@@ -17,7 +49,7 @@ describe('Chat', () => {
     savedSessions.clear();
 
     // Mock existsSync to check our saved sessions
-    vi.mocked(fs.existsSync).mockImplementation((path) => {
+    (fs.existsSync as MockFn).mockImplementation((path) => {
       const pathStr = String(path);
       if (pathStr === sessionsDir) {
         return true;
@@ -25,15 +57,15 @@ describe('Chat', () => {
       return savedSessions.has(pathStr);
     });
 
-    vi.mocked(fs.mkdirSync).mockImplementation(() => undefined);
+    (fs.mkdirSync as MockFn).mockImplementation(() => undefined);
 
     // Save sessions when written
-    vi.mocked(fs.writeFileSync).mockImplementation((path, content) => {
+    (fs.writeFileSync as MockFn).mockImplementation((path, content) => {
       savedSessions.set(String(path), String(content));
     });
 
     // Read sessions from our store
-    vi.mocked(fs.readFileSync).mockImplementation((path) => {
+    (fs.readFileSync as MockFn).mockImplementation((path) => {
       const content = savedSessions.get(String(path));
       if (content) {
         return content;

@@ -19,9 +19,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Architecture
 
 ### Technology Stack
-- **Monorepo**: pnpm workspaces + Turborepo
+- **Package Manager/Runtime**: Bun (with Turborepo for orchestration)
 - **Agent Engine**: Claude Agent SDK (@anthropic-ai/claude-agent-sdk)
-- **Server Runtime**: Node.js/Bun in Docker container
+- **Server Runtime**: Bun
 - **Memory Layer**: Cloudflare Workers (D1 + KV + Vectorize)
 - **Language**: TypeScript
 - **Testing**: Vitest
@@ -155,35 +155,35 @@ const myTool = sdkTool(
 
 ### Setup
 ```bash
-pnpm install
+bun install
 ```
 
 ### Development
 ```bash
-pnpm run dev                     # Start all packages in dev mode
-pnpm run build                   # Build all packages
-pnpm run type-check              # TypeScript type checking
+bun run dev                     # Start all packages in dev mode
+bun run build                   # Build all packages
+bun run type-check              # TypeScript type checking
 ```
 
 ### Testing
 ```bash
-pnpm run test                    # Run all tests
-pnpm run test --filter @duyetbot/core   # Test specific package
+bun run test                    # Run all tests
+bun run test --filter @duyetbot/core   # Test specific package
 ```
 
 ### Linting and Formatting
 ```bash
-pnpm run lint                    # Biome check
-pnpm run lint:fix                # Auto-fix linting issues
-pnpm run format                  # Format code with Biome
-pnpm run check                   # Run all checks (lint + type-check)
+bun run lint                    # Biome check
+bun run lint:fix                # Auto-fix linting issues
+bun run format                  # Format code with Biome
+bun run check                   # Run all checks (lint + type-check)
 ```
 
 ### Package-Specific Commands
 ```bash
-pnpm --filter @duyetbot/cli dev       # Run CLI in dev mode
-pnpm --filter @duyetbot/server dev    # Run server in dev mode
-pnpm --filter @duyetbot/memory-mcp deploy  # Deploy MCP server
+bun --filter @duyetbot/cli dev       # Run CLI in dev mode
+bun --filter @duyetbot/server dev    # Run server in dev mode
+bun --filter @duyetbot/memory-mcp deploy  # Deploy MCP server
 ```
 
 ## Development Workflow
@@ -203,6 +203,22 @@ pnpm --filter @duyetbot/memory-mcp deploy  # Deploy MCP server
 1. **Update PLAN.md** with completed tasks and new discoveries
 2. **Update the Revision History** table
 3. **Commit PLAN.md** along with code changes
+
+### Pre-Commit Checks
+
+**IMPORTANT: Before committing and pushing, always ensure:**
+
+1. **Lint passes**: `bun run lint` or `bun run lint:fix`
+2. **Type check passes**: `bun run type-check`
+3. **Tests pass**: `bun run test`
+
+Or run all checks at once:
+```bash
+bun run check  # Runs lint + type-check
+bun run test   # Runs all tests
+```
+
+The repository has a pre-push hook that runs these checks automatically. If the hook fails, fix the issues before pushing.
 
 ### Commit Message Guidelines
 
@@ -338,9 +354,9 @@ export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 
 ### Running Tests
 ```bash
-pnpm run test                              # All tests
-pnpm run test --filter @duyetbot/core      # Core only
-pnpm run test --filter @duyetbot/tools     # Tools only
+bun run test                              # All tests
+bun run test --filter @duyetbot/core      # Core only
+bun run test --filter @duyetbot/tools     # Tools only
 ```
 
 ## Key Patterns

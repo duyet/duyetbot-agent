@@ -7,10 +7,10 @@
 import { createServer } from 'node:http';
 import { serve } from '@hono/node-server';
 import { Hono } from 'hono';
-import { loadConfig, validateConfig } from './config.js';
-import { createAgentRoutes, createHealthRoutes } from './routes/index.js';
-import { AgentSessionManager } from './session-manager.js';
-import { type AgentWebSocketServer, createWebSocketServer } from './websocket.js';
+import { loadConfig, validateConfig } from './config';
+import { createAgentRoutes, createHealthRoutes } from './routes/index';
+import { AgentSessionManager } from './session-manager';
+import { type AgentWebSocketServer, createWebSocketServer } from './websocket';
 
 export interface ServerInstance {
   httpServer: ReturnType<typeof serve>;

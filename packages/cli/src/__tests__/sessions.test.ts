@@ -7,8 +7,18 @@ import * as path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { FileSessionManager, LocalSession } from '../sessions.js';
 
-// Mock fs
-vi.mock('node:fs');
+// Mock fs with factory functions
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn(),
+  readdirSync: vi.fn(),
+  unlinkSync: vi.fn(),
+}));
+
+// Helper type for mocked functions
+type MockFn = ReturnType<typeof vi.fn>;
 
 describe('FileSessionManager', () => {
   const sessionsDir = '/mock/sessions';
@@ -16,12 +26,12 @@ describe('FileSessionManager', () => {
 
   beforeEach(() => {
     sessionManager = new FileSessionManager(sessionsDir);
-    vi.mocked(fs.existsSync).mockReturnValue(false);
-    vi.mocked(fs.mkdirSync).mockImplementation(() => undefined);
-    vi.mocked(fs.writeFileSync).mockImplementation(() => undefined);
-    vi.mocked(fs.readFileSync).mockReturnValue('[]');
-    vi.mocked(fs.readdirSync).mockReturnValue([]);
-    vi.mocked(fs.unlinkSync).mockImplementation(() => undefined);
+    (fs.existsSync as MockFn).mockReturnValue(false);
+    (fs.mkdirSync as MockFn).mockImplementation(() => undefined);
+    (fs.writeFileSync as MockFn).mockImplementation(() => undefined);
+    (fs.readFileSync as MockFn).mockReturnValue('[]');
+    (fs.readdirSync as MockFn).mockReturnValue([]);
+    (fs.unlinkSync as MockFn).mockImplementation(() => undefined);
   });
 
   afterEach(() => {
@@ -54,7 +64,7 @@ describe('FileSessionManager', () => {
     });
 
     it('should create sessions directory if not exists', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      (fs.existsSync as MockFn).mockReturnValue(false);
 
       await sessionManager.createSession({ title: 'Test Session' });
 
@@ -64,7 +74,7 @@ describe('FileSessionManager', () => {
 
   describe('getSession', () => {
     it('should return undefined for non-existent session', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      (fs.existsSync as MockFn).mockReturnValue(false);
 
       const session = await sessionManager.getSession('non-existent');
 
@@ -81,8 +91,8 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now(),
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedSession));
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readFileSync as MockFn).mockReturnValue(JSON.stringify(savedSession));
 
       const session = await sessionManager.getSession('session-1');
 
@@ -102,8 +112,8 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now(),
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedSession));
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readFileSync as MockFn).mockReturnValue(JSON.stringify(savedSession));
 
       const updated = await sessionManager.updateSession('session-1', {
         title: 'Updated Title',
@@ -115,7 +125,7 @@ describe('FileSessionManager', () => {
     });
 
     it('should throw error for non-existent session', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      (fs.existsSync as MockFn).mockReturnValue(false);
 
       await expect(sessionManager.updateSession('non-existent', { title: 'New' })).rejects.toThrow(
         'Session not found'
@@ -132,8 +142,8 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now(),
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedSession));
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readFileSync as MockFn).mockReturnValue(JSON.stringify(savedSession));
 
       const newMessages = [
         { role: 'user' as const, content: 'Hello' },
@@ -150,7 +160,7 @@ describe('FileSessionManager', () => {
 
   describe('deleteSession', () => {
     it('should delete session file', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
+      (fs.existsSync as MockFn).mockReturnValue(true);
 
       await sessionManager.deleteSession('session-1');
 
@@ -158,16 +168,16 @@ describe('FileSessionManager', () => {
     });
 
     it('should not throw for non-existent session', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      (fs.existsSync as MockFn).mockReturnValue(false);
 
-      await expect(sessionManager.deleteSession('non-existent')).resolves.not.toThrow();
+      await expect(sessionManager.deleteSession('non-existent')).resolves.toBeUndefined();
     });
   });
 
   describe('listSessions', () => {
     it('should return empty array if no sessions', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readdirSync).mockReturnValue([]);
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readdirSync as MockFn).mockReturnValue([]);
 
       const sessions = await sessionManager.listSessions();
 
@@ -193,12 +203,12 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now(),
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readdirSync).mockReturnValue([
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readdirSync as MockFn).mockReturnValue([
         'session-1.json' as unknown as fs.Dirent,
         'session-2.json' as unknown as fs.Dirent,
       ]);
-      vi.mocked(fs.readFileSync)
+      (fs.readFileSync as MockFn)
         .mockReturnValueOnce(JSON.stringify(session1))
         .mockReturnValueOnce(JSON.stringify(session2));
 
@@ -226,12 +236,12 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now(),
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readdirSync).mockReturnValue([
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readdirSync as MockFn).mockReturnValue([
         'session-1.json' as unknown as fs.Dirent,
         'session-2.json' as unknown as fs.Dirent,
       ]);
-      vi.mocked(fs.readFileSync)
+      (fs.readFileSync as MockFn)
         .mockReturnValueOnce(JSON.stringify(session1))
         .mockReturnValueOnce(JSON.stringify(session2));
 
@@ -260,12 +270,12 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now(),
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readdirSync).mockReturnValue([
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readdirSync as MockFn).mockReturnValue([
         'session-1.json' as unknown as fs.Dirent,
         'session-2.json' as unknown as fs.Dirent,
       ]);
-      vi.mocked(fs.readFileSync)
+      (fs.readFileSync as MockFn)
         .mockReturnValueOnce(JSON.stringify(session1))
         .mockReturnValueOnce(JSON.stringify(session2));
 
@@ -284,13 +294,13 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now() - i * 1000,
       }));
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readdirSync).mockReturnValue(
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readdirSync as MockFn).mockReturnValue(
         sessions.map((s) => `${s.id}.json` as unknown as fs.Dirent)
       );
 
       let readIndex = 0;
-      vi.mocked(fs.readFileSync).mockImplementation(() => {
+      (fs.readFileSync as MockFn).mockImplementation(() => {
         return JSON.stringify(sessions[readIndex++]);
       });
 
@@ -314,8 +324,8 @@ describe('FileSessionManager', () => {
         updatedAt: Date.now(),
       };
 
-      vi.mocked(fs.existsSync).mockReturnValue(true);
-      vi.mocked(fs.readFileSync).mockReturnValue(JSON.stringify(savedSession));
+      (fs.existsSync as MockFn).mockReturnValue(true);
+      (fs.readFileSync as MockFn).mockReturnValue(JSON.stringify(savedSession));
 
       const exported = await sessionManager.exportSession('session-1');
       const parsed = JSON.parse(exported);
@@ -325,7 +335,7 @@ describe('FileSessionManager', () => {
     });
 
     it('should throw for non-existent session', async () => {
-      vi.mocked(fs.existsSync).mockReturnValue(false);
+      (fs.existsSync as MockFn).mockReturnValue(false);
 
       await expect(sessionManager.exportSession('non-existent')).rejects.toThrow(
         'Session not found'
