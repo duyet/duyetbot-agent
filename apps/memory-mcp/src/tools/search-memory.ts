@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import type { D1Storage } from '../storage/d1.js';
-import type { KVStorage } from '../storage/kv.js';
-import type { SearchResult, Session } from '../types.js';
+import type { SearchResult } from '../types.js';
 
 export const searchMemorySchema = z.object({
   query: z.string(),
@@ -24,66 +23,64 @@ export type SearchMemoryInput = z.infer<typeof searchMemorySchema>;
 export async function searchMemory(
   input: SearchMemoryInput,
   d1Storage: D1Storage,
-  kvStorage: KVStorage,
   userId: string
 ): Promise<{ results: SearchResult[] }> {
   const { query, limit = 10, filter } = input;
 
-  // Get user's sessions
-  let sessions: Session[];
+  // Use D1 search with SQL LIKE
+  const searchOptions: {
+    sessionId?: string;
+    dateRange?: { start: number; end: number };
+    limit?: number;
+  } = {
+    limit: limit * 2, // Get more to allow for context fetching
+  };
   if (filter?.session_id) {
-    const session = await d1Storage.getSession(filter.session_id);
-    if (!session || session.user_id !== userId) {
-      return { results: [] };
-    }
-    sessions = [session];
-  } else {
-    const result = await d1Storage.listSessions(userId, { limit: 100 });
-    sessions = result.sessions;
+    searchOptions.sessionId = filter.session_id;
   }
+  if (filter?.date_range) {
+    searchOptions.dateRange = filter.date_range;
+  }
+  const searchResults = await d1Storage.searchMessages(userId, query, searchOptions);
 
   const results: SearchResult[] = [];
-  const queryLower = query.toLowerCase();
 
-  // Simple text search (Vectorize integration can be added later)
-  for (const session of sessions) {
-    const messages = await kvStorage.getMessages(session.id);
+  // Group results by session to fetch context efficiently
+  const resultsBySession = new Map<string, typeof searchResults>();
+  for (const result of searchResults) {
+    const sessionResults = resultsBySession.get(result.sessionId) || [];
+    sessionResults.push(result);
+    resultsBySession.set(result.sessionId, sessionResults);
+  }
 
-    for (let i = 0; i < messages.length; i++) {
-      const message = messages[i];
-      if (!message) {
-        continue;
-      }
+  // Fetch context for each session's results
+  for (const [sessionId, sessionResults] of resultsBySession) {
+    const allMessages = await d1Storage.getMessages(sessionId);
 
-      // Apply date filter
-      if (filter?.date_range) {
-        const timestamp = message.timestamp || session.created_at;
-        if (timestamp < filter.date_range.start || timestamp > filter.date_range.end) {
-          continue;
-        }
-      }
+    for (const result of sessionResults) {
+      const { message, messageIndex } = result;
 
-      // Simple keyword matching (can be replaced with vector search)
+      // Calculate simple relevance score
+      const queryLower = query.toLowerCase();
       const contentLower = message.content.toLowerCase();
-      if (contentLower.includes(queryLower)) {
-        // Calculate simple relevance score
-        const occurrences = (contentLower.match(new RegExp(queryLower, 'g')) || []).length;
-        const score = occurrences / message.content.length;
+      const occurrences = (
+        contentLower.match(new RegExp(queryLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g')) || []
+      ).length;
+      const score = occurrences / message.content.length;
 
-        // Get context (surrounding messages)
-        const contextStart = Math.max(0, i - 2);
-        const contextEnd = Math.min(messages.length, i + 3);
-        const context = messages.slice(contextStart, contextEnd).filter((m, idx) => {
-          return m && idx !== i - contextStart; // Exclude the matching message itself
-        });
+      // Get context (surrounding messages)
+      const contextStart = Math.max(0, messageIndex - 2);
+      const contextEnd = Math.min(allMessages.length, messageIndex + 3);
+      const context = allMessages.slice(contextStart, contextEnd).filter((_, idx) => {
+        return idx !== messageIndex - contextStart; // Exclude the matching message itself
+      });
 
-        results.push({
-          session_id: session.id,
-          message,
-          score,
-          context,
-        });
-      }
+      results.push({
+        session_id: sessionId,
+        message,
+        score,
+        context,
+      });
     }
   }
 

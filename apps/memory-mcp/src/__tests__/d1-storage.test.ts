@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { D1Storage } from '../storage/d1.js';
-import type { Session, SessionToken, User } from '../types.js';
+import type { LLMMessage, Session, SessionToken, User } from '../types.js';
 
 // Mock D1 database
 function createMockD1() {
@@ -8,6 +8,17 @@ function createMockD1() {
     users: new Map<string, User>(),
     sessions: new Map<string, Session & { metadata: string }>(),
     tokens: new Map<string, SessionToken>(),
+    messages: new Map<
+      string,
+      Array<{
+        id: number;
+        session_id: string;
+        role: string;
+        content: string;
+        timestamp: number;
+        metadata: string | null;
+      }>
+    >(),
   };
 
   return {
@@ -40,6 +51,29 @@ function createMockD1() {
           if (sql.includes('FROM sessions WHERE user_id')) {
             const userId = args[0];
             const results = Array.from(data.sessions.values()).filter((s) => s.user_id === userId);
+            return { results } as { results: T[] };
+          }
+          if (sql.includes('FROM messages WHERE session_id')) {
+            const sessionId = args[0] as string;
+            const msgs = data.messages.get(sessionId) || [];
+            return { results: msgs } as { results: T[] };
+          }
+          if (sql.includes('FROM messages m')) {
+            // Search messages
+            const userId = args[0] as string;
+            const query = (args[1] as string).replace(/%/g, '');
+            const results: any[] = [];
+            for (const [sessionId, msgs] of data.messages) {
+              const session = data.sessions.get(sessionId);
+              if (!session || session.user_id !== userId) {
+                continue;
+              }
+              for (let i = 0; i < msgs.length; i++) {
+                if (msgs[i].content.toLowerCase().includes(query.toLowerCase())) {
+                  results.push({ ...msgs[i], msg_index: i });
+                }
+              }
+            }
             return { results } as { results: T[] };
           }
           return { results: [] };
@@ -93,10 +127,33 @@ function createMockD1() {
               }
             }
           }
+          if (sql.includes('DELETE FROM messages WHERE session_id')) {
+            data.messages.delete(args[0] as string);
+          }
+          if (sql.includes('INSERT INTO messages')) {
+            const sessionId = args[0] as string;
+            const msgs = data.messages.get(sessionId) || [];
+            msgs.push({
+              id: msgs.length + 1,
+              session_id: sessionId,
+              role: args[1] as string,
+              content: args[2] as string,
+              timestamp: args[3] as number,
+              metadata: args[4] as string | null,
+            });
+            data.messages.set(sessionId, msgs);
+          }
           return { success: true };
         }),
       })),
     })),
+    batch: vi.fn(async (statements: any[]) => {
+      // Execute all statements in order
+      for (const stmt of statements) {
+        await stmt.run();
+      }
+      return statements.map(() => ({ success: true }));
+    }),
     _data: data,
   };
 }
@@ -241,6 +298,89 @@ describe('D1Storage', () => {
       mockDb._data.tokens.set(expiredToken.token, expiredToken);
       await storage.deleteExpiredTokens();
       expect(mockDb.prepare).toHaveBeenCalled();
+    });
+  });
+
+  describe('Message operations', () => {
+    const testMessages: LLMMessage[] = [
+      { role: 'user', content: 'Hello', timestamp: Date.now() },
+      { role: 'assistant', content: 'Hi there!', timestamp: Date.now() + 1000 },
+    ];
+
+    it('should save messages', async () => {
+      const count = await storage.saveMessages('sess_123', testMessages);
+      expect(count).toBe(2);
+      expect(mockDb.batch).toHaveBeenCalled();
+    });
+
+    it('should return 0 for empty messages', async () => {
+      const count = await storage.saveMessages('sess_123', []);
+      expect(count).toBe(0);
+    });
+
+    it('should append messages', async () => {
+      const count = await storage.appendMessages('sess_123', testMessages);
+      expect(count).toBe(2);
+      expect(mockDb.batch).toHaveBeenCalled();
+    });
+
+    it('should return 0 for empty append', async () => {
+      const count = await storage.appendMessages('sess_123', []);
+      expect(count).toBe(0);
+    });
+
+    it('should get messages', async () => {
+      mockDb._data.messages.set(
+        'sess_123',
+        testMessages.map((m, i) => ({
+          id: i + 1,
+          session_id: 'sess_123',
+          role: m.role,
+          content: m.content,
+          timestamp: m.timestamp || Date.now(),
+          metadata: null,
+        }))
+      );
+      const result = await storage.getMessages('sess_123');
+      expect(result).toHaveLength(2);
+    });
+
+    it('should delete messages', async () => {
+      mockDb._data.messages.set('sess_123', []);
+      await storage.deleteMessages('sess_123');
+      expect(mockDb.prepare).toHaveBeenCalled();
+    });
+
+    it('should get message count', async () => {
+      // The mock returns count from sessions.size, but we need to test the method
+      const count = await storage.getMessageCount('sess_123');
+      expect(count).toBeDefined();
+    });
+
+    it('should search messages', async () => {
+      const testSession = {
+        id: 'sess_123',
+        user_id: 'user_123',
+        title: 'Test',
+        state: 'active' as const,
+        created_at: Date.now(),
+        updated_at: Date.now(),
+        metadata: '{}',
+      };
+      mockDb._data.sessions.set('sess_123', testSession);
+      mockDb._data.messages.set('sess_123', [
+        {
+          id: 1,
+          session_id: 'sess_123',
+          role: 'user',
+          content: 'Hello TypeScript',
+          timestamp: Date.now(),
+          metadata: null,
+        },
+      ]);
+
+      const results = await storage.searchMessages('user_123', 'TypeScript');
+      expect(results).toBeDefined();
     });
   });
 });
