@@ -3,7 +3,6 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { z } from 'zod';
 
 import { D1Storage } from './storage/d1.js';
-import { KVStorage } from './storage/kv.js';
 import type { Env } from './types.js';
 
 import { authenticate, authenticateSchema } from './tools/authenticate.js';
@@ -19,7 +18,6 @@ interface AuthContext {
 
 export function createMCPServer(env: Env) {
   const d1Storage = new D1Storage(env.DB);
-  const kvStorage = new KVStorage(env.KV);
 
   const server = new McpServer({
     name: 'duyetbot-memory',
@@ -67,7 +65,7 @@ export function createMCPServer(env: Env) {
         if (!userId) {
           throw new Error('Authentication required');
         }
-        const result = await getMemory(input, d1Storage, kvStorage, userId);
+        const result = await getMemory(input, d1Storage, userId);
         return {
           content: [{ type: 'text', text: JSON.stringify(result) }],
         };
@@ -105,7 +103,7 @@ export function createMCPServer(env: Env) {
         if (!userId) {
           throw new Error('Authentication required');
         }
-        const result = await saveMemory(input, d1Storage, kvStorage, userId);
+        const result = await saveMemory(input, d1Storage, userId);
         return {
           content: [{ type: 'text', text: JSON.stringify(result) }],
         };
@@ -146,7 +144,7 @@ export function createMCPServer(env: Env) {
         if (!userId) {
           throw new Error('Authentication required');
         }
-        const result = await searchMemory(input, d1Storage, kvStorage, userId);
+        const result = await searchMemory(input, d1Storage, userId);
         return {
           content: [{ type: 'text', text: JSON.stringify(result) }],
         };
@@ -179,7 +177,7 @@ export function createMCPServer(env: Env) {
         if (!userId) {
           throw new Error('Authentication required');
         }
-        const result = await listSessions(input, d1Storage, kvStorage, userId);
+        const result = await listSessions(input, d1Storage, userId);
         return {
           content: [{ type: 'text', text: JSON.stringify(result) }],
         };
