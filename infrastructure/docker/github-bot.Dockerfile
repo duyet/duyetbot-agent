@@ -30,7 +30,6 @@ COPY --from=builder /app/packages/core/dist ./packages/core/dist
 COPY --from=builder /app/packages/core/package.json ./packages/core/
 COPY --from=builder /app/apps/github-bot/dist ./apps/github-bot/dist
 COPY --from=builder /app/apps/github-bot/package.json ./apps/github-bot/
-COPY --from=builder /app/apps/github-bot/templates ./apps/github-bot/templates
 
 EXPOSE 3001
 CMD ["bun", "run", "apps/github-bot/dist/index.js"]
