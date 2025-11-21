@@ -47,20 +47,14 @@ export interface MCPMemoryClient {
 /**
  * Create a deterministic session ID for a GitHub issue
  */
-export function createIssueSessionId(
-  repository: GitHubRepository,
-  issueNumber: number
-): string {
+export function createIssueSessionId(repository: GitHubRepository, issueNumber: number): string {
   return `github:${repository.owner.login}/${repository.name}:issue:${issueNumber}`;
 }
 
 /**
  * Create a deterministic session ID for a GitHub PR
  */
-export function createPRSessionId(
-  repository: GitHubRepository,
-  prNumber: number
-): string {
+export function createPRSessionId(repository: GitHubRepository, prNumber: number): string {
   return `github:${repository.owner.login}/${repository.name}:pr:${prNumber}`;
 }
 
@@ -84,9 +78,7 @@ export function parseSessionId(sessionId: string): {
   type: GitHubSessionType;
   number: number;
 } | null {
-  const match = sessionId.match(
-    /^github:([^/]+)\/([^:]+):(issue|pr|discussion):(\d+)$/
-  );
+  const match = sessionId.match(/^github:([^/]+)\/([^:]+):(issue|pr|discussion):(\d+)$/);
   if (!match) {
     return null;
   }
@@ -96,7 +88,7 @@ export function parseSessionId(sessionId: string): {
     owner: match[1],
     repo: match[2],
     type: match[3] as GitHubSessionType,
-    number: parseInt(match[4], 10),
+    number: Number.parseInt(match[4], 10),
   };
 }
 
@@ -107,10 +99,13 @@ export function parseSessionId(sessionId: string): {
  */
 export class GitHubSessionManager {
   private mcpClient: MCPMemoryClient | undefined;
-  private localCache: Map<string, {
-    messages: Array<{ role: string; content: string }>;
-    metadata: GitHubSessionMetadata;
-  }> = new Map();
+  private localCache: Map<
+    string,
+    {
+      messages: Array<{ role: string; content: string }>;
+      metadata: GitHubSessionMetadata;
+    }
+  > = new Map();
 
   constructor(mcpClient?: MCPMemoryClient) {
     this.mcpClient = mcpClient;
@@ -206,7 +201,7 @@ export class GitHubSessionManager {
           messages: memory.messages,
           metadata,
         };
-      } catch (error) {
+      } catch {
         // Session doesn't exist yet, create new
         console.log(`Creating new session: ${sessionId}`);
       }
@@ -247,18 +242,18 @@ export class GitHubSessionManager {
         updatedAt: Date.now(),
       };
 
-      await this.mcpClient.saveMemory(sessionId, messages, metadata as unknown as Record<string, unknown>);
+      await this.mcpClient.saveMemory(
+        sessionId,
+        messages,
+        metadata as unknown as Record<string, unknown>
+      );
     }
   }
 
   /**
    * Append a message to a session
    */
-  async appendMessage(
-    sessionId: string,
-    role: string,
-    content: string
-  ): Promise<void> {
+  async appendMessage(sessionId: string, role: string, content: string): Promise<void> {
     const cached = this.localCache.get(sessionId);
     if (!cached) {
       throw new Error(`Session not found: ${sessionId}`);
@@ -287,10 +282,12 @@ export class GitHubSessionManager {
   /**
    * Get session from cache (for testing)
    */
-  getCached(sessionId: string): {
-    messages: Array<{ role: string; content: string }>;
-    metadata: GitHubSessionMetadata;
-  } | undefined {
+  getCached(sessionId: string):
+    | {
+        messages: Array<{ role: string; content: string }>;
+        metadata: GitHubSessionMetadata;
+      }
+    | undefined {
     return this.localCache.get(sessionId);
   }
 }
@@ -298,16 +295,13 @@ export class GitHubSessionManager {
 /**
  * Create a simple MCP client for the GitHub bot
  */
-export function createMCPClient(
-  serverUrl: string,
-  authToken?: string
-): MCPMemoryClient {
+export function createMCPClient(serverUrl: string, authToken?: string): MCPMemoryClient {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
   if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
+    headers.Authorization = `Bearer ${authToken}`;
   }
 
   return {

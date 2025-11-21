@@ -5,12 +5,7 @@
  */
 
 import { Octokit } from '@octokit/rest';
-import type {
-  GitHubPullRequest,
-  GitHubRepository,
-  GitHubUser,
-  MentionContext,
-} from '../types.js';
+import type { GitHubPullRequest, GitHubRepository, GitHubUser, MentionContext } from '../types.js';
 
 export interface PullRequestEvent {
   action:
@@ -72,7 +67,7 @@ export async function handlePullRequestEvent(
   // Check if this action should trigger auto-response
   const shouldRespond =
     // Auto-respond to configured actions
-    (autoRespondActions.includes(event.action as 'opened' | 'ready_for_review' | 'synchronize')) ||
+    autoRespondActions.includes(event.action as 'opened' | 'ready_for_review' | 'synchronize') ||
     // Or when a trigger label is added
     (event.action === 'labeled' && event.label && triggerLabels.includes(event.label.name)) ||
     // Or when PR is marked ready for review (if enabled)
@@ -128,9 +123,7 @@ function buildTaskForPREvent(event: PullRequestEvent, config?: PullRequestHandle
   switch (event.action) {
     case 'opened':
       if (customTemplate) {
-        return customTemplate
-          .replace('{action}', 'new')
-          .replace('{pr_number}', String(pr.number));
+        return customTemplate.replace('{action}', 'new').replace('{pr_number}', String(pr.number));
       }
       return `Review this new pull request and provide feedback:\n\nTitle: ${pr.title}\n\nDescription:\n${pr.body || '(no description)'}\n\nChanges: ${pr.changed_files} files (+${pr.additions} -${pr.deletions})`;
 
@@ -154,9 +147,6 @@ function buildTaskForPREvent(event: PullRequestEvent, config?: PullRequestHandle
 /**
  * Create session ID for pull request
  */
-export function createPRSessionId(
-  repository: GitHubRepository,
-  prNumber: number
-): string {
+export function createPRSessionId(repository: GitHubRepository, prNumber: number): string {
   return `github:${repository.owner.login}/${repository.name}:pr:${prNumber}`;
 }

@@ -2,12 +2,12 @@
  * Tests for GitHubSessionManager
  */
 
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   GitHubSessionManager,
+  createDiscussionSessionId,
   createIssueSessionId,
   createPRSessionId,
-  createDiscussionSessionId,
   parseSessionId,
 } from '../session-manager.js';
 import type { MCPMemoryClient } from '../session-manager.js';
@@ -81,11 +81,7 @@ describe('GitHubSessionManager', () => {
     });
 
     it('should create new issue session', async () => {
-      const session = await sessionManager.getIssueSession(
-        mockRepository,
-        1,
-        'Test Issue'
-      );
+      const session = await sessionManager.getIssueSession(mockRepository, 1, 'Test Issue');
 
       expect(session.sessionId).toBe('github:testowner/testrepo:issue:1');
       expect(session.messages).toEqual([]);
@@ -95,11 +91,7 @@ describe('GitHubSessionManager', () => {
     });
 
     it('should create new PR session', async () => {
-      const session = await sessionManager.getPRSession(
-        mockRepository,
-        42,
-        'Test PR'
-      );
+      const session = await sessionManager.getPRSession(mockRepository, 42, 'Test PR');
 
       expect(session.sessionId).toBe('github:testowner/testrepo:pr:42');
       expect(session.messages).toEqual([]);
@@ -143,9 +135,9 @@ describe('GitHubSessionManager', () => {
     });
 
     it('should throw when appending to non-existent session', async () => {
-      await expect(
-        sessionManager.appendMessage('nonexistent', 'user', 'Hello')
-      ).rejects.toThrow('Session not found');
+      await expect(sessionManager.appendMessage('nonexistent', 'user', 'Hello')).rejects.toThrow(
+        'Session not found'
+      );
     });
 
     it('should clear cache', async () => {
@@ -170,9 +162,7 @@ describe('GitHubSessionManager', () => {
     });
 
     it('should load session from MCP server', async () => {
-      const existingMessages = [
-        { role: 'user', content: 'Previous message' },
-      ];
+      const existingMessages = [{ role: 'user', content: 'Previous message' }];
 
       (mockMCPClient.getMemory as any).mockResolvedValue({
         session_id: 'github:testowner/testrepo:issue:1',

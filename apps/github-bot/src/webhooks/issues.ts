@@ -5,12 +5,7 @@
  */
 
 import { Octokit } from '@octokit/rest';
-import type {
-  GitHubIssue,
-  GitHubRepository,
-  GitHubUser,
-  MentionContext,
-} from '../types.js';
+import type { GitHubIssue, GitHubRepository, GitHubUser, MentionContext } from '../types.js';
 
 export interface IssueEvent {
   action:
@@ -68,7 +63,7 @@ export async function handleIssueEvent(
   // Check if this action should trigger auto-response
   const shouldRespond =
     // Auto-respond to configured actions
-    (autoRespondActions.includes(event.action as 'opened' | 'reopened')) ||
+    autoRespondActions.includes(event.action as 'opened' | 'reopened') ||
     // Or when a trigger label is added
     (event.action === 'labeled' && event.label && triggerLabels.includes(event.label.name));
 
@@ -110,7 +105,9 @@ function buildTaskForIssueEvent(event: IssueEvent, config?: IssueHandlerConfig):
   switch (event.action) {
     case 'opened':
       if (customTemplate) {
-        return customTemplate.replace('{action}', 'new').replace('{issue_number}', String(event.issue.number));
+        return customTemplate
+          .replace('{action}', 'new')
+          .replace('{issue_number}', String(event.issue.number));
       }
       return `Analyze this new issue and provide initial assessment:\n\nTitle: ${event.issue.title}\n\nBody:\n${event.issue.body || '(no description)'}`;
 
@@ -131,9 +128,6 @@ function buildTaskForIssueEvent(event: IssueEvent, config?: IssueHandlerConfig):
 /**
  * Create session ID for issue
  */
-export function createIssueSessionId(
-  repository: GitHubRepository,
-  issueNumber: number
-): string {
+export function createIssueSessionId(repository: GitHubRepository, issueNumber: number): string {
   return `github:${repository.owner.login}/${repository.name}:issue:${issueNumber}`;
 }
