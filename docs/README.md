@@ -1,78 +1,136 @@
-# duyetbot-agent Documentation
+# duyetbot-agent
 
-Autonomous bot agent system built on Claude Agent SDK.
+**Autonomous AI agent with persistent memory across CLI, GitHub, and Telegram**
 
-**Related:** [Use Cases](USECASES.md) | [Architecture](ARCHITECTURE.md) | [Deployment](DEPLOY.md)
+---
 
-## Getting Started
+## What is duyetbot?
 
-### Prerequisites
+duyetbot is your personal AI assistant that remembers context across all interfaces. Unlike traditional chatbots that forget between sessions, duyetbot maintains persistent memory of your conversations, code context, and preferences.
 
-- Node.js 20+
-- pnpm 9+
-- GitHub account (for GitHub Bot)
+**Built with:** Claude Agent SDK, Cloudflare Workers, TypeScript
 
-### Installation
+---
+
+## Quick Links
+
+| | |
+|---|---|
+| [Getting Started](GETTING_STARTED.md) | Installation, setup, and configuration |
+| [Use Cases](USECASES.md) | What you can do with @duyetbot |
+| [Architecture](ARCHITECTURE.md) | System design and components |
+| [API Reference](API.md) | Endpoints and schemas |
+| [Deployment](DEPLOY.md) | Deploy to Railway, Fly.io, AWS |
+| [Contributing](CONTRIBUTING.md) | How to contribute |
+
+---
+
+## Features
+
+### Multi-Interface Access
+
+- **CLI** - Local development and quick queries
+- **GitHub Bot** - PR reviews, issue management, code analysis
+- **Telegram Bot** - Quick queries and notifications
+
+### Persistent Memory
+
+Your conversations are stored securely in Cloudflare D1. Ask follow-up questions days later - duyetbot remembers the context.
+
+### Multi-LLM Support
+
+Choose your preferred model:
+- **Claude** - Best for code and reasoning
+- **OpenAI GPT-4** - Fast general tasks
+- **OpenRouter** - Access multiple models
+
+### Edge Deployment
+
+Global low latency on Cloudflare Workers with D1, KV, and R2 storage.
+
+---
+
+## Example Usage
+
+### CLI
 
 ```bash
-# Clone the repository
+duyetbot chat
+> Help me debug this TypeScript error
+> Explain the previous error in simpler terms
+```
+
+### GitHub
+
+```markdown
+@duyetbot review this PR focusing on security
+@duyetbot explain what this code does
+@duyetbot merge when CI passes
+```
+
+### Telegram
+
+```
+/chat What's the best way to implement rate limiting?
+/status Check my recent PRs
+```
+
+---
+
+## Quick Start
+
+```bash
+# Clone and install
 git clone https://github.com/duyet/duyetbot-agent.git
 cd duyetbot-agent
-
-# Install dependencies
 pnpm install
 
-# Build all packages
+# Build and test
 pnpm run build
-```
-
-### Quick Start
-
-```bash
-# Run the CLI
-pnpm run cli
-
-# Start the development server
-pnpm run dev
-
-# Run tests
 pnpm test
+
+# Start development
+pnpm run dev
 ```
 
-## Documentation
+See [Getting Started](GETTING_STARTED.md) for detailed setup instructions.
 
-- [Use Cases](USECASES.md) - What you can do with @duyetbot
-- [Architecture](ARCHITECTURE.md) - System design and components
-- [Deployment Guide](DEPLOY.md) - Deploy to Railway, Fly.io, Render, AWS
+---
 
 ## Project Structure
 
 ```
 duyetbot-agent/
 ├── apps/
-│   └── github-bot/     # GitHub App bot
+│   └── github-bot/        # GitHub webhook handler
 ├── packages/
-│   ├── cli/            # Command-line interface
-│   ├── core/           # Core agent logic
-│   ├── providers/      # LLM provider adapters
-│   ├── tools/          # Tool implementations
-│   ├── server/         # HTTP server
-│   ├── memory-mcp/     # MCP memory server
-│   └── types/          # Shared types
-├── infrastructure/
-│   └── docker/         # Dockerfiles
-└── docs/               # Documentation
+│   ├── cli/               # Command-line interface
+│   ├── core/              # Agent core logic
+│   ├── providers/         # LLM adapters
+│   ├── tools/             # Agent tools
+│   ├── server/            # HTTP API
+│   └── memory-mcp/        # MCP memory server
+└── docs/                  # Documentation
 ```
 
-## Features
+---
 
-- **Multi-LLM Support**: Claude, OpenAI, OpenRouter (see [Providers](ARCHITECTURE.md#providers-packagesproviders))
-- **GitHub Bot**: Responds to mentions in issues/PRs (see [GitHub Bot](ARCHITECTURE.md#github-bot-appsgithub-bot))
-- **Session Management**: Persistent conversation history (see [Session Management](ARCHITECTURE.md#session-management))
-- **MCP Integration**: Memory server for context storage (see [Memory MCP](ARCHITECTURE.md#memory-mcp-packagesmemory-mcp))
-- **Extensible Tools**: bash, git, research, plan, sleep (see [Tools](ARCHITECTURE.md#tools-packagestools))
+## Status
 
-## Quick Links
+**Phase 6 Complete**: GitHub Bot with webhook handlers, session management, and Docker deployment.
+
+**Next**: Phase 7 - Telegram Bot Integration
+
+See [PLAN.md](https://github.com/duyet/duyetbot-agent/blob/main/PLAN.md) for full roadmap.
+
+---
+
+## Links
 
 - [GitHub Repository](https://github.com/duyet/duyetbot-agent)
 - [Report Issues](https://github.com/duyet/duyetbot-agent/issues)
+- [Discussions](https://github.com/duyet/duyetbot-agent/discussions)
+
+---
+
+**399 tests passing** | **MIT License** | **Built with Claude Code**
