@@ -9,8 +9,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { CLIConfig, getDefaultConfig, loadConfig, saveConfig } from '../config.js';
 
 // Mock fs and os
-vi.mock('node:fs');
-vi.mock('node:os');
+vi.mock('node:fs', () => ({
+  existsSync: vi.fn(),
+  mkdirSync: vi.fn(),
+  writeFileSync: vi.fn(),
+  readFileSync: vi.fn(),
+}));
+vi.mock('node:os', () => ({
+  homedir: vi.fn(),
+}));
 
 describe('CLIConfig', () => {
   const mockHomeDir = '/mock/home';
