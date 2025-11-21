@@ -13,9 +13,9 @@
     }
   },
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx watch src/server.ts",
-    "start": "node dist/server.js",
+    "build": "bun run build.ts",
+    "dev": "bun --watch src/server.ts",
+    "start": "bun dist/server.js",
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -27,15 +27,14 @@
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "@hono/node-server": "^1.13.0",
-    "hono": "catalog:",
+    "hono": "^4.10.6",
     "ws": "^8.18.0",
-    "zod": "catalog:"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
+    "@types/node": "^22.10.0",
     "@types/ws": "^8.5.13",
-    "tsx": "catalog:",
-    "typescript": "catalog:",
-    "vitest": "catalog:"
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
   }
 }

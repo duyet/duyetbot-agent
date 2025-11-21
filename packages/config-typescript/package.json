@@ -6,6 +6,6 @@
   "license": "MIT",
   "files": ["*.json"],
   "devDependencies": {
-    "typescript": "catalog:"
+    "typescript": "^5.7.2"
   }
 }

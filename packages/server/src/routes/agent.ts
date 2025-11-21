@@ -7,12 +7,12 @@
 import type { QueryOptions, SDKTool } from '@duyetbot/core/sdk';
 import { Hono } from 'hono';
 import { z } from 'zod';
-import { executeQuery } from '../sdk-adapter.js';
+import { executeQuery } from '../sdk-adapter';
 import type {
   AgentSessionManager,
   CreateSessionInput,
   ListSessionsOptions,
-} from '../session-manager.js';
+} from '../session-manager';
 
 /**
  * Agent routes configuration
