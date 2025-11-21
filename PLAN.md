@@ -74,6 +74,15 @@ When working on this project:
 
 ## New Architecture Overview
 
+### Hybrid Supervisor-Worker Model
+
+The architecture implements a **Hybrid Supervisor-Worker Model** that combines the best of serverless orchestration with containerized compute:
+
+- **Supervisor (Cloudflare Workflows)**: The "Brain" - orchestration, state management, webhook ingestion, human-in-the-loop
+- **Worker (Fly.io Machines)**: The "Hands" - filesystem, shell tools, Claude Agent SDK execution
+
+This solves the fundamental challenge: heavy LLM tasks need a "computer-like" environment, but we want serverless cost-efficiency.
+
 ### High-Level System Design
 
 ```
@@ -83,53 +92,108 @@ When working on this project:
 │ GitHub @mentions│ Telegram Bot   │  CLI Tool    │ Web UI (future) │
 └────────┬───────┴────────┬───────┴──────┬───────┴─────────────────┘
          │                │              │
-         │                │              │
-    ┌────▼────────────────▼──────────────▼─────┐
-    │       HTTP API Gateway (Hono)             │
-    │   - Authentication (GitHub user context)  │
-    │   - Rate limiting                         │
-    │   - Request routing                       │
-    └────────────────────┬──────────────────────┘
-                         │
-         ┌───────────────┼───────────────┐
-         │               │               │
-    ┌────▼────┐     ┌────▼────┐    ┌────▼────────┐
-    │ GitHub  │     │Telegram │    │   Agent     │
-    │  Bot    │     │  Bot    │    │   Server    │
-    │ Handler │     │ Handler │    │ (Container) │
-    └────┬────┘     └────┬────┘    └──────┬──────┘
-         │               │                 │
-         └───────────────┼─────────────────┘
-                         │
-              ┌──────────▼──────────┐
-              │  MCP Memory Server   │
-              │ (Cloudflare Workers)│
-              ├──────────────────────┤
-              │ • Authentication     │
-              │ • Session Storage    │
-              │ • Message History    │
-              │ • Vector Search      │
-              └──────────┬───────────┘
-                         │
-         ┌───────────────┼────────────────┐
-         │               │                │
-    ┌────▼────┐    ┌────▼────┐      ┌────▼────┐
-    │   D1    │    │   KV    │      │Vectorize│
-    │(Metadata)│    │(Messages)│      │ (Search)│
-    └─────────┘    └─────────┘      └─────────┘
+         ▼                ▼              │
+┌─────────────────────────────────────────────────────────────────┐
+│              Ingress Worker (Cloudflare Worker)                  │
+│  • Webhook signature validation                                  │
+│  • Event routing                                                 │
+│  • Instance management                                           │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│           Workflow Supervisor (Cloudflare Durable Object)        │
+│  • State machine: status, machine_id, volume_id                  │
+│  • Provisions Fly.io resources                                   │
+│  • Manages Human-in-the-Loop wait states                         │
+│  • Can sleep for days/weeks without cost                         │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+                          ▼
+┌─────────────────────────────────────────────────────────────────┐
+│              Agent Runner (Fly.io Machine)                       │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Docker Container                                          │ │
+│  │  • Node.js + git + gh + ripgrep                            │ │
+│  │  • Claude Agent SDK                                        │ │
+│  │  • Custom tools (GitHub, Research)                         │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                          │                                       │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │  Persistent Volume (NVMe)                                  │ │
+│  │  • Session state (/root/.claude)                           │ │
+│  │  • Conversation history                                    │ │
+│  └────────────────────────────────────────────────────────────┘ │
+└─────────────────────────┬───────────────────────────────────────┘
+                          │
+              ┌───────────┼───────────┐
+              │           │           │
+              ▼           ▼           ▼
+         ┌────────┐  ┌────────┐  ┌────────┐
+         │ GitHub │  │Anthropic│  │  MCP   │
+         │  API   │  │   API   │  │ Memory │
+         └────────┘  └────────┘  └────────┘
 ```
 
-### Key Architectural Changes
+### Key Architectural Decisions
 
-| Component | Old Design | New Design | Rationale |
-|-----------|------------|------------|-----------|
-| **Main Runtime** | Cloudflare Workers | Node.js/Bun Container | Long-running stateful sessions, no CPU limits |
-| **Memory Layer** | KV + D1 directly | MCP Server (CF Workers) | Standardized protocol, reusable across clients |
-| **Project Structure** | Single package | Monorepo (pnpm) | Separated concerns, independent deployments |
-| **CLI** | Planned | Full-featured with MCP | Local execution + cloud memory access |
-| **Provider System** | Fixed providers | Base URL override support | Flexible (Z.AI, custom endpoints) |
-| **GitHub Integration** | Webhook parsing only | Full bot with @mentions | Complete automation for @duyet |
-| **Telegram** | Not planned | Full bot integration | Communication and notifications |
+| Component | Design Choice | Rationale |
+|-----------|---------------|-----------|
+| **Orchestration** | Cloudflare Workflows | Durable execution, free sleep (365 days), built-in retries |
+| **Compute** | Fly.io Machines | Full Linux, fast boot (~2s), API-driven lifecycle |
+| **State** | Fly.io Volumes | SDK requires filesystem, NVMe performance, Volume-as-Session |
+| **Agent Engine** | Claude Agent SDK | Battle-tested, maintained by Anthropic |
+| **Feedback** | GitHub Checks API | Real-time streaming, action_required for HITL |
+| **Memory** | MCP Server (CF Workers) | Cross-session search, user isolation |
+| **Project Structure** | Monorepo (pnpm) | Separated concerns, independent deployments |
+| **Provider System** | Base URL override | Flexible (Z.AI, custom endpoints) |
+
+### Volume-as-Session Pattern
+
+The Claude Agent SDK relies on local filesystem for session state. We solve this with persistent Fly.io Volumes:
+
+```
+Volume Creation:
+  PR #123 opened → Create vol_duyetbot_pr_123
+
+Mount on Run:
+  Machine boots → Mount volume to /root/.claude
+
+Session Persistence:
+  SDK writes → Actually writes to NVMe volume
+  Machine dies → Data survives
+
+Resume:
+  Next webhook → New machine, same volume
+  SDK boots → Finds existing state, resumes context
+```
+
+This enables multi-day conversations without complex database serialization.
+
+### Human-in-the-Loop via GitHub Checks API
+
+For tasks requiring human approval:
+
+1. **Agent Decision** → Reaches decision point requiring approval
+2. **Check Update** → Status: `action_required`, Actions: `[{ label: "Approve" }]`
+3. **Workflow Sleep** → Runner exits, Supervisor calls `step.wait_for_event()`
+4. **User Clicks Button** → GitHub sends `check_run.requested_action` webhook
+5. **Resume** → Workflow wakes, provisions new machine, agent resumes
+
+This allows the bot to wait days/weeks for user input without cost.
+
+### Cost Model
+
+**Scenario: 100 PRs/month, 10 min avg active time**
+
+| Component | Calculation | Cost |
+|-----------|-------------|------|
+| Fly.io Compute | 60,000s × $0.000011/s | $0.66 |
+| Fly.io Storage | 100 PRs × 1GB × 5 days | $2.50 |
+| Cloudflare | Mostly routing | ~$0.50 |
+| **Total** | | **~$3.66/mo** |
+
+Compare to always-on containers: **~$58/mo** (2× machines)
 
 ---
 
@@ -2067,13 +2131,16 @@ packages/core/src/
 
 | Component | Technology | Rationale |
 |-----------|-----------|-----------|
+| **Orchestration** | Cloudflare Workflows | Durable execution, free sleep (365 days), built-in retries |
+| **Compute** | Fly.io Machines | Full Linux, fast boot (~2s), API-driven lifecycle |
+| **State Persistence** | Fly.io Volumes | NVMe storage, Volume-as-Session pattern |
 | **Monorepo** | pnpm workspaces + Turborepo | Fast, efficient, great TypeScript support |
-| **Agent Server** | Node.js/Bun + Docker | Long-running, stateful, containerized |
-| **MCP Memory Server** | Cloudflare Workers + D1 + KV | Edge deployment, low latency, scalable |
+| **Agent Engine** | Claude Agent SDK | Battle-tested, maintained by Anthropic |
+| **MCP Memory Server** | Cloudflare Workers + D1 + KV | Edge deployment, cross-session search |
+| **Feedback Loop** | GitHub Checks API | Real-time streaming, HITL via action_required |
 | **CLI** | Node.js + Ink + Commander | Cross-platform, rich terminal UI |
-| **GitHub Bot** | Probot/Octokit | Official GitHub App framework |
+| **GitHub Bot** | Hono + Octokit | Webhook handling, GitHub API |
 | **Telegram Bot** | Telegraf | Best TypeScript bot framework |
-| **API Gateway** | Hono | Fast, lightweight, edge-compatible |
 | **Testing** | Vitest | Fast, modern, great DX |
 | **LLM** | Claude/Z.AI/OpenRouter | Claude-compatible APIs only |
 | **Protocol** | MCP | Standardized tool/resource protocol |
@@ -2153,6 +2220,7 @@ bun run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-21 | 3.17 | 🏗️ **ARCHITECTURE UPDATE**: Updated to Hybrid Supervisor-Worker Model based on durable execution research. Cloudflare Workflows as Supervisor (orchestration, state, HITL), Fly.io Machines as Worker (compute, filesystem, SDK). Added Volume-as-Session pattern for state persistence. Human-in-the-Loop via GitHub Checks API action_required. Cost model: ~$3.66/mo vs $58/mo always-on. Updated docs/architecture.md and PLAN.md. |
 | 2025-11-21 | 3.16 | ✅ **Phase 7 COMPLETE**: Server SDK integration implemented. Updated /execute endpoint to use SDK query() function. WebSocket handleChat now streams SDK messages (assistant, tool_use, tool_result, tokens). Created sdk-adapter.ts with toSDKTool/toSDKTools for tool conversion, executeQuery/streamQuery helpers, and createQueryController for interruption. Added AgentRoutesConfig and WebSocketConfig for tool/prompt/model configuration. All 443+ tests passing. |
 | 2025-11-21 | 3.15 | 🏗️ **Monorepo Refactor**: World-class monorepo structure. Removed legacy /src/, duplicate /packages/mcp-memory/. Created shared config packages (@duyetbot/config-typescript, @duyetbot/config-vitest). Added pnpm catalog for dependency version sync. Updated all package.json files to use catalog: references. Standardized exports, added clean scripts, removed src from files field. Updated turbo.json with proper task definitions. Fixed root tsconfig - removed legacy path aliases. |
 | 2025-11-21 | 3.14 | 🔧 **Phase 7 NEARLY COMPLETE**: Integrated Anthropic API with SDK query - direct API calls with retry logic (exponential backoff), complete tool execution loop with Zod validation, CLI chat with SDK streaming and interrupt support (Ctrl+C), token usage and duration tracking. Updated ARCHITECTURE.md with SDK execution flow diagram, error handling strategy, environment configuration. 443 tests passing. Remaining: Server SDK integration, Ink UI. |
