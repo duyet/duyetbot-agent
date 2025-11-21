@@ -4,11 +4,17 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+      "outputs": ["dist/**"],
+      "inputs": ["src/**", "tsconfig.json", "package.json"]
     },
     "test": {
       "dependsOn": ["build"],
-      "cache": false
+      "cache": false,
+      "env": ["CI", "NODE_ENV"]
+    },
+    "test:watch": {
+      "cache": false,
+      "persistent": true
     },
     "test:unit": {
       "dependsOn": ["build"],
@@ -19,15 +25,20 @@
       "cache": false
     },
     "lint": {
+      "inputs": ["src/**", "biome.json"],
       "cache": false
     },
     "type-check": {
       "dependsOn": ["^build"],
+      "inputs": ["src/**", "tsconfig.json"],
       "cache": false
     },
     "dev": {
       "cache": false,
       "persistent": true
+    },
+    "clean": {
+      "cache": false
     },
     "deploy": {
       "dependsOn": ["build", "test"],

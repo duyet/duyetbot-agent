@@ -5,10 +5,18 @@
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/server.ts",
     "start": "node dist/server.js",
+    "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
     "type-check": "tsc --noEmit"
@@ -19,15 +27,15 @@
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "@hono/node-server": "^1.13.0",
-    "hono": "^4.6.0",
+    "hono": "catalog:",
     "ws": "^8.18.0",
-    "zod": "^3.23.0"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "catalog:",
     "@types/ws": "^8.5.13",
-    "tsx": "^4.19.0",
-    "typescript": "^5.7.0",
-    "vitest": "^2.1.0"
+    "tsx": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

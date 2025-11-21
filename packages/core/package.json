@@ -19,7 +19,7 @@
       "import": "./dist/session/index.js"
     }
   },
-  "files": ["dist", "src"],
+  "files": ["dist"],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -32,15 +32,16 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/claude-agent-sdk": "^0.1.0",
+    "@anthropic-ai/claude-agent-sdk": "catalog:",
+    "@anthropic-ai/sdk": "catalog:",
     "@duyetbot/types": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
-    "zod": "^3.23.8"
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -1,0 +1,13 @@
+{
+  "name": "@duyetbot/config-vitest",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared Vitest configuration",
+  "license": "MIT",
+  "type": "module",
+  "main": "vitest.config.ts",
+  "files": ["*.ts"],
+  "devDependencies": {
+    "vitest": "catalog:"
+  }
+}
