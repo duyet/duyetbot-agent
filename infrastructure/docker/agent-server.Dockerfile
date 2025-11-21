@@ -12,7 +12,7 @@ RUN find . -name "*.ts" -o -name "*.tsx" -o -name "src" -type d | xargs rm -rf 2
 
 # Build
 FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
+COPY --from=deps /app .
 COPY . .
 RUN bun run build --filter @duyetbot/server
 
