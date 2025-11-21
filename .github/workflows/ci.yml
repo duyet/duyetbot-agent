@@ -59,7 +59,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Run tests
-        run: bun test --no-summary
+        run: bun run test
 
       - name: Upload coverage reports
         uses: codecov/codecov-action@v4
