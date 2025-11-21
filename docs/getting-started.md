@@ -11,7 +11,7 @@ Complete guide to installing, configuring, and running duyetbot-agent.
 - **Node.js** 20+
 - **pnpm** 9+
 - **GitHub account** (for OAuth and GitHub Bot)
-- **LLM API key** (Anthropic, OpenAI, or OpenRouter)
+- **Anthropic API key** (or Claude-compatible: Z.AI, OpenRouter)
 
 ---
 
@@ -53,19 +53,21 @@ All 399 tests should pass.
 Create a `.env` file in the root directory:
 
 ```env
-# LLM Provider Keys (at least one required)
+# LLM Provider (required)
 ANTHROPIC_API_KEY=sk-ant-...
-OPENAI_API_KEY=sk-...
-OPENROUTER_API_KEY=sk-or-...
+ANTHROPIC_BASE_URL=https://api.anthropic.com  # or Z.AI URL
 
-# GitHub OAuth (for CLI cloud sync)
-GITHUB_CLIENT_ID=your_client_id
-GITHUB_CLIENT_SECRET=your_client_secret
+# Alternative providers (optional)
+OPENROUTER_API_KEY=sk-or-...
 
 # GitHub Bot (for webhook integration)
 BOT_USERNAME=duyetbot
 GITHUB_TOKEN=ghp_xxx
 WEBHOOK_SECRET=your_webhook_secret
+
+# Fly.io (for Supervisor to provision Workers)
+FLY_API_TOKEN=xxx
+FLY_ORG=personal
 
 # MCP Memory Server (optional)
 MCP_SERVER_URL=https://memory.duyetbot.workers.dev
@@ -85,13 +87,15 @@ NODE_ENV=development
 
 ### LLM Provider Configuration
 
-The system supports multiple providers with format `<provider>:<model_id>`:
+The system supports Claude-compatible providers:
 
 | Provider | Format | Example |
 |----------|--------|---------|
-| Anthropic | `claude:<model>` | `claude:claude-3-5-sonnet-20241022` |
-| OpenAI | `openai:<model>` | `openai:gpt-4-turbo` |
+| Anthropic | `claude:<model>` | `claude:claude-sonnet-4-20250514` |
+| Z.AI | via base URL | Set `ANTHROPIC_BASE_URL=https://api.z.ai/api/anthropic` |
 | OpenRouter | `openrouter:<model>` | `openrouter:anthropic/claude-3.5-sonnet` |
+
+Model shortcuts: `haiku`, `sonnet`, `opus`
 
 ---
 
@@ -193,10 +197,11 @@ pnpm run cli chat
 pnpm run cli ask "How do I implement rate limiting?"
 ```
 
-### With Specific Provider
+### With Specific Model
 
 ```bash
-pnpm run cli chat --provider openai:gpt-4-turbo
+pnpm run cli chat --model sonnet
+pnpm run cli chat --model haiku
 ```
 
 ### Session Management
