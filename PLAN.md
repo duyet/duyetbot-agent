@@ -149,7 +149,6 @@ duyetbot-agent/
 │   │   ├── src/
 │   │   │   ├── base.ts            # Base provider interface
 │   │   │   ├── claude.ts          # Claude provider
-│   │   │   ├── openai.ts          # OpenAI provider
 │   │   │   ├── openrouter.ts      # OpenRouter provider
 │   │   │   ├── zai.ts             # Z.AI provider (base URL override)
 │   │   │   └── factory.ts         # Provider factory with URL override
@@ -374,7 +373,7 @@ export ANTHROPIC_DEFAULT_OPUS_MODEL="$MODEL_OPUS"
 ```typescript
 // packages/providers/src/factory.ts
 interface ProviderConfig {
-  type: 'anthropic' | 'openai' | 'openrouter' | 'custom';
+  type: 'anthropic' | 'openrouter' | 'custom';
   apiKey: string;
   baseUrl?: string;  // Optional base URL override
   models?: Record<string, string>;  // Model name mappings
@@ -388,11 +387,6 @@ class ProviderFactory {
           apiKey: config.apiKey,
           baseUrl: config.baseUrl || 'https://api.anthropic.com',
           models: config.models,
-        });
-      case 'openai':
-        return new OpenAIProvider({
-          apiKey: config.apiKey,
-          baseUrl: config.baseUrl || 'https://api.openai.com/v1',
         });
       case 'openrouter':
         return new OpenRouterProvider({
@@ -1360,7 +1354,111 @@ bot.launch();
 
 ---
 
-### Phase 7: Telegram Bot Integration (3-4 days)
+### Phase 7: Claude Code Agent SDK Integration (4-5 days) 🆕 NEW
+
+**Goal**: Refactor core agent system to fully leverage Claude Code Agent SDK patterns
+
+**Tasks**:
+- [ ] Refactor packages/core to use SDK's `query()` function pattern
+  - [ ] Replace custom agent execution with SDK query function
+  - [ ] Implement proper async generator message streaming
+  - [ ] Add support for both single-mode and streaming-mode inputs
+- [ ] Update tool system to use SDK's `tool()` function
+  - [ ] Migrate all tools to use Zod schema definitions via SDK
+  - [ ] Ensure type-safe tool handlers with structured results
+  - [ ] Update tool registry to export SDK-compatible tools
+- [ ] Implement SDK session management
+  - [ ] Use SDK's session ID, resume, and forkSession patterns
+  - [ ] Integrate with existing FileSessionManager and CloudSessionManager
+  - [ ] Add session forking capability for parallel workflows
+- [ ] Add MCP server configuration via SDK
+  - [ ] Configure memory-mcp server as SDK MCP connection
+  - [ ] Support multiple MCP server types (stdio, SSE, HTTP)
+  - [ ] Add tool allowlists per MCP server
+- [ ] Implement subagent system using SDK's `agents` option
+  - [ ] Define subagents programmatically with descriptions
+  - [ ] Configure tool subsets per subagent
+  - [ ] Add custom prompts and model overrides per agent
+  - [ ] Update GitHub bot and CLI to use subagent patterns
+- [ ] Add permission modes support
+  - [ ] Implement "default", "acceptEdits", "bypassPermissions" modes
+  - [ ] Add permission mode configuration per use case
+  - [ ] Integrate with CLI and server configuration
+- [ ] Implement interrupt capability
+  - [ ] Add `interrupt()` method for streaming queries
+  - [ ] Integrate with WebSocket server for real-time cancellation
+  - [ ] Add timeout and graceful shutdown handling
+- [ ] Update CLI to use SDK streaming
+  - [ ] Refactor chat command to use async generator streaming
+  - [ ] Implement real-time message display with Ink
+  - [ ] Add interrupt support (Ctrl+C handling)
+- [ ] Update server to use SDK patterns
+  - [ ] Refactor execute endpoint to use query() function
+  - [ ] Implement proper streaming over WebSocket
+  - [ ] Add message type handling for all SDK message types
+- [ ] Write comprehensive SDK integration tests (50+ tests)
+  - [ ] Test query() function with various inputs
+  - [ ] Test tool execution with Zod schemas
+  - [ ] Test session management (resume, fork)
+  - [ ] Test MCP server integration
+  - [ ] Test subagent delegation
+  - [ ] Test permission modes
+  - [ ] Test interrupt capability
+- [ ] Update documentation
+  - [ ] Document SDK patterns used
+  - [ ] Add examples for custom tool creation
+  - [ ] Document subagent configuration
+
+**Output**: Core agent system fully integrated with Claude Code Agent SDK patterns ✅
+
+**Key SDK Patterns to Implement**:
+
+```typescript
+// Query function pattern
+import { query, tool, Options } from '@anthropic-ai/claude-agent-sdk';
+
+// Tool definition with Zod
+const bashTool = tool(
+  'bash',
+  'Execute shell commands',
+  z.object({ command: z.string() }),
+  async ({ command }) => {
+    // Execute and return result
+    return { output: '...' };
+  }
+);
+
+// Agent execution with SDK
+const options: Options = {
+  model: 'sonnet',
+  tools: [bashTool, gitTool, githubTool],
+  systemPrompt: 'You are @duyetbot...',
+  permissionMode: 'default',
+  mcpServers: [{
+    type: 'http',
+    url: 'https://memory.duyetbot.workers.dev',
+  }],
+  agents: [{
+    name: 'researcher',
+    description: 'Research and gather information',
+    tools: ['research', 'web_search'],
+    prompt: 'You are a research assistant...',
+    model: 'haiku',
+  }],
+};
+
+// Streaming query
+for await (const message of query(userInput, options)) {
+  if (message.type === 'assistant') {
+    // Handle assistant response
+    stream.write(message.content);
+  }
+}
+```
+
+---
+
+### Phase 8: Telegram Bot Integration (3-4 days)
 
 **Goal**: Telegram bot for chat and notifications
 
@@ -1386,7 +1484,7 @@ bot.launch();
 
 ---
 
-### Phase 8: API Gateway (3-4 days)
+### Phase 9: API Gateway (3-4 days)
 
 **Goal**: HTTP API for web UI and external integrations
 
@@ -1412,7 +1510,7 @@ bot.launch();
 
 ---
 
-### Phase 9: Integration & Testing (4-5 days)
+### Phase 10: Integration & Testing (4-5 days)
 
 **Goal**: End-to-end testing and integration
 
@@ -1436,7 +1534,7 @@ bot.launch();
 
 ---
 
-### Phase 10: Documentation & Deployment (2-3 days)
+### Phase 11: Documentation & Deployment (2-3 days)
 
 **Goal**: Production deployment and documentation
 
@@ -1517,7 +1615,7 @@ bot.launch();
 - [ ] Telegram bot functional
 - [ ] CLI works in local and cloud modes
 - [ ] MCP memory server stores/retrieves sessions
-- [ ] Multi-provider support works (Claude, Z.AI, OpenRouter)
+- [ ] Multi-provider support works (Claude, Z.AI via base URL, OpenRouter)
 - [ ] Container deployment successful
 
 ---
@@ -1534,7 +1632,7 @@ bot.launch();
 | **Telegram Bot** | Telegraf | Best TypeScript bot framework |
 | **API Gateway** | Hono | Fast, lightweight, edge-compatible |
 | **Testing** | Vitest | Fast, modern, great DX |
-| **LLM** | Claude/OpenAI/Z.AI | Multi-provider flexibility |
+| **LLM** | Claude/Z.AI/OpenRouter | Claude-compatible APIs only |
 | **Protocol** | MCP | Standardized tool/resource protocol |
 
 ---
@@ -1612,6 +1710,7 @@ pnpm run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-21 | 3.12 | 🆕 **Added Phase 7 - Claude Code Agent SDK Integration**: New phase to fully leverage SDK patterns (query() function, tool() with Zod, session management with resume/fork, MCP server config, subagents, permission modes, interrupt capability). Updated phase numbering (7→8→9→10→11). Removed OpenAI provider - focusing on Claude-compatible APIs only (Claude, Z.AI, OpenRouter). |
 | 2025-11-21 | 3.11 | 🔧 **Phase 6 NEARLY COMPLETE**: Added webhook handlers for issues and pull_request events, trigger_workflow and other GitHub tool actions (14 total), GitHubSessionManager with MCP client integration for persistent sessions, comprehensive tests. 57 github-bot tests passing. GitHub App registration and deployment pending. |
 | 2025-11-20 | 3.10 | 🔧 **Phase 6 IN PROGRESS**: GitHub bot core implementation. Created @duyetbot/github-bot with Hono server, mention parser (18 tests), webhook handlers, agent handler with system prompt builder, GitHub tool (6 actions), webhook signature verification. 365 tests passing (23 new). |
 | 2025-11-20 | 3.9 | ✅ **Phase 5 COMPLETE**: Wired login command to GitHubDeviceAuth, added memory commands (search, stats), created SessionList UI component, implemented auto mode detection (mode-detector.ts). 342 tests passing (67 CLI tests). npm package distribution pending. |
@@ -1671,7 +1770,19 @@ pnpm run dev
    - [ ] Register GitHub App (external setup)
    - [ ] Deploy GitHub App
    - [ ] Document setup and usage
-8. **Next: Phase 7 - Telegram Bot Integration**
+8. 🆕 **Next: Phase 7 - Claude Code Agent SDK Integration**
+   - [ ] Refactor core to use SDK's `query()` function pattern
+   - [ ] Update tools to use SDK's `tool()` function with Zod
+   - [ ] Implement SDK session management (resume, fork)
+   - [ ] Add MCP server configuration via SDK
+   - [ ] Implement subagent system using SDK's `agents` option
+   - [ ] Add permission modes and interrupt capability
+   - [ ] Update CLI and server to use SDK streaming
+   - [ ] Write SDK integration tests (50+ tests)
+9. **Phase 8 - Telegram Bot Integration**
+10. **Phase 9 - API Gateway**
+11. **Phase 10 - Integration & Testing**
+12. **Phase 11 - Documentation & Deployment**
 
 ---
 
