@@ -1,7 +1,6 @@
 import { z } from 'zod';
 import { generateSessionId } from '../auth/github.js';
 import type { D1Storage } from '../storage/d1.js';
-import type { KVStorage } from '../storage/kv.js';
 import type { LLMMessage, SaveMemoryResult } from '../types.js';
 
 const messageSchema = z.object({
@@ -22,7 +21,6 @@ export type SaveMemoryInput = z.infer<typeof saveMemorySchema>;
 export async function saveMemory(
   input: SaveMemoryInput,
   d1Storage: D1Storage,
-  kvStorage: KVStorage,
   userId: string
 ): Promise<SaveMemoryResult> {
   const { messages, metadata } = input;
@@ -74,8 +72,8 @@ export async function saveMemory(
     });
   }
 
-  // Save messages to KV (replace all)
-  const savedCount = await kvStorage.saveMessages(finalSessionId, timestampedMessages);
+  // Save messages to D1
+  const savedCount = await d1Storage.saveMessages(finalSessionId, timestampedMessages);
 
   return {
     session_id: finalSessionId,
