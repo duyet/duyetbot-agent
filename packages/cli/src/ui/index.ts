@@ -10,3 +10,6 @@ export type { StatusBarProps } from './StatusBar.js';
 
 export { App } from './App.js';
 export type { AppProps } from './App.js';
+
+export { SessionList, SessionListHeader, SessionListView } from './SessionList.js';
+export type { SessionItem, SessionListProps } from './SessionList.js';

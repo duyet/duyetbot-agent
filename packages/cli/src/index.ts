@@ -31,8 +31,24 @@ export { startChat, runPrompt } from './chat.js';
 
 export { startInkChat } from './chat-ink.js';
 
-export type { ChatViewProps, StatusBarProps, AppProps } from './ui/index.js';
-export { ChatView, StatusBar, App } from './ui/index.js';
+export type {
+  ChatViewProps,
+  StatusBarProps,
+  AppProps,
+  SessionItem,
+  SessionListProps,
+} from './ui/index.js';
+export {
+  ChatView,
+  StatusBar,
+  App,
+  SessionList,
+  SessionListHeader,
+  SessionListView,
+} from './ui/index.js';
 
 export type { DeviceCodeResponse, AccessTokenResponse } from './oauth.js';
 export { GitHubDeviceAuth, startDeviceLogin } from './oauth.js';
+
+export type { ModeDetectionResult } from './mode-detector.js';
+export { checkMCPServer, detectMode, getEffectiveMode } from './mode-detector.js';
