@@ -12,6 +12,26 @@
         "vitest": "^2.1.8",
       },
     },
+    "apps/agent-server": {
+      "name": "@duyetbot/agent-server",
+      "version": "0.1.0",
+      "dependencies": {
+        "@duyetbot/core": "workspace:*",
+        "@duyetbot/providers": "workspace:*",
+        "@duyetbot/tools": "workspace:*",
+        "@duyetbot/types": "workspace:*",
+        "@hono/node-server": "^1.13.0",
+        "hono": "^4.10.6",
+        "ws": "^8.18.0",
+        "zod": "^3.23.8",
+      },
+      "devDependencies": {
+        "@types/node": "^22.10.0",
+        "@types/ws": "^8.5.13",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8",
+      },
+    },
     "apps/github-bot": {
       "name": "@duyetbot/github-bot",
       "version": "0.1.0",
@@ -29,6 +49,23 @@
         "tsx": "^4.0.0",
         "typescript": "^5.0.0",
         "vitest": "^2.0.0",
+      },
+    },
+    "apps/memory-mcp": {
+      "name": "@duyetbot/memory-mcp",
+      "version": "0.1.0",
+      "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.0.0",
+        "hono": "^4.6.0",
+        "zod": "^3.23.8",
+        "zod-to-json-schema": "^3.24.5",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241127.0",
+        "@types/node": "^20.0.0",
+        "typescript": "^5.7.2",
+        "vitest": "^2.1.8",
+        "wrangler": "^3.93.0",
       },
     },
     "packages/cli": {
@@ -90,23 +127,6 @@
         "vitest": "^2.1.8",
       },
     },
-    "packages/memory-mcp": {
-      "name": "@duyetbot/memory-mcp",
-      "version": "0.1.0",
-      "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.0.0",
-        "hono": "^4.6.0",
-        "zod": "^3.23.8",
-        "zod-to-json-schema": "^3.24.5",
-      },
-      "devDependencies": {
-        "@cloudflare/workers-types": "^4.20241127.0",
-        "@types/node": "^20.0.0",
-        "typescript": "^5.7.2",
-        "vitest": "^2.1.8",
-        "wrangler": "^3.93.0",
-      },
-    },
     "packages/providers": {
       "name": "@duyetbot/providers",
       "version": "0.1.0",
@@ -117,26 +137,6 @@
       },
       "devDependencies": {
         "@types/node": "^22.10.0",
-        "typescript": "^5.7.2",
-        "vitest": "^2.1.8",
-      },
-    },
-    "packages/server": {
-      "name": "@duyetbot/server",
-      "version": "0.1.0",
-      "dependencies": {
-        "@duyetbot/core": "workspace:*",
-        "@duyetbot/providers": "workspace:*",
-        "@duyetbot/tools": "workspace:*",
-        "@duyetbot/types": "workspace:*",
-        "@hono/node-server": "^1.13.0",
-        "hono": "^4.10.6",
-        "ws": "^8.18.0",
-        "zod": "^3.23.8",
-      },
-      "devDependencies": {
-        "@types/node": "^22.10.0",
-        "@types/ws": "^8.5.13",
         "typescript": "^5.7.2",
         "vitest": "^2.1.8",
       },
@@ -217,6 +217,8 @@
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 
+    "@duyetbot/agent-server": ["@duyetbot/agent-server@workspace:apps/agent-server"],
+
     "@duyetbot/cli": ["@duyetbot/cli@workspace:packages/cli"],
 
     "@duyetbot/config-typescript": ["@duyetbot/config-typescript@workspace:packages/config-typescript"],
@@ -227,11 +229,9 @@
 
     "@duyetbot/github-bot": ["@duyetbot/github-bot@workspace:apps/github-bot"],
 
-    "@duyetbot/memory-mcp": ["@duyetbot/memory-mcp@workspace:packages/memory-mcp"],
+    "@duyetbot/memory-mcp": ["@duyetbot/memory-mcp@workspace:apps/memory-mcp"],
 
     "@duyetbot/providers": ["@duyetbot/providers@workspace:packages/providers"],
-
-    "@duyetbot/server": ["@duyetbot/server@workspace:packages/server"],
 
     "@duyetbot/tools": ["@duyetbot/tools@workspace:packages/tools"],
 
