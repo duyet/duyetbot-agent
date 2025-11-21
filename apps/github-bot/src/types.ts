@@ -57,8 +57,28 @@ export interface MentionContext {
   repository: GitHubRepository;
   issue?: GitHubIssue;
   pullRequest?: GitHubPullRequest;
-  comment: GitHubComment;
+  comment?: GitHubComment;
   mentionedBy: GitHubUser;
+}
+
+export interface IssueHandlerConfig {
+  /** Actions to respond to automatically */
+  autoRespondActions?: Array<'opened' | 'reopened'>;
+  /** Labels that trigger automatic analysis */
+  triggerLabels?: string[];
+  /** System prompt template for issue analysis */
+  analysisPromptTemplate?: string;
+}
+
+export interface PullRequestHandlerConfig {
+  /** Actions to respond to automatically */
+  autoRespondActions?: Array<'opened' | 'ready_for_review' | 'synchronize'>;
+  /** Labels that trigger automatic review */
+  triggerLabels?: string[];
+  /** Whether to auto-review when ready for review */
+  autoReviewOnReady?: boolean;
+  /** Custom prompt for PR analysis */
+  analysisPromptTemplate?: string;
 }
 
 export interface BotConfig {
@@ -67,6 +87,10 @@ export interface BotConfig {
   webhookSecret: string;
   mcpServerUrl?: string;
   mcpAuthToken?: string;
+  /** Configuration for issue event handling */
+  issueHandlerConfig?: IssueHandlerConfig;
+  /** Configuration for pull request event handling */
+  pullRequestHandlerConfig?: PullRequestHandlerConfig;
 }
 
 export type WebhookEventType =
