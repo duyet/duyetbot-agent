@@ -1,6 +1,6 @@
 # Architecture
 
-**Related:** [Getting Started](README.md) | [Deployment](DEPLOY.md)
+**Related:** [Getting Started](README.md) | [Use Cases](USECASES.md) | [Deployment](DEPLOY.md)
 
 ## Overview
 

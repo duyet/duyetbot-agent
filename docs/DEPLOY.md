@@ -1,6 +1,6 @@
 # Deployment Guide
 
-**Related:** [Getting Started](README.md) | [Architecture](ARCHITECTURE.md)
+**Related:** [Getting Started](README.md) | [Use Cases](USECASES.md) | [Architecture](ARCHITECTURE.md)
 
 This guide covers deploying the @duyetbot GitHub App to various platforms.
 

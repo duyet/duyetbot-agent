@@ -22,6 +22,39 @@
 - 🐳 **Container Deployment**: Long-running Node.js/Bun server for stateful agent sessions
 - 💻 **CLI Support**: Local execution with optional cloud memory access
 
+### Use Cases
+
+**CLI & Terminal**
+- Interactive chat: `duyetbot chat` for debugging, explanations, code generation
+- One-shot questions: `duyetbot ask "How to implement rate limiting?"`
+- Research: Compare technologies, learn concepts, get news summaries
+
+**GitHub Integration**
+- Code review: `@duyetbot review this PR`, `@duyetbot check for security issues`
+- PR management: `@duyetbot merge when CI passes`, `@duyetbot squash and merge`
+- Issue triage: `@duyetbot add labels`, `@duyetbot assign to @duyet`
+- Analysis: `@duyetbot explain this code`, `@duyetbot why are tests failing?`
+- Release: `@duyetbot generate changelog`, `@duyetbot create release notes`
+
+**Telegram Bot**
+- Quick queries: Weather, currency conversion, time zones
+- Development help: Error fixes, best practices, explanations
+- Notifications: PR approvals, deployment status, CI failures
+
+**Automation & Proactive Tasks**
+- Auto-merge PRs when conditions met (CI pass, approvals, no unresolved)
+- Morning briefing: GitHub activity, calendar, weather, tech news
+- Auto-review all PRs for security/performance issues
+- Weekly dependency updates with security patches
+- Auto-generate documentation on PR merge
+
+**Personal Assistant**
+- Task management: Add todos, check agenda, set reminders
+- Communication: Draft responses, summarize discussions, translate
+- Organization: Organize notes, create mind maps, summarize meetings
+
+📖 **See [docs/USECASES.md](docs/USECASES.md) for complete examples and configurations.**
+
 ---
 
 ## ⚠️ IMPORTANT: Keeping This Plan Updated
