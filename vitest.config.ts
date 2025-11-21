@@ -1,4 +1,3 @@
-import path from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
@@ -11,7 +10,6 @@ export default defineConfig({
       exclude: [
         'node_modules/',
         'dist/',
-        'tests/',
         '**/*.test.ts',
         '**/*.spec.ts',
         '**/index.ts',
@@ -25,21 +23,7 @@ export default defineConfig({
         statements: 80,
       },
     },
-    setupFiles: ['./tests/setup.ts'],
     testTimeout: 10000,
     hookTimeout: 10000,
-  },
-  resolve: {
-    alias: {
-      '@': path.resolve(__dirname, './src'),
-      '@agent': path.resolve(__dirname, './src/agent'),
-      '@tools': path.resolve(__dirname, './src/tools'),
-      '@providers': path.resolve(__dirname, './src/providers'),
-      '@agents': path.resolve(__dirname, './src/agents'),
-      '@scheduler': path.resolve(__dirname, './src/scheduler'),
-      '@config': path.resolve(__dirname, './src/config'),
-      '@storage': path.resolve(__dirname, './src/storage'),
-      '@ui': path.resolve(__dirname, './src/ui'),
-    },
   },
 });
