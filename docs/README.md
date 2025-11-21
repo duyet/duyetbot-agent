@@ -2,7 +2,7 @@
 
 Autonomous bot agent system built on Claude Agent SDK.
 
-**Related:** [Architecture](ARCHITECTURE.md) | [Deployment](DEPLOY.md)
+**Related:** [Use Cases](USECASES.md) | [Architecture](ARCHITECTURE.md) | [Deployment](DEPLOY.md)
 
 ## Getting Started
 
@@ -41,8 +41,9 @@ pnpm test
 
 ## Documentation
 
-- [Deployment Guide](DEPLOY.md) - Deploy to Railway, Fly.io, Render, AWS
+- [Use Cases](USECASES.md) - What you can do with @duyetbot
 - [Architecture](ARCHITECTURE.md) - System design and components
+- [Deployment Guide](DEPLOY.md) - Deploy to Railway, Fly.io, Render, AWS
 
 ## Project Structure
 
