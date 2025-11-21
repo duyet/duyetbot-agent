@@ -1,6 +1,6 @@
 # Architecture
 
-**Related:** [Getting Started](GETTING_STARTED.md) | [Use Cases](USECASES.md) | [API Reference](API.md) | [Deployment](DEPLOY.md)
+**Related:** [Getting Started](getting-started.md) | [Use Cases](usecases.md) | [API Reference](api.md) | [Deployment](deploy.md)
 
 ## Overview
 
@@ -371,14 +371,14 @@ MCP_AUTH_TOKEN=xxx
 
 ## Deployment
 
-See [Deployment Guide](DEPLOY.md) for detailed instructions on:
-- [Railway](DEPLOY.md#deploy-to-railway)
-- [Fly.io](DEPLOY.md#deploy-to-flyio)
-- [Render](DEPLOY.md#deploy-to-render)
-- [AWS ECS/Fargate](DEPLOY.md#deploy-to-aws-ecsfargate)
-- [Docker Compose](DEPLOY.md#deploy-with-docker-compose)
+See [Deployment Guide](deploy.md) for detailed instructions on:
+- [Railway](deploy.md#deploy-to-railway)
+- [Fly.io](deploy.md#deploy-to-flyio)
+- [Render](deploy.md#deploy-to-render)
+- [AWS ECS/Fargate](deploy.md#deploy-to-aws-ecsfargate)
+- [Docker Compose](deploy.md#deploy-with-docker-compose)
 
 ## Next Steps
 
-- [Getting Started](README.md) - Installation and quick start
+- [Getting Started](getting-started.md) - Installation and quick start
 - [Report Issues](https://github.com/duyet/duyetbot-agent/issues)
