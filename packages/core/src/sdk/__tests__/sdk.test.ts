@@ -297,7 +297,9 @@ describe('SDK Query', () => {
       const messages = [];
       for await (const message of query('test input', createDefaultOptions())) {
         messages.push(message);
-        if (messages.length >= 2) break; // Limit for test
+        if (messages.length >= 2) {
+          break; // Limit for test
+        }
       }
 
       expect(messages[0].type).toBe('user');
@@ -308,7 +310,9 @@ describe('SDK Query', () => {
       const messages = [];
       for await (const message of query('test', createDefaultOptions())) {
         messages.push(message);
-        if (messages.length >= 1) break;
+        if (messages.length >= 1) {
+          break;
+        }
       }
 
       expect(messages[0].sessionId).toBeDefined();
@@ -321,7 +325,9 @@ describe('SDK Query', () => {
 
       for await (const message of query('test', options)) {
         messages.push(message);
-        if (messages.length >= 1) break;
+        if (messages.length >= 1) {
+          break;
+        }
       }
 
       expect(messages[0].sessionId).toBe('custom-session');

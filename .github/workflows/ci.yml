@@ -127,29 +127,3 @@ jobs:
       - name: Run security audit
         run: pnpm audit --audit-level=moderate
         continue-on-error: true
-
-  all-checks:
-    name: All Checks Passed
-    needs: [lint, type-check, test, build, security]
-    runs-on: ubuntu-latest
-    if: always()
-    steps:
-      - name: Check if all jobs passed
-        run: |
-          if [ "${{ needs.lint.result }}" != "success" ]; then
-            echo "Lint failed"
-            exit 1
-          fi
-          if [ "${{ needs.type-check.result }}" != "success" ]; then
-            echo "Type check failed"
-            exit 1
-          fi
-          if [ "${{ needs.test.result }}" != "success" ]; then
-            echo "Tests failed"
-            exit 1
-          fi
-          if [ "${{ needs.build.result }}" != "success" ]; then
-            echo "Build failed"
-            exit 1
-          fi
-          echo "All required checks passed!"

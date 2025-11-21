@@ -32,9 +32,15 @@ export function createSubagent(config: {
     name: config.name,
     description: config.description,
   };
-  if (config.tools) result.tools = config.tools;
-  if (config.prompt) result.prompt = config.prompt;
-  if (config.model) result.model = config.model;
+  if (config.tools) {
+    result.tools = config.tools;
+  }
+  if (config.prompt) {
+    result.prompt = config.prompt;
+  }
+  if (config.model) {
+    result.model = config.model;
+  }
   return result;
 }
 

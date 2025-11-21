@@ -5,13 +5,13 @@
  */
 
 import * as readline from 'node:readline';
-import type { LLMMessage } from '@duyetbot/types';
 import {
+  type QueryOptions,
   createDefaultOptions,
   createQueryController,
   query,
-  type QueryOptions,
 } from '@duyetbot/core';
+import type { LLMMessage } from '@duyetbot/types';
 import { FileSessionManager } from './sessions.js';
 import type { LocalSession } from './sessions.js';
 
@@ -197,7 +197,7 @@ async function generateSDKResponse(input: string, options: QueryOptions): Promis
           if (message.isError) {
             process.stdout.write(`\n[Tool error: ${message.content}]`);
           } else {
-            process.stdout.write(`\n[Tool result received]`);
+            process.stdout.write('\n[Tool result received]');
           }
           break;
 

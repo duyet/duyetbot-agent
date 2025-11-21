@@ -339,7 +339,7 @@ function sleep(ms: number): Promise<void> {
  * Calculate delay with exponential backoff
  */
 function calculateBackoff(attempt: number, config: RetryConfig): number {
-  const delay = Math.min(config.baseDelayMs * Math.pow(2, attempt), config.maxDelayMs);
+  const delay = Math.min(config.baseDelayMs * 2 ** attempt, config.maxDelayMs);
   // Add jitter (±20%)
   const jitter = delay * 0.2 * (Math.random() * 2 - 1);
   return Math.max(0, delay + jitter);
@@ -456,7 +456,9 @@ async function generateResponse(
   const tools = opts.tools?.map((tool) => ({
     name: tool.name,
     description: tool.description,
-    input_schema: tool.inputSchema._def ? zodToJsonSchema(tool.inputSchema) : { type: 'object' as const },
+    input_schema: tool.inputSchema._def
+      ? zodToJsonSchema(tool.inputSchema)
+      : { type: 'object' as const },
   }));
 
   // Map model
@@ -515,7 +517,6 @@ async function generateResponse(
     case 'max_tokens':
       stopReason = 'max_tokens';
       break;
-    case 'end_turn':
     default:
       stopReason = 'end_turn';
   }
@@ -625,7 +626,9 @@ function getLastAssistantContent(state: QueryState): string {
  */
 function zodToJsonSchema(schema: unknown): Record<string, unknown> {
   // Simple conversion - in production use zod-to-json-schema package
-  const zodSchema = schema as { _def?: { typeName?: string; shape?: () => Record<string, unknown> } };
+  const zodSchema = schema as {
+    _def?: { typeName?: string; shape?: () => Record<string, unknown> };
+  };
 
   if (zodSchema._def?.typeName === 'ZodObject') {
     const shape = zodSchema._def.shape?.() || {};
