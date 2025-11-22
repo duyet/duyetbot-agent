@@ -1,0 +1,12 @@
+name = "duyetbot-telegram"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+
+# Optional: KV for session storage
+# [[kv_namespaces]]
+# binding = "SESSIONS"
+# id = "your-kv-namespace-id"
