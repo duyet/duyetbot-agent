@@ -8,6 +8,25 @@
  *   bun run webhook:delete - Delete webhook
  */
 
+import { existsSync, readFileSync } from "fs";
+import { resolve } from "path";
+
+// Load .env.local if exists
+const envPath = resolve(import.meta.dir, "../.env.local");
+if (existsSync(envPath)) {
+  const envContent = readFileSync(envPath, "utf-8");
+  for (const line of envContent.split("\n")) {
+    const trimmed = line.trim();
+    if (trimmed && !trimmed.startsWith("#")) {
+      const [key, ...valueParts] = trimmed.split("=");
+      const value = valueParts.join("=");
+      if (key && value) {
+        process.env[key] = value;
+      }
+    }
+  }
+}
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
@@ -31,7 +50,7 @@ function showConfig() {
 
 if (!BOT_TOKEN && process.argv[2] !== "config") {
   console.error("Error: TELEGRAM_BOT_TOKEN is required");
-  console.error("Set it with: export TELEGRAM_BOT_TOKEN=your_token");
+  console.error("Create .env.local from .env.example and fill in your values");
   process.exit(1);
 }
 
