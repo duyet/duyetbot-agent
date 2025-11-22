@@ -214,7 +214,7 @@ async function showConfig() {
     console.log(`  ${name.padEnd(24)} ${status}`);
   }
 
-  for (const [key, config] of Object.entries(APPS)) {
+  for (const [_key, config] of Object.entries(APPS)) {
     console.log(`\n=== ${config.name} ===`);
     await showDeployedSecrets(config);
   }

@@ -32,7 +32,7 @@ export function createToolExecutor(context: ToolExecutorContext): ToolExecutor {
     const startTime = Date.now();
     const fullRepo = `${owner}/${repo}`;
 
-    logger.info('tool_call_start', {
+    logger.info('Tool call started', {
       tool: call.name,
       repository: fullRepo,
       issue: issueNumber,
@@ -293,7 +293,7 @@ export function createToolExecutor(context: ToolExecutorContext): ToolExecutor {
           result = `Unknown tool: ${call.name}`;
       }
 
-      logger.info('tool_call_complete', {
+      logger.info('Tool call completed', {
         tool: call.name,
         repository: fullRepo,
         issue: issueNumber,
@@ -305,7 +305,7 @@ export function createToolExecutor(context: ToolExecutorContext): ToolExecutor {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
 
-      logger.error('tool_call_error', {
+      logger.error('Tool call error', {
         tool: call.name,
         repository: fullRepo,
         issue: issueNumber,

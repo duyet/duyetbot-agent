@@ -4,7 +4,7 @@ WORKDIR /app
 
 # Install dependencies
 FROM base AS deps
-COPY package.json bun.lock ./
+COPY package.json bun.lockb ./
 COPY packages ./packages
 COPY apps ./apps
 COPY tests ./tests

@@ -9,7 +9,6 @@ import { logger } from './logger.js';
 
 export interface ProviderEnv {
   // Cloudflare AI Gateway
-  // biome-ignore lint/suspicious/noExplicitAny: Cloudflare AI binding type
   AI: any;
   AI_GATEWAY_NAME: string;
   AI_GATEWAY_PROVIDER?: string | undefined;
@@ -64,7 +63,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
 
       const startTime = Date.now();
 
-      logger.debug('llm_request_start', {
+      logger.debug('LLM request started', {
         model,
         messageCount: messages.length,
         hasTools: !!tools && tools.length > 0,
@@ -74,7 +73,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
 
       let response: Response;
       try {
-        logger.debug('gateway_run_start', {
+        logger.debug('Gateway run started', {
           provider: env.AI_GATEWAY_PROVIDER || 'openrouter',
           endpoint: 'chat/completions',
           model,
@@ -88,7 +87,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
           query,
         });
 
-        logger.debug('gateway_run_complete', {
+        logger.debug('Gateway run completed', {
           status: response.status,
           ok: response.ok,
           durationMs: Date.now() - startTime,
@@ -96,7 +95,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
       } catch (gatewayError) {
         const errorMessage =
           gatewayError instanceof Error ? gatewayError.message : String(gatewayError);
-        logger.error('gateway_run_error', {
+        logger.error('Gateway run error', {
           model,
           gateway: env.AI_GATEWAY_NAME,
           provider: env.AI_GATEWAY_PROVIDER || 'openrouter',
@@ -109,7 +108,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
 
       if (!response.ok) {
         const error = await response.text();
-        logger.error('llm_request_error', {
+        logger.error('LLM request error', {
           model,
           status: response.status,
           statusText: response.statusText,
@@ -131,7 +130,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
 
       const durationMs = Date.now() - startTime;
 
-      logger.info('llm_request_complete', {
+      logger.info('LLM request completed', {
         model,
         durationMs,
         hasContent: !!choice?.content,
@@ -140,7 +139,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
       });
 
       if (toolCalls && toolCalls.length > 0) {
-        logger.debug('llm_tool_calls', {
+        logger.debug('LLM tool calls', {
           model,
           tools: toolCalls.map((tc) => tc.name),
         });
