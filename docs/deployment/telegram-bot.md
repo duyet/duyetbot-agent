@@ -58,80 +58,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 
 Deploy the Telegram bot as a serverless webhook handler on Cloudflare Workers.
 
-### 1. Create wrangler.toml
-
-Create `apps/telegram-bot/wrangler.toml`:
-
-```toml
-name = "duyetbot-telegram"
-main = "src/worker.ts"
-compatibility_date = "2025-01-01"
-compatibility_flags = ["nodejs_compat"]
-
-[vars]
-ENVIRONMENT = "production"
-
-# Optional: KV for session storage
-# [[kv_namespaces]]
-# binding = "SESSIONS"
-# id = "your-kv-namespace-id"
-```
-
-### 2. Create Worker Entry Point
-
-Create `apps/telegram-bot/src/worker.ts`:
-
-```typescript
-import { createTelegramBot } from './index';
-import type { BotConfig } from './types';
-
-export interface Env {
-  TELEGRAM_BOT_TOKEN: string;
-  ANTHROPIC_API_KEY: string;
-  TELEGRAM_WEBHOOK_SECRET: string;
-  ALLOWED_USERS?: string;
-  MCP_SERVER_URL?: string;
-  MCP_AUTH_TOKEN?: string;
-}
-
-export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
-    // Verify webhook secret
-    const secretHeader = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
-    if (secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
-    }
-
-    try {
-      const update = await request.json();
-
-      const config: BotConfig = {
-        botToken: env.TELEGRAM_BOT_TOKEN,
-        anthropicApiKey: env.ANTHROPIC_API_KEY,
-        allowedUsers: env.ALLOWED_USERS?.split(',').map(Number) || [],
-        mcpServerUrl: env.MCP_SERVER_URL,
-        mcpAuthToken: env.MCP_AUTH_TOKEN,
-      };
-
-      const { bot } = createTelegramBot(config);
-
-      // Process the update
-      await bot.handleUpdate(update);
-
-      return new Response('OK', { status: 200 });
-    } catch (error) {
-      console.error('Webhook error:', error);
-      return new Response('Internal error', { status: 500 });
-    }
-  },
-};
-```
-
-### 3. Set Secrets
+### 1. Set Secrets
 
 ```bash
 cd apps/telegram-bot
@@ -148,7 +75,7 @@ wrangler secret put TELEGRAM_WEBHOOK_SECRET
 wrangler secret put MCP_AUTH_TOKEN
 ```
 
-### 4. Deploy to Cloudflare
+### 2. Deploy to Cloudflare
 
 ```bash
 cd apps/telegram-bot
@@ -160,7 +87,7 @@ wrangler deploy
 # https://duyetbot-telegram.<your-subdomain>.workers.dev
 ```
 
-### 5. Configure Telegram Webhook
+### 3. Configure Telegram Webhook
 
 Set the webhook URL with Telegram API:
 
@@ -178,7 +105,7 @@ curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook" \
 curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 ```
 
-### 6. Test the Bot
+### 4. Test the Bot
 
 1. Open Telegram and find your bot
 2. Send `/start` to begin
