@@ -2,12 +2,7 @@
  * GitHub bot system prompts
  */
 
-import {
-  BOT_NAME,
-  CORE_CAPABILITIES,
-  CODE_GUIDELINES,
-  RESPONSE_GUIDELINES,
-} from "./base.js";
+import { BOT_NAME, CODE_GUIDELINES, CORE_CAPABILITIES, RESPONSE_GUIDELINES } from './base.js';
 
 export const GITHUB_SYSTEM_PROMPT = `You are ${BOT_NAME}, an AI assistant helping with GitHub tasks.
 
@@ -31,7 +26,7 @@ export function buildGitHubContextPrompt(context: {
   issueTitle: string;
   isPR?: boolean;
 }): string {
-  const type = context.isPR ? "PR" : "Issue";
+  const type = context.isPR ? 'PR' : 'Issue';
   return `Current context:
 - Repository: ${context.repository}
 - ${type}: #${context.issueNumber} - ${context.issueTitle}`;

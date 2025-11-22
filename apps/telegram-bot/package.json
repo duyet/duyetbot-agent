@@ -14,7 +14,6 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.36.3",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "agents": "^0.2.23",

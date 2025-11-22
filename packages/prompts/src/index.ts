@@ -8,14 +8,14 @@ export {
   CORE_CAPABILITIES,
   CODE_GUIDELINES,
   RESPONSE_GUIDELINES,
-} from "./base.js";
+} from './base.js';
 
 // Telegram prompts
 export {
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
   TELEGRAM_HELP_MESSAGE,
-} from "./telegram.js";
+} from './telegram.js';
 
 // GitHub prompts
 export {
@@ -23,4 +23,4 @@ export {
   buildGitHubContextPrompt,
   GITHUB_REVIEW_PROMPT,
   GITHUB_EXPLAIN_PROMPT,
-} from "./github.js";
+} from './github.js';
