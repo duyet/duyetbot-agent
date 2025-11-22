@@ -11,8 +11,25 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+const AI_GATEWAY_URL = process.env.AI_GATEWAY_URL;
+const MODEL = process.env.MODEL;
+const ALLOWED_USERS = process.env.ALLOWED_USERS;
 
-if (!BOT_TOKEN) {
+function showConfig() {
+  console.log("Current configuration:");
+  console.log(`  TELEGRAM_BOT_TOKEN:     ${BOT_TOKEN ? "✓ set" : "✗ not set"}`);
+  console.log(`  TELEGRAM_WEBHOOK_URL:   ${WEBHOOK_URL || "not set"}`);
+  console.log(
+    `  TELEGRAM_WEBHOOK_SECRET: ${WEBHOOK_SECRET ? "✓ set" : "not set"}`,
+  );
+  console.log(`  AI_GATEWAY_URL:         ${AI_GATEWAY_URL || "not set"}`);
+  console.log(
+    `  MODEL:                  ${MODEL || "x-ai/grok-4.1-fast (default)"}`,
+  );
+  console.log(`  ALLOWED_USERS:          ${ALLOWED_USERS || "all users"}`);
+}
+
+if (!BOT_TOKEN && process.argv[2] !== "config") {
   console.error("Error: TELEGRAM_BOT_TOKEN is required");
   console.error("Set it with: export TELEGRAM_BOT_TOKEN=your_token");
   process.exit(1);
@@ -70,14 +87,18 @@ switch (command) {
   case "delete":
     await deleteWebhook();
     break;
+  case "config":
+    showConfig();
+    break;
   default:
     console.log("Usage:");
     console.log("  bun run webhook:set    - Set webhook URL");
     console.log("  bun run webhook:info   - Get webhook info");
     console.log("  bun run webhook:delete - Delete webhook");
+    console.log("  bun run webhook:config - Show current config");
     console.log("");
-    console.log("Environment variables:");
-    console.log("  TELEGRAM_BOT_TOKEN     - Bot token (required)");
-    console.log("  TELEGRAM_WEBHOOK_URL   - Webhook URL (required for set)");
-    console.log("  TELEGRAM_WEBHOOK_SECRET - Secret token (optional)");
+    console.log("Setup:");
+    console.log("  1. Copy .env.example to .env.local");
+    console.log("  2. Fill in your values");
+    console.log("  3. Run: source .env.local");
 }

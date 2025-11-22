@@ -9,7 +9,8 @@
     "type-check": "tsc --noEmit",
     "webhook:set": "bun scripts/webhook.ts set",
     "webhook:info": "bun scripts/webhook.ts info",
-    "webhook:delete": "bun scripts/webhook.ts delete"
+    "webhook:delete": "bun scripts/webhook.ts delete",
+    "webhook:config": "bun scripts/webhook.ts config"
   },
   "dependencies": {
     "@duyetbot/prompts": "workspace:*",
