@@ -3,6 +3,12 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+# Bundle .md files as text
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
 [ai]
 binding = "AI"
 
@@ -19,6 +25,9 @@ enabled = true
 enabled = true
 invocation_logs = true
 head_sampling_rate = 1 # Log 100% of requests
+
+[placement]
+mode = "smart"
 
 # Durable Objects for Agent state
 [[durable_objects.bindings]]

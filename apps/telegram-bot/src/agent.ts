@@ -4,6 +4,7 @@
  * Stateful agent with built-in storage using Durable Objects.
  */
 
+import { registerMcpServer, setMcpCallbackHost } from '@duyetbot/mcp-servers';
 import {
   TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
@@ -26,6 +27,8 @@ export interface Env {
   MODEL?: string; // Default: x-ai/grok-4.1-fast
   AI_GATEWAY_PROVIDER?: string; // Default: openrouter
   AI_GATEWAY_API_KEY?: string; // Authenticated AI Gateway token
+  WORKER_URL?: string; // Worker URL for MCP callback (e.g., https://duyetbot-telegram.workers.dev)
+  GITHUB_TOKEN?: string; // GitHub token for github-mcp
 }
 
 interface OpenAIResponse {
@@ -56,6 +59,21 @@ export class TelegramAgent extends Agent<Env, AgentState> {
     createdAt: Date.now(),
     updatedAt: Date.now(),
   };
+
+  /**
+   * Called when agent starts or wakes from hibernation
+   */
+  async onStart(): Promise<void> {
+    console.log('[Agent] onStart called');
+
+    // Set global callback host for MCP servers
+    const callbackHost = this.env.WORKER_URL || 'https://duyetbot-telegram.duyet.workers.dev';
+    setMcpCallbackHost(callbackHost);
+
+    // Register MCP servers
+    await registerMcpServer(this, 'duyet-mcp', this.env);
+    await registerMcpServer(this, 'github-mcp', this.env);
+  }
 
   /**
    * Initialize agent with user context
