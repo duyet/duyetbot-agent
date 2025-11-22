@@ -5,6 +5,8 @@
 export interface BotConfig {
   /** Telegram bot token from BotFather */
   botToken: string;
+  /** Anthropic API key (reads from ANTHROPIC_API_KEY env if not provided) */
+  anthropicApiKey?: string;
   /** MCP memory server URL */
   mcpServerUrl?: string;
   /** MCP authentication token */
