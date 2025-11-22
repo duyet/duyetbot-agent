@@ -4,9 +4,9 @@
  * Tests the core SDK query flow
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { createDefaultOptions, query, toSDKTools } from '@duyetbot/core';
 import { getAllBuiltinTools } from '@duyetbot/tools';
+import { describe, expect, it, vi } from 'vitest';
 
 // These tests use mocked SDK to verify the integration patterns work correctly
 
@@ -14,7 +14,7 @@ vi.mock('@duyetbot/core', async (importOriginal) => {
   const original = await importOriginal<typeof import('@duyetbot/core')>();
   return {
     ...original,
-    query: vi.fn(async function* (message: string, options: unknown) {
+    query: vi.fn(async function* (message: string, _options: unknown) {
       yield { type: 'user', content: message };
       yield { type: 'assistant', content: `Response to: ${message}` };
       yield { type: 'result', content: `Response to: ${message}` };

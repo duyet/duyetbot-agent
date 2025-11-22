@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { Hono } from 'hono';
-import { startTestServer, type TestServer } from '../helpers/server';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { type TestServer, startTestServer } from '../helpers/server';
 
 // Simple session manager for E2E testing
 class TestSessionManager {
@@ -8,17 +8,33 @@ class TestSessionManager {
 
   createSession(userId: string, metadata?: any) {
     const id = `session_${Math.random().toString(36).slice(2)}`;
-    const session = { id, userId, messages: [] as any[], metadata: metadata || {}, createdAt: Date.now(), updatedAt: Date.now() };
+    const session = {
+      id,
+      userId,
+      messages: [] as any[],
+      metadata: metadata || {},
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
     this.sessions.set(id, session);
     return session;
   }
 
-  getSession(id: string) { return this.sessions.get(id) || null; }
-  listSessions() { return Array.from(this.sessions.values()); }
-  deleteSession(id: string) { return this.sessions.delete(id); }
+  getSession(id: string) {
+    return this.sessions.get(id) || null;
+  }
+  listSessions() {
+    return Array.from(this.sessions.values());
+  }
+  deleteSession(id: string) {
+    return this.sessions.delete(id);
+  }
   appendMessages(id: string, msgs: any[]) {
     const s = this.sessions.get(id);
-    if (s) { s.messages.push(...msgs); s.updatedAt = Date.now(); }
+    if (s) {
+      s.messages.push(...msgs);
+      s.updatedAt = Date.now();
+    }
   }
 }
 
@@ -202,9 +218,7 @@ describe('Agent Server E2E', () => {
 
       // Cleanup
       await Promise.all(
-        sessionIds.map((id) =>
-          fetch(`${server.url}/sessions/${id}`, { method: 'DELETE' })
-        )
+        sessionIds.map((id) => fetch(`${server.url}/sessions/${id}`, { method: 'DELETE' }))
       );
     });
   });

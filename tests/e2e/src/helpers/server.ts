@@ -14,7 +14,7 @@ export async function startTestServer(
   app: Hono,
   options: { port?: number } = {}
 ): Promise<TestServer> {
-  const port = options.port || (3000 + Math.floor(Math.random() * 1000));
+  const port = options.port || 3000 + Math.floor(Math.random() * 1000);
 
   const server = serve({
     fetch: app.fetch,
@@ -42,7 +42,9 @@ export async function waitFor(
 ): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeout) {
-    if (await condition()) return;
+    if (await condition()) {
+      return;
+    }
     await new Promise((r) => setTimeout(r, interval));
   }
   throw new Error(`Timeout waiting for condition after ${timeout}ms`);
