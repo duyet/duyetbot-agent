@@ -24,6 +24,7 @@ export interface Env {
   TELEGRAM_WEBHOOK_SECRET?: string;
   ALLOWED_USERS?: string;
   MODEL?: string; // Default: x-ai/grok-4.1-fast
+  AI_GATEWAY_PROVIDER?: string; // Default: openrouter
 }
 
 interface OpenAIResponse {
@@ -100,7 +101,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
     const gateway = this.env.AI.gateway(this.env.AI_GATEWAY_NAME);
 
     const response = await gateway.run({
-      provider: 'openrouter',
+      provider: this.env.AI_GATEWAY_PROVIDER || 'openrouter',
       endpoint: 'chat/completions',
       headers: {
         'Content-Type': 'application/json',
