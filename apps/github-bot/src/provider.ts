@@ -118,7 +118,23 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
         throw new Error(`AI Gateway error: ${response.status} - ${error}`);
       }
 
-      const data = (await response.json()) as OpenAIResponse;
+      let data: OpenAIResponse;
+      try {
+        data = (await response.json()) as OpenAIResponse;
+        logger.debug('LLM response parsed', {
+          hasChoices: !!data.choices,
+          choiceCount: data.choices?.length || 0,
+        });
+      } catch (parseError) {
+        const errorMsg = parseError instanceof Error ? parseError.message : String(parseError);
+        logger.error('LLM response parse error', {
+          model,
+          error: errorMsg,
+          durationMs: Date.now() - startTime,
+        });
+        throw new Error(`Failed to parse AI Gateway response: ${errorMsg}`);
+      }
+
       const choice = data.choices?.[0]?.message;
 
       // Extract tool calls if present

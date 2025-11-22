@@ -112,7 +112,7 @@ export function createGitHubBot(config: BotConfig) {
 
     // Handler function for mentions
     const onMention = async (context: MentionContext): Promise<string> => {
-      return handleMention(context, config);
+      return handleMention(context, config, octokit);
     };
 
     const repo = payload.repository?.full_name || 'unknown';
