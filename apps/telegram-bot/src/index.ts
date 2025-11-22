@@ -1,208 +1,135 @@
 /**
- * Telegram Bot Entry Point
+ * Telegram Bot using Hono + Cloudflare Agents SDK
  *
- * Telegraf-based bot for @duyetbot
+ * Simple webhook handler with stateful agent sessions via Durable Objects.
  */
 
-import { Context, Telegraf } from 'telegraf';
-import {
-  clearCommand,
-  helpCommand,
-  sessionsCommand,
-  startCommand,
-  statusCommand,
-} from './commands/index.js';
-import { handleMessage, isUserAllowed } from './handlers/message.js';
-import { TelegramSessionManager, createMCPClient, createSessionId } from './session-manager.js';
-import type { BotConfig, TelegramUser } from './types.js';
+import { getAgentByName } from 'agents';
+import { Hono } from 'hono';
+import { type Env, TelegramAgent } from './agent.js';
 
-export { TelegramSessionManager, createMCPClient, createSessionId } from './session-manager.js';
-export { handleMessage, isUserAllowed } from './handlers/message.js';
-export type { BotConfig, TelegramUser, ChatSession, CommandContext } from './types.js';
+// Re-export agent for Durable Object binding
+export { TelegramAgent };
 
-/**
- * Create Telegram bot
- */
-export function createTelegramBot(config: BotConfig): {
-  bot: Telegraf<Context>;
-  sessionManager: TelegramSessionManager;
-} {
-  const bot = new Telegraf(config.botToken);
-
-  // Initialize session manager
-  let sessionManager: TelegramSessionManager;
-  if (config.mcpServerUrl) {
-    const mcpClient = createMCPClient(config.mcpServerUrl, config.mcpAuthToken);
-    sessionManager = new TelegramSessionManager(mcpClient);
-  } else {
-    sessionManager = new TelegramSessionManager();
-  }
-
-  // Helper to extract user info
-  const getUser = (ctx: {
-    from?: { id: number; username?: string; first_name: string; last_name?: string };
-  }): TelegramUser | null => {
-    if (!ctx.from) {
-      return null;
-    }
-    return {
-      id: ctx.from.id,
-      username: ctx.from.username,
-      firstName: ctx.from.first_name,
-      lastName: ctx.from.last_name,
+interface TelegramUpdate {
+  message?: {
+    message_id: number;
+    from?: {
+      id: number;
+      username?: string;
+      first_name: string;
     };
+    chat: {
+      id: number;
+    };
+    text?: string;
   };
-
-  // Authorization middleware
-  bot.use(async (ctx: Context, next: () => Promise<void>) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    if (!isUserAllowed(user.id, config.allowedUsers)) {
-      await ctx.reply('Sorry, you are not authorized to use this bot.');
-      return;
-    }
-
-    await next();
-  });
-
-  // /start command
-  bot.command('start', async (ctx) => {
-    const result = startCommand();
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
-
-  // /help command
-  bot.command('help', async (ctx) => {
-    const result = helpCommand();
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
-
-  // /status command
-  bot.command('status', async (ctx) => {
-    const result = statusCommand(sessionManager);
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
-
-  // /clear command
-  bot.command('clear', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    const sessionId = createSessionId(user.id, ctx.chat.id);
-    const result = await clearCommand(sessionId, sessionManager);
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
-
-  // /sessions command
-  bot.command('sessions', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    const sessionId = createSessionId(user.id, ctx.chat.id);
-    const result = sessionsCommand(sessionId);
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
-
-  // /chat command with inline message
-  bot.command('chat', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    const text = ctx.message.text.replace(/^\/chat\s*/, '').trim();
-    if (!text) {
-      await ctx.reply('Please provide a message. Example: /chat Hello!');
-      return;
-    }
-
-    // Show typing indicator
-    await ctx.sendChatAction('typing');
-
-    const response = await handleMessage(text, user, ctx.chat.id, config, sessionManager);
-    await ctx.reply(response, { parse_mode: 'Markdown' }).catch(() => {
-      // Retry without markdown if parsing fails
-      return ctx.reply(response);
-    });
-  });
-
-  // Handle regular text messages
-  bot.on('text', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    const text = ctx.message.text;
-
-    // Show typing indicator
-    await ctx.sendChatAction('typing');
-
-    const response = await handleMessage(text, user, ctx.chat.id, config, sessionManager);
-    await ctx.reply(response, { parse_mode: 'Markdown' }).catch(() => {
-      // Retry without markdown if parsing fails
-      return ctx.reply(response);
-    });
-  });
-
-  // Error handling
-  bot.catch((err: unknown, ctx: Context) => {
-    console.error('Telegram bot error:', err);
-    ctx.reply('Sorry, an error occurred. Please try again.').catch(console.error);
-  });
-
-  return { bot, sessionManager };
 }
 
-/**
- * Start the bot in polling mode (development)
- */
-export async function startPolling(config: BotConfig): Promise<void> {
-  const { bot } = createTelegramBot(config);
+const app = new Hono<{ Bindings: Env }>();
 
-  console.log('Starting Telegram bot in polling mode...');
+// Health check
+app.get('/', (c) => c.text('OK'));
 
-  // Graceful shutdown
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+// Telegram webhook
+app.post('/webhook', async (c) => {
+  const env = c.env;
 
-  await bot.launch();
-  console.log('Telegram bot is running!');
-}
-
-/**
- * Start the bot in webhook mode (production)
- */
-export async function startWebhook(config: BotConfig, port = 3002): Promise<void> {
-  if (!config.webhookUrl) {
-    throw new Error('webhookUrl is required for webhook mode');
+  // Verify webhook secret
+  const secretHeader = c.req.header('X-Telegram-Bot-Api-Secret-Token');
+  if (env.TELEGRAM_WEBHOOK_SECRET && secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
+    return c.text('Unauthorized', 401);
   }
 
-  const { bot } = createTelegramBot(config);
+  // Parse JSON with error handling
+  let update: TelegramUpdate;
+  try {
+    update = await c.req.json<TelegramUpdate>();
+  } catch {
+    return c.text('Invalid JSON', 400);
+  }
 
-  console.log(`Starting Telegram bot webhook on port ${port}...`);
+  const message = update.message;
+  if (!message?.text || !message.from) {
+    return c.text('OK');
+  }
 
-  await bot.launch({
-    webhook: {
-      domain: config.webhookUrl,
-      port,
-      secretToken: config.webhookSecretPath,
-    },
+  const userId = message.from.id;
+  const chatId = message.chat.id;
+  const text = message.text;
+
+  try {
+    // Check allowed users
+    if (env.ALLOWED_USERS) {
+      const allowed = env.ALLOWED_USERS.split(',')
+        .map((id) => Number.parseInt(id.trim(), 10))
+        .filter((id) => !Number.isNaN(id));
+
+      if (allowed.length > 0 && !allowed.includes(userId)) {
+        await sendMessage(env.TELEGRAM_BOT_TOKEN, chatId, 'Sorry, you are not authorized.');
+        return c.text('OK');
+      }
+    }
+
+    // Get or create agent for this user
+    const agentId = `telegram:${userId}:${chatId}`;
+    const agent = await getAgentByName<Env, TelegramAgent>(env.TelegramAgent, agentId);
+    await agent.init(userId, chatId);
+
+    let responseText: string;
+
+    // Handle commands
+    if (text.startsWith('/start')) {
+      responseText = await agent.getWelcome();
+    } else if (text.startsWith('/help')) {
+      responseText = await agent.getHelp();
+    } else if (text.startsWith('/clear')) {
+      responseText = await agent.clearHistory();
+    } else {
+      // Send typing indicator (fire-and-forget)
+      sendAction(env.TELEGRAM_BOT_TOKEN, chatId, 'typing');
+      // Chat with agent (pass only serializable values)
+      responseText = await agent.chat(text, env.AI_GATEWAY_URL, env.MODEL);
+    }
+
+    await sendMessage(env.TELEGRAM_BOT_TOKEN, chatId, responseText);
+    return c.text('OK');
+  } catch (error) {
+    console.error('Webhook error:', error);
+    await sendMessage(env.TELEGRAM_BOT_TOKEN, chatId, 'Sorry, an error occurred.').catch(() => {
+      // Ignore - already in error handler
+    });
+    return c.text('Error', 500);
+  }
+});
+
+async function sendMessage(token: string, chatId: number, text: string): Promise<void> {
+  const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: 'Markdown',
+    }),
   });
 
-  console.log('Telegram bot webhook is running!');
-
-  // Graceful shutdown
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
+  if (!response.ok) {
+    const error = await response.text();
+    console.error(`sendMessage failed: ${response.status}`, error);
+    throw new Error(`Telegram API error: ${response.status}`);
+  }
 }
 
-// Export default for direct usage
-export default createTelegramBot;
+function sendAction(token: string, chatId: number, action: string): void {
+  fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: chatId,
+      action,
+    }),
+  }).catch((err) => console.warn('sendAction failed:', err));
+}
+
+export default app;
