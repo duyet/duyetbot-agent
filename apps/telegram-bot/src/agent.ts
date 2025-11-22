@@ -4,18 +4,17 @@
  * Stateful agent with built-in storage using Durable Objects.
  */
 
-import { Agent, type AgentNamespace } from "agents";
-import Anthropic from "@anthropic-ai/sdk";
 import {
+  TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
-  TELEGRAM_HELP_MESSAGE,
-} from "@duyetbot/prompts";
+} from '@duyetbot/prompts';
+import { Agent, type AgentNamespace } from 'agents';
 
 export interface Env {
   // Required
   TELEGRAM_BOT_TOKEN: string;
-  ANTHROPIC_API_KEY: string;
+  AI_GATEWAY_URL: string; // OpenRouter via Cloudflare AI Gateway
 
   // Agent binding
   TelegramAgent: AgentNamespace<TelegramAgent>;
@@ -23,12 +22,15 @@ export interface Env {
   // Optional
   TELEGRAM_WEBHOOK_SECRET?: string;
   ALLOWED_USERS?: string;
-  MODEL?: string;
-  AI_GATEWAY_URL?: string;
+  MODEL?: string; // Default: google/gemma-2-9b-it:free
+}
+
+interface OpenAIResponse {
+  choices?: Array<{ message?: { content?: string } }>;
 }
 
 interface Message {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 }
 
@@ -72,40 +74,44 @@ export class TelegramAgent extends Agent<Env, AgentState> {
    */
   async chat(userMessage: string, env: Env): Promise<string> {
     // Add user message to history
-    const messages: Message[] = [
-      ...this.state.messages,
-      { role: "user", content: userMessage },
+    const messages: Message[] = [...this.state.messages, { role: 'user', content: userMessage }];
+
+    // Build messages for OpenAI-compatible API
+    const apiMessages = [
+      { role: 'system' as const, content: TELEGRAM_SYSTEM_PROMPT },
+      ...messages.map((m) => ({
+        role: m.role as 'user' | 'assistant',
+        content: m.content,
+      })),
     ];
 
-    // Build messages for API
-    const apiMessages = messages.map((m) => ({
-      role: m.role as "user" | "assistant",
-      content: m.content,
-    }));
-
-    // Call Anthropic API
-    const anthropic = new Anthropic({
-      apiKey: env.ANTHROPIC_API_KEY,
-      baseURL: env.AI_GATEWAY_URL,
+    // Call OpenRouter via AI Gateway
+    const response = await fetch(env.AI_GATEWAY_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: env.MODEL || 'google/gemma-2-9b-it:free',
+        max_tokens: 1024,
+        messages: apiMessages,
+      }),
     });
 
-    const response = await anthropic.messages.create({
-      model: env.MODEL || "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system: TELEGRAM_SYSTEM_PROMPT,
-      messages: apiMessages,
-    });
+    if (!response.ok) {
+      const error = await response.text();
+      console.error('AI Gateway error:', error);
+      throw new Error(`AI Gateway error: ${response.status}`);
+    }
+
+    const data = (await response.json()) as OpenAIResponse;
 
     // Extract response text
     const responseText =
-      response.content[0].type === "text"
-        ? response.content[0].text
-        : "Sorry, I could not generate a response.";
+      data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
 
     // Update state with new messages
     this.setState({
       ...this.state,
-      messages: [...messages, { role: "assistant", content: responseText }],
+      messages: [...messages, { role: 'assistant', content: responseText }],
       updatedAt: Date.now(),
     });
 
@@ -121,7 +127,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
       messages: [],
       updatedAt: Date.now(),
     });
-    return "Conversation history cleared.";
+    return 'Conversation history cleared.';
   }
 
   /**

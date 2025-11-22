@@ -2,7 +2,7 @@
  * Base prompt fragments for duyetbot agents
  */
 
-export const BOT_NAME = "@duyetbot";
+export const BOT_NAME = '@duyetbot';
 
 export const CORE_CAPABILITIES = `You help users with:
 - Answering questions clearly and concisely

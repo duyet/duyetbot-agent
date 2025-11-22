@@ -2,7 +2,7 @@
  * Telegram bot system prompts
  */
 
-import { BOT_NAME, CORE_CAPABILITIES, RESPONSE_GUIDELINES } from "./base.js";
+import { BOT_NAME, CORE_CAPABILITIES, RESPONSE_GUIDELINES } from './base.js';
 
 export const TELEGRAM_SYSTEM_PROMPT = `You are ${BOT_NAME}, a helpful AI assistant on Telegram.
 
