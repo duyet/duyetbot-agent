@@ -1,13 +1,11 @@
 /**
  * Cloudflare Workers entry point for Telegram Bot
  *
- * Handles Telegram webhook requests in a serverless environment.
- * Important: Sessions are stateless per request - configure MCP_SERVER_URL for persistence.
+ * Uses Anthropic SDK directly (not Agent SDK) for Workers compatibility.
+ * The Agent SDK uses Node.js APIs not available in Workers.
  */
 
-import type { Update } from 'telegraf/types';
-import { createTelegramBot } from './index.js';
-import type { BotConfig } from './types.js';
+import Anthropic from "@anthropic-ai/sdk";
 
 export interface Env {
   // Required
@@ -17,58 +15,156 @@ export interface Env {
 
   // Optional
   ALLOWED_USERS?: string;
-  MCP_SERVER_URL?: string;
-  MCP_AUTH_TOKEN?: string;
   MODEL?: string;
 }
 
+interface TelegramUpdate {
+  message?: {
+    message_id: number;
+    from?: {
+      id: number;
+      username?: string;
+      first_name: string;
+    };
+    chat: {
+      id: number;
+    };
+    text?: string;
+  };
+}
+
+const SYSTEM_PROMPT = `You are @duyetbot, a helpful AI assistant on Telegram.
+
+You help users with:
+- Answering questions clearly and concisely
+- Writing, explaining, and debugging code
+- Research and analysis
+- Task planning and organization
+
+Guidelines:
+- Keep responses concise for mobile reading
+- Use markdown formatting when helpful
+- Be friendly and helpful
+
+Current conversation is via Telegram chat.`;
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    // Only accept POST requests
-    if (request.method !== 'POST') {
-      return new Response('Method not allowed', { status: 405 });
+    if (request.method !== "POST") {
+      return new Response("Method not allowed", { status: 405 });
     }
 
-    // Verify webhook secret token
-    const secretHeader = request.headers.get('X-Telegram-Bot-Api-Secret-Token');
-    if (env.TELEGRAM_WEBHOOK_SECRET && secretHeader !== env.TELEGRAM_WEBHOOK_SECRET) {
-      return new Response('Unauthorized', { status: 401 });
+    // Verify webhook secret
+    const secretHeader = request.headers.get("X-Telegram-Bot-Api-Secret-Token");
+    if (
+      env.TELEGRAM_WEBHOOK_SECRET &&
+      secretHeader !== env.TELEGRAM_WEBHOOK_SECRET
+    ) {
+      return new Response("Unauthorized", { status: 401 });
     }
 
     try {
-      // Set ANTHROPIC_API_KEY for @duyetbot/core to use
-      if (typeof process !== 'undefined') {
-        process.env.ANTHROPIC_API_KEY = env.ANTHROPIC_API_KEY;
+      const update = (await request.json()) as TelegramUpdate;
+
+      if (!update.message?.text || !update.message.from) {
+        return new Response("OK", { status: 200 });
       }
 
-      const update = (await request.json()) as Update;
+      const { message } = update;
+      const userId = message.from.id;
+      const chatId = message.chat.id;
+      const text = message.text;
 
-      // Parse allowed users
-      const allowedUsers = env.ALLOWED_USERS
-        ? env.ALLOWED_USERS.split(',')
-            .map((id) => Number.parseInt(id.trim(), 10))
-            .filter((id) => !Number.isNaN(id))
-        : [];
+      // Check allowed users
+      if (env.ALLOWED_USERS) {
+        const allowed = env.ALLOWED_USERS.split(",")
+          .map((id) => Number.parseInt(id.trim(), 10))
+          .filter((id) => !Number.isNaN(id));
+        if (allowed.length > 0 && !allowed.includes(userId)) {
+          await sendTelegramMessage(
+            env.TELEGRAM_BOT_TOKEN,
+            chatId,
+            "Sorry, you are not authorized.",
+          );
+          return new Response("OK", { status: 200 });
+        }
+      }
 
-      const config: BotConfig = {
-        botToken: env.TELEGRAM_BOT_TOKEN,
-        anthropicApiKey: env.ANTHROPIC_API_KEY,
-        allowedUsers,
-        mcpServerUrl: env.MCP_SERVER_URL,
-        mcpAuthToken: env.MCP_AUTH_TOKEN,
-        model: env.MODEL || 'sonnet',
-      };
+      // Handle commands
+      if (text.startsWith("/start")) {
+        await sendTelegramMessage(
+          env.TELEGRAM_BOT_TOKEN,
+          chatId,
+          "Hello! I'm @duyetbot. Send me a message and I'll help you out.",
+        );
+        return new Response("OK", { status: 200 });
+      }
 
-      const { bot } = createTelegramBot(config);
+      if (text.startsWith("/help")) {
+        await sendTelegramMessage(
+          env.TELEGRAM_BOT_TOKEN,
+          chatId,
+          "Commands:\n/start - Start bot\n/help - Show help\n\nJust send me any message!",
+        );
+        return new Response("OK", { status: 200 });
+      }
 
-      // Process the Telegram update
-      await bot.handleUpdate(update);
+      // Send typing indicator
+      await sendChatAction(env.TELEGRAM_BOT_TOKEN, chatId, "typing");
 
-      return new Response('OK', { status: 200 });
+      // Call Anthropic API
+      const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+      const response = await anthropic.messages.create({
+        model: env.MODEL || "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: text }],
+      });
+
+      // Extract response text
+      const responseText =
+        response.content[0].type === "text"
+          ? response.content[0].text
+          : "Sorry, I could not generate a response.";
+
+      // Send response
+      await sendTelegramMessage(env.TELEGRAM_BOT_TOKEN, chatId, responseText);
+
+      return new Response("OK", { status: 200 });
     } catch (error) {
-      console.error('Webhook error:', error);
-      const message = error instanceof Error ? error.message : 'Unknown error';
-      return new Response(`Error: ${message}`, { status: 500 });
+      console.error("Webhook error:", error);
+      return new Response("Error", { status: 500 });
     }
   },
 };
+
+async function sendTelegramMessage(
+  token: string,
+  chatId: number,
+  text: string,
+): Promise<void> {
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      text,
+      parse_mode: "Markdown",
+    }),
+  });
+}
+
+async function sendChatAction(
+  token: string,
+  chatId: number,
+  action: string,
+): Promise<void> {
+  await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      chat_id: chatId,
+      action,
+    }),
+  });
+}
