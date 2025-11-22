@@ -42,6 +42,17 @@ export type {
 // Base builder
 export { PromptBuilder, createPromptBuilder } from './builder.js';
 
+// Template loader
+export {
+  loadTemplate,
+  loadTemplates,
+  templateExists,
+  templateNames,
+  defaultContext,
+  type TemplateContext,
+  type TemplateName,
+} from './loader.js';
+
 // Channel-specific builders
 export {
   TelegramPromptBuilder,

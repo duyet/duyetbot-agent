@@ -3,6 +3,7 @@
  */
 
 import { PromptBuilder } from '../builder.js';
+import { loadTemplate, templateNames } from '../loader.js';
 import type { GitHubContext } from '../types.js';
 
 /**
@@ -39,12 +40,8 @@ export class GitHubPromptBuilder extends PromptBuilder {
     // Add response guidelines
     this.addResponseGuidelines();
 
-    // Add GitHub-specific constraints
-    this.addConstraints([
-      'Reference specific files and line numbers',
-      'Provide actionable suggestions',
-      'Use GitHub-flavored markdown',
-    ]);
+    // Add GitHub-specific constraints from template
+    this.addText('github_constraints', loadTemplate(templateNames.githubConstraints), 'important');
 
     // Add API access note
     this.addText(
@@ -93,12 +90,7 @@ export class GitHubPromptBuilder extends PromptBuilder {
 
     this.addText(
       'review_instructions',
-      `When reviewing code:
-- Check for bugs and logic errors
-- Identify security vulnerabilities
-- Suggest performance improvements
-- Verify code style consistency
-- Ensure test coverage is adequate`,
+      loadTemplate(templateNames.reviewInstructions),
       'important'
     );
 
@@ -113,11 +105,7 @@ export class GitHubPromptBuilder extends PromptBuilder {
 
     this.addText(
       'explain_instructions',
-      `When explaining code:
-- Start with a high-level overview
-- Break down complex sections
-- Explain the purpose of key functions
-- Note any patterns or design decisions`,
+      loadTemplate(templateNames.explainInstructions),
       'important'
     );
 

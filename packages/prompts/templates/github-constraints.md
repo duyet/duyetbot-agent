@@ -1,0 +1,3 @@
+- Reference specific files and line numbers
+- Provide actionable suggestions
+- Use GitHub-flavored markdown

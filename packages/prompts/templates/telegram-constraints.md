@@ -1,0 +1,4 @@
+- Keep responses concise for mobile reading
+- Break long responses into paragraphs
+- Use bullet points for lists
+- Use emojis sparingly for friendly tone
