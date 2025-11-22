@@ -1,17 +1,16 @@
 /**
  * Cloudflare Workers entry point for Telegram Bot
  *
- * Uses Anthropic SDK directly (not Agent SDK) for Workers compatibility.
- * The Agent SDK uses Node.js APIs not available in Workers.
+ * Uses OpenRouter via Cloudflare AI Gateway (OpenAI-compatible format).
  */
-
-import Anthropic from "@anthropic-ai/sdk";
 
 export interface Env {
   // Required
   TELEGRAM_BOT_TOKEN: string;
-  ANTHROPIC_API_KEY: string;
   TELEGRAM_WEBHOOK_SECRET: string;
+
+  // AI Gateway (Cloudflare) - OpenRouter endpoint, no auth needed
+  AI_GATEWAY_URL: string;
 
   // Optional
   ALLOWED_USERS?: string;
@@ -66,11 +65,11 @@ export default {
     try {
       const update = (await request.json()) as TelegramUpdate;
 
-      if (!update.message?.text || !update.message.from) {
+      const message = update.message;
+      if (!message?.text || !message.from) {
         return new Response("OK", { status: 200 });
       }
 
-      const { message } = update;
       const userId = message.from.id;
       const chatId = message.chat.id;
       const text = message.text;
@@ -112,20 +111,34 @@ export default {
       // Send typing indicator
       await sendChatAction(env.TELEGRAM_BOT_TOKEN, chatId, "typing");
 
-      // Call Anthropic API
-      const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-      const response = await anthropic.messages.create({
-        model: env.MODEL || "claude-sonnet-4-20250514",
-        max_tokens: 1024,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: text }],
+      // Call OpenRouter via AI Gateway (OpenAI-compatible format)
+      const response = await fetch(env.AI_GATEWAY_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: env.MODEL || "anthropic/claude-sonnet-4-20250514",
+          max_tokens: 1024,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            { role: "user", content: text },
+          ],
+        }),
       });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("AI Gateway error:", error);
+        throw new Error(`AI Gateway error: ${response.status}`);
+      }
+
+      const data = (await response.json()) as {
+        choices?: Array<{ message?: { content?: string } }>;
+      };
 
       // Extract response text
       const responseText =
-        response.content[0].type === "text"
-          ? response.content[0].text
-          : "Sorry, I could not generate a response.";
+        data.choices?.[0]?.message?.content ||
+        "Sorry, I could not generate a response.";
 
       // Send response
       await sendTelegramMessage(env.TELEGRAM_BOT_TOKEN, chatId, responseText);
