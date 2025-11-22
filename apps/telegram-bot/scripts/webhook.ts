@@ -8,6 +8,7 @@
  *   bun run webhook:delete - Delete webhook
  */
 
+import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -34,14 +35,40 @@ const AI_GATEWAY_NAME = process.env.AI_GATEWAY_NAME;
 const MODEL = process.env.MODEL;
 const ALLOWED_USERS = process.env.ALLOWED_USERS;
 
-function showConfig() {
-  console.log('Current configuration:');
+async function showConfig() {
+  console.log('Local configuration (.env.local):');
   console.log(`  TELEGRAM_BOT_TOKEN:      ${BOT_TOKEN ? '✓ set' : '✗ not set'}`);
   console.log(`  TELEGRAM_WEBHOOK_URL:    ${WEBHOOK_URL || 'not set'}`);
   console.log(`  AI_GATEWAY_NAME:         ${AI_GATEWAY_NAME || 'not set'}`);
   console.log(`  TELEGRAM_WEBHOOK_SECRET: ${WEBHOOK_SECRET ? '✓ set' : 'not set'}`);
   console.log(`  MODEL:                   ${MODEL || 'x-ai/grok-4.1-fast (default)'}`);
   console.log(`  ALLOWED_USERS:           ${ALLOWED_USERS || 'all users'}`);
+
+  // Fetch deployed secrets from Cloudflare
+  console.log('\nDeployed secrets (from Cloudflare):');
+  try {
+    const output = execFileSync('wrangler', ['secret', 'list', '--json'], {
+      cwd: resolve(import.meta.dir, '..'),
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    });
+    const secrets = JSON.parse(output) as Array<{ name: string; type: string }>;
+    const secretNames = secrets.map((s) => s.name);
+
+    const requiredSecrets = ['TELEGRAM_BOT_TOKEN', 'AI_GATEWAY_NAME'];
+    const optionalSecrets = ['TELEGRAM_WEBHOOK_SECRET', 'ALLOWED_USERS', 'MODEL'];
+
+    for (const name of requiredSecrets) {
+      const status = secretNames.includes(name) ? '✓ set' : '✗ not set';
+      console.log(`  ${name.padEnd(24)} ${status}`);
+    }
+    for (const name of optionalSecrets) {
+      const status = secretNames.includes(name) ? '✓ set' : '(not set)';
+      console.log(`  ${name.padEnd(24)} ${status}`);
+    }
+  } catch {
+    console.log('  (could not fetch - run wrangler login first)');
+  }
 }
 
 if (!BOT_TOKEN && process.argv[2] !== 'config') {
