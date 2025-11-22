@@ -5,9 +5,11 @@
 // Base prompt fragments
 export {
   BOT_NAME,
+  BOT_CREATOR,
   CORE_CAPABILITIES,
   CODE_GUIDELINES,
   RESPONSE_GUIDELINES,
+  CREATOR_INFO,
 } from './base.js';
 
 // Telegram prompts
@@ -24,3 +26,28 @@ export {
   GITHUB_REVIEW_PROMPT,
   GITHUB_EXPLAIN_PROMPT,
 } from './github.js';
+
+// Types
+export type {
+  SectionPriority,
+  ModelType,
+  RoleType,
+  PromptSection,
+  PromptContext,
+  GitHubContext,
+  CompileOptions,
+  CompiledPrompt,
+} from './types.js';
+
+// Base builder
+export { PromptBuilder, createPromptBuilder } from './builder.js';
+
+// Channel-specific builders
+export {
+  TelegramPromptBuilder,
+  createTelegramPromptBuilder,
+  getTelegramSystemPrompt,
+  GitHubPromptBuilder,
+  createGitHubPromptBuilder,
+  getGitHubSystemPrompt,
+} from './builders/index.js';
