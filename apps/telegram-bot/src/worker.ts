@@ -94,7 +94,7 @@ export default {
         await sendChatAction(env.TELEGRAM_BOT_TOKEN, chatId, "typing");
 
         // Chat with agent
-        responseText = await agent.chat(text);
+        responseText = await agent.chat(text, env);
       }
 
       // Send response to Telegram
