@@ -4,8 +4,8 @@
  * Tests the full API gateway flow including routing, middleware, and handlers
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { createApp } from '@duyetbot/api';
+import { describe, expect, it, vi } from 'vitest';
 
 // Mock SDK for testing
 vi.mock('@duyetbot/core', () => ({
@@ -59,10 +59,13 @@ describe('API Gateway Integration', () => {
   describe('Agent Execution Flow', () => {
     it('should execute agent with valid auth', async () => {
       // Mock GitHub auth
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: 1, login: 'testuser' }),
-      }));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ id: 1, login: 'testuser' }),
+        })
+      );
 
       const res = await app.request('/agent/execute', {
         method: 'POST',
@@ -92,10 +95,13 @@ describe('API Gateway Integration', () => {
     });
 
     it('should validate request body', async () => {
-      vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
-        ok: true,
-        json: async () => ({ id: 1, login: 'testuser' }),
-      }));
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ id: 1, login: 'testuser' }),
+        })
+      );
 
       const res = await app.request('/agent/execute', {
         method: 'POST',

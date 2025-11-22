@@ -1,5 +1,5 @@
 // E2E test setup
-import { beforeAll, afterAll } from 'vitest';
+import { afterAll, beforeAll } from 'vitest';
 
 // Global setup for E2E tests
 beforeAll(async () => {

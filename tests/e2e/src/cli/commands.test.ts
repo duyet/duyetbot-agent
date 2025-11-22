@@ -1,7 +1,7 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { existsSync, mkdirSync, rmSync, writeFileSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 // Self-contained implementations for testing
 interface DuyetbotConfig {
@@ -42,7 +42,7 @@ class FileSessionManager {
   }
 
   async list() {
-    const files = existsSync(this.dir) ? require('fs').readdirSync(this.dir) : [];
+    const files = existsSync(this.dir) ? require('node:fs').readdirSync(this.dir) : [];
     return files
       .filter((f: string) => f.endsWith('.json'))
       .map((f: string) => JSON.parse(readFileSync(join(this.dir, f), 'utf-8')));
@@ -86,8 +86,12 @@ class AuthManager {
     }
   }
 
-  isAuthenticated() { return this.creds !== null; }
-  getCredentials() { return this.creds; }
+  isAuthenticated() {
+    return this.creds !== null;
+  }
+  getCredentials() {
+    return this.creds;
+  }
 
   saveCredentials(creds: any) {
     this.creds = creds;
@@ -96,7 +100,9 @@ class AuthManager {
 
   clearCredentials() {
     this.creds = null;
-    if (existsSync(this.path)) rmSync(this.path);
+    if (existsSync(this.path)) {
+      rmSync(this.path);
+    }
   }
 }
 
@@ -157,9 +163,7 @@ describe('CLI E2E', () => {
 
     it('should append messages', async () => {
       const session = await sessionManager.create({ title: 'Chat' });
-      await sessionManager.appendMessages(session.id, [
-        { role: 'user', content: 'Hello' },
-      ]);
+      await sessionManager.appendMessages(session.id, [{ role: 'user', content: 'Hello' }]);
 
       const updated = await sessionManager.get(session.id);
       expect(updated?.messages.length).toBe(1);
