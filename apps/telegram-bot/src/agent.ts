@@ -8,22 +8,23 @@ import {
   TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
-} from "@duyetbot/prompts";
-import { Agent, type AgentNamespace } from "agents";
+} from '@duyetbot/prompts';
+import { Agent, type AgentNamespace } from 'agents';
 
 export interface Env {
   // Required
   TELEGRAM_BOT_TOKEN: string;
-  AI_GATEWAY_URL: string; // OpenRouter via Cloudflare AI Gateway
+  AI_GATEWAY_NAME: string; // AI Gateway name (e.g., "my-gateway")
 
-  // Agent binding
+  // Bindings
+  AI: Ai;
   TelegramAgent: AgentNamespace<TelegramAgent>;
 
   // Optional
   TELEGRAM_WEBHOOK_SECRET?: string;
   ALLOWED_USERS?: string;
   MODEL?: string; // Default: x-ai/grok-4.1-fast
-  OPENROUTER_API_KEY?: string; // Only needed if not configured in AI Gateway
+  OPENROUTER_API_KEY?: string; // Set in AI Gateway or pass here
 }
 
 interface OpenAIResponse {
@@ -31,7 +32,7 @@ interface OpenAIResponse {
 }
 
 interface Message {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 }
 
@@ -75,56 +76,56 @@ export class TelegramAgent extends Agent<Env, AgentState> {
    */
   async chat(
     userMessage: string,
-    aiGatewayUrl: string,
+    ai: Ai,
+    gatewayName: string,
     model?: string,
-    apiKey?: string,
+    apiKey?: string
   ): Promise<string> {
     const trimmedMessage = userMessage.trim();
 
     if (!trimmedMessage) {
-      return "Please send a message.";
+      return 'Please send a message.';
     }
 
     if (trimmedMessage.length > 4096) {
-      return "Message is too long (max 4096 characters).";
+      return 'Message is too long (max 4096 characters).';
     }
 
     // Add user message to history
-    const messages: Message[] = [
-      ...this.state.messages,
-      { role: "user", content: trimmedMessage },
-    ];
+    const messages: Message[] = [...this.state.messages, { role: 'user', content: trimmedMessage }];
 
     // Build messages for OpenAI-compatible API
     const apiMessages = [
-      { role: "system" as const, content: TELEGRAM_SYSTEM_PROMPT },
+      { role: 'system' as const, content: TELEGRAM_SYSTEM_PROMPT },
       ...messages.map((m) => ({
-        role: m.role as "user" | "assistant",
+        role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
     ];
 
-    // Call OpenRouter via AI Gateway
+    // Call OpenRouter via AI Gateway binding
+    const gateway = ai.gateway(gatewayName);
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     };
     if (apiKey) {
-      headers["Authorization"] = `Bearer ${apiKey}`;
+      headers.Authorization = `Bearer ${apiKey}`;
     }
 
-    const response = await fetch(aiGatewayUrl, {
-      method: "POST",
+    const response = await gateway.run({
+      provider: 'openrouter',
+      endpoint: 'chat/completions',
       headers,
-      body: JSON.stringify({
-        model: model || "x-ai/grok-4.1-fast",
+      query: {
+        model: model || 'x-ai/grok-4.1-fast',
         max_tokens: 1024,
         messages: apiMessages,
-      }),
+      },
     });
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("AI Gateway error:", error);
+      console.error('AI Gateway error:', error);
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
@@ -132,15 +133,11 @@ export class TelegramAgent extends Agent<Env, AgentState> {
 
     // Extract response text
     const responseText =
-      data.choices?.[0]?.message?.content ||
-      "Sorry, I could not generate a response.";
+      data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
 
     // Update state with new messages (keep last 20 for context)
     const MAX_HISTORY = 20;
-    let updatedMessages = [
-      ...messages,
-      { role: "assistant" as const, content: responseText },
-    ];
+    let updatedMessages = [...messages, { role: 'assistant' as const, content: responseText }];
     if (updatedMessages.length > MAX_HISTORY) {
       updatedMessages = updatedMessages.slice(-MAX_HISTORY);
     }
@@ -163,7 +160,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
       messages: [],
       updatedAt: Date.now(),
     });
-    return "Conversation history cleared.";
+    return 'Conversation history cleared.';
   }
 
   /**
