@@ -4,8 +4,13 @@
  * Uses Cloudflare AI Gateway for LLM calls
  */
 
-import type { LLMMessage, LLMProvider, LLMResponse, OpenAITool } from '@duyetbot/chat-agent';
-import { logger } from './logger.js';
+import type {
+  LLMMessage,
+  LLMProvider,
+  LLMResponse,
+  OpenAITool,
+} from "@duyetbot/chat-agent";
+import { logger } from "./logger.js";
 
 export interface ProviderEnv {
   // Cloudflare AI Gateway
@@ -36,18 +41,21 @@ interface OpenAIResponse {
  */
 export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
   return {
-    async chat(messages: LLMMessage[], tools?: OpenAITool[]): Promise<LLMResponse> {
+    async chat(
+      messages: LLMMessage[],
+      tools?: OpenAITool[],
+    ): Promise<LLMResponse> {
       const gateway = env.AI.gateway(env.AI_GATEWAY_NAME);
 
       const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       };
 
       if (env.AI_GATEWAY_API_KEY) {
-        headers['cf-aig-authorization'] = `Bearer ${env.AI_GATEWAY_API_KEY}`;
+        headers["cf-aig-authorization"] = `Bearer ${env.AI_GATEWAY_API_KEY}`;
       }
 
-      const model = env.MODEL || 'x-ai/grok-4.1-fast';
+      const model = env.MODEL || "x-ai/grok-4.1-fast";
 
       const query: Record<string, unknown> = {
         model,
@@ -58,12 +66,12 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
       // Add tools if provided
       if (tools && tools.length > 0) {
         query.tools = tools;
-        query.tool_choice = 'auto';
+        query.tool_choice = "auto";
       }
 
       const startTime = Date.now();
 
-      logger.debug('LLM request started', {
+      logger.debug("LLM request started", {
         model,
         messageCount: messages.length,
         hasTools: !!tools && tools.length > 0,
@@ -73,32 +81,34 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
 
       let response: Response;
       try {
-        logger.debug('Gateway run started', {
-          provider: env.AI_GATEWAY_PROVIDER || 'openrouter',
-          endpoint: 'chat/completions',
+        logger.debug("Gateway run started", {
+          provider: env.AI_GATEWAY_PROVIDER || "openrouter",
+          endpoint: "chat/completions",
           model,
           gateway: env.AI_GATEWAY_NAME,
         });
 
         response = await gateway.run({
-          provider: env.AI_GATEWAY_PROVIDER || 'openrouter',
-          endpoint: 'chat/completions',
+          provider: env.AI_GATEWAY_PROVIDER || "openrouter",
+          endpoint: "chat/completions",
           headers,
           query,
         });
 
-        logger.debug('Gateway run completed', {
+        logger.debug("Gateway run completed", {
           status: response.status,
           ok: response.ok,
           durationMs: Date.now() - startTime,
         });
       } catch (gatewayError) {
         const errorMessage =
-          gatewayError instanceof Error ? gatewayError.message : String(gatewayError);
-        logger.error('Gateway run error', {
+          gatewayError instanceof Error
+            ? gatewayError.message
+            : String(gatewayError);
+        logger.error("Gateway run error", {
           model,
           gateway: env.AI_GATEWAY_NAME,
-          provider: env.AI_GATEWAY_PROVIDER || 'openrouter',
+          provider: env.AI_GATEWAY_PROVIDER || "openrouter",
           error: errorMessage,
           durationMs: Date.now() - startTime,
           stack: gatewayError instanceof Error ? gatewayError.stack : undefined,
@@ -108,7 +118,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
 
       if (!response.ok) {
         const error = await response.text();
-        logger.error('LLM request error', {
+        logger.error("LLM request error", {
           model,
           status: response.status,
           statusText: response.statusText,
@@ -118,7 +128,24 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
         throw new Error(`AI Gateway error: ${response.status} - ${error}`);
       }
 
-      const data = (await response.json()) as OpenAIResponse;
+      let data: OpenAIResponse;
+      try {
+        data = (await response.json()) as OpenAIResponse;
+        logger.debug("LLM response parsed", {
+          hasChoices: !!data.choices,
+          choiceCount: data.choices?.length || 0,
+        });
+      } catch (parseError) {
+        const errorMsg =
+          parseError instanceof Error ? parseError.message : String(parseError);
+        logger.error("LLM response parse error", {
+          model,
+          error: errorMsg,
+          durationMs: Date.now() - startTime,
+        });
+        throw new Error(`Failed to parse AI Gateway response: ${errorMsg}`);
+      }
+
       const choice = data.choices?.[0]?.message;
 
       // Extract tool calls if present
@@ -130,7 +157,7 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
 
       const durationMs = Date.now() - startTime;
 
-      logger.info('LLM request completed', {
+      logger.info("LLM request completed", {
         model,
         durationMs,
         hasContent: !!choice?.content,
@@ -139,14 +166,14 @@ export function createOpenRouterProvider(env: ProviderEnv): LLMProvider {
       });
 
       if (toolCalls && toolCalls.length > 0) {
-        logger.debug('LLM tool calls', {
+        logger.debug("LLM tool calls", {
           model,
           tools: toolCalls.map((tc) => tc.name),
         });
       }
 
       return {
-        content: choice?.content || '',
+        content: choice?.content || "",
         ...(toolCalls && toolCalls.length > 0 && { toolCalls }),
       };
     },
