@@ -60,8 +60,8 @@ app.post('/webhook', async (c) => {
 
   try {
     // Check allowed users
-    if (env.ALLOWED_USERS) {
-      const allowed = env.ALLOWED_USERS.split(',')
+    if (env.TELEGRAM_ALLOWED_USERS) {
+      const allowed = env.TELEGRAM_ALLOWED_USERS.split(',')
         .map((id) => Number.parseInt(id.trim(), 10))
         .filter((id) => !Number.isNaN(id));
 
@@ -73,7 +73,7 @@ app.post('/webhook', async (c) => {
 
     // Get or create agent for this user
     const agentId = `telegram:${userId}:${chatId}`;
-    const agent = await getAgentByName<Env, TelegramAgent>(env.TelegramAgent, agentId);
+    const agent = await getAgentByName(env.TelegramAgent, agentId);
     await agent.init(userId, chatId);
 
     let responseText: string;

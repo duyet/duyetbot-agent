@@ -1,33 +1,30 @@
 /**
  * Agent Handler
  *
- * Creates and executes agent for GitHub bot tasks using Claude Agent SDK
+ * Handles GitHub bot mentions using ChatAgent with tools
  */
 
-import { createDefaultOptions, query, toSDKTools } from '@duyetbot/core';
-import { type GitHubClient, createGitHubTool, getAllBuiltinTools } from '@duyetbot/tools';
-import type { Tool } from '@duyetbot/types';
-import { Octokit } from '@octokit/rest';
+import { ChatAgent, type LLMMessage } from '@duyetbot/chat-agent';
+import type { Octokit } from '@octokit/rest';
+import {
+  type EnhancedContext,
+  fetchEnhancedContext,
+  formatEnhancedContext,
+} from './context-fetcher.js';
+import { logger } from './logger.js';
+import { createOpenRouterProvider } from './provider.js';
 import { GitHubSessionManager, createMCPClient } from './session-manager.js';
 import { loadAndRenderTemplate } from './template-loader.js';
+import { createToolExecutor, githubTools } from './tools/index.js';
 import type { BotConfig, MentionContext } from './types.js';
-
-/**
- * Adapter to convert Octokit to GitHubClient interface
- */
-function createOctokitAdapter(octokit: Octokit): GitHubClient {
-  return {
-    request: async (method: string, url: string, options?: Record<string, unknown>) => {
-      const response = await octokit.request(`${method} ${url}`, options);
-      return { data: response.data, status: response.status };
-    },
-  };
-}
 
 /**
  * Build system prompt for GitHub context
  */
-export function buildSystemPrompt(context: MentionContext): string {
+export function buildSystemPrompt(
+  context: MentionContext,
+  enhancedContext?: EnhancedContext
+): string {
   // Prepare template context with pre-computed values
   const templateContext: Record<string, unknown> = {
     repository: context.repository,
@@ -49,15 +46,57 @@ export function buildSystemPrompt(context: MentionContext): string {
     };
   }
 
+  // Add enhanced context if available
+  if (enhancedContext) {
+    templateContext.enhancedContext = formatEnhancedContext(enhancedContext);
+  }
+
   return loadAndRenderTemplate('system-prompt.txt', templateContext);
 }
 
 /**
- * Handle mention and generate response using Claude Agent SDK
+ * Handle mention and generate response using LLM provider
  */
-export async function handleMention(context: MentionContext, config: BotConfig): Promise<string> {
-  const octokit = new Octokit({ auth: config.githubToken });
-  const systemPrompt = buildSystemPrompt(context);
+export async function handleMention(
+  context: MentionContext,
+  config: BotConfig,
+  octokit?: Octokit
+): Promise<string> {
+  const repo = context.repository.full_name;
+  const issueNumber = context.issue?.number || context.pullRequest?.number;
+
+  logger.info('mention_received', {
+    repository: repo,
+    issue: issueNumber,
+    mentionedBy: context.mentionedBy.login,
+    task: context.task.substring(0, 100),
+    hasPR: !!context.pullRequest,
+  });
+
+  // Fetch enhanced context if Octokit is provided
+  let enhancedContext: EnhancedContext | undefined;
+  if (octokit) {
+    try {
+      enhancedContext = await fetchEnhancedContext(
+        octokit,
+        context.repository,
+        context.issue?.number,
+        context.pullRequest?.number
+      );
+      logger.debug('enhanced_context_fetched', {
+        repository: repo,
+        issue: issueNumber,
+      });
+    } catch (error) {
+      logger.error('enhanced_context_error', {
+        repository: repo,
+        issue: issueNumber,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
+  }
+
+  const systemPrompt = buildSystemPrompt(context, enhancedContext);
 
   // Initialize session manager with MCP client if configured
   let sessionManager: GitHubSessionManager;
@@ -105,68 +144,96 @@ export async function handleMention(context: MentionContext, config: BotConfig):
   // Add the user's message to the session
   await sessionManager.appendMessage(session.sessionId, 'user', context.task);
 
-  // Create GitHub tool with Octokit adapter
-  const githubClient = createOctokitAdapter(octokit);
-  const githubToolDef = createGitHubTool(githubClient, {
-    owner: context.repository.owner.login,
-    repo: context.repository.name,
+  // Create LLM provider using AI Gateway
+  if (!config.AI || !config.AI_GATEWAY_NAME) {
+    throw new Error('AI Gateway configuration is required');
+  }
+
+  const provider = createOpenRouterProvider({
+    AI: config.AI,
+    AI_GATEWAY_NAME: config.AI_GATEWAY_NAME,
+    AI_GATEWAY_PROVIDER: config.AI_GATEWAY_PROVIDER,
+    AI_GATEWAY_API_KEY: config.AI_GATEWAY_API_KEY,
+    MODEL: config.model,
   });
 
-  // Get all built-in tools and add GitHub tool
-  const builtinTools = getAllBuiltinTools();
-
-  // Create a Tool-compatible wrapper for the GitHub tool
-  const githubTool: Tool = {
-    name: githubToolDef.name,
-    description: githubToolDef.description,
-    inputSchema: githubToolDef.inputSchema,
-    execute: async (input: { content: string | Record<string, unknown> }) => {
-      const result = await githubToolDef.execute(
-        input.content as Parameters<typeof githubToolDef.execute>[0]
-      );
-      return {
-        status: result.success ? ('success' as const) : ('error' as const),
-        content: result.success
-          ? JSON.stringify(result.data, null, 2)
-          : result.error || 'Unknown error',
-        ...(result.error && { error: { message: result.error } }),
-      };
-    },
-  };
-
-  // Convert all tools to SDK format
-  const allTools = [...builtinTools, githubTool];
-  const sdkTools = toSDKTools(allTools);
-
-  // Create query options
-  const queryOptions = createDefaultOptions({
-    model: config.model || 'sonnet',
-    sessionId: session.sessionId,
-    systemPrompt,
-    tools: sdkTools,
-  });
-
-  // Execute agent using SDK streaming
+  // Create ChatAgent with tools if Octokit is available
   let response = '';
+  const startTime = Date.now();
+
   try {
-    for await (const message of query(context.task, queryOptions)) {
-      switch (message.type) {
-        case 'assistant':
-          if (message.content) {
-            response = message.content;
-          }
-          break;
-        case 'result':
-          // Final result - use this as the complete response
-          if (message.content) {
-            response = message.content;
-          }
-          break;
-        // Ignore tool_use and tool_result messages - they're intermediate
+    if (octokit) {
+      // Use ChatAgent with tools for full agent capabilities
+      const toolExecutor = createToolExecutor({
+        octokit,
+        mentionContext: context,
+      });
+
+      const agent = new ChatAgent({
+        llmProvider: provider,
+        systemPrompt,
+        maxHistory: 30,
+        tools: githubTools,
+        onToolCall: toolExecutor,
+      });
+
+      // Restore session messages
+      if (session.messages.length > 0) {
+        agent.setMessages(
+          session.messages.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+          }))
+        );
       }
+
+      logger.info('agent_execution_start', {
+        repository: repo,
+        issue: issueNumber,
+        model: config.model,
+        sessionMessages: session.messages.length,
+      });
+
+      // Agent handles tool calls internally
+      response = await agent.chat(context.task);
+
+      logger.info('agent_execution_complete', {
+        repository: repo,
+        issue: issueNumber,
+        durationMs: Date.now() - startTime,
+        responseLength: response.length,
+      });
+    } else {
+      // Fallback to direct LLM call without tools
+      const messages: LLMMessage[] = [
+        { role: 'system', content: systemPrompt },
+        ...session.messages.map((m) => ({
+          role: m.role as 'user' | 'assistant',
+          content: m.content,
+        })),
+        { role: 'user', content: context.task },
+      ];
+
+      logger.info('llm_direct_call', {
+        repository: repo,
+        issue: issueNumber,
+        model: config.model,
+      });
+
+      const result = await provider.chat(messages);
+      response = result.content || 'I was unable to generate a response.';
     }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    logger.error('agent_execution_error', {
+      repository: repo,
+      issue: issueNumber,
+      error: errorMessage,
+      durationMs: Date.now() - startTime,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
     response = `I encountered an error while processing your request: ${errorMessage}
 
 Please try again or contact @duyet for assistance.`;

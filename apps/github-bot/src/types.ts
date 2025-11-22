@@ -87,8 +87,17 @@ export interface BotConfig {
   webhookSecret: string;
   mcpServerUrl?: string;
   mcpAuthToken?: string;
-  /** LLM model to use (default: 'sonnet') */
-  model?: string;
+  /** LLM model to use */
+  model?: string | undefined;
+  /** Cloudflare AI binding */
+  // biome-ignore lint/suspicious/noExplicitAny: Cloudflare AI binding type
+  AI?: any;
+  /** AI Gateway name */
+  AI_GATEWAY_NAME?: string | undefined;
+  /** AI Gateway provider (e.g., 'openrouter') */
+  AI_GATEWAY_PROVIDER?: string | undefined;
+  /** AI Gateway API key */
+  AI_GATEWAY_API_KEY?: string | undefined;
   /** Configuration for issue event handling */
   issueHandlerConfig?: IssueHandlerConfig;
   /** Configuration for pull request event handling */

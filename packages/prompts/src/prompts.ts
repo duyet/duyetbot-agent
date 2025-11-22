@@ -4,11 +4,13 @@
 
 // Static imports - bundled at build time
 import defaultPrompt from '../prompts/default.md';
+import githubPrompt from '../prompts/github.md';
 import telegramPrompt from '../prompts/telegram.md';
 import { config } from './config.js';
 
 const prompts: Record<string, string> = {
   default: defaultPrompt,
+  github: githubPrompt,
   telegram: telegramPrompt,
 };
 
@@ -37,6 +39,7 @@ export function getSystemPrompt(platform: Platform, context?: PromptContext): st
 }
 
 // Pre-compiled for backwards compatibility
+export const GITHUB_SYSTEM_PROMPT = getSystemPrompt('github');
 export const TELEGRAM_SYSTEM_PROMPT = getSystemPrompt('telegram');
 
 export const TELEGRAM_WELCOME_MESSAGE = `Hello! I'm ${config.botName}, created by ${config.creator}. Send me a message and I'll help you out.

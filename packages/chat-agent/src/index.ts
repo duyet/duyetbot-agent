@@ -7,6 +7,17 @@
 // Core agent
 export { ChatAgent } from './agent.js';
 
+// Factory
+export { createAgent } from './factory.js';
+
+// Cloudflare Durable Object wrapper
+export {
+  createCloudflareChatAgent,
+  type CloudflareAgentConfig,
+  type CloudflareAgentState,
+  type CloudflareChatAgentNamespace,
+} from './cloudflare-agent.js';
+
 // Types
 export type {
   AgentState,
