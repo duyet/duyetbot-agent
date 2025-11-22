@@ -1,21 +1,15 @@
 /**
  * Cloudflare Workers entry point for Telegram Bot
  *
- * Uses OpenRouter via Cloudflare AI Gateway (OpenAI-compatible format).
+ * Uses Cloudflare Agents SDK with Durable Objects for stateful sessions.
+ * Each user gets a unique agent instance with persistent conversation history.
  */
 
-export interface Env {
-  // Required
-  TELEGRAM_BOT_TOKEN: string;
-  TELEGRAM_WEBHOOK_SECRET: string;
+import { getAgentByName } from "agents";
+import { TelegramAgent, type Env } from "./agent.js";
 
-  // AI Gateway (Cloudflare) - OpenRouter endpoint, no auth needed
-  AI_GATEWAY_URL: string;
-
-  // Optional
-  ALLOWED_USERS?: string;
-  MODEL?: string;
-}
+// Re-export agent for Durable Object binding
+export { TelegramAgent };
 
 interface TelegramUpdate {
   message?: {
@@ -24,6 +18,7 @@ interface TelegramUpdate {
       id: number;
       username?: string;
       first_name: string;
+      last_name?: string;
     };
     chat: {
       id: number;
@@ -31,21 +26,6 @@ interface TelegramUpdate {
     text?: string;
   };
 }
-
-const SYSTEM_PROMPT = `You are @duyetbot, a helpful AI assistant on Telegram.
-
-You help users with:
-- Answering questions clearly and concisely
-- Writing, explaining, and debugging code
-- Research and analysis
-- Task planning and organization
-
-Guidelines:
-- Keep responses concise for mobile reading
-- Use markdown formatting when helpful
-- Be friendly and helpful
-
-Current conversation is via Telegram chat.`;
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -89,58 +69,35 @@ export default {
         }
       }
 
+      // Get or create agent for this user
+      // Each user:chat pair gets a unique, persistent agent instance
+      const agentId = `telegram:${userId}:${chatId}`;
+      const agent = await getAgentByName<Env, TelegramAgent>(
+        env.TelegramAgent,
+        agentId,
+      );
+
+      // Initialize agent with user context
+      await agent.init(userId, chatId);
+
+      let responseText: string;
+
       // Handle commands
       if (text.startsWith("/start")) {
-        await sendTelegramMessage(
-          env.TELEGRAM_BOT_TOKEN,
-          chatId,
-          "Hello! I'm @duyetbot. Send me a message and I'll help you out.",
-        );
-        return new Response("OK", { status: 200 });
+        responseText = agent.getWelcome();
+      } else if (text.startsWith("/help")) {
+        responseText = agent.getHelp();
+      } else if (text.startsWith("/clear")) {
+        responseText = await agent.clearHistory();
+      } else {
+        // Send typing indicator
+        await sendChatAction(env.TELEGRAM_BOT_TOKEN, chatId, "typing");
+
+        // Chat with agent
+        responseText = await agent.chat(text);
       }
 
-      if (text.startsWith("/help")) {
-        await sendTelegramMessage(
-          env.TELEGRAM_BOT_TOKEN,
-          chatId,
-          "Commands:\n/start - Start bot\n/help - Show help\n\nJust send me any message!",
-        );
-        return new Response("OK", { status: 200 });
-      }
-
-      // Send typing indicator
-      await sendChatAction(env.TELEGRAM_BOT_TOKEN, chatId, "typing");
-
-      // Call OpenRouter via AI Gateway (OpenAI-compatible format)
-      const response = await fetch(env.AI_GATEWAY_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: env.MODEL || "anthropic/claude-sonnet-4-20250514",
-          max_tokens: 1024,
-          messages: [
-            { role: "system", content: SYSTEM_PROMPT },
-            { role: "user", content: text },
-          ],
-        }),
-      });
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error("AI Gateway error:", error);
-        throw new Error(`AI Gateway error: ${response.status}`);
-      }
-
-      const data = (await response.json()) as {
-        choices?: Array<{ message?: { content?: string } }>;
-      };
-
-      // Extract response text
-      const responseText =
-        data.choices?.[0]?.message?.content ||
-        "Sorry, I could not generate a response.";
-
-      // Send response
+      // Send response to Telegram
       await sendTelegramMessage(env.TELEGRAM_BOT_TOKEN, chatId, responseText);
 
       return new Response("OK", { status: 200 });
