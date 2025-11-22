@@ -37,27 +37,6 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract metadata for github-bot
-        id: meta-bot
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/github-bot
-          tags: |
-            type=ref,event=branch
-            type=sha,prefix=
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Build and push github-bot
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: ./infrastructure/docker/github-bot.Dockerfile
-          push: true
-          tags: ${{ steps.meta-bot.outputs.tags }}
-          labels: ${{ steps.meta-bot.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
       - name: Extract metadata for agent-server
         id: meta-server
         uses: docker/metadata-action@v5
