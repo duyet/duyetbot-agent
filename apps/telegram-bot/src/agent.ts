@@ -70,7 +70,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
   /**
    * Chat with the agent
    */
-  async chat(userMessage: string): Promise<string> {
+  async chat(userMessage: string, env: Env): Promise<string> {
     // Add user message to history
     const messages: Message[] = [
       ...this.state.messages,
@@ -85,12 +85,12 @@ export class TelegramAgent extends Agent<Env, AgentState> {
 
     // Call Anthropic API
     const anthropic = new Anthropic({
-      apiKey: this.env.ANTHROPIC_API_KEY,
-      baseURL: this.env.AI_GATEWAY_URL,
+      apiKey: env.ANTHROPIC_API_KEY,
+      baseURL: env.AI_GATEWAY_URL,
     });
 
     const response = await anthropic.messages.create({
-      model: this.env.MODEL || "claude-sonnet-4-20250514",
+      model: env.MODEL || "claude-sonnet-4-20250514",
       max_tokens: 1024,
       system: TELEGRAM_SYSTEM_PROMPT,
       messages: apiMessages,
