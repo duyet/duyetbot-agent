@@ -263,19 +263,71 @@ Compare to always-on containers: **~$58/mo** (2× machines)
 - Cross-references volumes with PR status
 - Deletes orphaned volumes
 
-## SDK Choices by Deployment Target
+## Two-Tier Agent Architecture
 
-| App | SDK | Runtime | Worker Name | Rationale |
-|-----|-----|---------|-------------|-----------|
-| `apps/telegram-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-telegram` | Stateful sessions, built-in SQLite, MCP client |
-| `apps/github-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-github` | GitHub MCP, duyet-mcp for knowledge |
-| `apps/agent-server` | Claude Agent SDK | Container (Fly/Docker) | - | Full agent with filesystem/shell tools |
-| `apps/memory-mcp` | MCP Server | Workers | `duyetbot-memory-mcp` | D1 + KV storage |
+The system uses two types of agents for different workloads:
 
-**Why Cloudflare Agents SDK for Workers?**
-- Claude Agent SDK requires `child_process.spawn()` (unavailable in Workers V8 isolates)
-- Cloudflare Agents SDK provides: Durable Objects state, MCP client, WebSocket, JSRPC
-- Built-in SQLite storage via `this.sql` and state sync via `this.setState`
+### Tier 1: Cloudflare Agents (Lightweight)
+
+Fast, serverless agents for receiving messages and quick responses:
+
+| App | Runtime | Worker Name | Purpose |
+|-----|---------|-------------|---------|
+| `apps/telegram-bot` | Workers + Durable Objects | `duyetbot-telegram` | Telegram chat interface |
+| `apps/github-bot` | Workers + Durable Objects | `duyetbot-github` | GitHub @mentions and webhooks |
+| `apps/memory-mcp` | Workers | `duyetbot-memory-mcp` | Cross-session memory (D1 + KV) |
+
+**Capabilities**:
+- Receive and respond to messages quickly (<100ms cold start)
+- Stateful sessions via Durable Objects
+- Built-in SQLite storage
+- Can trigger Cloudflare Workflows for:
+  - **Deferred tasks**: Reminders, scheduled messages, delayed actions
+  - **Complex tasks**: Multi-step operations requiring Tier 2 compute
+
+### Tier 2: Claude Agent SDK (Heavy)
+
+Long-running agents for complex tasks requiring full compute environment:
+
+| App | Runtime | Purpose |
+|-----|---------|---------|
+| `apps/agent-server` | Container (Cloudflare sandbox) | Full agent with filesystem/shell tools |
+
+**Capabilities**:
+- `child_process.spawn()` for bash/git operations
+- Filesystem access for code operations
+- Long-running tasks (minutes to hours)
+- Triggered by Cloudflare Workflows from Tier 1 agents
+
+**Note**: Tier 2 implementation is planned for later phases.
+
+### Agent Flow
+
+```
+User Message → Cloudflare Agent (Tier 1) → Quick Response
+                     ↓
+              Task Type Detection
+                     ↓
+         ┌─────────────┴─────────────┐
+         ↓                           ↓
+   Deferred Task              Complex Task
+   (Lightweight)                 (Heavy)
+         ↓                           ↓
+ Cloudflare Workflow         Cloudflare Workflow
+   (sleep, alarm)              (provision)
+         ↓                           ↓
+   Execute Later          Claude Agent SDK (Tier 2)
+   (same Tier 1)              Full Compute
+```
+
+**Examples**:
+- `@duyetbot remind me in 10 minutes` → Lightweight Workflow (sleep) → Tier 1 sends reminder
+- `@duyetbot review this PR thoroughly` → Heavy Workflow → Tier 2 with filesystem/git
+
+**Why this separation?**
+- Tier 1: Instant responses, cost-effective, edge deployment
+- Lightweight Workflows: Deferred tasks without compute cost (free sleep up to 365 days)
+- Tier 2: Full Linux environment for heavy tasks, billed only when running
 
 ## Packages & Components
 
@@ -285,11 +337,21 @@ Compare to always-on containers: **~$58/mo** (2× machines)
 - MCP client
 - Used by agent-server (Claude Agent SDK)
 
+### Chat Agent (`packages/chat-agent`)
+Reusable chat agent abstraction for Workers:
+- `ChatAgent` - Base agent with tool support and history
+- `CloudflareAgentAdapter` - Adapter for Cloudflare Agents SDK
+- `createChatAgent()` - Factory for creating agents
+- Provider-agnostic (OpenRouter, Anthropic via AI Gateway)
+- Built-in conversation history management
+
 ### Prompts (`packages/prompts`)
-Shared system prompts:
-- `TELEGRAM_SYSTEM_PROMPT` - Telegram bot personality
-- `GITHUB_SYSTEM_PROMPT` - GitHub bot personality
-- Base prompt fragments for reuse
+Shared system prompts as markdown files:
+- `prompts/telegram.md` - Telegram bot personality
+- `prompts/github.md` - GitHub bot personality
+- `prompts/default.md` - Base prompt fragments
+- `loadPrompt()` - Async prompt loader
+- `TELEGRAM_SYSTEM_PROMPT`, `GITHUB_SYSTEM_PROMPT` - Pre-loaded exports
 
 ### Tools (`packages/tools`)
 Built-in tools (SDK-compatible):
@@ -298,6 +360,12 @@ Built-in tools (SDK-compatible):
 - `github` - API operations
 - `research` - Web research
 - `plan` - Task planning
+
+### Providers (`packages/providers`)
+LLM provider abstractions:
+- Claude provider with base URL override (Z.AI support)
+- OpenRouter provider
+- Provider factory with configuration
 
 ### Telegram Bot (`apps/telegram-bot`)
 Cloudflare Agents SDK with Durable Objects:

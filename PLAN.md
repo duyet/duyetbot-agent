@@ -148,23 +148,38 @@ This solves the fundamental challenge: heavy LLM tasks need a "computer-like" en
 | **Project Structure** | Monorepo (pnpm) | Separated concerns, independent deployments |
 | **Provider System** | Base URL override | Flexible (Z.AI, custom endpoints) |
 
-### SDK Choices by Deployment Target
+### Two-Tier Agent Architecture
 
-| App | SDK | Runtime | Worker Name | Why |
-|-----|-----|---------|-------------|-----|
-| `apps/telegram-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-telegram` | Stateful sessions, built-in storage, MCP client |
-| `apps/github-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-github` | GitHub MCP, duyet-mcp for knowledge |
-| `apps/agent-server` | Claude Agent SDK | Container (Fly/Docker) | - | Full agent with filesystem/shell tools |
-| `apps/memory-mcp` | MCP Server | Workers | `duyetbot-memory-mcp` | D1 + KV storage |
+The system uses two types of agents:
 
-**Why Cloudflare Agents SDK for Workers?**
-- Claude Agent SDK requires `child_process.spawn()` (not available in Workers)
-- Cloudflare Agents SDK provides: Durable Objects state, MCP client, WebSocket, JSRPC
+**Tier 1: Cloudflare Agents (Lightweight)**
+- Fast, serverless agents for quick responses
+- Deploy to Cloudflare Workers
+- Can trigger Cloudflare Workflows for:
+  - **Deferred tasks**: Reminders, scheduled messages (e.g., `@duyetbot remind me in 10 min`)
+  - **Complex tasks**: Heavy compute requiring Tier 2
+
+| App | Runtime | Worker Name | Purpose |
+|-----|---------|-------------|---------|
+| `apps/telegram-bot` | Workers + Durable Objects | `duyetbot-telegram` | Telegram chat |
+| `apps/github-bot` | Workers + Durable Objects | `duyetbot-github` | GitHub webhooks |
+| `apps/memory-mcp` | Workers | `duyetbot-memory-mcp` | Memory storage |
+
+**Tier 2: Claude Agent SDK (Heavy)**
+- Long-running agents for complex tasks
+- Run on containers (Cloudflare sandbox)
+- Triggered by Tier 1 agents via Workflows
+
+| App | Runtime | Purpose |
+|-----|---------|---------|
+| `apps/agent-server` | Container | Full filesystem/shell tools |
+
+**Note**: Tier 2 implementation planned for later phases.
 
 **Shared Prompts** (`packages/prompts`):
-- `TELEGRAM_SYSTEM_PROMPT` - Telegram bot personality
-- `GITHUB_SYSTEM_PROMPT` - GitHub bot personality
-- Base prompt fragments for reuse
+- `prompts/telegram.md` - Telegram bot personality
+- `prompts/github.md` - GitHub bot personality
+- `prompts/default.md` - Base prompt fragments
 
 ### Volume-as-Session Pattern
 
@@ -223,8 +238,28 @@ duyetbot-agent/
 │   ├── core/                       # Core agent logic
 │   │   ├── src/
 │   │   │   ├── agent/             # Agent orchestration
+│   │   │   ├── sdk/               # Claude Agent SDK integration
 │   │   │   ├── session/           # Session management
-│   │   │   └── types/             # Shared types
+│   │   │   └── mcp/               # MCP client
+│   │   └── package.json
+│   │
+│   ├── chat-agent/                 # Reusable chat agent for Workers
+│   │   ├── src/
+│   │   │   ├── agent.ts           # ChatAgent base class
+│   │   │   ├── cloudflare-agent.ts # Cloudflare Agents SDK adapter
+│   │   │   ├── factory.ts         # createChatAgent()
+│   │   │   ├── history.ts         # Conversation history
+│   │   │   └── types.ts
+│   │   └── package.json
+│   │
+│   ├── prompts/                    # Shared system prompts
+│   │   ├── prompts/
+│   │   │   ├── default.md         # Base prompt fragments
+│   │   │   ├── telegram.md        # Telegram bot personality
+│   │   │   └── github.md          # GitHub bot personality
+│   │   ├── src/
+│   │   │   ├── prompts.ts         # Prompt loaders
+│   │   │   └── index.ts
 │   │   └── package.json
 │   │
 │   ├── providers/                  # LLM provider abstractions
@@ -232,7 +267,6 @@ duyetbot-agent/
 │   │   │   ├── base.ts            # Base provider interface
 │   │   │   ├── claude.ts          # Claude provider
 │   │   │   ├── openrouter.ts      # OpenRouter provider
-│   │   │   ├── zai.ts             # Z.AI provider (base URL override)
 │   │   │   └── factory.ts         # Provider factory with URL override
 │   │   └── package.json
 │   │
@@ -240,29 +274,11 @@ duyetbot-agent/
 │   │   ├── src/
 │   │   │   ├── bash.ts
 │   │   │   ├── git.ts
-│   │   │   ├── github.ts          # GitHub API operations (NEW)
+│   │   │   ├── github.ts          # GitHub API operations
 │   │   │   ├── research.ts
 │   │   │   ├── plan.ts
 │   │   │   ├── sleep.ts
 │   │   │   └── registry.ts
-│   │   └── package.json
-│   │
-│   ├── memory-mcp/                 # MCP server for memory (Cloudflare Workers)
-│   │   ├── src/
-│   │   │   ├── index.ts           # Worker entry point
-│   │   │   ├── mcp-server.ts      # MCP protocol implementation
-│   │   │   ├── tools/             # MCP tools
-│   │   │   │   ├── get_memory.ts
-│   │   │   │   ├── save_memory.ts
-│   │   │   │   ├── search_memory.ts
-│   │   │   │   └── authenticate.ts
-│   │   │   ├── storage/
-│   │   │   │   ├── d1.ts          # D1 operations
-│   │   │   │   ├── kv.ts          # KV operations
-│   │   │   │   └── vectorize.ts   # Vector search
-│   │   │   └── auth/
-│   │   │       └── github.ts      # GitHub user verification
-│   │   ├── wrangler.toml
 │   │   └── package.json
 │   │
 │   ├── server/                     # Long-running agent server (Node.js/Bun)
@@ -1992,32 +2008,39 @@ packages/core/src/
 **Tasks**:
 - [x] Create apps/telegram-bot package
 - [x] Register Telegram bot
-- [ ] Refactor to Cloudflare Agents SDK
-  - [ ] Install dependencies (agents, ai, @ai-sdk/anthropic)
-  - [ ] Create TelegramAgent class extending Agent
-  - [ ] Implement chat() method with AI SDK
+- [x] Refactor to Cloudflare Agents SDK
+  - [x] Install dependencies (agents, @ai-sdk/openai)
+  - [x] Create provider abstraction (OpenRouter via AI Gateway)
+  - [x] Implement chat agent with tool support
   - [ ] Connect to memory-mcp as MCP client
-- [ ] Implement commands:
-  - [ ] /start
-  - [ ] /help
-  - [ ] /clear
-- [ ] Configure wrangler.toml for duyetbot-telegram
-  - [ ] Add durable_objects bindings
-  - [ ] Add migrations with new_sqlite_classes
-- [ ] Create packages/prompts for shared prompts
+- [x] Implement commands:
+  - [x] /start
+  - [x] /help
+  - [x] /clear
+- [x] Configure wrangler.toml for duyetbot-telegram
+  - [x] Add environment variables
+  - [x] Configure AI Gateway integration
+- [x] Create packages/prompts for shared prompts
+  - [x] telegram.md - Telegram bot personality
+  - [x] github.md - GitHub bot personality
+  - [x] default.md - Base fragments
+- [x] Create packages/chat-agent for reusable agent abstraction
+  - [x] ChatAgent base class
+  - [x] CloudflareAgentAdapter
+  - [x] Factory function
 - [ ] Write Telegram bot tests (25+ tests)
 - [ ] Deploy to Cloudflare Workers (duyetbot-telegram)
 - [ ] Document usage
 
 **Key Features**:
-- Built-in state via `this.setState` + SQLite
-- Persistent sessions per user (telegram:userId:chatId)
-- MCP client connection to memory-mcp
-- JSRPC for direct method calls
+- Cloudflare AI Gateway for LLM access (OpenRouter)
+- Reusable chat-agent package
+- Shared prompts via packages/prompts
+- Session persistence via Durable Objects
 
 **Output**: Production Telegram bot on Cloudflare Workers ✅
 
-**Progress**: Refactoring to Cloudflare Agents SDK (2025-11-22)
+**Progress**: Core implementation complete (2025-11-23). Created packages/chat-agent and packages/prompts. Telegram bot refactored to use AI Gateway and chat-agent. Testing and deployment pending.
 
 ---
 
@@ -2252,6 +2275,7 @@ bun run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-23 | 3.20 | 🏗️ **TWO-TIER ARCHITECTURE**: Clarified two-tier agent system: Tier 1 (Cloudflare Agents - lightweight, Workers) for quick responses and triggering workflows; Tier 2 (Claude Agent SDK - heavy, containers) for long-running tasks. Created packages/chat-agent for reusable chat agent abstraction. Created packages/prompts with markdown prompt files. Refactored telegram-bot to use AI Gateway. Updated docs/architecture.md with two-tier documentation. |
 | 2025-11-22 | 3.19 | 🏗️ **CLOUDFLARE AGENTS SDK REFACTOR**: Refactoring Workers apps to use Cloudflare Agents SDK instead of custom implementations. telegram-bot and github-bot will use Durable Objects for stateful sessions. Added SDK Choices table. Created packages/prompts for shared prompts. Deployment targets: duyetbot-telegram, duyetbot-github, duyetbot-memory-mcp (all via wrangler). agent-server continues to use Claude Agent SDK on containers. |
 | 2025-11-21 | 3.18 | 🔧 **Phases 8-11 IN PROGRESS**: Phase 8 (Telegram Bot), Phase 9 (API Gateway), Phase 10 (Integration Tests), Phase 11 (CI/CD workflow). Created .github/workflows/ci.yml with lint, typecheck, test, build, and integration test jobs. 515 tests passing (494 unit + 21 integration). |
 | 2025-11-21 | 3.17 | 🏗️ **ARCHITECTURE UPDATE**: Updated to Hybrid Supervisor-Worker Model based on durable execution research. Cloudflare Workflows as Supervisor (orchestration, state, HITL), Fly.io Machines as Worker (compute, filesystem, SDK). Added Volume-as-Session pattern for state persistence. Human-in-the-Loop via GitHub Checks API action_required. Cost model: ~$3.66/mo vs $58/mo always-on. Updated docs/architecture.md and PLAN.md. |
@@ -2328,7 +2352,12 @@ bun run dev
    - [x] Add permission modes and interrupt capability
    - [x] Update CLI and server to use SDK streaming
    - [x] Write SDK integration tests (50+ tests)
-9. **Phase 8 - Telegram Bot Integration**
+9. 🔧 **Phase 8 - Telegram Bot Integration** IN PROGRESS
+   - [x] Create packages/chat-agent for reusable agent abstraction
+   - [x] Create packages/prompts for shared prompts
+   - [x] Refactor telegram-bot to use AI Gateway
+   - [ ] Write tests
+   - [ ] Deploy to Cloudflare Workers
 10. **Phase 9 - API Gateway**
 11. **Phase 10 - Integration & Testing**
 12. **Phase 11 - Documentation & Deployment**
