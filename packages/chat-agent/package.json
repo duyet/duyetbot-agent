@@ -20,8 +20,17 @@
   "dependencies": {
     "@duyetbot/prompts": "workspace:*"
   },
+  "peerDependencies": {
+    "agents": ">=0.0.55"
+  },
+  "peerDependenciesMeta": {
+    "agents": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@duyetbot/config-vitest": "workspace:*",
+    "agents": "^0.0.90",
     "typescript": "^5.6.3",
     "vitest": "^2.1.9"
   }

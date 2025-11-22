@@ -5,6 +5,7 @@
  */
 
 import { Octokit } from '@octokit/rest';
+import { logger } from '../logger.js';
 import { parseMention } from '../mention-parser.js';
 import type {
   GitHubComment,
@@ -13,6 +14,52 @@ import type {
   GitHubRepository,
   MentionContext,
 } from '../types.js';
+
+/**
+ * Add a reaction to a comment to indicate processing status
+ */
+async function addReaction(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  commentId: number,
+  reaction: 'eyes' | 'rocket' | '+1' | '-1' | 'confused' | 'heart' | 'hooray' | 'laugh'
+): Promise<number | null> {
+  try {
+    const { data } = await octokit.reactions.createForIssueComment({
+      owner,
+      repo,
+      comment_id: commentId,
+      content: reaction,
+    });
+    return data.id;
+  } catch {
+    // Silently ignore reaction failures
+    return null;
+  }
+}
+
+/**
+ * Remove a reaction from a comment
+ */
+async function removeReaction(
+  octokit: Octokit,
+  owner: string,
+  repo: string,
+  commentId: number,
+  reactionId: number
+): Promise<void> {
+  try {
+    await octokit.reactions.deleteForIssueComment({
+      owner,
+      repo,
+      comment_id: commentId,
+      reaction_id: reactionId,
+    });
+  } catch {
+    // Silently ignore removal failures
+  }
+}
 
 export interface IssueCommentEvent {
   action: 'created' | 'edited' | 'deleted';
@@ -39,21 +86,49 @@ export async function handleIssueComment(
   botUsername: string,
   onMention: (context: MentionContext) => Promise<string>
 ): Promise<void> {
+  const repo = event.repository.full_name;
+  const issueNumber = event.issue.number;
+
   // Only handle created comments
   if (event.action !== 'created') {
+    logger.debug('issue_comment_skipped', {
+      reason: 'not_created',
+      action: event.action,
+      repository: repo,
+      issue: issueNumber,
+    });
     return;
   }
 
   // Don't respond to our own comments
   if (event.comment.user.login === botUsername) {
+    logger.debug('issue_comment_skipped', {
+      reason: 'own_comment',
+      repository: repo,
+      issue: issueNumber,
+    });
     return;
   }
 
   // Parse mention
   const mention = parseMention(event.comment.body, botUsername);
   if (!mention.found) {
+    logger.debug('issue_comment_skipped', {
+      reason: 'no_mention',
+      repository: repo,
+      issue: issueNumber,
+      sender: event.sender.login,
+    });
     return;
   }
+
+  logger.info('mention_found', {
+    repository: repo,
+    issue: issueNumber,
+    sender: event.sender.login,
+    task: mention.task.substring(0, 100),
+    commentId: event.comment.id,
+  });
 
   // Build context
   const context: MentionContext = {
@@ -66,6 +141,11 @@ export async function handleIssueComment(
 
   // Check if this is a PR (issues API is used for both)
   if ('pull_request' in event.issue) {
+    logger.debug('fetching_pr_details', {
+      repository: repo,
+      pullNumber: event.issue.number,
+    });
+
     // Fetch full PR details
     const { data: pr } = await octokit.pulls.get({
       owner: event.repository.owner.login,
@@ -91,25 +171,96 @@ export async function handleIssueComment(
       additions: pr.additions,
       deletions: pr.deletions,
     };
+
+    logger.debug('pr_details_fetched', {
+      repository: repo,
+      pullNumber: pr.number,
+      changedFiles: pr.changed_files,
+      additions: pr.additions,
+      deletions: pr.deletions,
+    });
   }
 
+  // Add eyes reaction to indicate processing
+  const owner = event.repository.owner.login;
+  const repoName = event.repository.name;
+
+  logger.debug('adding_processing_reaction', {
+    repository: repo,
+    issue: issueNumber,
+    commentId: event.comment.id,
+  });
+
+  const reactionId = await addReaction(octokit, owner, repoName, event.comment.id, 'eyes');
+
+  const startTime = Date.now();
+
   try {
+    logger.info('agent_invocation_start', {
+      repository: repo,
+      issue: issueNumber,
+      commentId: event.comment.id,
+    });
+
     // Execute agent and get response
     const response = await onMention(context);
 
+    const durationMs = Date.now() - startTime;
+
+    logger.info('agent_invocation_complete', {
+      repository: repo,
+      issue: issueNumber,
+      durationMs,
+      responseLength: response.length,
+    });
+
+    // Remove eyes reaction and add rocket to indicate success
+    if (reactionId) {
+      await removeReaction(octokit, owner, repoName, event.comment.id, reactionId);
+    }
+    await addReaction(octokit, owner, repoName, event.comment.id, 'rocket');
+
+    logger.debug('posting_response_comment', {
+      repository: repo,
+      issue: issueNumber,
+      responseLength: response.length,
+    });
+
     // Post response as comment
     await octokit.issues.createComment({
-      owner: event.repository.owner.login,
-      repo: event.repository.name,
+      owner,
+      repo: repoName,
       issue_number: event.issue.number,
       body: response,
     });
+
+    logger.info('response_posted', {
+      repository: repo,
+      issue: issueNumber,
+      durationMs: Date.now() - startTime,
+    });
   } catch (error) {
-    // Post error message
+    const durationMs = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    logger.error('agent_invocation_error', {
+      repository: repo,
+      issue: issueNumber,
+      error: errorMessage,
+      durationMs,
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Remove eyes reaction and add confused to indicate error
+    if (reactionId) {
+      await removeReaction(octokit, owner, repoName, event.comment.id, reactionId);
+    }
+    await addReaction(octokit, owner, repoName, event.comment.id, 'confused');
+
+    // Post error message
     await octokit.issues.createComment({
-      owner: event.repository.owner.login,
-      repo: event.repository.name,
+      owner,
+      repo: repoName,
       issue_number: event.issue.number,
       body: `Sorry, I encountered an error while processing your request:\n\n\`\`\`\n${errorMessage}\n\`\`\``,
     });
@@ -161,24 +312,41 @@ export async function handlePRReviewComment(
     mentionedBy: event.comment.user,
   };
 
+  // Add eyes reaction to indicate processing
+  const owner = event.repository.owner.login;
+  const repo = event.repository.name;
+  const reactionId = await addReaction(octokit, owner, repo, event.comment.id, 'eyes');
+
   try {
     // Execute agent and get response
     const response = await onMention(context);
 
+    // Remove eyes reaction and add rocket to indicate success
+    if (reactionId) {
+      await removeReaction(octokit, owner, repo, event.comment.id, reactionId);
+    }
+    await addReaction(octokit, owner, repo, event.comment.id, 'rocket');
+
     // Post response as review comment reply
     await octokit.pulls.createReplyForReviewComment({
-      owner: event.repository.owner.login,
-      repo: event.repository.name,
+      owner,
+      repo,
       pull_number: event.pull_request.number,
       comment_id: event.comment.id,
       body: response,
     });
   } catch (error) {
+    // Remove eyes reaction and add confused to indicate error
+    if (reactionId) {
+      await removeReaction(octokit, owner, repo, event.comment.id, reactionId);
+    }
+    await addReaction(octokit, owner, repo, event.comment.id, 'confused');
+
     // Post error as regular comment
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     await octokit.issues.createComment({
-      owner: event.repository.owner.login,
-      repo: event.repository.name,
+      owner,
+      repo,
       issue_number: event.pull_request.number,
       body: `Sorry, I encountered an error while processing your request:\n\n\`\`\`\n${errorMessage}\n\`\`\``,
     });
