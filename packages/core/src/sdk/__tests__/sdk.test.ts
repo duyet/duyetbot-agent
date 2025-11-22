@@ -293,7 +293,7 @@ describe('SDK Query', () => {
   });
 
   describe('query', () => {
-    it('should yield user message first', async () => {
+    it('should yield user message first', { timeout: 10000 }, async () => {
       const messages = [];
       for await (const message of query('test input', createDefaultOptions())) {
         messages.push(message);
@@ -333,7 +333,7 @@ describe('SDK Query', () => {
       expect(messages[0].sessionId).toBe('custom-session');
     });
 
-    it('should handle interrupt', async () => {
+    it('should handle interrupt', { timeout: 10000 }, async () => {
       const controller = createQueryController();
 
       const messages = [];

@@ -1,13 +1,28 @@
 /**
  * Agent Handler
  *
- * Creates and executes agent for GitHub bot tasks
+ * Creates and executes agent for GitHub bot tasks using Claude Agent SDK
  */
 
+import { createDefaultOptions, query, toSDKTools } from '@duyetbot/core';
+import { type GitHubClient, createGitHubTool, getAllBuiltinTools } from '@duyetbot/tools';
+import type { Tool } from '@duyetbot/types';
 import { Octokit } from '@octokit/rest';
 import { GitHubSessionManager, createMCPClient } from './session-manager.js';
 import { loadAndRenderTemplate } from './template-loader.js';
 import type { BotConfig, MentionContext } from './types.js';
+
+/**
+ * Adapter to convert Octokit to GitHubClient interface
+ */
+function createOctokitAdapter(octokit: Octokit): GitHubClient {
+  return {
+    request: async (method: string, url: string, options?: Record<string, unknown>) => {
+      const response = await octokit.request(`${method} ${url}`, options);
+      return { data: response.data, status: response.status };
+    },
+  };
+}
 
 /**
  * Build system prompt for GitHub context
@@ -38,98 +53,7 @@ export function buildSystemPrompt(context: MentionContext): string {
 }
 
 /**
- * Create GitHub tool for agent
- */
-export function createGitHubTool(octokit: Octokit, repo: { owner: string; name: string }) {
-  return {
-    name: 'github',
-    description: 'Interact with GitHub API',
-    execute: async (action: string, params: Record<string, unknown>): Promise<unknown> => {
-      switch (action) {
-        case 'get_pr': {
-          const { data } = await octokit.pulls.get({
-            owner: repo.owner,
-            repo: repo.name,
-            pull_number: params.number as number,
-          });
-          return {
-            title: data.title,
-            body: data.body,
-            state: data.state,
-            files_changed: data.changed_files,
-            additions: data.additions,
-            deletions: data.deletions,
-          };
-        }
-
-        case 'get_diff': {
-          const { data } = await octokit.pulls.get({
-            owner: repo.owner,
-            repo: repo.name,
-            pull_number: params.number as number,
-            mediaType: { format: 'diff' },
-          });
-          return data;
-        }
-
-        case 'get_files': {
-          const { data } = await octokit.pulls.listFiles({
-            owner: repo.owner,
-            repo: repo.name,
-            pull_number: params.number as number,
-          });
-          return data.map((f) => ({
-            filename: f.filename,
-            status: f.status,
-            additions: f.additions,
-            deletions: f.deletions,
-          }));
-        }
-
-        case 'get_issue': {
-          const { data } = await octokit.issues.get({
-            owner: repo.owner,
-            repo: repo.name,
-            issue_number: params.number as number,
-          });
-          return {
-            title: data.title,
-            body: data.body,
-            state: data.state,
-            labels: data.labels,
-          };
-        }
-
-        case 'add_labels': {
-          await octokit.issues.addLabels({
-            owner: repo.owner,
-            repo: repo.name,
-            issue_number: params.issue_number as number,
-            labels: params.labels as string[],
-          });
-          return { success: true };
-        }
-
-        case 'create_review': {
-          await octokit.pulls.createReview({
-            owner: repo.owner,
-            repo: repo.name,
-            pull_number: params.number as number,
-            body: params.body as string,
-            event: (params.event as 'APPROVE' | 'REQUEST_CHANGES' | 'COMMENT') || 'COMMENT',
-          });
-          return { success: true };
-        }
-
-        default:
-          throw new Error(`Unknown GitHub action: ${action}`);
-      }
-    },
-  };
-}
-
-/**
- * Handle mention and generate response
+ * Handle mention and generate response using Claude Agent SDK
  */
 export async function handleMention(context: MentionContext, config: BotConfig): Promise<string> {
   const octokit = new Octokit({ auth: config.githubToken });
@@ -181,35 +105,72 @@ export async function handleMention(context: MentionContext, config: BotConfig):
   // Add the user's message to the session
   await sessionManager.appendMessage(session.sessionId, 'user', context.task);
 
-  // Create the GitHub tool for this context
-  const githubTool = createGitHubTool(octokit, {
+  // Create GitHub tool with Octokit adapter
+  const githubClient = createOctokitAdapter(octokit);
+  const githubToolDef = createGitHubTool(githubClient, {
     owner: context.repository.owner.login,
-    name: context.repository.name,
+    repo: context.repository.name,
   });
 
-  // TODO: Integrate with @duyetbot/core agent for actual execution
-  // For now, return a placeholder response with session info
-  const response = `I received your request: "${context.task}"
+  // Get all built-in tools and add GitHub tool
+  const builtinTools = getAllBuiltinTools();
 
-**Context:**
-- Repository: ${context.repository.full_name}
-- Session: \`${session.sessionId}\`
-- Message history: ${session.messages.length} previous messages
-${context.pullRequest ? `- PR #${context.pullRequest.number}: ${context.pullRequest.title}` : ''}
-${context.issue && !context.pullRequest ? `- Issue #${context.issue.number}: ${context.issue.title}` : ''}
+  // Create a Tool-compatible wrapper for the GitHub tool
+  const githubTool: Tool = {
+    name: githubToolDef.name,
+    description: githubToolDef.description,
+    inputSchema: githubToolDef.inputSchema,
+    execute: async (input: { content: string | Record<string, unknown> }) => {
+      const result = await githubToolDef.execute(
+        input.content as Parameters<typeof githubToolDef.execute>[0]
+      );
+      return {
+        status: result.success ? ('success' as const) : ('error' as const),
+        content: result.success
+          ? JSON.stringify(result.data, null, 2)
+          : result.error || 'Unknown error',
+        ...(result.error && { error: { message: result.error } }),
+      };
+    },
+  };
 
-**System Prompt Preview:**
-\`\`\`
-${systemPrompt.slice(0, 200)}...
-\`\`\`
+  // Convert all tools to SDK format
+  const allTools = [...builtinTools, githubTool];
+  const sdkTools = toSDKTools(allTools);
 
-**Available GitHub Actions:**
-${['get_pr', 'get_issue', 'create_comment', 'get_diff', 'get_files', 'add_labels', 'create_review'].map((a) => `- \`${a}\``).join('\n')}
+  // Create query options
+  const queryOptions = createDefaultOptions({
+    model: config.model || 'sonnet',
+    sessionId: session.sessionId,
+    systemPrompt,
+    tools: sdkTools,
+  });
 
-I'm processing your request. Full agent integration is in progress.
+  // Execute agent using SDK streaming
+  let response = '';
+  try {
+    for await (const message of query(context.task, queryOptions)) {
+      switch (message.type) {
+        case 'assistant':
+          if (message.content) {
+            response = message.content;
+          }
+          break;
+        case 'result':
+          // Final result - use this as the complete response
+          if (message.content) {
+            response = message.content;
+          }
+          break;
+        // Ignore tool_use and tool_result messages - they're intermediate
+      }
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    response = `I encountered an error while processing your request: ${errorMessage}
 
----
-*Powered by @duyetbot • Tool: ${githubTool.name}*`;
+Please try again or contact @duyet for assistance.`;
+  }
 
   // Save assistant response to session
   await sessionManager.appendMessage(session.sessionId, 'assistant', response);

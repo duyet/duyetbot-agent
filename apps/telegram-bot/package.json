@@ -1,5 +1,5 @@
 {
-  "name": "@duyetbot/github-bot",
+  "name": "@duyetbot/telegram-bot",
   "version": "0.1.0",
   "type": "module",
   "main": "dist/index.js",
@@ -15,10 +15,7 @@
     "@duyetbot/core": "workspace:*",
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
-    "@duyetbot/providers": "workspace:*",
-    "@octokit/rest": "^21.0.0",
-    "@octokit/webhooks": "^13.0.0",
-    "hono": "^4.0.0",
+    "telegraf": "^4.16.0",
     "zod": "^3.23.0"
   },
   "devDependencies": {
