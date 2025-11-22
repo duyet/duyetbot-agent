@@ -6,7 +6,10 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "test": "vitest run --passWithNoTests",
-    "type-check": "tsc --noEmit"
+    "type-check": "tsc --noEmit",
+    "webhook:set": "bun scripts/webhook.ts set",
+    "webhook:info": "bun scripts/webhook.ts info",
+    "webhook:delete": "bun scripts/webhook.ts delete"
   },
   "dependencies": {
     "@duyetbot/prompts": "workspace:*",
