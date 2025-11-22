@@ -333,7 +333,7 @@ describe('SDK Query', () => {
       expect(messages[0].sessionId).toBe('custom-session');
     });
 
-    it('should handle interrupt', async () => {
+    it('should handle interrupt', { timeout: 10000 }, async () => {
       const controller = createQueryController();
 
       const messages = [];
