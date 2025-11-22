@@ -2,14 +2,7 @@
  * Base PromptBuilder class with fluent API
  */
 
-import {
-  BOT_CREATOR,
-  BOT_NAME,
-  CODE_GUIDELINES,
-  CORE_CAPABILITIES,
-  CREATOR_INFO,
-  RESPONSE_GUIDELINES,
-} from './base.js';
+import { defaultContext, loadTemplate, templateNames } from "./loader.js";
 import type {
   CompileOptions,
   CompiledPrompt,
@@ -18,7 +11,7 @@ import type {
   PromptSection,
   RoleType,
   SectionPriority,
-} from './types.js';
+} from "./types.js";
 
 /**
  * Estimate tokens from text (simple approximation: ~4 chars per token)
@@ -33,27 +26,37 @@ function estimateTokens(text: string): number {
 export class PromptBuilder {
   protected sections: PromptSection[] = [];
   protected context: PromptContext = {
-    botName: BOT_NAME,
-    creator: BOT_CREATOR,
+    botName: "@duyetbot",
+    creator: "Duyet Le",
   };
   protected constraints: string[] = [];
-  protected model: ModelType = 'sonnet';
+  protected model: ModelType = "sonnet";
+
+  /**
+   * Get template context for interpolation
+   */
+  protected getTemplateContext(): { botName: string; creator: string } {
+    return {
+      botName: this.context.botName ?? defaultContext.botName ?? "@duyetbot",
+      creator: this.context.creator ?? defaultContext.creator ?? "Duyet Le",
+    };
+  }
 
   /**
    * Set the assistant role
    */
   addRole(role: RoleType): this {
-    const roleDescriptions: Record<RoleType, string> = {
-      assistant: `You are ${this.context.botName}, a helpful AI assistant created by ${this.context.creator}.`,
-      researcher: `You are ${this.context.botName}, an AI research assistant created by ${this.context.creator}. Your focus is thorough investigation and evidence-based analysis.`,
-      reviewer: `You are ${this.context.botName}, an AI code reviewer created by ${this.context.creator}. Your focus is code quality, best practices, and constructive feedback.`,
-      explainer: `You are ${this.context.botName}, an AI explainer created by ${this.context.creator}. Your focus is clear, educational explanations that help users understand concepts.`,
+    const roleTemplates: Record<RoleType, string> = {
+      assistant: templateNames.roleAssistant,
+      researcher: templateNames.roleResearcher,
+      reviewer: templateNames.roleReviewer,
+      explainer: templateNames.roleExplainer,
     };
 
     this.addSection({
-      name: 'role',
-      content: roleDescriptions[role],
-      priority: 'critical',
+      name: "role",
+      content: loadTemplate(roleTemplates[role], this.getTemplateContext()),
+      priority: "critical",
     });
 
     return this;
@@ -64,9 +67,12 @@ export class PromptBuilder {
    */
   addCapabilities(): this {
     this.addSection({
-      name: 'capabilities',
-      content: CORE_CAPABILITIES,
-      priority: 'important',
+      name: "capabilities",
+      content: loadTemplate(
+        templateNames.capabilities,
+        this.getTemplateContext(),
+      ),
+      priority: "important",
     });
     return this;
   }
@@ -76,9 +82,12 @@ export class PromptBuilder {
    */
   addCreatorInfo(): this {
     this.addSection({
-      name: 'creator_info',
-      content: CREATOR_INFO,
-      priority: 'optional',
+      name: "creator_info",
+      content: loadTemplate(
+        templateNames.creatorInfo,
+        this.getTemplateContext(),
+      ),
+      priority: "optional",
     });
     return this;
   }
@@ -88,9 +97,12 @@ export class PromptBuilder {
    */
   addCodeGuidelines(): this {
     this.addSection({
-      name: 'code_guidelines',
-      content: CODE_GUIDELINES,
-      priority: 'important',
+      name: "code_guidelines",
+      content: loadTemplate(
+        templateNames.codeGuidelines,
+        this.getTemplateContext(),
+      ),
+      priority: "important",
     });
     return this;
   }
@@ -100,9 +112,12 @@ export class PromptBuilder {
    */
   addResponseGuidelines(): this {
     this.addSection({
-      name: 'response_guidelines',
-      content: RESPONSE_GUIDELINES,
-      priority: 'important',
+      name: "response_guidelines",
+      content: loadTemplate(
+        templateNames.responseGuidelines,
+        this.getTemplateContext(),
+      ),
+      priority: "important",
     });
     return this;
   }
@@ -143,7 +158,11 @@ export class PromptBuilder {
   /**
    * Add custom text as a section
    */
-  addText(name: string, content: string, priority: SectionPriority = 'important'): this {
+  addText(
+    name: string,
+    content: string,
+    priority: SectionPriority = "important",
+  ): this {
     return this.addSection({ name, content, priority });
   }
 
@@ -175,18 +194,20 @@ export class PromptBuilder {
    * Compile with full metadata
    */
   compileWithMetadata(options: CompileOptions = {}): CompiledPrompt {
-    const { maxTokens, truncateOptional = true, separator = '\n\n' } = options;
+    const { maxTokens, truncateOptional = true, separator = "\n\n" } = options;
 
     const sections = [...this.sections];
     const truncated: string[] = [];
 
     // Add constraints as a section if any exist
     if (this.constraints.length > 0) {
-      const constraintsContent = this.constraints.map((c) => `- ${c}`).join('\n');
+      const constraintsContent = this.constraints
+        .map((c) => `- ${c}`)
+        .join("\n");
       sections.push({
-        name: 'constraints',
+        name: "constraints",
         content: constraintsContent,
-        priority: 'important',
+        priority: "important",
         tokenEstimate: estimateTokens(constraintsContent),
       });
     }
@@ -197,15 +218,22 @@ export class PromptBuilder {
       important: 1,
       optional: 2,
     };
-    sections.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
+    sections.sort(
+      (a, b) => priorityOrder[a.priority] - priorityOrder[b.priority],
+    );
 
     // Truncate if over token limit
     if (maxTokens && truncateOptional) {
-      let totalTokens = sections.reduce((sum, s) => sum + (s.tokenEstimate || 0), 0);
+      let totalTokens = sections.reduce(
+        (sum, s) => sum + (s.tokenEstimate || 0),
+        0,
+      );
 
       while (totalTokens > maxTokens && sections.length > 0) {
         // Remove optional sections first, then important
-        const optionalIdx = sections.findIndex((s) => s.priority === 'optional');
+        const optionalIdx = sections.findIndex(
+          (s) => s.priority === "optional",
+        );
         if (optionalIdx !== -1) {
           const section = sections[optionalIdx];
           if (section) {
@@ -214,7 +242,9 @@ export class PromptBuilder {
             sections.splice(optionalIdx, 1);
           }
         } else {
-          const importantIdx = sections.findIndex((s) => s.priority === 'important');
+          const importantIdx = sections.findIndex(
+            (s) => s.priority === "important",
+          );
           if (importantIdx !== -1) {
             const section = sections[importantIdx];
             if (section) {

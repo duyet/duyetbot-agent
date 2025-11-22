@@ -3,6 +3,7 @@
  */
 
 import { PromptBuilder } from '../builder.js';
+import { loadTemplate, templateNames } from '../loader.js';
 
 /**
  * PromptBuilder configured for Telegram bot interactions
@@ -22,13 +23,12 @@ export class TelegramPromptBuilder extends PromptBuilder {
     this.addCreatorInfo();
     this.addResponseGuidelines();
 
-    // Add Telegram-specific constraints
-    this.addConstraints([
-      'Keep responses concise for mobile reading',
-      'Break long responses into paragraphs',
-      'Use bullet points for lists',
-      'Use emojis sparingly for friendly tone',
-    ]);
+    // Add Telegram-specific constraints from template
+    this.addText(
+      'telegram_constraints',
+      loadTemplate(templateNames.telegramConstraints),
+      'important'
+    );
 
     // Add channel context
     this.addText('channel_context', 'Current conversation is via Telegram chat.', 'optional');
