@@ -2,14 +2,15 @@
 
 **Back to:** [Deployment Overview](README.md)
 
-Deploy the Telegram bot as a serverless webhook on Cloudflare Workers.
+Deploy the Telegram bot as a serverless webhook on Cloudflare Workers with Durable Objects for session persistence.
 
 ## Overview
 
 The Telegram bot provides:
 - Chat interface via Telegram
-- AI agent with same capabilities as GitHub bot
-- Session persistence via MCP memory server
+- AI agent powered by OpenRouter via Cloudflare AI Gateway
+- Session persistence via Durable Objects (no external database needed)
+- Built with Hono + Cloudflare Agents SDK
 
 ## Step 1: Create Bot with BotFather
 
@@ -30,19 +31,20 @@ Then paste:
 ```
 start - Start the bot
 help - Show help
-status - Show bot status
-clear - Clear session
-chat - Send a message
+clear - Clear conversation history
 ```
 
-Other settings:
-```
-/setdescription - Set bot description
-/setabouttext - Set about info
-/setuserpic - Set profile picture
-```
+## Step 2: Create Cloudflare AI Gateway
 
-## Step 2: Get Your Telegram User ID
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → AI → AI Gateway
+2. Click "Create Gateway"
+3. Name it (e.g., `duyetbot-gateway`)
+4. Copy the endpoint URL for OpenRouter:
+   ```
+   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_name}/openrouter/chat/completions
+   ```
+
+## Step 3: Get Your Telegram User ID
 
 To restrict bot access to specific users:
 
@@ -50,7 +52,32 @@ To restrict bot access to specific users:
 2. It will reply with your user ID (e.g., `123456789`)
 3. Use this for `ALLOWED_USERS` (comma-separated for multiple users)
 
-## Step 3: Set Cloudflare Secrets
+## Step 4: Configure Environment
+
+```bash
+cd apps/telegram-bot
+
+# Copy example env file
+cp .env.example .env.local
+
+# Edit with your values
+```
+
+Required values in `.env.local`:
+```bash
+TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+TELEGRAM_WEBHOOK_URL=https://duyetbot-telegram.your-subdomain.workers.dev/webhook
+AI_GATEWAY_URL=https://gateway.ai.cloudflare.com/v1/your-account-id/your-gateway/openrouter/chat/completions
+```
+
+Optional values:
+```bash
+TELEGRAM_WEBHOOK_SECRET=your_webhook_secret
+MODEL=x-ai/grok-4.1-fast
+ALLOWED_USERS=123456789,987654321
+```
+
+## Step 5: Set Cloudflare Secrets
 
 ```bash
 cd apps/telegram-bot
@@ -58,85 +85,56 @@ cd apps/telegram-bot
 # Login to Cloudflare
 wrangler login
 
-# Required secrets
+# Set required secrets
 wrangler secret put TELEGRAM_BOT_TOKEN
-# Paste your bot token from BotFather
+wrangler secret put AI_GATEWAY_URL
 
-wrangler secret put ANTHROPIC_API_KEY
-# Paste your Anthropic API key
-
+# Optional secrets
 wrangler secret put TELEGRAM_WEBHOOK_SECRET
-# Create a random secret (e.g., openssl rand -hex 32)
-```
-
-Optional secrets:
-```bash
-# Restrict to specific users (comma-separated IDs)
 wrangler secret put ALLOWED_USERS
-# Example: 123456789,987654321
-
-# Enable session persistence
-wrangler secret put MCP_SERVER_URL
-# Example: https://memory.duyetbot.workers.dev
-
-wrangler secret put MCP_AUTH_TOKEN
-# Your MCP auth token
+wrangler secret put MODEL
 ```
 
-## Step 4: Deploy to Cloudflare
+## Step 6: Deploy to Cloudflare
 
 ```bash
 cd apps/telegram-bot
 
-# Install dependencies
-bun install
-
 # Deploy
 bun run deploy
-# or: wrangler deploy
 
 # Note the URL:
 # https://duyetbot-telegram.<your-subdomain>.workers.dev
 ```
 
-## Step 5: Configure Telegram Webhook
+## Step 7: Configure Telegram Webhook
 
-Tell Telegram where to send messages:
+Use the built-in webhook commands:
 
 ```bash
-# Replace with your values
-BOT_TOKEN="your-bot-token"
-WORKER_URL="https://duyetbot-telegram.your-subdomain.workers.dev"
-WEBHOOK_SECRET="your-webhook-secret"
+cd apps/telegram-bot
+
+# Check current configuration
+bun run webhook:config
 
 # Set webhook
-curl -X POST "https://api.telegram.org/bot${BOT_TOKEN}/setWebhook" \
-  -H "Content-Type: application/json" \
-  -d "{
-    \"url\": \"${WORKER_URL}\",
-    \"secret_token\": \"${WEBHOOK_SECRET}\",
-    \"allowed_updates\": [\"message\", \"edited_message\"]
-  }"
+bun run webhook:set
+
+# Verify webhook is configured
+bun run webhook:info
 ```
 
-Verify webhook:
+Or manually with curl:
 ```bash
-curl "https://api.telegram.org/bot${BOT_TOKEN}/getWebhookInfo"
+curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://duyetbot-telegram.your-subdomain.workers.dev/webhook",
+    "secret_token": "your-webhook-secret"
+  }'
 ```
 
-Expected response:
-```json
-{
-  "ok": true,
-  "result": {
-    "url": "https://duyetbot-telegram.your-subdomain.workers.dev",
-    "has_custom_certificate": false,
-    "pending_update_count": 0
-  }
-}
-```
-
-## Step 6: Test the Bot
+## Step 8: Test the Bot
 
 1. Open Telegram and find your bot by username
 2. Send `/start`
@@ -148,12 +146,26 @@ Expected response:
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | Bot token from @BotFather |
-| `ANTHROPIC_API_KEY` | Yes | Claude API key |
-| `TELEGRAM_WEBHOOK_SECRET` | Yes | Secret for webhook verification |
+| `AI_GATEWAY_URL` | Yes | Cloudflare AI Gateway URL for OpenRouter |
+| `TELEGRAM_WEBHOOK_SECRET` | No | Secret for webhook verification |
 | `ALLOWED_USERS` | No | Comma-separated Telegram user IDs (empty = all allowed) |
-| `MCP_SERVER_URL` | No | Memory MCP server URL for session persistence |
-| `MCP_AUTH_TOKEN` | No | MCP authentication token |
-| `MODEL` | No | Claude model (default: `sonnet`) |
+| `MODEL` | No | Model name (default: `x-ai/grok-4.1-fast`) |
+
+## Webhook Commands
+
+```bash
+# Show current config from .env.local
+bun run webhook:config
+
+# Set webhook URL
+bun run webhook:set
+
+# Get webhook info from Telegram
+bun run webhook:info
+
+# Delete webhook
+bun run webhook:delete
+```
 
 ## Monitoring & Logs
 
@@ -165,26 +177,13 @@ wrangler tail
 wrangler tail --search "error"
 ```
 
-## Webhook Management
-
-```bash
-# Get current webhook info
-curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
-
-# Delete webhook (disable bot)
-curl -X POST "https://api.telegram.org/bot<TOKEN>/deleteWebhook"
-
-# Get bot info
-curl "https://api.telegram.org/bot<TOKEN>/getMe"
-```
-
 ## Troubleshooting
 
 ### Webhook not receiving updates
 
 1. Check webhook status:
    ```bash
-   curl "https://api.telegram.org/bot<TOKEN>/getWebhookInfo"
+   bun run webhook:info
    ```
 2. Look at `last_error_message` in response
 3. Verify URL is correct and accessible
@@ -192,37 +191,40 @@ curl "https://api.telegram.org/bot<TOKEN>/getMe"
 ### 401 Unauthorized errors
 
 - `TELEGRAM_WEBHOOK_SECRET` must match `secret_token` in setWebhook call
-- Re-run both `wrangler secret put` and the setWebhook curl
+- Re-run `wrangler secret put TELEGRAM_WEBHOOK_SECRET` and `bun run webhook:set`
 
 ### Bot not responding
 
 1. Check logs: `wrangler tail`
-2. Verify `ANTHROPIC_API_KEY` is valid
+2. Verify `AI_GATEWAY_URL` is valid
 3. Verify `TELEGRAM_BOT_TOKEN` is correct
 
-### Session not persisting
+### AI Gateway errors
 
-- Without `MCP_SERVER_URL`, sessions reset per request
-- Deploy the [Memory MCP Server](memory-mcp.md) for persistence
+1. Check your AI Gateway is created in Cloudflare Dashboard
+2. Verify the URL format matches OpenRouter endpoint
+3. Check OpenRouter has available credits
 
-## Alternative: Docker Deployment
+### DataCloneError
 
-For long-running server deployment instead of serverless:
+If you see `Could not serialize object of type "DurableObjectNamespace"`:
+- This is fixed in the latest version
+- Redeploy with `bun run deploy`
 
-```bash
-cd apps/telegram-bot
-docker build -t duyetbot-telegram .
-docker run -d \
-  -e TELEGRAM_BOT_TOKEN=xxx \
-  -e ANTHROPIC_API_KEY=xxx \
-  -p 3002:3002 \
-  duyetbot-telegram
+## Architecture
+
+```
+Telegram → Webhook → Hono App → Durable Object Agent → AI Gateway → OpenRouter
+                                      ↓
+                               SQLite State (messages, user context)
 ```
 
-Then set webhook to your server URL.
+- **Hono**: Lightweight web framework for routing
+- **Cloudflare Agents SDK**: Stateful agents with Durable Objects
+- **AI Gateway**: Cloudflare's proxy for LLM providers with caching/logging
 
 ## Next Steps
 
-- [Memory MCP Deployment](memory-mcp.md) - Enable session persistence
+- [Memory MCP Deployment](memory-mcp.md) - Deploy the memory server
 - [GitHub Bot Deployment](github-bot.md) - Deploy the GitHub bot
 - [Deployment Overview](README.md) - All components
