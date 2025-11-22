@@ -1,5 +1,5 @@
 name = "duyetbot-telegram"
-main = "src/worker.ts"
+main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 

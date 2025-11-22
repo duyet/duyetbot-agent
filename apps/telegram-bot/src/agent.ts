@@ -8,8 +8,8 @@ import {
   TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
-} from "@duyetbot/prompts";
-import { Agent, type AgentNamespace } from "agents";
+} from '@duyetbot/prompts';
+import { Agent, type AgentNamespace } from 'agents';
 
 export interface Env {
   // Required
@@ -30,7 +30,7 @@ interface OpenAIResponse {
 }
 
 interface Message {
-  role: "user" | "assistant";
+  role: 'user' | 'assistant';
   content: string;
 }
 
@@ -72,28 +72,35 @@ export class TelegramAgent extends Agent<Env, AgentState> {
   /**
    * Chat with the agent
    */
-  async chat(userMessage: string, env: Env): Promise<string> {
+  async chat(userMessage: string, aiGatewayUrl: string, model?: string): Promise<string> {
+    const trimmedMessage = userMessage.trim();
+
+    if (!trimmedMessage) {
+      return 'Please send a message.';
+    }
+
+    if (trimmedMessage.length > 4096) {
+      return 'Message is too long (max 4096 characters).';
+    }
+
     // Add user message to history
-    const messages: Message[] = [
-      ...this.state.messages,
-      { role: "user", content: userMessage },
-    ];
+    const messages: Message[] = [...this.state.messages, { role: 'user', content: trimmedMessage }];
 
     // Build messages for OpenAI-compatible API
     const apiMessages = [
-      { role: "system" as const, content: TELEGRAM_SYSTEM_PROMPT },
+      { role: 'system' as const, content: TELEGRAM_SYSTEM_PROMPT },
       ...messages.map((m) => ({
-        role: m.role as "user" | "assistant",
+        role: m.role as 'user' | 'assistant',
         content: m.content,
       })),
     ];
 
     // Call OpenRouter via AI Gateway
-    const response = await fetch(env.AI_GATEWAY_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await fetch(aiGatewayUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: env.MODEL || "x-ai/grok-4.1-fast",
+        model: model || 'x-ai/grok-4.1-fast',
         max_tokens: 1024,
         messages: apiMessages,
       }),
@@ -101,7 +108,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
 
     if (!response.ok) {
       const error = await response.text();
-      console.error("AI Gateway error:", error);
+      console.error('AI Gateway error:', error);
       throw new Error(`AI Gateway error: ${response.status}`);
     }
 
@@ -109,13 +116,18 @@ export class TelegramAgent extends Agent<Env, AgentState> {
 
     // Extract response text
     const responseText =
-      data.choices?.[0]?.message?.content ||
-      "Sorry, I could not generate a response.";
+      data.choices?.[0]?.message?.content || 'Sorry, I could not generate a response.';
 
-    // Update state with new messages
+    // Update state with new messages (keep last 20 for context)
+    const MAX_HISTORY = 20;
+    let updatedMessages = [...messages, { role: 'assistant' as const, content: responseText }];
+    if (updatedMessages.length > MAX_HISTORY) {
+      updatedMessages = updatedMessages.slice(-MAX_HISTORY);
+    }
+
     this.setState({
       ...this.state,
-      messages: [...messages, { role: "assistant", content: responseText }],
+      messages: updatedMessages,
       updatedAt: Date.now(),
     });
 
@@ -131,7 +143,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
       messages: [],
       updatedAt: Date.now(),
     });
-    return "Conversation history cleared.";
+    return 'Conversation history cleared.';
   }
 
   /**
