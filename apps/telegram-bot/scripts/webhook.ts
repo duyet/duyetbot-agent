@@ -32,6 +32,7 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 const AI_GATEWAY_NAME = process.env.AI_GATEWAY_NAME;
+const AI_GATEWAY_API_KEY = process.env.AI_GATEWAY_API_KEY;
 const MODEL = process.env.MODEL;
 const ALLOWED_USERS = process.env.ALLOWED_USERS;
 
@@ -56,7 +57,7 @@ async function showConfig() {
     const secretNames = secrets.map((s) => s.name);
 
     const requiredSecrets = ['TELEGRAM_BOT_TOKEN'];
-    const optionalSecrets = ['TELEGRAM_WEBHOOK_SECRET', 'ALLOWED_USERS'];
+    const optionalSecrets = ['TELEGRAM_WEBHOOK_SECRET', 'ALLOWED_USERS', 'AI_GATEWAY_API_KEY'];
 
     for (const name of requiredSecrets) {
       const status = secretNames.includes(name) ? '✓ set' : '✗ not set';
@@ -89,6 +90,7 @@ async function setWranglerSecrets() {
     { name: 'TELEGRAM_BOT_TOKEN', value: BOT_TOKEN, required: true },
     { name: 'TELEGRAM_WEBHOOK_SECRET', value: WEBHOOK_SECRET, required: false },
     { name: 'ALLOWED_USERS', value: ALLOWED_USERS, required: false },
+    { name: 'AI_GATEWAY_API_KEY', value: AI_GATEWAY_API_KEY, required: false },
   ];
 
   console.log('\nSetting Cloudflare secrets...');
