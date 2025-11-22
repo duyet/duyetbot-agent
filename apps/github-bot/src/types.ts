@@ -87,6 +87,8 @@ export interface BotConfig {
   webhookSecret: string;
   mcpServerUrl?: string;
   mcpAuthToken?: string;
+  /** LLM model to use (default: 'sonnet') */
+  model?: string;
   /** Configuration for issue event handling */
   issueHandlerConfig?: IssueHandlerConfig;
   /** Configuration for pull request event handling */

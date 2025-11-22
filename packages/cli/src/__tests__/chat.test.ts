@@ -26,6 +26,12 @@ vi.mock('@duyetbot/core', () => ({
       content: 'This is a placeholder response from the mock SDK.',
     };
   }),
+  toSDKTools: vi.fn().mockReturnValue([]),
+}));
+
+// Mock @duyetbot/tools
+vi.mock('@duyetbot/tools', () => ({
+  getAllBuiltinTools: vi.fn().mockReturnValue([]),
 }));
 
 // Mock fs

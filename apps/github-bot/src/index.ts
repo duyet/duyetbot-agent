@@ -28,7 +28,7 @@ export { handleIssueEvent } from './webhooks/issues.js';
 export type { IssueEvent, IssueHandlerConfig } from './webhooks/issues.js';
 export { handlePullRequestEvent } from './webhooks/pull-request.js';
 export type { PullRequestEvent, PullRequestHandlerConfig } from './webhooks/pull-request.js';
-export { buildSystemPrompt, createGitHubTool, handleMention } from './agent-handler.js';
+export { buildSystemPrompt, handleMention } from './agent-handler.js';
 export { loadTemplate, renderTemplate, loadAndRenderTemplate } from './template-loader.js';
 export {
   GitHubSessionManager,
