@@ -14,7 +14,29 @@ The Telegram bot provides:
 ## Prerequisites
 
 1. Telegram Bot Token from [@BotFather](https://t.me/botfather)
-2. Server with public URL for webhook
+2. Cloudflare account (free tier available)
+3. Wrangler CLI: `npm install -g wrangler`
+
+## Create Bot with BotFather
+
+1. Open Telegram and search for [@BotFather](https://t.me/botfather)
+2. Send `/newbot` command
+3. Enter a name for your bot (e.g., "Duyetbot Agent")
+4. Enter a username (must end in `bot`, e.g., `duyetbot_agent_bot`)
+5. Copy the **HTTP API token** - this is your `TELEGRAM_BOT_TOKEN`
+
+Optional bot settings:
+```
+/setdescription - Set bot description
+/setabouttext - Set about text
+/setuserpic - Set bot profile picture
+/setcommands - Set command menu:
+  start - Start the bot
+  help - Show help
+  status - Show bot status
+  clear - Clear session
+  chat - Send a message
+```
 
 ## Environment Variables
 
