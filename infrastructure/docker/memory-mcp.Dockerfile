@@ -7,6 +7,7 @@ FROM base AS deps
 COPY package.json bun.lock ./
 COPY packages ./packages
 COPY apps ./apps
+COPY tests ./tests
 RUN find . -name "*.ts" -o -name "*.tsx" -o -name "src" -type d | xargs rm -rf 2>/dev/null || true && \
     bun install --frozen-lockfile
 
