@@ -28,7 +28,7 @@ jobs:
       matrix:
         image:
           - name: agent-server
-            dockerfile: ./infrastructure/docker/agent-server.Dockerfile
+            dockerfile: ./apps/agent-server/Dockerfile
 
     steps:
       - name: Checkout repository
