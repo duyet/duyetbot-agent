@@ -79,6 +79,47 @@ if (!BOT_TOKEN && process.argv[2] !== 'config') {
 
 const API_BASE = `https://api.telegram.org/bot${BOT_TOKEN}`;
 
+async function setWranglerSecrets() {
+  const cwd = resolve(import.meta.dir, '..');
+  const secrets: Array<{
+    name: string;
+    value: string | undefined;
+    required: boolean;
+  }> = [
+    { name: 'TELEGRAM_BOT_TOKEN', value: BOT_TOKEN, required: true },
+    { name: 'AI_GATEWAY_NAME', value: AI_GATEWAY_NAME, required: true },
+    { name: 'TELEGRAM_WEBHOOK_SECRET', value: WEBHOOK_SECRET, required: false },
+    { name: 'ALLOWED_USERS', value: ALLOWED_USERS, required: false },
+    { name: 'MODEL', value: MODEL, required: false },
+  ];
+
+  console.log('\nSetting Cloudflare secrets...');
+
+  for (const { name, value, required } of secrets) {
+    if (!value) {
+      if (required) {
+        console.log(`  ${name}: ✗ skipped (not set in .env.local)`);
+      }
+      continue;
+    }
+
+    try {
+      execFileSync('wrangler', ['secret', 'put', name], {
+        cwd,
+        input: value,
+        encoding: 'utf-8',
+        stdio: ['pipe', 'pipe', 'pipe'],
+      });
+      console.log(`  ${name}: ✓ set`);
+    } catch (error) {
+      console.error(`  ${name}: ✗ failed to set`);
+      if (required) {
+        throw error;
+      }
+    }
+  }
+}
+
 async function setWebhook() {
   if (!WEBHOOK_URL) {
     console.error('Error: TELEGRAM_WEBHOOK_URL is required');
@@ -88,7 +129,15 @@ async function setWebhook() {
     process.exit(1);
   }
 
-  const body: Record<string, string> = { url: WEBHOOK_URL };
+  // Set Cloudflare secrets first
+  await setWranglerSecrets();
+
+  // Set Telegram webhook
+  console.log('\nSetting Telegram webhook...');
+  const body: Record<string, string | boolean> = {
+    url: WEBHOOK_URL,
+    drop_pending_updates: true,
+  };
   if (WEBHOOK_SECRET) {
     body.secret_token = WEBHOOK_SECRET;
   }
