@@ -1,0 +1,10 @@
+# Local development secrets
+# Copy to .dev.vars and fill in your values
+# These are loaded automatically by wrangler dev
+
+TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
+AI_GATEWAY_NAME=your-gateway-name
+
+# Optional
+TELEGRAM_WEBHOOK_SECRET=your_webhook_secret
+ALLOWED_USERS=123456789,987654321

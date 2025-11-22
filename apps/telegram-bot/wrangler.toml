@@ -8,6 +8,9 @@ binding = "AI"
 
 [vars]
 ENVIRONMENT = "production"
+# Non-secret config (override with wrangler secret for custom values)
+MODEL = "x-ai/grok-4.1-fast"
+# AI_GATEWAY_NAME = "your-gateway-name"  # Set via: wrangler secret put AI_GATEWAY_NAME
 
 [observability]
 enabled = true

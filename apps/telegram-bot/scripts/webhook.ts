@@ -31,7 +31,6 @@ const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_URL = process.env.TELEGRAM_WEBHOOK_URL;
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 const AI_GATEWAY_NAME = process.env.AI_GATEWAY_NAME;
-const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
 const MODEL = process.env.MODEL;
 const ALLOWED_USERS = process.env.ALLOWED_USERS;
 
@@ -40,7 +39,6 @@ function showConfig() {
   console.log(`  TELEGRAM_BOT_TOKEN:      ${BOT_TOKEN ? '✓ set' : '✗ not set'}`);
   console.log(`  TELEGRAM_WEBHOOK_URL:    ${WEBHOOK_URL || 'not set'}`);
   console.log(`  AI_GATEWAY_NAME:         ${AI_GATEWAY_NAME || 'not set'}`);
-  console.log(`  OPENROUTER_API_KEY:      ${OPENROUTER_API_KEY ? '✓ set' : 'not set'}`);
   console.log(`  TELEGRAM_WEBHOOK_SECRET: ${WEBHOOK_SECRET ? '✓ set' : 'not set'}`);
   console.log(`  MODEL:                   ${MODEL || 'x-ai/grok-4.1-fast (default)'}`);
   console.log(`  ALLOWED_USERS:           ${ALLOWED_USERS || 'all users'}`);

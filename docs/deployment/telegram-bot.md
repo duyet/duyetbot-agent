@@ -38,11 +38,13 @@ clear - Clear conversation history
 
 1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → AI → AI Gateway
 2. Click "Create Gateway"
-3. Name it (e.g., `duyetbot-gateway`)
-4. Copy the endpoint URL for OpenRouter:
-   ```
-   https://gateway.ai.cloudflare.com/v1/{account_id}/{gateway_name}/openrouter/chat/completions
-   ```
+3. Name it (e.g., `duyetbot-gateway`) → **Save this name** as `AI_GATEWAY_NAME`
+4. Configure the gateway settings:
+   - Enable caching (optional, reduces costs)
+   - Enable logging (recommended for debugging)
+   - Set rate limiting if needed
+
+The bot uses Cloudflare's native AI binding to connect to the gateway, so you only need the gateway name, not the full URL.
 
 ## Step 3: Get Your Telegram User ID
 
@@ -67,7 +69,7 @@ Required values in `.env.local`:
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
 TELEGRAM_WEBHOOK_URL=https://duyetbot-telegram.your-subdomain.workers.dev/webhook
-AI_GATEWAY_URL=https://gateway.ai.cloudflare.com/v1/your-account-id/your-gateway/openrouter/chat/completions
+AI_GATEWAY_NAME=your-gateway-name
 ```
 
 Optional values:
@@ -77,7 +79,11 @@ MODEL=x-ai/grok-4.1-fast
 ALLOWED_USERS=123456789,987654321
 ```
 
+> **Note:** Configure your OpenRouter API key directly in the AI Gateway settings in Cloudflare Dashboard.
+
 ## Step 5: Set Cloudflare Secrets
+
+### Option A: Using wrangler secret (recommended for production)
 
 ```bash
 cd apps/telegram-bot
@@ -87,13 +93,25 @@ wrangler login
 
 # Set required secrets
 wrangler secret put TELEGRAM_BOT_TOKEN
-wrangler secret put AI_GATEWAY_URL
+wrangler secret put AI_GATEWAY_NAME
 
 # Optional secrets
 wrangler secret put TELEGRAM_WEBHOOK_SECRET
 wrangler secret put ALLOWED_USERS
-wrangler secret put MODEL
 ```
+
+### Option B: Using .dev.vars (for local development)
+
+```bash
+cd apps/telegram-bot
+
+# Copy example file
+cp .dev.vars.example .dev.vars
+
+# Edit with your values - these are loaded automatically by wrangler dev
+```
+
+> **Note:** `MODEL` is already configured in `wrangler.toml` with a default value. Override with `wrangler secret put MODEL` if needed.
 
 ## Step 6: Deploy to Cloudflare
 
@@ -146,7 +164,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `TELEGRAM_BOT_TOKEN` | Yes | Bot token from @BotFather |
-| `AI_GATEWAY_URL` | Yes | Cloudflare AI Gateway URL for OpenRouter |
+| `AI_GATEWAY_NAME` | Yes | Cloudflare AI Gateway name (e.g., `duyetbot-gateway`) |
 | `TELEGRAM_WEBHOOK_SECRET` | No | Secret for webhook verification |
 | `ALLOWED_USERS` | No | Comma-separated Telegram user IDs (empty = all allowed) |
 | `MODEL` | No | Model name (default: `x-ai/grok-4.1-fast`) |
@@ -196,14 +214,22 @@ wrangler tail --search "error"
 ### Bot not responding
 
 1. Check logs: `wrangler tail`
-2. Verify `AI_GATEWAY_URL` is valid
+2. Verify `AI_GATEWAY_NAME` matches your gateway name in Cloudflare
 3. Verify `TELEGRAM_BOT_TOKEN` is correct
 
 ### AI Gateway errors
 
 1. Check your AI Gateway is created in Cloudflare Dashboard
-2. Verify the URL format matches OpenRouter endpoint
-3. Check OpenRouter has available credits
+2. Verify `AI_GATEWAY_NAME` matches exactly (case-sensitive)
+3. Check OpenRouter API key is configured in AI Gateway settings
+4. Check the AI Gateway logs in Cloudflare Dashboard for details
+
+### 401 No auth credentials found
+
+This error from AI Gateway means your OpenRouter API key is not configured:
+1. Go to Cloudflare Dashboard → AI → AI Gateway
+2. Select your gateway and configure authentication
+3. Add your OpenRouter API key in the provider settings
 
 ### DataCloneError
 
