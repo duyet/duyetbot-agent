@@ -91,7 +91,7 @@ export async function handleIssueComment(
 
   // Only handle created comments
   if (event.action !== 'created') {
-    logger.debug('issue_comment_skipped', {
+    logger.debug('Issue comment skipped', {
       reason: 'not_created',
       action: event.action,
       repository: repo,
@@ -102,7 +102,7 @@ export async function handleIssueComment(
 
   // Don't respond to our own comments
   if (event.comment.user.login === botUsername) {
-    logger.debug('issue_comment_skipped', {
+    logger.debug('Issue comment skipped', {
       reason: 'own_comment',
       repository: repo,
       issue: issueNumber,
@@ -113,7 +113,7 @@ export async function handleIssueComment(
   // Parse mention
   const mention = parseMention(event.comment.body, botUsername);
   if (!mention.found) {
-    logger.debug('issue_comment_skipped', {
+    logger.debug('Issue comment skipped', {
       reason: 'no_mention',
       repository: repo,
       issue: issueNumber,
@@ -122,7 +122,7 @@ export async function handleIssueComment(
     return;
   }
 
-  logger.info('mention_found', {
+  logger.info('Mention found', {
     repository: repo,
     issue: issueNumber,
     sender: event.sender.login,
@@ -141,7 +141,7 @@ export async function handleIssueComment(
 
   // Check if this is a PR (issues API is used for both)
   if ('pull_request' in event.issue) {
-    logger.debug('fetching_pr_details', {
+    logger.debug('Fetching PR details', {
       repository: repo,
       pullNumber: event.issue.number,
     });
@@ -172,7 +172,7 @@ export async function handleIssueComment(
       deletions: pr.deletions,
     };
 
-    logger.debug('pr_details_fetched', {
+    logger.debug('PR details fetched', {
       repository: repo,
       pullNumber: pr.number,
       changedFiles: pr.changed_files,
@@ -185,7 +185,7 @@ export async function handleIssueComment(
   const owner = event.repository.owner.login;
   const repoName = event.repository.name;
 
-  logger.debug('adding_processing_reaction', {
+  logger.debug('Adding processing reaction', {
     repository: repo,
     issue: issueNumber,
     commentId: event.comment.id,
@@ -196,7 +196,7 @@ export async function handleIssueComment(
   const startTime = Date.now();
 
   try {
-    logger.info('agent_invocation_start', {
+    logger.info('Agent invocation started', {
       repository: repo,
       issue: issueNumber,
       commentId: event.comment.id,
@@ -207,7 +207,7 @@ export async function handleIssueComment(
 
     const durationMs = Date.now() - startTime;
 
-    logger.info('agent_invocation_complete', {
+    logger.info('Agent invocation completed', {
       repository: repo,
       issue: issueNumber,
       durationMs,
@@ -220,7 +220,7 @@ export async function handleIssueComment(
     }
     await addReaction(octokit, owner, repoName, event.comment.id, 'rocket');
 
-    logger.debug('posting_response_comment', {
+    logger.debug('Posting response comment', {
       repository: repo,
       issue: issueNumber,
       responseLength: response.length,
@@ -234,7 +234,7 @@ export async function handleIssueComment(
       body: response,
     });
 
-    logger.info('response_posted', {
+    logger.info('Response posted', {
       repository: repo,
       issue: issueNumber,
       durationMs: Date.now() - startTime,
@@ -243,7 +243,7 @@ export async function handleIssueComment(
     const durationMs = Date.now() - startTime;
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    logger.error('agent_invocation_error', {
+    logger.error('Agent invocation error', {
       repository: repo,
       issue: issueNumber,
       error: errorMessage,

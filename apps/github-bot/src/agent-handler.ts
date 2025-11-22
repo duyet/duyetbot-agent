@@ -65,7 +65,7 @@ export async function handleMention(
   const repo = context.repository.full_name;
   const issueNumber = context.issue?.number || context.pullRequest?.number;
 
-  logger.info('mention_received', {
+  logger.info('Mention received', {
     repository: repo,
     issue: issueNumber,
     mentionedBy: context.mentionedBy.login,
@@ -83,12 +83,12 @@ export async function handleMention(
         context.issue?.number,
         context.pullRequest?.number
       );
-      logger.debug('enhanced_context_fetched', {
+      logger.debug('Enhanced context fetched', {
         repository: repo,
         issue: issueNumber,
       });
     } catch (error) {
-      logger.error('enhanced_context_error', {
+      logger.error('Enhanced context error', {
         repository: repo,
         issue: issueNumber,
         error: error instanceof Error ? error.message : String(error),
@@ -187,7 +187,7 @@ export async function handleMention(
         );
       }
 
-      logger.info('agent_execution_start', {
+      logger.info('Agent execution started', {
         repository: repo,
         issue: issueNumber,
         model: config.model,
@@ -197,7 +197,7 @@ export async function handleMention(
       // Agent handles tool calls internally
       response = await agent.chat(context.task);
 
-      logger.info('agent_execution_complete', {
+      logger.info('Agent execution completed', {
         repository: repo,
         issue: issueNumber,
         durationMs: Date.now() - startTime,
@@ -214,7 +214,7 @@ export async function handleMention(
         { role: 'user', content: context.task },
       ];
 
-      logger.info('llm_direct_call', {
+      logger.info('LLM direct call', {
         repository: repo,
         issue: issueNumber,
         model: config.model,
@@ -226,7 +226,7 @@ export async function handleMention(
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
-    logger.error('agent_execution_error', {
+    logger.error('Agent execution error', {
       repository: repo,
       issue: issueNumber,
       error: errorMessage,

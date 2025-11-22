@@ -118,7 +118,7 @@ export function createGitHubBot(config: BotConfig) {
     const repo = payload.repository?.full_name || 'unknown';
     const action = payload.action || 'unknown';
 
-    logger.info('webhook_received', {
+    logger.info('Webhook received', {
       event,
       action,
       repository: repo,
@@ -166,17 +166,17 @@ export function createGitHubBot(config: BotConfig) {
           break;
 
         case 'ping':
-          logger.info('ping_received', { repository: repo });
+          logger.info('Ping received', { repository: repo });
           break;
 
         default:
-          logger.warn('unhandled_event', { event, repository: repo });
+          logger.warn('Unhandled event', { event, repository: repo });
       }
 
-      logger.info('webhook_processed', { event, repository: repo });
+      logger.info('Webhook processed', { event, repository: repo });
       return c.json({ ok: true });
     } catch (error) {
-      logger.error('webhook_error', {
+      logger.error('Webhook error', {
         event,
         repository: repo,
         error: error instanceof Error ? error.message : String(error),

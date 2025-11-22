@@ -90,7 +90,6 @@ export interface BotConfig {
   /** LLM model to use */
   model?: string | undefined;
   /** Cloudflare AI binding */
-  // biome-ignore lint/suspicious/noExplicitAny: Cloudflare AI binding type
   AI?: any;
   /** AI Gateway name */
   AI_GATEWAY_NAME?: string | undefined;

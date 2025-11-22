@@ -11,25 +11,20 @@ interface LogContext {
 }
 
 function log(level: LogLevel, message: string, context?: LogContext): void {
-  const entry = {
-    timestamp: new Date().toISOString(),
-    level,
-    message,
-    ...context,
-  };
+  const output = context ? `${message} ${JSON.stringify(context)}` : message;
 
   switch (level) {
     case 'debug':
-      console.debug(JSON.stringify(entry));
+      console.debug(output);
       break;
     case 'info':
-      console.info(JSON.stringify(entry));
+      console.info(output);
       break;
     case 'warn':
-      console.warn(JSON.stringify(entry));
+      console.warn(output);
       break;
     case 'error':
-      console.error(JSON.stringify(entry));
+      console.error(output);
       break;
   }
 }
