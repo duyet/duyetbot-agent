@@ -108,6 +108,7 @@
   },
   "javascript": {
     "globals": [
+      "Ai",
       "KVNamespace",
       "D1Database",
       "ExecutionContext",

@@ -1,21 +1,86 @@
 /**
  * Template Loader
  *
- * Simple template engine for loading and rendering text templates
+ * Simple template engine for rendering text templates
+ * Templates are inlined for Cloudflare Workers compatibility
  */
 
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+// Inlined templates for Workers compatibility
+const TEMPLATES: Record<string, string> = {
+  'system-prompt.txt': `You are @duyetbot, an AI assistant helping with GitHub tasks.
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
+## Repository
+- Name: {{repository.full_name}}
+
+{{#if pullRequest}}
+## Pull Request #{{pullRequest.number}}
+- Title: {{pullRequest.title}}
+- State: {{pullRequest.state}}
+- Author: @{{pullRequest.user.login}}
+- Base: {{pullRequest.base.ref}} <- Head: {{pullRequest.head.ref}}
+- Changes: +{{pullRequest.additions}} -{{pullRequest.deletions}} ({{pullRequest.changed_files}} files)
+{{#if pullRequest.body}}
+
+### Description
+{{pullRequest.body}}
+{{/if}}
+{{/if}}
+
+{{#if issue}}
+## Issue #{{issue.number}}
+- Title: {{issue.title}}
+- State: {{issue.state}}
+- Author: @{{issue.user.login}}
+{{#if issue.labels}}
+- Labels: {{issue.labelsString}}
+{{/if}}
+{{#if issue.body}}
+
+### Description
+{{issue.body}}
+{{/if}}
+{{/if}}
+
+{{#if enhancedContext}}
+## Additional Context
+{{enhancedContext}}
+{{/if}}
+
+## Task from @{{mentionedBy.login}}
+{{task}}
+
+## Available Tools
+You have access to the following tools:
+
+- **post_comment**: Post a comment to the issue/PR. Use this to respond to the user with your analysis or answer.
+- **add_reaction**: Add a reaction emoji (eyes, rocket, +1, heart, hooray, laugh, confused) to the triggering comment.
+- **get_issue_context**: Get detailed context including all comments, labels, and for PRs: diff, files, commits, and reviews.
+
+## Instructions
+1. Analyze the user's request and the provided context
+2. If you need more information, use the get_issue_context tool
+3. Formulate your response
+4. Use the post_comment tool to post your response to the issue/PR
+5. Optionally add a reaction to acknowledge the request
+
+## Guidelines
+- Provide clear, actionable responses
+- Use GitHub-flavored Markdown for formatting
+- Reference specific files, lines, or commits when relevant
+- If you need more information, ask clarifying questions
+- Be concise but thorough
+`,
+};
 
 /**
- * Load template from file
+ * Load template from inlined templates
  */
 export function loadTemplate(templateName: string): string {
-  const templatePath = join(__dirname, 'templates', templateName);
-  return readFileSync(templatePath, 'utf-8');
+  const template = TEMPLATES[templateName];
+  if (!template) {
+    throw new Error(`Template not found: ${templateName}`);
+  }
+  return template;
 }
 
 /**

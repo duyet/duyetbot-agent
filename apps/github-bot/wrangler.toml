@@ -1,0 +1,44 @@
+name = "duyetbot-github"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "bun run build"
+
+# Durable Objects for stateful agents
+[durable_objects]
+bindings = [
+  { name = "GitHubAgent", class_name = "GitHubAgent" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GitHubAgent"]
+
+[ai]
+binding = "AI"
+
+[vars]
+ENVIRONMENT = "production"
+MODEL = "x-ai/grok-4.1-fast"
+AI_GATEWAY_NAME = "duyetbot"
+AI_GATEWAY_PROVIDER = "openrouter"
+BOT_USERNAME="duyetbot"
+
+# Configure loaders for different file types
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[placement]
+mode = "smart"

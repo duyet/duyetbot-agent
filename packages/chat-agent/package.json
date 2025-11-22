@@ -1,0 +1,37 @@
+{
+  "name": "@duyetbot/chat-agent",
+  "version": "0.1.0",
+  "description": "Reusable chat agent with LLM and MCP tools support",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@duyetbot/prompts": "workspace:*"
+  },
+  "peerDependencies": {
+    "agents": ">=0.0.55"
+  },
+  "peerDependenciesMeta": {
+    "agents": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@duyetbot/config-vitest": "workspace:*",
+    "agents": "^0.0.90",
+    "typescript": "^5.6.3",
+    "vitest": "^2.1.9"
+  }
+}

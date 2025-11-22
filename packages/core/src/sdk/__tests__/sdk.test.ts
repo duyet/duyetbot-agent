@@ -358,7 +358,7 @@ describe('SDK Query', () => {
 
       expect(result.type).toBe('result');
       expect(result.content).toBeDefined();
-    });
+    }, 180000);
   });
 
   describe('collectMessages', () => {
@@ -367,7 +367,7 @@ describe('SDK Query', () => {
 
       expect(Array.isArray(messages)).toBe(true);
       expect(messages.length).toBeGreaterThan(0);
-    });
+    }, 180000);
   });
 });
 

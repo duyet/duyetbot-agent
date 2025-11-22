@@ -263,12 +263,95 @@ Compare to always-on containers: **~$58/mo** (2× machines)
 - Cross-references volumes with PR status
 - Deletes orphaned volumes
 
+## Two-Tier Agent Architecture
+
+The system uses two types of agents for different workloads:
+
+### Tier 1: Cloudflare Agents (Lightweight)
+
+Fast, serverless agents for receiving messages and quick responses:
+
+| App | Runtime | Worker Name | Purpose |
+|-----|---------|-------------|---------|
+| `apps/telegram-bot` | Workers + Durable Objects | `duyetbot-telegram` | Telegram chat interface |
+| `apps/github-bot` | Workers + Durable Objects | `duyetbot-github` | GitHub @mentions and webhooks |
+| `apps/memory-mcp` | Workers | `duyetbot-memory-mcp` | Cross-session memory (D1 + KV) |
+
+**Capabilities**:
+- Receive and respond to messages quickly (<100ms cold start)
+- Stateful sessions via Durable Objects
+- Built-in SQLite storage
+- Can trigger Cloudflare Workflows for:
+  - **Deferred tasks**: Reminders, scheduled messages, delayed actions
+  - **Complex tasks**: Multi-step operations requiring Tier 2 compute
+
+### Tier 2: Claude Agent SDK (Heavy)
+
+Long-running agents for complex tasks requiring full compute environment:
+
+| App | Runtime | Purpose |
+|-----|---------|---------|
+| `apps/agent-server` | Container (Cloudflare sandbox) | Full agent with filesystem/shell tools |
+
+**Capabilities**:
+- `child_process.spawn()` for bash/git operations
+- Filesystem access for code operations
+- Long-running tasks (minutes to hours)
+- Triggered by Cloudflare Workflows from Tier 1 agents
+
+**Note**: Tier 2 implementation is planned for later phases.
+
+### Agent Flow
+
+```
+User Message → Cloudflare Agent (Tier 1) → Quick Response
+                     ↓
+              Task Type Detection
+                     ↓
+         ┌─────────────┴─────────────┐
+         ↓                           ↓
+   Deferred Task              Complex Task
+   (Lightweight)                 (Heavy)
+         ↓                           ↓
+ Cloudflare Workflow         Cloudflare Workflow
+   (sleep, alarm)              (provision)
+         ↓                           ↓
+   Execute Later          Claude Agent SDK (Tier 2)
+   (same Tier 1)              Full Compute
+```
+
+**Examples**:
+- `@duyetbot remind me in 10 minutes` → Lightweight Workflow (sleep) → Tier 1 sends reminder
+- `@duyetbot review this PR thoroughly` → Heavy Workflow → Tier 2 with filesystem/git
+
+**Why this separation?**
+- Tier 1: Instant responses, cost-effective, edge deployment
+- Lightweight Workflows: Deferred tasks without compute cost (free sleep up to 365 days)
+- Tier 2: Full Linux environment for heavy tasks, billed only when running
+
 ## Packages & Components
 
 ### Core (`packages/core`)
 - SDK adapter layer (`sdk/`)
 - Session management
 - MCP client
+- Used by agent-server (Claude Agent SDK)
+
+### Chat Agent (`packages/chat-agent`)
+Reusable chat agent abstraction for Workers:
+- `ChatAgent` - Base agent with tool support and history
+- `CloudflareAgentAdapter` - Adapter for Cloudflare Agents SDK
+- `createChatAgent()` - Factory for creating agents
+- Provider-agnostic (OpenRouter, Anthropic via AI Gateway)
+- Built-in conversation history management
+
+### Prompts (`packages/prompts`)
+Shared system prompts as markdown files:
+- `prompts/telegram.md` - Telegram bot personality
+- `prompts/github.md` - GitHub bot personality
+- `prompts/default.md` - Base prompt fragments
+- `loadPrompt()` - Async prompt loader
+- `TELEGRAM_SYSTEM_PROMPT`, `GITHUB_SYSTEM_PROMPT` - Pre-loaded exports
 
 ### Tools (`packages/tools`)
 Built-in tools (SDK-compatible):
@@ -278,11 +361,32 @@ Built-in tools (SDK-compatible):
 - `research` - Web research
 - `plan` - Task planning
 
+### Providers (`packages/providers`)
+LLM provider abstractions:
+- Claude provider with base URL override (Z.AI support)
+- OpenRouter provider
+- Provider factory with configuration
+
+### Telegram Bot (`apps/telegram-bot`)
+Cloudflare Agents SDK with Durable Objects:
+- `TelegramAgent` class extending `Agent`
+- Built-in state for conversation history
+- MCP client for memory-mcp connection
+- Deploy: `wrangler deploy` → `duyetbot-telegram`
+
+### GitHub Bot (`apps/github-bot`)
+Cloudflare Agents SDK with Durable Objects:
+- `GitHubAgent` class extending `Agent`
+- GitHub MCP for API operations
+- duyet-mcp for knowledge base
+- Deploy: `wrangler deploy` → `duyetbot-github`
+
 ### Memory MCP (`apps/memory-mcp`)
 Cloudflare Workers for cross-session memory:
 - D1 - Metadata, users
 - KV - Message history
 - Vectorize - Semantic search (future)
+- Deploy: `wrangler deploy` → `duyetbot-memory-mcp`
 
 ### CLI (`packages/cli`)
 Local development and testing:
