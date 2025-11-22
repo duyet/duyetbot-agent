@@ -4,7 +4,7 @@
   "description": "Autonomous bot agent system with multi-LLM support - Monorepo",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "apps/*"],
+  "workspaces": ["packages/*", "apps/*", "tests/*"],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",

@@ -1,0 +1,28 @@
+{
+  "name": "@duyetbot/e2e-tests",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cli": "vitest run src/cli",
+    "test:api": "vitest run src/api",
+    "test:agent": "vitest run src/agent-server",
+    "test:memory": "vitest run src/memory-mcp"
+  },
+  "devDependencies": {
+    "@duyetbot/api": "workspace:*",
+    "@duyetbot/agent-server": "workspace:*",
+    "@duyetbot/cli": "workspace:*",
+    "@duyetbot/core": "workspace:*",
+    "@duyetbot/memory-mcp": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
+    "@hono/node-server": "^1.13.0",
+    "hono": "^4.6.0",
+    "vitest": "^2.0.0",
+    "ws": "^8.18.0",
+    "execa": "^9.5.2"
+  }
+}
