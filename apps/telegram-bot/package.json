@@ -14,10 +14,10 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@duyetbot/core": "workspace:*",
-    "@duyetbot/tools": "workspace:*",
+    "@anthropic-ai/sdk": "^0.36.3",
+    "@duyetbot/prompts": "workspace:*",
     "@duyetbot/types": "workspace:*",
-    "telegraf": "^4.16.0",
+    "agents": "^0.2.23",
     "zod": "^3.23.0"
   },
   "devDependencies": {

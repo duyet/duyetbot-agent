@@ -148,6 +148,24 @@ This solves the fundamental challenge: heavy LLM tasks need a "computer-like" en
 | **Project Structure** | Monorepo (pnpm) | Separated concerns, independent deployments |
 | **Provider System** | Base URL override | Flexible (Z.AI, custom endpoints) |
 
+### SDK Choices by Deployment Target
+
+| App | SDK | Runtime | Worker Name | Why |
+|-----|-----|---------|-------------|-----|
+| `apps/telegram-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-telegram` | Stateful sessions, built-in storage, MCP client |
+| `apps/github-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-github` | GitHub MCP, duyet-mcp for knowledge |
+| `apps/agent-server` | Claude Agent SDK | Container (Fly/Docker) | - | Full agent with filesystem/shell tools |
+| `apps/memory-mcp` | MCP Server | Workers | `duyetbot-memory-mcp` | D1 + KV storage |
+
+**Why Cloudflare Agents SDK for Workers?**
+- Claude Agent SDK requires `child_process.spawn()` (not available in Workers)
+- Cloudflare Agents SDK provides: Durable Objects state, MCP client, WebSocket, JSRPC
+
+**Shared Prompts** (`packages/prompts`):
+- `TELEGRAM_SYSTEM_PROMPT` - Telegram bot personality
+- `GITHUB_SYSTEM_PROMPT` - GitHub bot personality
+- Base prompt fragments for reuse
+
 ### Volume-as-Session Pattern
 
 The Claude Agent SDK relies on local filesystem for session state. We solve this with persistent Fly.io Volumes:
@@ -1965,29 +1983,41 @@ packages/core/src/
 
 ---
 
-### Phase 8: Telegram Bot Integration (3-4 days)
+### Phase 8: Telegram Bot Integration (3-4 days) 🔧 IN PROGRESS
 
-**Goal**: Telegram bot for chat and notifications
+**Goal**: Telegram bot using Cloudflare Agents SDK on Workers
+
+**Architecture**: Uses Cloudflare Agents SDK with Durable Objects for stateful agent sessions. Each user gets a unique agent instance with built-in SQLite storage.
 
 **Tasks**:
-- [ ] Create apps/telegram-bot package
-- [ ] Register Telegram bot
-- [ ] Set up Telegraf framework
+- [x] Create apps/telegram-bot package
+- [x] Register Telegram bot
+- [ ] Refactor to Cloudflare Agents SDK
+  - [ ] Install dependencies (agents, ai, @ai-sdk/anthropic)
+  - [ ] Create TelegramAgent class extending Agent
+  - [ ] Implement chat() method with AI SDK
+  - [ ] Connect to memory-mcp as MCP client
 - [ ] Implement commands:
   - [ ] /start
-  - [ ] /chat
-  - [ ] /status
-  - [ ] /sessions
   - [ ] /help
-- [ ] Create message handler
-- [ ] Add MCP client integration
-- [ ] Implement session management
-- [ ] Add notification system (for GitHub events)
+  - [ ] /clear
+- [ ] Configure wrangler.toml for duyetbot-telegram
+  - [ ] Add durable_objects bindings
+  - [ ] Add migrations with new_sqlite_classes
+- [ ] Create packages/prompts for shared prompts
 - [ ] Write Telegram bot tests (25+ tests)
-- [ ] Deploy bot
+- [ ] Deploy to Cloudflare Workers (duyetbot-telegram)
 - [ ] Document usage
 
-**Output**: Production Telegram bot ✅
+**Key Features**:
+- Built-in state via `this.setState` + SQLite
+- Persistent sessions per user (telegram:userId:chatId)
+- MCP client connection to memory-mcp
+- JSRPC for direct method calls
+
+**Output**: Production Telegram bot on Cloudflare Workers ✅
+
+**Progress**: Refactoring to Cloudflare Agents SDK (2025-11-22)
 
 ---
 
@@ -2222,6 +2252,7 @@ bun run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-22 | 3.19 | 🏗️ **CLOUDFLARE AGENTS SDK REFACTOR**: Refactoring Workers apps to use Cloudflare Agents SDK instead of custom implementations. telegram-bot and github-bot will use Durable Objects for stateful sessions. Added SDK Choices table. Created packages/prompts for shared prompts. Deployment targets: duyetbot-telegram, duyetbot-github, duyetbot-memory-mcp (all via wrangler). agent-server continues to use Claude Agent SDK on containers. |
 | 2025-11-21 | 3.18 | 🔧 **Phases 8-11 IN PROGRESS**: Phase 8 (Telegram Bot), Phase 9 (API Gateway), Phase 10 (Integration Tests), Phase 11 (CI/CD workflow). Created .github/workflows/ci.yml with lint, typecheck, test, build, and integration test jobs. 515 tests passing (494 unit + 21 integration). |
 | 2025-11-21 | 3.17 | 🏗️ **ARCHITECTURE UPDATE**: Updated to Hybrid Supervisor-Worker Model based on durable execution research. Cloudflare Workflows as Supervisor (orchestration, state, HITL), Fly.io Machines as Worker (compute, filesystem, SDK). Added Volume-as-Session pattern for state persistence. Human-in-the-Loop via GitHub Checks API action_required. Cost model: ~$3.66/mo vs $58/mo always-on. Updated docs/architecture.md and PLAN.md. |
 | 2025-11-21 | 3.16 | ✅ **Phase 7 COMPLETE**: Server SDK integration implemented. Updated /execute endpoint to use SDK query() function. WebSocket handleChat now streams SDK messages (assistant, tool_use, tool_result, tokens). Created sdk-adapter.ts with toSDKTool/toSDKTools for tool conversion, executeQuery/streamQuery helpers, and createQueryController for interruption. Added AgentRoutesConfig and WebSocketConfig for tool/prompt/model configuration. All 443+ tests passing. |

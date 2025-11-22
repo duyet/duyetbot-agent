@@ -263,12 +263,33 @@ Compare to always-on containers: **~$58/mo** (2× machines)
 - Cross-references volumes with PR status
 - Deletes orphaned volumes
 
+## SDK Choices by Deployment Target
+
+| App | SDK | Runtime | Worker Name | Rationale |
+|-----|-----|---------|-------------|-----------|
+| `apps/telegram-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-telegram` | Stateful sessions, built-in SQLite, MCP client |
+| `apps/github-bot` | Cloudflare Agents SDK | Workers + Durable Objects | `duyetbot-github` | GitHub MCP, duyet-mcp for knowledge |
+| `apps/agent-server` | Claude Agent SDK | Container (Fly/Docker) | - | Full agent with filesystem/shell tools |
+| `apps/memory-mcp` | MCP Server | Workers | `duyetbot-memory-mcp` | D1 + KV storage |
+
+**Why Cloudflare Agents SDK for Workers?**
+- Claude Agent SDK requires `child_process.spawn()` (unavailable in Workers V8 isolates)
+- Cloudflare Agents SDK provides: Durable Objects state, MCP client, WebSocket, JSRPC
+- Built-in SQLite storage via `this.sql` and state sync via `this.setState`
+
 ## Packages & Components
 
 ### Core (`packages/core`)
 - SDK adapter layer (`sdk/`)
 - Session management
 - MCP client
+- Used by agent-server (Claude Agent SDK)
+
+### Prompts (`packages/prompts`)
+Shared system prompts:
+- `TELEGRAM_SYSTEM_PROMPT` - Telegram bot personality
+- `GITHUB_SYSTEM_PROMPT` - GitHub bot personality
+- Base prompt fragments for reuse
 
 ### Tools (`packages/tools`)
 Built-in tools (SDK-compatible):
@@ -278,11 +299,26 @@ Built-in tools (SDK-compatible):
 - `research` - Web research
 - `plan` - Task planning
 
+### Telegram Bot (`apps/telegram-bot`)
+Cloudflare Agents SDK with Durable Objects:
+- `TelegramAgent` class extending `Agent`
+- Built-in state for conversation history
+- MCP client for memory-mcp connection
+- Deploy: `wrangler deploy` → `duyetbot-telegram`
+
+### GitHub Bot (`apps/github-bot`)
+Cloudflare Agents SDK with Durable Objects:
+- `GitHubAgent` class extending `Agent`
+- GitHub MCP for API operations
+- duyet-mcp for knowledge base
+- Deploy: `wrangler deploy` → `duyetbot-github`
+
 ### Memory MCP (`apps/memory-mcp`)
 Cloudflare Workers for cross-session memory:
 - D1 - Metadata, users
 - KV - Message history
 - Vectorize - Semantic search (future)
+- Deploy: `wrangler deploy` → `duyetbot-memory-mcp`
 
 ### CLI (`packages/cli`)
 Local development and testing:
