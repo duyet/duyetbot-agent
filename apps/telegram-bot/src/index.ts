@@ -88,14 +88,8 @@ app.post('/webhook', async (c) => {
     } else {
       // Send typing indicator (fire-and-forget)
       sendAction(env.TELEGRAM_BOT_TOKEN, chatId, 'typing');
-      // Chat with agent (pass only serializable values)
-      responseText = await agent.chat(
-        text,
-        env.AI,
-        env.AI_GATEWAY_NAME,
-        env.MODEL,
-        env.OPENROUTER_API_KEY
-      );
+      // Chat with agent (agent accesses env bindings internally)
+      responseText = await agent.chat(text);
     }
 
     await sendMessage(env.TELEGRAM_BOT_TOKEN, chatId, responseText);

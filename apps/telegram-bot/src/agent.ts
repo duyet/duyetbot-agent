@@ -74,13 +74,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
   /**
    * Chat with the agent
    */
-  async chat(
-    userMessage: string,
-    ai: Ai,
-    gatewayName: string,
-    model?: string,
-    apiKey?: string
-  ): Promise<string> {
+  async chat(userMessage: string): Promise<string> {
     const trimmedMessage = userMessage.trim();
 
     if (!trimmedMessage) {
@@ -103,13 +97,13 @@ export class TelegramAgent extends Agent<Env, AgentState> {
       })),
     ];
 
-    // Call OpenRouter via AI Gateway binding
-    const gateway = ai.gateway(gatewayName);
+    // Call OpenRouter via AI Gateway binding (use this.env to avoid serialization issues)
+    const gateway = this.env.AI.gateway(this.env.AI_GATEWAY_NAME);
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    if (apiKey) {
-      headers.Authorization = `Bearer ${apiKey}`;
+    if (this.env.OPENROUTER_API_KEY) {
+      headers.Authorization = `Bearer ${this.env.OPENROUTER_API_KEY}`;
     }
 
     const response = await gateway.run({
@@ -117,7 +111,7 @@ export class TelegramAgent extends Agent<Env, AgentState> {
       endpoint: 'chat/completions',
       headers,
       query: {
-        model: model || 'x-ai/grok-4.1-fast',
+        model: this.env.MODEL || 'x-ai/grok-4.1-fast',
         max_tokens: 1024,
         messages: apiMessages,
       },
