@@ -35,6 +35,7 @@ const AI_GATEWAY_NAME = process.env.AI_GATEWAY_NAME;
 const AI_GATEWAY_API_KEY = process.env.AI_GATEWAY_API_KEY;
 const MODEL = process.env.MODEL;
 const ALLOWED_USERS = process.env.ALLOWED_USERS;
+const GITHUB_TOKEN = process.env.GITHUB_TOKEN;
 
 async function showConfig() {
   console.log('Local configuration (.env.local):');
@@ -57,7 +58,12 @@ async function showConfig() {
     const secretNames = secrets.map((s) => s.name);
 
     const requiredSecrets = ['TELEGRAM_BOT_TOKEN'];
-    const optionalSecrets = ['TELEGRAM_WEBHOOK_SECRET', 'ALLOWED_USERS', 'AI_GATEWAY_API_KEY'];
+    const optionalSecrets = [
+      'TELEGRAM_WEBHOOK_SECRET',
+      'ALLOWED_USERS',
+      'AI_GATEWAY_API_KEY',
+      'GITHUB_TOKEN',
+    ];
 
     for (const name of requiredSecrets) {
       const status = secretNames.includes(name) ? '✓ set' : '✗ not set';
@@ -91,6 +97,7 @@ async function setWranglerSecrets() {
     { name: 'TELEGRAM_WEBHOOK_SECRET', value: WEBHOOK_SECRET, required: false },
     { name: 'ALLOWED_USERS', value: ALLOWED_USERS, required: false },
     { name: 'AI_GATEWAY_API_KEY', value: AI_GATEWAY_API_KEY, required: false },
+    { name: 'GITHUB_TOKEN', value: GITHUB_TOKEN, required: false },
   ];
 
   console.log('\nSetting Cloudflare secrets...');

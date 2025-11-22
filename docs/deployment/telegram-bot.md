@@ -69,7 +69,6 @@ Required values in `.env.local`:
 ```bash
 TELEGRAM_BOT_TOKEN=your_bot_token_from_botfather
 TELEGRAM_WEBHOOK_URL=https://duyetbot-telegram.your-subdomain.workers.dev/webhook
-AI_GATEWAY_NAME=your-gateway-name
 ```
 
 Optional values:
@@ -77,30 +76,32 @@ Optional values:
 TELEGRAM_WEBHOOK_SECRET=your_webhook_secret
 MODEL=x-ai/grok-4.1-fast
 ALLOWED_USERS=123456789,987654321
+AI_GATEWAY_API_KEY=your_ai_gateway_api_key
+GITHUB_TOKEN=ghp_your_github_personal_access_token
 ```
 
-> **Note:** Configure your OpenRouter API key directly in the AI Gateway settings in Cloudflare Dashboard.
+> **Note:** Configure your OpenRouter API key directly in the AI Gateway settings in Cloudflare Dashboard, or use `AI_GATEWAY_API_KEY` for authenticated gateway access.
 
-## Step 5: Set Cloudflare Secrets
+## Step 5: Set Secrets and Webhook
 
-### Option A: Using wrangler secret (recommended for production)
+The `webhook:set` command automatically reads from `.env.local`, sets all Cloudflare secrets, and configures the Telegram webhook in one step:
 
 ```bash
 cd apps/telegram-bot
 
-# Login to Cloudflare
+# Login to Cloudflare first
 wrangler login
 
-# Set required secrets
-wrangler secret put TELEGRAM_BOT_TOKEN
-wrangler secret put AI_GATEWAY_NAME
-
-# Optional secrets
-wrangler secret put TELEGRAM_WEBHOOK_SECRET
-wrangler secret put ALLOWED_USERS
+# Set all secrets and webhook automatically
+bun run webhook:set
 ```
 
-### Option B: Using .dev.vars (for local development)
+This command will:
+1. Read all values from `.env.local`
+2. Set Cloudflare secrets via `wrangler secret put`
+3. Configure Telegram webhook via API
+
+### For local development
 
 ```bash
 cd apps/telegram-bot
@@ -111,7 +112,7 @@ cp .dev.vars.example .dev.vars
 # Edit with your values - these are loaded automatically by wrangler dev
 ```
 
-> **Note:** `MODEL` is already configured in `wrangler.toml` with a default value. Override with `wrangler secret put MODEL` if needed.
+> **Note:** `MODEL` and `AI_GATEWAY_NAME` are already configured in `wrangler.toml` with default values.
 
 ## Step 6: Deploy to Cloudflare
 
@@ -168,6 +169,7 @@ curl -X POST "https://api.telegram.org/bot<TOKEN>/setWebhook" \
 | `TELEGRAM_WEBHOOK_SECRET` | No | Secret for webhook verification |
 | `ALLOWED_USERS` | No | Comma-separated Telegram user IDs (empty = all allowed) |
 | `MODEL` | No | Model name (default: `x-ai/grok-4.1-fast`) |
+| `GITHUB_TOKEN` | No | GitHub personal access token for github-mcp |
 
 ## Webhook Commands
 
