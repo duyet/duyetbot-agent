@@ -31,6 +31,14 @@ export {
   type MCPMemoryAdapterConfig,
 } from './mcp-memory-adapter.js';
 
+// Service binding adapter (for Cloudflare Workers)
+export {
+  createServiceBindingMemoryAdapter,
+  ServiceBindingMemoryAdapter,
+  type MemoryServiceBinding,
+  type ServiceBindingMemoryAdapterConfig,
+} from './service-binding-adapter.js';
+
 // Cloudflare Durable Object wrapper
 export {
   createCloudflareChatAgent,

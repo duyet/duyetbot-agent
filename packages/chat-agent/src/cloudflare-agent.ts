@@ -10,6 +10,10 @@ import { ChatAgent } from './agent.js';
 import { createAgent } from './factory.js';
 import { DEFAULT_MEMORY_MCP_URL, createResilientMCPMemoryAdapter } from './mcp-memory-adapter.js';
 import type { MemoryAdapter } from './memory-adapter.js';
+import {
+  type MemoryServiceBinding,
+  createServiceBindingMemoryAdapter,
+} from './service-binding-adapter.js';
 import type { LLMProvider, Message, Tool, ToolExecutor } from './types.js';
 
 /**
@@ -50,6 +54,10 @@ export interface CloudflareAgentConfig<TEnv> {
   createMemoryAdapter?: (env: TEnv) => MemoryAdapter | undefined;
   /** Function to generate session ID from context */
   getSessionId?: (userId?: string | number, chatId?: string | number) => string | undefined;
+  /** Optional: Memory service binding for RPC (preferred over REST) */
+  getMemoryService?: (env: TEnv) => MemoryServiceBinding | undefined;
+  /** Optional: Get user ID for memory operations */
+  getMemoryUserId?: (state: CloudflareAgentState) => string | undefined;
 }
 
 /**
@@ -121,14 +129,26 @@ export function createCloudflareChatAgent<TEnv>(
           : this._generateDefaultSessionId();
 
         // Resolve memory adapter
-        // Priority: 1. Custom adapter, 2. Auto-config (unless disabled)
+        // Priority: 1. Custom adapter, 2. Service binding, 3. REST adapter (unless disabled)
         let memoryAdapter: MemoryAdapter | undefined;
 
         if (config.createMemoryAdapter) {
           // Use custom adapter if provided
           memoryAdapter = config.createMemoryAdapter(env);
+        } else if (config.getMemoryService) {
+          // Use service binding (fast, non-blocking)
+          const service = config.getMemoryService(env);
+          if (service) {
+            const userId = config.getMemoryUserId
+              ? config.getMemoryUserId(this.state) || 'anonymous'
+              : String(this.state.userId || 'anonymous');
+            memoryAdapter = createServiceBindingMemoryAdapter({
+              service,
+              userId,
+            });
+          }
         } else if (!config.disableMemory) {
-          // Auto-configure with resilient adapter
+          // Fallback to REST adapter
           const memoryUrl = config.memoryMCPUrl || DEFAULT_MEMORY_MCP_URL;
           const token = (env as Record<string, unknown>).MEMORY_MCP_TOKEN as string | undefined;
 

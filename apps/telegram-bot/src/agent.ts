@@ -5,14 +5,18 @@
  * a clean, reusable agent pattern.
  */
 
-import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
+import {
+  type CloudflareAgentState,
+  type MemoryServiceBinding,
+  createCloudflareChatAgent,
+} from "@duyetbot/chat-agent";
 import {
   TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
-} from '@duyetbot/prompts';
-import type { Agent, AgentNamespace } from 'agents';
-import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
+} from "@duyetbot/prompts";
+import type { Agent, AgentNamespace } from "agents";
+import { type ProviderEnv, createAIGatewayProvider } from "./provider.js";
 
 /**
  * Base environment without self-reference
@@ -30,15 +34,16 @@ interface BaseEnv extends ProviderEnv {
 
   // Memory MCP (optional - auto-configured with defaults)
   MEMORY_MCP_TOKEN?: string;
+
+  // Service binding for Memory MCP (preferred over REST)
+  MEMORY_SERVICE?: MemoryServiceBinding;
 }
 
 /**
  * Agent class interface for type safety
  */
 interface TelegramAgentClass {
-  new (
-    ...args: unknown[]
-  ): Agent<BaseEnv, CloudflareAgentState> & {
+  new (...args: unknown[]): Agent<BaseEnv, CloudflareAgentState> & {
     init(userId?: string | number, chatId?: string | number): Promise<void>;
     chat(userMessage: string): Promise<string>;
     clearHistory(): Promise<string>;
@@ -64,9 +69,11 @@ export const TelegramAgent = createCloudflareChatAgent<BaseEnv>({
   maxHistory: 20,
   // Session ID for memory persistence
   getSessionId: (userId, chatId) => `telegram:${chatId || userId}`,
-  // Disable MCP memory for now - causes blockConcurrencyWhile timeout
-  // TODO: Investigate memory MCP integration with Durable Objects
-  disableMemory: true,
+  // Use service binding for fast, non-blocking memory operations
+  getMemoryService: (env) => env.MEMORY_SERVICE,
+  // Get user ID for memory operations
+  getMemoryUserId: (state) =>
+    state.userId ? `telegram:${state.userId}` : undefined,
 }) as unknown as TelegramAgentClass;
 
 /**

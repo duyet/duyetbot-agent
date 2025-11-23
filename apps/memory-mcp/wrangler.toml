@@ -33,3 +33,9 @@ new_sqlite_classes = ["MemoryMcpAgent"]
 binding = "DB"
 database_name = "duyetbot-memory"
 database_id = "${D1_DATABASE_ID}"
+
+# Service entrypoint for RPC calls from other workers
+[[services]]
+binding = "MEMORY_SERVICE"
+service = "duyetbot-memory"
+entrypoint = "MemoryServiceEntrypoint"
