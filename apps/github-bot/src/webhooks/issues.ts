@@ -5,6 +5,7 @@
  */
 
 import { Octokit } from '@octokit/rest';
+import { logger } from '../logger.js';
 import type { GitHubIssue, GitHubRepository, GitHubUser, MentionContext } from '../types.js';
 
 export interface IssueEvent {
@@ -71,6 +72,13 @@ export async function handleIssueEvent(
     return;
   }
 
+  logger.info('Issue event received', {
+    action: event.action,
+    repository: `${event.repository.owner.login}/${event.repository.name}`,
+    issueNumber: event.issue.number,
+    sender: event.sender.login,
+  });
+
   // Build context
   const context: MentionContext = {
     task: buildTaskForIssueEvent(event, config),
@@ -79,9 +87,11 @@ export async function handleIssueEvent(
     mentionedBy: event.sender,
   };
 
+  const startTime = Date.now();
   try {
     // Execute agent and get response
     const response = await onMention(context);
+    const durationMs = Date.now() - startTime;
 
     // Post response as comment
     await octokit.issues.createComment({
@@ -90,8 +100,24 @@ export async function handleIssueEvent(
       issue_number: event.issue.number,
       body: response,
     });
+
+    logger.info('Issue event handled', {
+      action: event.action,
+      repository: `${event.repository.owner.login}/${event.repository.name}`,
+      issueNumber: event.issue.number,
+      durationMs,
+      responseLength: response.length,
+    });
   } catch (error) {
-    console.error('Error handling issue event:', error);
+    const durationMs = Date.now() - startTime;
+    logger.error('Error handling issue event', {
+      action: event.action,
+      repository: `${event.repository.owner.login}/${event.repository.name}`,
+      issueNumber: event.issue.number,
+      durationMs,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     // Don't post error for automatic responses to avoid noise
   }
 }

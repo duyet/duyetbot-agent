@@ -28,4 +28,5 @@ export interface MCPServerConfig {
 }
 
 /** Available MCP server names */
-export type MCPServerName = 'duyet-mcp' | 'github-mcp';
+// Note: duyet-mcp temporarily disabled due to 30s timeout issues
+export type MCPServerName = 'github-mcp';

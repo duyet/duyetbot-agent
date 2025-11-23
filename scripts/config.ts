@@ -35,6 +35,8 @@ const APPS: Record<string, AppConfig> = {
       { name: 'TELEGRAM_WEBHOOK_SECRET', required: false },
       { name: 'TELEGRAM_ALLOWED_USERS', required: false },
       { name: 'AI_GATEWAY_API_KEY', required: false },
+      { name: 'MEMORY_MCP_URL', required: false },
+      { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
   },
   github: {
@@ -45,6 +47,8 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_TOKEN', required: true },
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
       { name: 'AI_GATEWAY_API_KEY', required: false },
+      { name: 'MEMORY_MCP_URL', required: false },
+      { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
   },
 };

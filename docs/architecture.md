@@ -26,13 +26,21 @@ This architecture solves the fundamental challenge: heavy LLM tasks need a "comp
          │                │              │
          ▼                ▼              │
 ┌─────────────────────────────────────────────────────────────────┐
-│              Ingress Worker (Cloudflare Worker)                  │
-│  • Webhook signature validation                                  │
-│  • Event routing                                                 │
-│  • Instance management                                           │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-                          ▼
+│        Cloudflare Workers (Tier 1 - Lightweight Agents)          │
+│  ┌─────────────────────────────────────────────────────────────┐ │
+│  │  @duyetbot/hono-middleware (Shared)                         │ │
+│  │  • Logger, error handler, rate limiting                     │ │
+│  │  • Health routes (/health, /health/live, /health/ready)     │ │
+│  │  • Auth middleware (webhook signatures, API keys)           │ │
+│  └─────────────────────────────────────────────────────────────┘ │
+│                          │                                       │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
+│  │ github-bot   │  │ telegram-bot │  │  memory-mcp  │           │
+│  │ (DO Agent)   │  │ (DO Agent)   │  │  (D1 + KV)   │           │
+│  └──────┬───────┘  └──────┬───────┘  └──────────────┘           │
+└─────────┼─────────────────┼─────────────────────────────────────┘
+          │                 │
+          ▼                 ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │           Workflow Supervisor (Cloudflare Durable Object)        │
 │  • State machine: status, machine_id, volume_id                  │
@@ -43,7 +51,7 @@ This architecture solves the fundamental challenge: heavy LLM tasks need a "comp
                           │
                           ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Agent Runner (Fly.io Machine)                       │
+│        Agent Runner (Tier 2 - Heavy Compute, Fly.io Machine)     │
 │  ┌────────────────────────────────────────────────────────────┐ │
 │  │  Docker Container                                          │ │
 │  │  • Node.js + git + gh + ripgrep                            │ │
@@ -345,6 +353,15 @@ Reusable chat agent abstraction for Workers:
 - Provider-agnostic (OpenRouter, Anthropic via AI Gateway)
 - Built-in conversation history management
 
+### Hono Middleware (`packages/hono-middleware`)
+Shared Hono middleware for all Cloudflare Workers apps:
+- `createBaseApp()` - Factory for creating Hono apps with standard middleware
+- Request logger with unique request IDs
+- Error handler with consistent JSON responses
+- Health check routes (`/health`, `/health/live`, `/health/ready`)
+- Rate limiting middleware
+- Auth middleware (Bearer, API key, webhook signature)
+
 ### Prompts (`packages/prompts`)
 Shared system prompts as markdown files:
 - `prompts/telegram.md` - Telegram bot personality
@@ -372,6 +389,7 @@ Cloudflare Agents SDK with Durable Objects:
 - `TelegramAgent` class extending `Agent`
 - Built-in state for conversation history
 - MCP client for memory-mcp connection
+- Uses `@duyetbot/hono-middleware` for shared routes
 - Deploy: `wrangler deploy` → `duyetbot-telegram`
 
 ### GitHub Bot (`apps/github-bot`)
@@ -379,6 +397,7 @@ Cloudflare Agents SDK with Durable Objects:
 - `GitHubAgent` class extending `Agent`
 - GitHub MCP for API operations
 - duyet-mcp for knowledge base
+- Uses `@duyetbot/hono-middleware` for shared routes
 - Deploy: `wrangler deploy` → `duyetbot-github`
 
 ### Memory MCP (`apps/memory-mcp`)

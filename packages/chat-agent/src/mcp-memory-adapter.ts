@@ -10,9 +10,9 @@ import type {
   MemorySearchResult,
   SaveMemoryResult,
   SessionInfo,
-} from "./memory-adapter.js";
-import { fromMemoryMessage, toMemoryMessage } from "./memory-adapter.js";
-import type { Message } from "./types.js";
+} from './memory-adapter.js';
+import { fromMemoryMessage, toMemoryMessage } from './memory-adapter.js';
+import type { Message } from './types.js';
 
 /**
  * Configuration for MCP Memory Adapter
@@ -32,7 +32,7 @@ export class MCPMemoryAdapter implements MemoryAdapter {
   private token: string | undefined;
 
   constructor(config: MCPMemoryAdapterConfig) {
-    this.baseURL = config.baseURL.replace(/\/$/, "");
+    this.baseURL = config.baseURL.replace(/\/$/, '');
     this.token = config.token;
   }
 
@@ -47,10 +47,10 @@ export class MCPMemoryAdapter implements MemoryAdapter {
    * Authenticate with GitHub token and get session token
    */
   async authenticate(
-    githubToken: string,
+    githubToken: string
   ): Promise<{ userId: string; sessionToken: string; expiresAt: number }> {
-    const response = await this.request("/api/authenticate", {
-      method: "POST",
+    const response = await this.request('/api/authenticate', {
+      method: 'POST',
       body: { github_token: githubToken },
       auth: false,
     });
@@ -74,10 +74,10 @@ export class MCPMemoryAdapter implements MemoryAdapter {
    */
   async getMemory(
     sessionId: string,
-    options?: { limit?: number; offset?: number },
+    options?: { limit?: number; offset?: number }
   ): Promise<MemoryData> {
-    const response = (await this.request("/api/memory/get", {
-      method: "POST",
+    const response = (await this.request('/api/memory/get', {
+      method: 'POST',
       body: {
         session_id: sessionId,
         ...options,
@@ -85,7 +85,7 @@ export class MCPMemoryAdapter implements MemoryAdapter {
     })) as {
       session_id: string;
       messages: Array<{
-        role: "user" | "assistant" | "system" | "tool";
+        role: 'user' | 'assistant' | 'system' | 'tool';
         content: string;
         timestamp?: number;
         metadata?: Record<string, unknown>;
@@ -106,12 +106,12 @@ export class MCPMemoryAdapter implements MemoryAdapter {
   async saveMemory(
     sessionId: string,
     messages: Message[],
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): Promise<SaveMemoryResult> {
     const memoryMessages = messages.map(toMemoryMessage);
 
-    const response = (await this.request("/api/memory/save", {
-      method: "POST",
+    const response = (await this.request('/api/memory/save', {
+      method: 'POST',
       body: {
         session_id: sessionId,
         messages: memoryMessages,
@@ -138,29 +138,27 @@ export class MCPMemoryAdapter implements MemoryAdapter {
     options?: {
       limit?: number;
       sessionId?: string;
-    },
+    }
   ): Promise<MemorySearchResult[]> {
-    const response = (await this.request("/api/memory/search", {
-      method: "POST",
+    const response = (await this.request('/api/memory/search', {
+      method: 'POST',
       body: {
         query,
         limit: options?.limit,
-        filter: options?.sessionId
-          ? { session_id: options.sessionId }
-          : undefined,
+        filter: options?.sessionId ? { session_id: options.sessionId } : undefined,
       },
     })) as {
       results: Array<{
         session_id: string;
         message: {
-          role: "user" | "assistant" | "system" | "tool";
+          role: 'user' | 'assistant' | 'system' | 'tool';
           content: string;
           timestamp?: number;
           metadata?: Record<string, unknown>;
         };
         score: number;
         context: Array<{
-          role: "user" | "assistant" | "system" | "tool";
+          role: 'user' | 'assistant' | 'system' | 'tool';
           content: string;
           timestamp?: number;
           metadata?: Record<string, unknown>;
@@ -182,10 +180,10 @@ export class MCPMemoryAdapter implements MemoryAdapter {
   async listSessions(options?: {
     limit?: number;
     offset?: number;
-    state?: "active" | "paused" | "completed";
+    state?: 'active' | 'paused' | 'completed';
   }): Promise<{ sessions: SessionInfo[]; total: number }> {
-    const response = (await this.request("/api/sessions/list", {
-      method: "POST",
+    const response = (await this.request('/api/sessions/list', {
+      method: 'POST',
       body: options || {},
     })) as {
       sessions: Array<{
@@ -218,15 +216,15 @@ export class MCPMemoryAdapter implements MemoryAdapter {
   private async request(
     path: string,
     options: {
-      method: "GET" | "POST";
+      method: 'GET' | 'POST';
       body?: unknown;
       auth?: boolean;
-    },
+    }
   ): Promise<unknown> {
     const { method, body, auth = true } = options;
 
     const headers: Record<string, string> = {
-      "Content-Type": "application/json",
+      'Content-Type': 'application/json',
     };
 
     if (auth && this.token) {
@@ -248,9 +246,9 @@ export class MCPMemoryAdapter implements MemoryAdapter {
 
     if (!response.ok) {
       throw new MCPMemoryAdapterError(
-        (data.error as string) || "Request failed",
+        (data.error as string) || 'Request failed',
         response.status,
-        path,
+        path
       );
     }
 
@@ -267,7 +265,7 @@ export class MCPMemoryAdapterError extends Error {
 
   constructor(message: string, statusCode: number, path: string) {
     super(message);
-    this.name = "MCPMemoryAdapterError";
+    this.name = 'MCPMemoryAdapterError';
     this.statusCode = statusCode;
     this.path = path;
   }
@@ -276,17 +274,14 @@ export class MCPMemoryAdapterError extends Error {
 /**
  * Create an MCP memory adapter
  */
-export function createMCPMemoryAdapter(
-  config: MCPMemoryAdapterConfig,
-): MCPMemoryAdapter {
+export function createMCPMemoryAdapter(config: MCPMemoryAdapterConfig): MCPMemoryAdapter {
   return new MCPMemoryAdapter(config);
 }
 
 /**
  * Default memory MCP server URL
  */
-export const DEFAULT_MEMORY_MCP_URL =
-  "https://duyetbot-memory.duyet.workers.dev";
+export const DEFAULT_MEMORY_MCP_URL = 'https://duyetbot-memory.duyet.workers.dev';
 
 /**
  * Resilient MCP Memory Adapter with graceful degradation
@@ -299,13 +294,13 @@ export const DEFAULT_MEMORY_MCP_URL =
 export class ResilientMCPMemoryAdapter implements MemoryAdapter {
   private adapter: MCPMemoryAdapter;
   private baseURL: string;
-  private isAvailable: boolean = true;
-  private lastCheck: number = 0;
-  private checkInterval: number = 60000; // 1 minute
+  private isAvailable = true;
+  private lastCheck = 0;
+  private checkInterval = 60000; // 1 minute
 
   constructor(config: MCPMemoryAdapterConfig) {
     this.adapter = new MCPMemoryAdapter(config);
-    this.baseURL = config.baseURL.replace(/\/$/, "");
+    this.baseURL = config.baseURL.replace(/\/$/, '');
   }
 
   /**
@@ -323,8 +318,8 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
 
       // Try a simple request to check availability
       const response = await fetch(`${this.baseURL}/api/sessions/list`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ limit: 1 }),
         signal: controller.signal,
       });
@@ -341,7 +336,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
 
   async getMemory(
     sessionId: string,
-    options?: { limit?: number; offset?: number },
+    options?: { limit?: number; offset?: number }
   ): Promise<MemoryData> {
     if (!(await this.checkAvailability())) {
       return { sessionId, messages: [], metadata: {} };
@@ -350,7 +345,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
     try {
       return await this.adapter.getMemory(sessionId, options);
     } catch (err) {
-      console.warn("Memory getMemory failed:", err);
+      console.warn('Memory getMemory failed:', err);
       return { sessionId, messages: [], metadata: {} };
     }
   }
@@ -358,7 +353,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
   async saveMemory(
     sessionId: string,
     messages: Message[],
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): Promise<SaveMemoryResult> {
     if (!(await this.checkAvailability())) {
       return { sessionId, savedCount: 0, updatedAt: Date.now() };
@@ -367,7 +362,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
     try {
       return await this.adapter.saveMemory(sessionId, messages, metadata);
     } catch (err) {
-      console.warn("Memory saveMemory failed:", err);
+      console.warn('Memory saveMemory failed:', err);
       return { sessionId, savedCount: 0, updatedAt: Date.now() };
     }
   }
@@ -377,7 +372,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
     options?: {
       limit?: number;
       sessionId?: string;
-    },
+    }
   ): Promise<MemorySearchResult[]> {
     if (!(await this.checkAvailability())) {
       return [];
@@ -386,7 +381,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
     try {
       return await this.adapter.searchMemory(query, options);
     } catch (err) {
-      console.warn("Memory searchMemory failed:", err);
+      console.warn('Memory searchMemory failed:', err);
       return [];
     }
   }
@@ -394,7 +389,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
   async listSessions(options?: {
     limit?: number;
     offset?: number;
-    state?: "active" | "paused" | "completed";
+    state?: 'active' | 'paused' | 'completed';
   }): Promise<{ sessions: SessionInfo[]; total: number }> {
     if (!(await this.checkAvailability())) {
       return { sessions: [], total: 0 };
@@ -403,7 +398,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
     try {
       return await this.adapter.listSessions(options);
     } catch (err) {
-      console.warn("Memory listSessions failed:", err);
+      console.warn('Memory listSessions failed:', err);
       return { sessions: [], total: 0 };
     }
   }
@@ -413,7 +408,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
  * Create a resilient MCP memory adapter with graceful degradation
  */
 export function createResilientMCPMemoryAdapter(
-  config: MCPMemoryAdapterConfig,
+  config: MCPMemoryAdapterConfig
 ): ResilientMCPMemoryAdapter {
   return new ResilientMCPMemoryAdapter(config);
 }

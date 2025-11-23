@@ -8,7 +8,6 @@
     "test:watch": "vitest"
   },
   "devDependencies": {
-    "@duyetbot/api": "workspace:*",
     "@duyetbot/core": "workspace:*",
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",

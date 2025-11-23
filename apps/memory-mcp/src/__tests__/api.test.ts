@@ -37,8 +37,8 @@ describe('API Endpoints', () => {
 
       const body = await res.json();
       expect(body.status).toBe('ok');
-      expect(body.service).toBe('duyetbot-memory');
-      expect(body.timestamp).toBeDefined();
+      expect(body.name).toBe('duyetbot-memory');
+      expect(body.version).toBe('1.0.0');
     });
   });
 
@@ -88,7 +88,7 @@ describe('API Endpoints', () => {
 
       expect(res.status).toBe(401);
       const body = await res.json();
-      expect(body.error).toBe('Missing authorization header');
+      expect(body.error).toBe('Unauthorized');
     });
 
     it('should reject invalid bearer format', async () => {
@@ -124,7 +124,7 @@ describe('API Endpoints', () => {
 
       expect(res.status).toBe(401);
       const body = await res.json();
-      expect(body.error).toBe('Invalid token');
+      expect(body.error).toBe('Unauthorized');
     });
   });
 
