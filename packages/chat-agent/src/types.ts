@@ -2,10 +2,12 @@
  * Core types for the chat agent
  */
 
+import type { MemoryAdapter } from "./memory-adapter.js";
+
 /**
  * Message role in conversation
  */
-export type MessageRole = 'user' | 'assistant' | 'system' | 'tool';
+export type MessageRole = "user" | "assistant" | "system" | "tool";
 
 /**
  * A message in the conversation history
@@ -21,7 +23,7 @@ export interface Message {
  * Message format for LLM APIs (OpenAI-compatible)
  */
 export interface LLMMessage {
-  role: 'user' | 'assistant' | 'system' | 'tool';
+  role: "user" | "assistant" | "system" | "tool";
   content: string;
   tool_call_id?: string;
   name?: string;
@@ -40,7 +42,7 @@ export interface Tool {
  * Tool formatted for OpenAI-compatible APIs
  */
 export interface OpenAITool {
-  type: 'function';
+  type: "function";
   function: {
     name: string;
     description: string;
@@ -93,6 +95,12 @@ export interface ChatAgentConfig {
   onToolCall?: ToolExecutor;
   /** Maximum tool call iterations (default: 5) */
   maxToolIterations?: number;
+  /** Optional memory adapter for persistence */
+  memoryAdapter?: MemoryAdapter | undefined;
+  /** Session ID for memory persistence */
+  sessionId?: string;
+  /** Auto-save messages after each chat (default: true when adapter is set) */
+  autoSave?: boolean;
 }
 
 /**
