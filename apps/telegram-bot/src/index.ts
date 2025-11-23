@@ -368,10 +368,11 @@ async function sendMessage(token: string, chatId: number, text: string): Promise
   }
 
   const result = await response.json<{ result: { message_id: number } }>();
-  logger.debug('[MSG] Message sent', {
+  logger.debug(`[MSG] Message sent: ${text}`, {
     chatId,
     messageId: result.result.message_id,
   });
+
   return result.result.message_id;
 }
 

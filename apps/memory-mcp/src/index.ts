@@ -18,6 +18,9 @@ import { searchMemory, searchMemorySchema } from './tools/search-memory.js';
 // Note: Dynamic import to avoid cloudflare: protocol issues in tests
 export { MemoryMcpAgent } from './mcp-agent.js';
 
+// Export RPC entrypoint for service bindings
+export { MemoryServiceEntrypoint } from './rpc-entrypoint.js';
+
 const app = createBaseApp<Env>({
   name: 'duyetbot-memory',
   version: '1.0.0',

@@ -44,3 +44,9 @@ class_name = "TelegramAgent"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["TelegramAgent"]
+
+# Service binding to Memory MCP for RPC calls
+[[services]]
+binding = "MEMORY_SERVICE"
+service = "duyetbot-memory"
+entrypoint = "MemoryServiceEntrypoint"
