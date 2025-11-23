@@ -18,6 +18,16 @@ head_sampling_rate = 1
 enabled = true
 head_sampling_rate = 1
 
+# Durable Objects
+[durable_objects]
+bindings = [
+  { name = "MCP_AGENT", class_name = "MemoryMcpAgent" }
+]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["MemoryMcpAgent"]
+
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"

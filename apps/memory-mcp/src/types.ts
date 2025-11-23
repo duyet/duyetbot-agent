@@ -1,7 +1,8 @@
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, DurableObjectNamespace } from '@cloudflare/workers-types';
 
 export interface Env {
   DB: D1Database;
+  MCP_AGENT: DurableObjectNamespace;
   ENVIRONMENT: string;
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;

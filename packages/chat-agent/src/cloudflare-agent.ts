@@ -179,6 +179,7 @@ export function createCloudflareChatAgent<TEnv>(
 
     /**
      * Initialize agent with context (userId, chatId, etc.)
+     * Uses async state update to avoid blockConcurrencyWhile timeout
      */
     async init(userId?: string | number, chatId?: string | number): Promise<void> {
       if (this.state.userId === undefined && userId !== undefined) {
@@ -191,7 +192,8 @@ export function createCloudflareChatAgent<TEnv>(
         if (chatId !== undefined) {
           newState.chatId = chatId;
         }
-        this.setState(newState);
+        // Use async state update to avoid blockConcurrencyWhile timeout
+        this._scheduleStateUpdate(newState);
       }
     }
 

@@ -297,10 +297,12 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
   private isAvailable = true;
   private lastCheck = 0;
   private checkInterval = 60000; // 1 minute
+  private initTimeout: number;
 
-  constructor(config: MCPMemoryAdapterConfig) {
+  constructor(config: MCPMemoryAdapterConfig & { initTimeout?: number }) {
     this.adapter = new MCPMemoryAdapter(config);
     this.baseURL = config.baseURL.replace(/\/$/, '');
+    this.initTimeout = config.initTimeout ?? 2000; // 2s default for fast init
   }
 
   /**
@@ -314,7 +316,7 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
 
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 3000);
+      const timeout = setTimeout(() => controller.abort(), this.initTimeout);
 
       // Try a simple request to check availability
       const response = await fetch(`${this.baseURL}/api/sessions/list`, {

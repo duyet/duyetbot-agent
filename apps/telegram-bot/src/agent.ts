@@ -64,6 +64,9 @@ export const TelegramAgent = createCloudflareChatAgent<BaseEnv>({
   maxHistory: 20,
   // Session ID for memory persistence
   getSessionId: (userId, chatId) => `telegram:${chatId || userId}`,
+  // Disable MCP memory for now - causes blockConcurrencyWhile timeout
+  // TODO: Investigate memory MCP integration with Durable Objects
+  disableMemory: true,
 }) as unknown as TelegramAgentClass;
 
 /**
