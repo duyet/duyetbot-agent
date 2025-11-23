@@ -4,9 +4,9 @@
  * Implements the Transport interface for GitHub Issues/PRs API.
  */
 
-import type { MessageRef, ParsedInput, Transport } from "@duyetbot/chat-agent";
-import type { Octokit } from "@octokit/rest";
-import { logger } from "./logger.js";
+import type { MessageRef, ParsedInput, Transport } from '@duyetbot/chat-agent';
+import type { Octokit } from '@octokit/rest';
+import { logger } from './logger.js';
 
 /**
  * GitHub-specific context for transport operations
@@ -47,7 +47,7 @@ export interface GitHubContext {
  */
 export const githubTransport: Transport<GitHubContext> = {
   send: async (ctx, text) => {
-    logger.debug("[TRANSPORT] Creating comment", {
+    logger.debug('[TRANSPORT] Creating comment', {
       owner: ctx.owner,
       repo: ctx.repo,
       issueNumber: ctx.issueNumber,
@@ -61,7 +61,7 @@ export const githubTransport: Transport<GitHubContext> = {
       body: text,
     });
 
-    logger.debug("[TRANSPORT] Comment created", {
+    logger.debug('[TRANSPORT] Comment created', {
       owner: ctx.owner,
       repo: ctx.repo,
       issueNumber: ctx.issueNumber,
@@ -72,7 +72,7 @@ export const githubTransport: Transport<GitHubContext> = {
   },
 
   edit: async (ctx, ref, text) => {
-    logger.debug("[TRANSPORT] Editing comment", {
+    logger.debug('[TRANSPORT] Editing comment', {
       owner: ctx.owner,
       repo: ctx.repo,
       commentId: ref,
@@ -86,7 +86,7 @@ export const githubTransport: Transport<GitHubContext> = {
       body: text,
     });
 
-    logger.debug("[TRANSPORT] Comment edited", {
+    logger.debug('[TRANSPORT] Comment edited', {
       owner: ctx.owner,
       repo: ctx.repo,
       commentId: ref,
@@ -94,7 +94,7 @@ export const githubTransport: Transport<GitHubContext> = {
   },
 
   react: async (ctx, ref, emoji) => {
-    logger.debug("[TRANSPORT] Adding reaction", {
+    logger.debug('[TRANSPORT] Adding reaction', {
       owner: ctx.owner,
       repo: ctx.repo,
       commentId: ref,
@@ -105,15 +105,7 @@ export const githubTransport: Transport<GitHubContext> = {
       owner: ctx.owner,
       repo: ctx.repo,
       comment_id: ref as number,
-      content: emoji as
-        | "+1"
-        | "-1"
-        | "laugh"
-        | "confused"
-        | "heart"
-        | "hooray"
-        | "rocket"
-        | "eyes",
+      content: emoji as '+1' | '-1' | 'laugh' | 'confused' | 'heart' | 'hooray' | 'rocket' | 'eyes',
     });
   },
 
@@ -156,7 +148,7 @@ export function createGitHubContext(
   issueNumber: number,
   body: string,
   sender: { id: number; login: string },
-  commentId?: number,
+  commentId?: number
 ): GitHubContext {
   const ctx: GitHubContext = {
     octokit,

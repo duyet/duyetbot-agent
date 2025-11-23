@@ -12,11 +12,11 @@
 
 /// <reference types="bun-types" />
 
-import { tmpdir } from "node:os";
-import { resolve } from "node:path";
-import { $ } from "bun";
+import { tmpdir } from 'node:os';
+import { resolve } from 'node:path';
+import { $ } from 'bun';
 
-const ROOT_DIR = resolve(import.meta.dir, "..");
+const ROOT_DIR = resolve(import.meta.dir, '..');
 
 interface AppConfig {
   name: string;
@@ -28,38 +28,38 @@ interface AppConfig {
 
 const APPS: Record<string, AppConfig> = {
   telegram: {
-    name: "Telegram Bot",
-    dir: "apps/telegram-bot",
-    workerName: "duyetbot-telegram",
+    name: 'Telegram Bot',
+    dir: 'apps/telegram-bot',
+    workerName: 'duyetbot-telegram',
     secrets: [
-      { name: "GITHUB_TOKEN", required: false },
-      { name: "TELEGRAM_BOT_TOKEN", required: true },
-      { name: "TELEGRAM_WEBHOOK_SECRET", required: false },
-      { name: "TELEGRAM_ALLOWED_USERS", required: false },
-      { name: "AI_GATEWAY_API_KEY", required: false },
-      { name: "MEMORY_MCP_URL", required: false },
-      { name: "MEMORY_MCP_TOKEN", required: false },
+      { name: 'GITHUB_TOKEN', required: false },
+      { name: 'TELEGRAM_BOT_TOKEN', required: true },
+      { name: 'TELEGRAM_WEBHOOK_SECRET', required: false },
+      { name: 'TELEGRAM_ALLOWED_USERS', required: false },
+      { name: 'AI_GATEWAY_API_KEY', required: false },
+      { name: 'MEMORY_MCP_URL', required: false },
+      { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
   },
   github: {
-    name: "GitHub Bot",
-    dir: "apps/github-bot",
-    workerName: "duyetbot-github",
+    name: 'GitHub Bot',
+    dir: 'apps/github-bot',
+    workerName: 'duyetbot-github',
     secrets: [
-      { name: "GITHUB_TOKEN", required: true },
-      { name: "GITHUB_WEBHOOK_SECRET", required: false },
-      { name: "AI_GATEWAY_API_KEY", required: false },
-      { name: "MEMORY_MCP_URL", required: false },
-      { name: "MEMORY_MCP_TOKEN", required: false },
+      { name: 'GITHUB_TOKEN', required: true },
+      { name: 'GITHUB_WEBHOOK_SECRET', required: false },
+      { name: 'AI_GATEWAY_API_KEY', required: false },
+      { name: 'MEMORY_MCP_URL', required: false },
+      { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
   },
-  "memory-mcp": {
-    name: "Memory MCP",
-    dir: "apps/memory-mcp",
-    workerName: "duyetbot-memory",
+  'memory-mcp': {
+    name: 'Memory MCP',
+    dir: 'apps/memory-mcp',
+    workerName: 'duyetbot-memory',
     secrets: [
-      { name: "GITHUB_CLIENT_ID", required: true },
-      { name: "GITHUB_CLIENT_SECRET", required: true },
+      { name: 'GITHUB_CLIENT_ID', required: true },
+      { name: 'GITHUB_CLIENT_SECRET', required: true },
     ],
   },
 };
@@ -68,8 +68,8 @@ async function loadEnvFile(): Promise<Record<string, string>> {
   // Priority (highest wins): process.env > .env.local > .env
   const env: Record<string, string> = {};
 
-  const envPath = resolve(ROOT_DIR, ".env");
-  const envLocalPath = resolve(ROOT_DIR, ".env.local");
+  const envPath = resolve(ROOT_DIR, '.env');
+  const envLocalPath = resolve(ROOT_DIR, '.env.local');
 
   const envFile = Bun.file(envPath);
   const envLocalFile = Bun.file(envLocalPath);
@@ -77,11 +77,11 @@ async function loadEnvFile(): Promise<Record<string, string>> {
   const loadedFiles: string[] = [];
 
   const parseEnvContent = (content: string) => {
-    for (const line of content.split("\n")) {
+    for (const line of content.split('\n')) {
       const trimmed = line.trim();
-      if (trimmed && !trimmed.startsWith("#")) {
-        const [key, ...valueParts] = trimmed.split("=");
-        const value = valueParts.join("=");
+      if (trimmed && !trimmed.startsWith('#')) {
+        const [key, ...valueParts] = trimmed.split('=');
+        const value = valueParts.join('=');
         if (key && value) {
           env[key] = value;
         }
@@ -92,13 +92,13 @@ async function loadEnvFile(): Promise<Record<string, string>> {
   // Load .env (lowest priority)
   if (await envFile.exists()) {
     parseEnvContent(await envFile.text());
-    loadedFiles.push(".env");
+    loadedFiles.push('.env');
   }
 
   // Override with .env.local
   if (await envLocalFile.exists()) {
     parseEnvContent(await envLocalFile.text());
-    loadedFiles.push(".env.local");
+    loadedFiles.push('.env.local');
   }
 
   // Override with process.env (highest priority)
@@ -107,17 +107,14 @@ async function loadEnvFile(): Promise<Record<string, string>> {
       env[key] = value;
     }
   }
-  loadedFiles.push("process.env");
+  loadedFiles.push('process.env');
 
-  console.log(`  Loaded: ${loadedFiles.join(" → ")}`);
+  console.log(`  Loaded: ${loadedFiles.join(' → ')}`);
 
   return env;
 }
 
-async function setWranglerSecrets(
-  config: AppConfig,
-  env: Record<string, string>,
-) {
+async function setWranglerSecrets(config: AppConfig, env: Record<string, string>) {
   const cwd = resolve(ROOT_DIR, config.dir);
 
   console.log(`\nSetting Cloudflare secrets for ${config.name}...`);
@@ -158,15 +155,11 @@ async function setWranglerSecrets(
         console.log(`  ${name}: ✓ set`);
       }
 
-      console.log(
-        `\n  ✓ Bulk uploaded ${Object.keys(secretsToSet).length} secrets`,
-      );
+      console.log(`\n  ✓ Bulk uploaded ${Object.keys(secretsToSet).length} secrets`);
 
       // Verify by listing deployed secrets
-      console.log("\n  Verifying deployed secrets...");
-      const listOutput = await $`wrangler secret list --format json`
-        .cwd(cwd)
-        .json();
+      console.log('\n  Verifying deployed secrets...');
+      const listOutput = await $`wrangler secret list --format json`.cwd(cwd).json();
       const deployedSecrets = listOutput as Array<{
         name: string;
         type: string;
@@ -174,7 +167,7 @@ async function setWranglerSecrets(
       const deployedNames = deployedSecrets.map((s) => s.name);
 
       for (const name of Object.keys(secretsToSet)) {
-        const status = deployedNames.includes(name) ? "✓" : "✗";
+        const status = deployedNames.includes(name) ? '✓' : '✗';
         console.log(`    ${status} ${name}`);
       }
     } catch (error) {
@@ -186,7 +179,7 @@ async function setWranglerSecrets(
       await $`rm -f ${tempFile}`.nothrow().quiet();
     }
   } else {
-    console.log("  (no secrets to set)");
+    console.log('  (no secrets to set)');
   }
 }
 
@@ -196,24 +189,18 @@ async function showDeployedSecrets(config: AppConfig) {
   console.log(`\nDeployed secrets for ${config.name}:`);
 
   try {
-    const secrets = (await $`wrangler secret list --format json`
-      .cwd(cwd)
-      .json()) as Array<{
+    const secrets = (await $`wrangler secret list --format json`.cwd(cwd).json()) as Array<{
       name: string;
       type: string;
     }>;
     const secretNames = secrets.map((s) => s.name);
 
     for (const { name, required } of config.secrets) {
-      const status = secretNames.includes(name)
-        ? "✓ set"
-        : required
-          ? "✗ not set"
-          : "(not set)";
+      const status = secretNames.includes(name) ? '✓ set' : required ? '✗ not set' : '(not set)';
       console.log(`  ${name.padEnd(24)} ${status}`);
     }
   } catch {
-    console.log("  (could not fetch - run wrangler login first)");
+    console.log('  (could not fetch - run wrangler login first)');
   }
 }
 
@@ -224,19 +211,19 @@ async function setTelegramWebhook(env: Record<string, string>) {
   const webhookSecret = env.TELEGRAM_WEBHOOK_SECRET;
 
   if (!botToken) {
-    console.error("\nError: TELEGRAM_BOT_TOKEN is required");
+    console.error('\nError: TELEGRAM_BOT_TOKEN is required');
     process.exit(1);
   }
 
   if (!webhookUrl) {
-    console.error("\nError: TELEGRAM_WEBHOOK_URL is required");
+    console.error('\nError: TELEGRAM_WEBHOOK_URL is required');
     console.error(
-      "Example: TELEGRAM_WEBHOOK_URL=https://duyetbot-telegram.xxx.workers.dev/webhook",
+      'Example: TELEGRAM_WEBHOOK_URL=https://duyetbot-telegram.xxx.workers.dev/webhook'
     );
     process.exit(1);
   }
 
-  console.log("\nSetting Telegram webhook...");
+  console.log('\nSetting Telegram webhook...');
 
   const body: Record<string, string | boolean> = {
     url: webhookUrl,
@@ -247,58 +234,50 @@ async function setTelegramWebhook(env: Record<string, string>) {
     body.secret_token = webhookSecret;
   }
 
-  const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/setWebhook`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    },
-  );
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
 
   const result = await response.json();
-  console.log("Set webhook result:", JSON.stringify(result, null, 2));
+  console.log('Set webhook result:', JSON.stringify(result, null, 2));
 }
 
 async function getTelegramWebhookInfo(env: Record<string, string>) {
   const botToken = env.TELEGRAM_BOT_TOKEN;
 
   if (!botToken) {
-    console.error("Error: TELEGRAM_BOT_TOKEN is required");
+    console.error('Error: TELEGRAM_BOT_TOKEN is required');
     process.exit(1);
   }
 
-  const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/getWebhookInfo`,
-  );
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
   const result = await response.json();
-  console.log("Webhook info:", JSON.stringify(result, null, 2));
+  console.log('Webhook info:', JSON.stringify(result, null, 2));
 }
 
 async function deleteTelegramWebhook(env: Record<string, string>) {
   const botToken = env.TELEGRAM_BOT_TOKEN;
 
   if (!botToken) {
-    console.error("Error: TELEGRAM_BOT_TOKEN is required");
+    console.error('Error: TELEGRAM_BOT_TOKEN is required');
     process.exit(1);
   }
 
-  const response = await fetch(
-    `https://api.telegram.org/bot${botToken}/deleteWebhook`,
-    {
-      method: "POST",
-    },
-  );
+  const response = await fetch(`https://api.telegram.org/bot${botToken}/deleteWebhook`, {
+    method: 'POST',
+  });
 
   const result = await response.json();
-  console.log("Delete webhook result:", JSON.stringify(result, null, 2));
+  console.log('Delete webhook result:', JSON.stringify(result, null, 2));
 }
 
 async function showConfig() {
-  console.log("Configuration Status\n");
+  console.log('Configuration Status\n');
 
   const env = await loadEnvFile();
-  console.log("Root .env.local:");
+  console.log('Root .env.local:');
   const allSecrets = new Set<string>();
   for (const config of Object.values(APPS)) {
     for (const { name } of config.secrets) {
@@ -306,7 +285,7 @@ async function showConfig() {
     }
   }
   for (const name of allSecrets) {
-    const status = env[name] ? "✓ set" : "(not set)";
+    const status = env[name] ? '✓ set' : '(not set)';
     console.log(`  ${name.padEnd(24)} ${status}`);
   }
 
@@ -320,19 +299,19 @@ async function configureApp(appKey: string, subCommand?: string) {
   const config = APPS[appKey];
   if (!config) {
     console.error(`Unknown app: ${appKey}`);
-    console.error(`Available apps: ${Object.keys(APPS).join(", ")}`);
+    console.error(`Available apps: ${Object.keys(APPS).join(', ')}`);
     process.exit(1);
   }
 
   const env = await loadEnvFile();
 
   // Handle sub-commands for telegram
-  if (appKey === "telegram") {
+  if (appKey === 'telegram') {
     switch (subCommand) {
-      case "info":
+      case 'info':
         await getTelegramWebhookInfo(env);
         return;
-      case "delete":
+      case 'delete':
         await deleteTelegramWebhook(env);
         return;
     }
@@ -342,9 +321,9 @@ async function configureApp(appKey: string, subCommand?: string) {
   await setWranglerSecrets(config, env);
 
   // Post-deploy actions
-  if (appKey === "telegram") {
+  if (appKey === 'telegram') {
     await setTelegramWebhook(env);
-    console.log("\nVerifying webhook...");
+    console.log('\nVerifying webhook...');
     await getTelegramWebhookInfo(env);
   }
 }
@@ -353,25 +332,21 @@ async function configureApp(appKey: string, subCommand?: string) {
 const [, , app, subCommand] = process.argv;
 
 switch (app) {
-  case "telegram":
-  case "github":
-  case "memory-mcp":
+  case 'telegram':
+  case 'github':
+  case 'memory-mcp':
     await configureApp(app, subCommand);
     break;
-  case "show":
+  case 'show':
     await showConfig();
     break;
   default:
-    console.log("Unified Deployment Configuration");
-    console.log("");
-    console.log("Usage:");
-    console.log(
-      "  bun scripts/config.ts telegram        - Set secrets + configure webhook",
-    );
-    console.log("  bun scripts/config.ts github          - Set secrets");
-    console.log("  bun scripts/config.ts telegram info   - Get webhook info");
-    console.log("  bun scripts/config.ts telegram delete - Delete webhook");
-    console.log(
-      "  bun scripts/config.ts show            - Show all config status",
-    );
+    console.log('Unified Deployment Configuration');
+    console.log('');
+    console.log('Usage:');
+    console.log('  bun scripts/config.ts telegram        - Set secrets + configure webhook');
+    console.log('  bun scripts/config.ts github          - Set secrets');
+    console.log('  bun scripts/config.ts telegram info   - Get webhook info');
+    console.log('  bun scripts/config.ts telegram delete - Delete webhook');
+    console.log('  bun scripts/config.ts show            - Show all config status');
 }

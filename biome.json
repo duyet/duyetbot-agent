@@ -108,6 +108,7 @@
   },
   "javascript": {
     "globals": [
+      "Bun",
       "Ai",
       "KVNamespace",
       "D1Database",

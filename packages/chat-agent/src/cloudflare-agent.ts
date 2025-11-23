@@ -5,10 +5,10 @@
  * State persistence via Durable Object storage.
  */
 
-import { Agent, type AgentNamespace, type Connection } from "agents";
-import { trimHistory } from "./history.js";
-import type { LLMProvider, Message } from "./types.js";
-import type { Transport, TransportHooks } from "./transport.js";
+import { Agent, type AgentNamespace, type Connection } from 'agents';
+import { trimHistory } from './history.js';
+import type { Transport, TransportHooks } from './transport.js';
+import type { LLMProvider, Message } from './types.js';
 
 /**
  * State persisted in Durable Object
@@ -46,7 +46,7 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
 }
 
 // Re-export types for backward compatibility
-export type { MemoryServiceBinding } from "./service-binding-adapter.js";
+export type { MemoryServiceBinding } from './service-binding-adapter.js';
 
 /**
  * Create a Cloudflare Durable Object Agent class with direct LLM integration
@@ -64,7 +64,7 @@ export type { MemoryServiceBinding } from "./service-binding-adapter.js";
  * ```
  */
 export function createCloudflareChatAgent<TEnv, TContext = unknown>(
-  config: CloudflareAgentConfig<TEnv, TContext>,
+  config: CloudflareAgentConfig<TEnv, TContext>
 ): typeof Agent<TEnv, CloudflareAgentState> {
   const maxHistory = config.maxHistory ?? 100;
   const transport = config.transport;
@@ -80,20 +80,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Called when state is updated from any source
      */
-    override onStateUpdate(
-      state: CloudflareAgentState,
-      source: "server" | Connection,
-    ) {
-      console.log("State updated:", state, "Source:", source);
+    override onStateUpdate(state: CloudflareAgentState, source: 'server' | Connection) {
+      console.log('State updated:', state, 'Source:', source);
     }
 
     /**
      * Initialize agent with context (userId, chatId)
      */
-    async init(
-      userId?: string | number,
-      chatId?: string | number,
-    ): Promise<void> {
+    async init(userId?: string | number, chatId?: string | number): Promise<void> {
       const needsUpdate =
         (this.state.userId === undefined && userId !== undefined) ||
         (this.state.chatId === undefined && chatId !== undefined);
@@ -120,18 +114,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     async chat(userMessage: string): Promise<string> {
       // Get LLM provider from environment bindings
       // Note: Type assertion needed due to TypeScript limitation with anonymous class inheritance
-      const llmProvider = config.createProvider(
-        (this as unknown as { env: TEnv }).env,
-      );
+      const llmProvider = config.createProvider((this as unknown as { env: TEnv }).env);
 
       // Build messages for LLM call
       const llmMessages = [
-        { role: "system" as const, content: config.systemPrompt },
+        { role: 'system' as const, content: config.systemPrompt },
         ...this.state.messages.map((m) => ({
-          role: m.role as "user" | "assistant",
+          role: m.role as 'user' | 'assistant',
           content: m.content,
         })),
-        { role: "user" as const, content: userMessage },
+        { role: 'user' as const, content: userMessage },
       ];
 
       // Call LLM directly
@@ -142,10 +134,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const newMessages = trimHistory(
         [
           ...this.state.messages,
-          { role: "user" as const, content: userMessage },
-          { role: "assistant" as const, content: assistantContent },
+          { role: 'user' as const, content: userMessage },
+          { role: 'assistant' as const, content: assistantContent },
         ],
-        maxHistory,
+        maxHistory
       );
 
       this.setState({
@@ -167,21 +159,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         updatedAt: Date.now(),
       });
 
-      return "Conversation history cleared.";
+      return 'Conversation history cleared.';
     }
 
     /**
      * Get welcome message
      */
     getWelcome(): string {
-      return config.welcomeMessage ?? "Hello! How can I help you?";
+      return config.welcomeMessage ?? 'Hello! How can I help you?';
     }
 
     /**
      * Get help message
      */
     getHelp(): string {
-      return config.helpMessage ?? "Commands: /start, /help, /clear";
+      return config.helpMessage ?? 'Commands: /start, /help, /clear';
     }
 
     /**
@@ -214,21 +206,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Routes /start, /help, /clear to appropriate handlers
      */
     handleCommand(text: string): string {
-      const command = (text.split(" ")[0] ?? "").toLowerCase();
+      const command = (text.split(' ')[0] ?? '').toLowerCase();
 
       switch (command) {
-        case "/start":
+        case '/start':
           return this.getWelcome();
-        case "/help":
+        case '/help':
           return this.getHelp();
-        case "/clear":
+        case '/clear':
           // clearHistory is async but returns string synchronously for command response
           this.setState({
             ...this.state,
             messages: [],
             updatedAt: Date.now(),
           });
-          return "Conversation history cleared.";
+          return 'Conversation history cleared.';
         default:
           return `Unknown command: ${command}. Try /help for available commands.`;
       }
@@ -243,9 +235,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      */
     async handle(ctx: TContext): Promise<void> {
       if (!transport) {
-        throw new Error(
-          "Transport not configured. Pass transport in config to use handle().",
-        );
+        throw new Error('Transport not configured. Pass transport in config to use handle().');
       }
 
       const input = transport.parseContext(ctx);
@@ -262,7 +252,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         let response: string;
 
         // Route: Command or Chat
-        if (input.text.startsWith("/")) {
+        if (input.text.startsWith('/')) {
           response = this.handleCommand(input.text);
         } else {
           // Send typing indicator

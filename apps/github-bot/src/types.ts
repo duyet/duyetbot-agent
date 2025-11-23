@@ -20,7 +20,7 @@ export interface GitHubIssue {
   number: number;
   title: string;
   body: string | null;
-  state: "open" | "closed";
+  state: 'open' | 'closed';
   user: GitHubUser;
   labels: Array<{ name: string }>;
 }
@@ -37,7 +37,7 @@ export interface GitHubPullRequest {
   number: number;
   title: string;
   body: string | null;
-  state: "open" | "closed" | "merged";
+  state: 'open' | 'closed' | 'merged';
   user: GitHubUser;
   head: {
     ref: string;
