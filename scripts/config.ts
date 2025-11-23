@@ -53,7 +53,7 @@ const APPS: Record<string, AppConfig> = {
       { name: "MEMORY_MCP_TOKEN", required: false },
     ],
   },
-  memory: {
+  "memory-mcp": {
     name: "Memory MCP",
     dir: "apps/memory-mcp",
     workerName: "duyetbot-memory",
@@ -164,7 +164,9 @@ async function setWranglerSecrets(
 
       // Verify by listing deployed secrets
       console.log("\n  Verifying deployed secrets...");
-      const listOutput = await $`wrangler secret list --json`.cwd(cwd).json();
+      const listOutput = await $`wrangler secret list --format json`
+        .cwd(cwd)
+        .json();
       const deployedSecrets = listOutput as Array<{
         name: string;
         type: string;
@@ -194,7 +196,7 @@ async function showDeployedSecrets(config: AppConfig) {
   console.log(`\nDeployed secrets for ${config.name}:`);
 
   try {
-    const secrets = (await $`wrangler secret list --json`
+    const secrets = (await $`wrangler secret list --format json`
       .cwd(cwd)
       .json()) as Array<{
       name: string;
@@ -353,7 +355,7 @@ const [, , app, subCommand] = process.argv;
 switch (app) {
   case "telegram":
   case "github":
-  case "memory":
+  case "memory-mcp":
     await configureApp(app, subCommand);
     break;
   case "show":
