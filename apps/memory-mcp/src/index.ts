@@ -1,3 +1,9 @@
+/**
+ * Memory MCP Server
+ *
+ * Provides both REST API (for backward compatibility) and MCP SSE endpoints.
+ */
+
 import { createAuth, createBaseApp } from '@duyetbot/hono-middleware';
 import { D1Storage } from './storage/d1.js';
 import type { Env } from './types.js';
@@ -7,6 +13,10 @@ import { getMemory, getMemorySchema } from './tools/get-memory.js';
 import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 import { saveMemory, saveMemorySchema } from './tools/save-memory.js';
 import { searchMemory, searchMemorySchema } from './tools/search-memory.js';
+
+// Export MCP agent for Durable Object binding
+// Note: Dynamic import to avoid cloudflare: protocol issues in tests
+export { MemoryMcpAgent } from './mcp-agent.js';
 
 const app = createBaseApp<Env>({
   name: 'duyetbot-memory',

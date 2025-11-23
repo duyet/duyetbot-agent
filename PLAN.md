@@ -2357,6 +2357,7 @@ bun run dev
 
 | Date | Version | Changes |
 |------|---------|---------|
+| 2025-11-23 | 3.21 | 🔬 **MEMORY MCP INVESTIGATION**: Deep research into `blockConcurrencyWhile` timeout issue when enabling memory in Durable Objects. Root cause: REST API calls during DO initialization block the input gate (30s hard limit). Solution: Service Binding pattern with LazyMemoryAdapter for non-blocking init. Created docs/design/memory-integration.md with full architecture design. Memory remains disabled in Telegram bot until service binding implementation. |
 | 2025-11-23 | 3.20 | 🏗️ **TWO-TIER ARCHITECTURE**: Clarified two-tier agent system: Tier 1 (Cloudflare Agents - lightweight, Workers) for quick responses and triggering workflows; Tier 2 (Claude Agent SDK - heavy, containers) for long-running tasks. Created packages/chat-agent for reusable chat agent abstraction. Created packages/prompts with markdown prompt files. Refactored telegram-bot to use AI Gateway. Updated docs/architecture.md with two-tier documentation. |
 | 2025-11-22 | 3.19 | 🏗️ **CLOUDFLARE AGENTS SDK REFACTOR**: Refactoring Workers apps to use Cloudflare Agents SDK instead of custom implementations. telegram-bot and github-bot will use Durable Objects for stateful sessions. Added SDK Choices table. Created packages/prompts for shared prompts. Deployment targets: duyetbot-telegram, duyetbot-github, duyetbot-memory-mcp (all via wrangler). agent-server continues to use Claude Agent SDK on containers. |
 | 2025-11-21 | 3.18 | 🔧 **Phases 8-11 IN PROGRESS**: Phase 8 (Telegram Bot), Phase 9 (API Gateway), Phase 10 (Integration Tests), Phase 11 (CI/CD workflow). Created .github/workflows/ci.yml with lint, typecheck, test, build, and integration test jobs. 515 tests passing (494 unit + 21 integration). |
@@ -2438,8 +2439,15 @@ bun run dev
    - [x] Create packages/chat-agent for reusable agent abstraction
    - [x] Create packages/prompts for shared prompts
    - [x] Refactor telegram-bot to use AI Gateway
+   - [x] Deploy to Cloudflare Workers
    - [ ] Write tests
-   - [ ] Deploy to Cloudflare Workers
+   - [ ] **Memory MCP Integration** (blocked - see docs/design/memory-integration.md)
+     - [ ] Add service binding to wrangler.toml
+     - [ ] Create LazyMemoryAdapter with non-blocking init
+     - [ ] Implement MemorySyncManager for background operations
+     - [ ] Update CloudflareChatAgent to use service binding
+     - [ ] Add KV caching layer to memory worker
+     - [ ] Re-enable memory in Telegram bot
 10. **Phase 9 - API Gateway**
 11. **Phase 10 - Integration & Testing**
 12. **Phase 11 - Documentation & Deployment**

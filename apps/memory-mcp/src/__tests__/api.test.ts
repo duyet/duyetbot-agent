@@ -1,4 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+// Mock MCP agent to avoid cloudflare: protocol issues
+vi.mock('../mcp-agent.js', () => ({
+  MemoryMcpAgent: class MockMemoryMcpAgent {},
+}));
+
 import app from '../index.js';
 
 // Mock D1 and KV
