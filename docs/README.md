@@ -8,14 +8,15 @@
 
 duyetbot is your personal AI assistant that remembers context across all interfaces. Unlike traditional chatbots that forget between sessions, duyetbot maintains persistent memory of your conversations, code context, and preferences.
 
-**Built with:** Claude Agent SDK + Cloudflare Workflows (Supervisor) + Fly.io Machines (Worker)
+**Built with:** Claude Agent SDK + Cloudflare Workflows (Supervisor) + Fly.io Machines (Worker) + Transport Layer Pattern
 
 ---
 
 ## Architecture
 
-duyetbot uses a **Hybrid Supervisor-Worker Model**:
+duyetbot uses a **Hybrid Supervisor-Worker Model** with a **Transport Layer Pattern**:
 
+- **Transport Layer** - Platform-agnostic messaging (reduces app code by 80%)
 - **Supervisor (Cloudflare Workflows)** - Orchestration, state management, human-in-the-loop
 - **Worker (Fly.io Machines)** - Heavy compute, filesystem, Claude Agent SDK execution
 
@@ -59,6 +60,7 @@ Choose your preferred Claude-compatible model:
 
 ### Hybrid Deployment
 
+- **Transport Layer** - Simplified apps (~50 lines), easy platform addition
 - **Cloudflare Workflows** - Durable orchestration, free sleep for days/weeks
 - **Fly.io Machines** - On-demand compute with persistent volumes
 - **MCP Memory** - Cross-session search on Cloudflare D1/KV
@@ -117,14 +119,17 @@ See [Getting Started](GETTING_STARTED.md) for detailed setup instructions.
 ```
 duyetbot-agent/
 ├── apps/
-│   └── github-bot/        # GitHub webhook handler
+│   ├── github-bot/        # GitHub webhook handler + Transport
+│   ├── telegram-bot/      # Telegram bot + Transport
+│   ├── memory-mcp/        # MCP memory server (D1 + KV)
+│   └── agent-server/      # Long-running agent server
 ├── packages/
+│   ├── chat-agent/        # Transport Layer + agent abstraction
 │   ├── cli/               # Command-line interface
 │   ├── core/              # Agent core logic
 │   ├── providers/         # LLM adapters
 │   ├── tools/             # Agent tools
-│   ├── server/            # HTTP API
-│   └── memory-mcp/        # MCP memory server
+│   └── hono-middleware/   # Shared middleware
 └── docs/                  # Documentation
 ```
 

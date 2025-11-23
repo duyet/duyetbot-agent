@@ -5,9 +5,9 @@
  * This avoids HTTP overhead and blockConcurrencyWhile issues.
  */
 
-import { WorkerEntrypoint } from "cloudflare:workers";
-import { D1Storage } from "./storage/d1.js";
-import type { Env, LLMMessage } from "./types.js";
+import { WorkerEntrypoint } from 'cloudflare:workers';
+import { D1Storage } from './storage/d1.js';
+import type { Env, LLMMessage } from './types.js';
 
 /**
  * Memory data returned from getMemory
@@ -68,7 +68,7 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
   async getMemory(
     userId: string,
     sessionId: string,
-    options?: { limit?: number; offset?: number },
+    options?: { limit?: number; offset?: number }
   ): Promise<MemoryData> {
     const storage = this.getStorage();
 
@@ -94,7 +94,7 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
     userId: string,
     sessionId: string | undefined,
     messages: LLMMessage[],
-    metadata?: Record<string, unknown>,
+    metadata?: Record<string, unknown>
   ): Promise<SaveMemoryResult> {
     const storage = this.getStorage();
 
@@ -118,7 +118,7 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
         id: finalSessionId,
         user_id: userId,
         title: null,
-        state: "active",
+        state: 'active',
         metadata: metadata || null,
         created_at: now,
         updated_at: now,
@@ -149,7 +149,7 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
     options?: {
       limit?: number;
       sessionId?: string;
-    },
+    }
   ): Promise<MemorySearchResult[]> {
     const storage = this.getStorage();
 
@@ -169,8 +169,8 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
     options?: {
       limit?: number;
       offset?: number;
-      state?: "active" | "paused" | "completed";
-    },
+      state?: 'active' | 'paused' | 'completed';
+    }
   ): Promise<{ sessions: SessionInfo[]; total: number }> {
     const storage = this.getStorage();
 
@@ -189,7 +189,7 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
         createdAt: s.created_at,
         updatedAt: s.updated_at,
         messageCount: await storage.getMessageCount(s.id),
-      })),
+      }))
     );
 
     return {

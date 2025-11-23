@@ -6,9 +6,116 @@
 
 duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as its core engine**. It implements a **Hybrid Supervisor-Worker Architecture** where Cloudflare Workflows orchestrates durable execution while Fly.io Machines provide the compute environment for heavy LLM tasks.
 
+The system uses a **Transport Layer Pattern** to cleanly separate platform-specific messaging from agent logic, enabling easy addition of new platforms with minimal code.
+
+## Transport Layer Pattern
+
+The core innovation in the application layer is the Transport abstraction that separates:
+
+- **Application Layer**: Thin webhook handlers that connect transport to agent
+- **Transport Layer**: Platform-specific message sending/receiving
+- **Agent Layer**: All workflow logic, LLM calls, state management
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Application Layer                         │
+│           (telegram-bot, github-bot, future apps)            │
+│                                                              │
+│  • Webhook handling & routing                                │
+│  • Context creation from platform payload                    │
+│  • ~50 lines of code per app                                 │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                     Transport Layer                          │
+│                                                              │
+│  interface Transport<TContext> {                             │
+│    send: (ctx, text) => Promise<MessageRef>                  │
+│    edit?: (ctx, ref, text) => Promise<void>                  │
+│    typing?: (ctx) => Promise<void>                           │
+│    parseContext: (ctx) => ParsedInput                        │
+│  }                                                           │
+└──────────────────────────┬──────────────────────────────────┘
+                           │
+                           ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       Agent Layer                            │
+│                   (chat-agent package)                       │
+│                                                              │
+│  agent.handle(ctx) orchestrates:                             │
+│    1. Parse input from context                               │
+│    2. Route: command or chat                                 │
+│    3. Process with LLM if needed                             │
+│    4. Use transport to respond                               │
+│                                                              │
+│  Lifecycle hooks: beforeHandle, afterHandle, onError         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Benefits of Transport Layer
+
+| Aspect | Before | After |
+|--------|--------|-------|
+| **App code size** | ~300 lines | ~50 lines |
+| **Logic location** | Scattered across app & agent | Centralized in agent |
+| **Testability** | Hard (mixed concerns) | Easy (mock transport) |
+| **New platform** | Copy entire app | Just add transport |
+| **Command handling** | In each app | Single place in agent |
+| **Error handling** | Duplicated | Configurable hooks |
+
+### Transport Interface
+
+```typescript
+// Message reference for edits (platform-specific)
+type MessageRef = string | number;
+
+// Normalized input from any platform
+interface ParsedInput {
+  text: string;
+  userId: string | number;
+  chatId: string | number;
+  messageRef?: MessageRef;
+  replyTo?: MessageRef;
+}
+
+// Transport interface
+interface Transport<TContext> {
+  send: (ctx: TContext, text: string) => Promise<MessageRef>;
+  edit?: (ctx: TContext, ref: MessageRef, text: string) => Promise<void>;
+  delete?: (ctx: TContext, ref: MessageRef) => Promise<void>;
+  typing?: (ctx: TContext) => Promise<void>;
+  react?: (ctx: TContext, ref: MessageRef, emoji: string) => Promise<void>;
+  parseContext: (ctx: TContext) => ParsedInput;
+}
+```
+
+### Example: Simplified App Code
+
+```typescript
+// apps/telegram-bot/src/index.ts (~50 lines total)
+app.post('/webhook', async (c) => {
+  const env = c.env;
+  const update = await c.req.json();
+
+  // Create context from webhook
+  const ctx = createTelegramContext(bot, update);
+  if (!ctx) return c.json({ ok: true });
+
+  // Get agent instance for this chat
+  const agentId = env.TELEGRAM_AGENT.idFromName(String(ctx.chatId));
+  const agent = env.TELEGRAM_AGENT.get(agentId);
+
+  // Agent handles everything
+  await agent.handle(ctx);
+
+  return c.json({ ok: true });
+});
+```
+
 ## The Hybrid Supervisor-Worker Model
 
-The core innovation is splitting responsibilities between two complementary platforms:
+The system splits responsibilities between two complementary platforms:
 
 - **Supervisor (Cloudflare Workflows)**: The "Brain" - handles state management, webhook ingestion, and human-in-the-loop orchestration
 - **Worker (Fly.io Machines)**: The "Hands" - provides filesystem and shell primitives required by the Claude Agent SDK
@@ -37,6 +144,7 @@ This architecture solves the fundamental challenge: heavy LLM tasks need a "comp
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
 │  │ github-bot   │  │ telegram-bot │  │  memory-mcp  │           │
 │  │ (DO Agent)   │  │ (DO Agent)   │  │  (D1 + KV)   │           │
+│  │ + Transport  │  │ + Transport  │  │              │           │
 │  └──────┬───────┘  └──────┬───────┘  └──────────────┘           │
 └─────────┼─────────────────┼─────────────────────────────────────┘
           │                 │
@@ -87,6 +195,73 @@ This architecture solves the fundamental challenge: heavy LLM tasks need a "comp
 | Cold Start | ⚡ <10ms | 🐢 ~300ms-2s | 🚀 ~2s (Acceptable) |
 | Cost (Idle) | 💰 Free | 💸 Expensive | 💰 Free |
 | Orchestration | ✅ Built-in | ❌ DIY | ✅ Full power |
+
+## Two-Tier Agent Architecture
+
+The system uses two types of agents for different workloads:
+
+### Tier 1: Cloudflare Agents (Lightweight)
+
+Fast, serverless agents for receiving messages and quick responses:
+
+| App | Runtime | Worker Name | Purpose |
+|-----|---------|-------------|---------|
+| `apps/telegram-bot` | Workers + Durable Objects | `duyetbot-telegram` | Telegram chat interface |
+| `apps/github-bot` | Workers + Durable Objects | `duyetbot-github` | GitHub @mentions and webhooks |
+| `apps/memory-mcp` | Workers | `duyetbot-memory-mcp` | Cross-session memory (D1 + KV) |
+
+**Capabilities**:
+- Receive and respond to messages quickly (<100ms cold start)
+- Stateful sessions via Durable Objects
+- Built-in SQLite storage
+- **Transport Layer** for platform-specific messaging
+- Can trigger Cloudflare Workflows for:
+  - **Deferred tasks**: Reminders, scheduled messages, delayed actions
+  - **Complex tasks**: Multi-step operations requiring Tier 2 compute
+
+### Tier 2: Claude Agent SDK (Heavy)
+
+Long-running agents for complex tasks requiring full compute environment:
+
+| App | Runtime | Purpose |
+|-----|---------|---------|
+| `apps/agent-server` | Container (Cloudflare sandbox) | Full agent with filesystem/shell tools |
+
+**Capabilities**:
+- `child_process.spawn()` for bash/git operations
+- Filesystem access for code operations
+- Long-running tasks (minutes to hours)
+- Triggered by Cloudflare Workflows from Tier 1 agents
+
+**Note**: Tier 2 implementation is planned for later phases.
+
+### Agent Flow
+
+```
+User Message → Cloudflare Agent (Tier 1) → Quick Response
+                     ↓
+              Task Type Detection
+                     ↓
+         ┌─────────────┴─────────────┐
+         ↓                           ↓
+   Deferred Task              Complex Task
+   (Lightweight)                 (Heavy)
+         ↓                           ↓
+ Cloudflare Workflow         Cloudflare Workflow
+   (sleep, alarm)              (provision)
+         ↓                           ↓
+   Execute Later          Claude Agent SDK (Tier 2)
+   (same Tier 1)              Full Compute
+```
+
+**Examples**:
+- `@duyetbot remind me in 10 minutes` → Lightweight Workflow (sleep) → Tier 1 sends reminder
+- `@duyetbot review this PR thoroughly` → Heavy Workflow → Tier 2 with filesystem/git
+
+**Why this separation?**
+- Tier 1: Instant responses, cost-effective, edge deployment
+- Lightweight Workflows: Deferred tasks without compute cost (free sleep up to 365 days)
+- Tier 2: Full Linux environment for heavy tasks, billed only when running
 
 ## Claude Agent SDK Integration
 
@@ -240,6 +415,7 @@ This allows the bot to wait days/weeks for user input without cost.
 | **Agent Engine** | Claude Agent SDK | Battle-tested, maintained by Anthropic |
 | **Feedback** | GitHub Checks API | Real-time streaming, action_required support |
 | **Memory** | MCP Server (CF Workers) | Cross-session search, user isolation |
+| **Messaging** | Transport Layer | Platform abstraction, simplified apps |
 
 ## Cost Model
 
@@ -271,72 +447,6 @@ Compare to always-on containers: **~$58/mo** (2× machines)
 - Cross-references volumes with PR status
 - Deletes orphaned volumes
 
-## Two-Tier Agent Architecture
-
-The system uses two types of agents for different workloads:
-
-### Tier 1: Cloudflare Agents (Lightweight)
-
-Fast, serverless agents for receiving messages and quick responses:
-
-| App | Runtime | Worker Name | Purpose |
-|-----|---------|-------------|---------|
-| `apps/telegram-bot` | Workers + Durable Objects | `duyetbot-telegram` | Telegram chat interface |
-| `apps/github-bot` | Workers + Durable Objects | `duyetbot-github` | GitHub @mentions and webhooks |
-| `apps/memory-mcp` | Workers | `duyetbot-memory-mcp` | Cross-session memory (D1 + KV) |
-
-**Capabilities**:
-- Receive and respond to messages quickly (<100ms cold start)
-- Stateful sessions via Durable Objects
-- Built-in SQLite storage
-- Can trigger Cloudflare Workflows for:
-  - **Deferred tasks**: Reminders, scheduled messages, delayed actions
-  - **Complex tasks**: Multi-step operations requiring Tier 2 compute
-
-### Tier 2: Claude Agent SDK (Heavy)
-
-Long-running agents for complex tasks requiring full compute environment:
-
-| App | Runtime | Purpose |
-|-----|---------|---------|
-| `apps/agent-server` | Container (Cloudflare sandbox) | Full agent with filesystem/shell tools |
-
-**Capabilities**:
-- `child_process.spawn()` for bash/git operations
-- Filesystem access for code operations
-- Long-running tasks (minutes to hours)
-- Triggered by Cloudflare Workflows from Tier 1 agents
-
-**Note**: Tier 2 implementation is planned for later phases.
-
-### Agent Flow
-
-```
-User Message → Cloudflare Agent (Tier 1) → Quick Response
-                     ↓
-              Task Type Detection
-                     ↓
-         ┌─────────────┴─────────────┐
-         ↓                           ↓
-   Deferred Task              Complex Task
-   (Lightweight)                 (Heavy)
-         ↓                           ↓
- Cloudflare Workflow         Cloudflare Workflow
-   (sleep, alarm)              (provision)
-         ↓                           ↓
-   Execute Later          Claude Agent SDK (Tier 2)
-   (same Tier 1)              Full Compute
-```
-
-**Examples**:
-- `@duyetbot remind me in 10 minutes` → Lightweight Workflow (sleep) → Tier 1 sends reminder
-- `@duyetbot review this PR thoroughly` → Heavy Workflow → Tier 2 with filesystem/git
-
-**Why this separation?**
-- Tier 1: Instant responses, cost-effective, edge deployment
-- Lightweight Workflows: Deferred tasks without compute cost (free sleep up to 365 days)
-- Tier 2: Full Linux environment for heavy tasks, billed only when running
-
 ## Packages & Components
 
 ### Core (`packages/core`)
@@ -346,12 +456,15 @@ User Message → Cloudflare Agent (Tier 1) → Quick Response
 - Used by agent-server (Claude Agent SDK)
 
 ### Chat Agent (`packages/chat-agent`)
-Reusable chat agent abstraction for Workers:
-- `ChatAgent` - Base agent with tool support and history
+Reusable chat agent abstraction for Workers with Transport Layer support:
+- `Transport<TContext>` - Platform-agnostic messaging interface
+- `ChatAgent.handle(ctx)` - Main entry point for handling messages
+- `ParsedInput` - Normalized input from any platform
 - `CloudflareAgentAdapter` - Adapter for Cloudflare Agents SDK
 - `createChatAgent()` - Factory for creating agents
 - Provider-agnostic (OpenRouter, Anthropic via AI Gateway)
 - Built-in conversation history management
+- Lifecycle hooks (`beforeHandle`, `afterHandle`, `onError`)
 
 ### Hono Middleware (`packages/hono-middleware`)
 Shared Hono middleware for all Cloudflare Workers apps:
@@ -387,6 +500,7 @@ LLM provider abstractions:
 ### Telegram Bot (`apps/telegram-bot`)
 Cloudflare Agents SDK with Durable Objects:
 - `TelegramAgent` class extending `Agent`
+- `telegramTransport` - Telegram-specific Transport implementation
 - Built-in state for conversation history
 - MCP client for memory-mcp connection
 - Uses `@duyetbot/hono-middleware` for shared routes
@@ -395,6 +509,7 @@ Cloudflare Agents SDK with Durable Objects:
 ### GitHub Bot (`apps/github-bot`)
 Cloudflare Agents SDK with Durable Objects:
 - `GitHubAgent` class extending `Agent`
+- `githubTransport` - GitHub-specific Transport implementation
 - GitHub MCP for API operations
 - duyet-mcp for knowledge base
 - Uses `@duyetbot/hono-middleware` for shared routes
@@ -436,8 +551,10 @@ MCP_SERVER_URL=https://memory.duyetbot.workers.dev
 
 See [Deployment Guide](deploy.md) for component-specific instructions:
 - [GitHub Bot](deployment/github-bot.md) - Webhook handler
+- [Telegram Bot](deployment/telegram-bot.md) - Chat interface
 - [Memory MCP](deployment/memory-mcp.md) - Session persistence
 - [Agent Server](deployment/agent-server.md) - Long-running server
+- [Cloudflare Agents](deployment/cloudflare-agents.md) - Stateful serverless
 
 ## Next Steps
 

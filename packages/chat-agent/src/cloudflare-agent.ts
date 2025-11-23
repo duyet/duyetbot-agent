@@ -1,20 +1,14 @@
 /**
- * Cloudflare Durable Object Agent wrapper for ChatAgent
+ * Cloudflare Durable Object Agent with direct LLM integration
  *
- * This provides a reusable base class for Cloudflare Workers apps
- * that want to use ChatAgent with Durable Object state persistence.
+ * Simplified design: No ChatAgent wrapper, calls LLM directly in chat().
+ * State persistence via Durable Object storage.
  */
 
-import { Agent, type AgentNamespace } from 'agents';
-import { ChatAgent } from './agent.js';
-import { createAgent } from './factory.js';
-import { DEFAULT_MEMORY_MCP_URL, createResilientMCPMemoryAdapter } from './mcp-memory-adapter.js';
-import type { MemoryAdapter } from './memory-adapter.js';
-import {
-  type MemoryServiceBinding,
-  createServiceBindingMemoryAdapter,
-} from './service-binding-adapter.js';
-import type { LLMProvider, Message, Tool, ToolExecutor } from './types.js';
+import { Agent, type AgentNamespace, type Connection } from "agents";
+import { trimHistory } from "./history.js";
+import type { LLMProvider, Message } from "./types.js";
+import type { Transport, TransportHooks } from "./transport.js";
 
 /**
  * State persisted in Durable Object
@@ -30,8 +24,11 @@ export interface CloudflareAgentState {
 
 /**
  * Configuration for CloudflareChatAgent
+ *
+ * @template TEnv - Environment type with bindings
+ * @template TContext - Platform-specific context type for transport
  */
-export interface CloudflareAgentConfig<TEnv> {
+export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   /** Function to create LLM provider from env */
   createProvider: (env: TEnv) => LLMProvider;
   /** System prompt for the agent */
@@ -40,45 +37,39 @@ export interface CloudflareAgentConfig<TEnv> {
   welcomeMessage?: string;
   /** Help message for /help command */
   helpMessage?: string;
-  /** Maximum messages in history */
+  /** Maximum messages in history (default: 100) */
   maxHistory?: number;
-  /** Available tools */
-  tools?: Tool[];
-  /** Tool executor */
-  onToolCall?: (env: TEnv) => ToolExecutor;
-  /** Optional: Override memory MCP URL (defaults to DEFAULT_MEMORY_MCP_URL) */
-  memoryMCPUrl?: string;
-  /** Optional: Disable memory adapter entirely */
-  disableMemory?: boolean;
-  /** Optional: Custom memory adapter (overrides auto-config) */
-  createMemoryAdapter?: (env: TEnv) => MemoryAdapter | undefined;
-  /** Function to generate session ID from context */
-  getSessionId?: (userId?: string | number, chatId?: string | number) => string | undefined;
-  /** Optional: Memory service binding for RPC (preferred over REST) */
-  getMemoryService?: (env: TEnv) => MemoryServiceBinding | undefined;
-  /** Optional: Get user ID for memory operations */
-  getMemoryUserId?: (state: CloudflareAgentState) => string | undefined;
+  /** Transport layer for platform-specific messaging (optional for backward compatibility) */
+  transport?: Transport<TContext>;
+  /** Lifecycle hooks for handle() method */
+  hooks?: TransportHooks<TContext>;
 }
 
+// Re-export types for backward compatibility
+export type { MemoryServiceBinding } from "./service-binding-adapter.js";
+
 /**
- * Create a Cloudflare Durable Object Agent class that wraps ChatAgent
+ * Create a Cloudflare Durable Object Agent class with direct LLM integration
  *
  * @example
  * ```typescript
  * import { createCloudflareChatAgent } from '@duyetbot/chat-agent';
- * import { TELEGRAM_SYSTEM_PROMPT } from '@duyetbot/prompts';
  *
  * export const TelegramAgent = createCloudflareChatAgent({
  *   createProvider: (env) => createAIGatewayProvider(env),
- *   systemPrompt: TELEGRAM_SYSTEM_PROMPT,
- *   welcomeMessage: 'Hello! I am your assistant.',
+ *   systemPrompt: 'You are a helpful assistant.',
+ *   welcomeMessage: 'Hello!',
  *   helpMessage: 'Commands: /start, /help, /clear',
  * });
  * ```
  */
-export function createCloudflareChatAgent<TEnv>(
-  config: CloudflareAgentConfig<TEnv>
+export function createCloudflareChatAgent<TEnv, TContext = unknown>(
+  config: CloudflareAgentConfig<TEnv, TContext>,
 ): typeof Agent<TEnv, CloudflareAgentState> {
+  const maxHistory = config.maxHistory ?? 100;
+  const transport = config.transport;
+  const hooks = config.hooks;
+
   return class CloudflareChatAgent extends Agent<TEnv, CloudflareAgentState> {
     override initialState: CloudflareAgentState = {
       messages: [],
@@ -86,188 +77,111 @@ export function createCloudflareChatAgent<TEnv>(
       updatedAt: Date.now(),
     };
 
-    /** @internal */
-    _chatAgent: ChatAgent | null = null;
-
     /**
-     * Schedule state update asynchronously to avoid blockConcurrencyWhile timeout
-     * @internal
+     * Called when state is updated from any source
      */
-    _scheduleStateUpdate(newState: CloudflareAgentState): void {
-      // Use direct storage to avoid blockConcurrencyWhile timeout
-      // The Agent base class stores state under 'state' key
-      const ctx = (
-        this as unknown as {
-          ctx: {
-            waitUntil: (p: Promise<unknown>) => void;
-            storage: { put: (key: string, value: unknown) => Promise<void> };
-          };
-        }
-      ).ctx;
-      ctx.waitUntil(
-        ctx.storage.put('state', newState).catch((err) => {
-          console.error('Failed to persist state:', err);
-        })
-      );
-      // Update in-memory state immediately for consistency
-      (this as unknown as { state: CloudflareAgentState }).state = newState;
+    override onStateUpdate(
+      state: CloudflareAgentState,
+      source: "server" | Connection,
+    ) {
+      console.log("State updated:", state, "Source:", source);
     }
 
     /**
-     * Lazily initialize ChatAgent on first use
-     * @internal
+     * Initialize agent with context (userId, chatId)
      */
-    _ensureInitialized(): ChatAgent {
-      if (!this._chatAgent) {
-        // Access env from the Agent base class
-        const env = (this as unknown as { env: TEnv }).env;
-        const llmProvider = config.createProvider(env);
+    async init(
+      userId?: string | number,
+      chatId?: string | number,
+    ): Promise<void> {
+      const needsUpdate =
+        (this.state.userId === undefined && userId !== undefined) ||
+        (this.state.chatId === undefined && chatId !== undefined);
 
-        // Generate session ID
-        const sessionId = config.getSessionId
-          ? config.getSessionId(this.state.userId, this.state.chatId)
-          : this._generateDefaultSessionId();
-
-        // Resolve memory adapter
-        // Priority: 1. Custom adapter, 2. Service binding, 3. REST adapter (unless disabled)
-        let memoryAdapter: MemoryAdapter | undefined;
-
-        if (config.createMemoryAdapter) {
-          // Use custom adapter if provided
-          memoryAdapter = config.createMemoryAdapter(env);
-        } else if (config.getMemoryService) {
-          // Use service binding (fast, non-blocking)
-          const service = config.getMemoryService(env);
-          if (service) {
-            const userId = config.getMemoryUserId
-              ? config.getMemoryUserId(this.state) || 'anonymous'
-              : String(this.state.userId || 'anonymous');
-            memoryAdapter = createServiceBindingMemoryAdapter({
-              service,
-              userId,
-            });
-          }
-        } else if (!config.disableMemory) {
-          // Fallback to REST adapter
-          const memoryUrl = config.memoryMCPUrl || DEFAULT_MEMORY_MCP_URL;
-          const token = (env as Record<string, unknown>).MEMORY_MCP_TOKEN as string | undefined;
-
-          try {
-            memoryAdapter = createResilientMCPMemoryAdapter({
-              baseURL: memoryUrl,
-              token,
-            });
-          } catch (err) {
-            console.warn('Memory MCP unavailable, continuing without memory:', err);
-            memoryAdapter = undefined;
-          }
-        }
-
-        this._chatAgent = createAgent({
-          llmProvider,
-          systemPrompt: config.systemPrompt,
-          maxHistory: config.maxHistory ?? 20,
-          ...(config.tools && { tools: config.tools }),
-          ...(config.onToolCall && { onToolCall: config.onToolCall(env) }),
-          ...(memoryAdapter && { memoryAdapter }),
-          ...(sessionId && { sessionId }),
-        });
-
-        // Restore messages from state
-        if (this.state.messages.length > 0) {
-          this._chatAgent.setMessages(this.state.messages);
-        }
-      }
-
-      return this._chatAgent;
-    }
-
-    /**
-     * Generate default session ID from state
-     * @internal
-     */
-    _generateDefaultSessionId(): string | undefined {
-      const { userId, chatId } = this.state;
-      if (chatId) {
-        return `session:${chatId}`;
-      }
-      if (userId) {
-        return `session:${userId}`;
-      }
-      return undefined;
-    }
-
-    /**
-     * Initialize agent with context (userId, chatId, etc.)
-     * Uses async state update to avoid blockConcurrencyWhile timeout
-     */
-    async init(userId?: string | number, chatId?: string | number): Promise<void> {
-      if (this.state.userId === undefined && userId !== undefined) {
+      if (needsUpdate) {
         const newState: CloudflareAgentState = {
           ...this.state,
-          userId,
-          createdAt: Date.now(),
+          createdAt: this.state.createdAt || Date.now(),
           updatedAt: Date.now(),
         };
+        if (userId !== undefined) {
+          newState.userId = userId;
+        }
         if (chatId !== undefined) {
           newState.chatId = chatId;
         }
-        // Use async state update to avoid blockConcurrencyWhile timeout
-        this._scheduleStateUpdate(newState);
+        this.setState(newState);
       }
     }
 
     /**
-     * Chat with the agent
+     * Chat with the LLM directly
      */
     async chat(userMessage: string): Promise<string> {
-      // Access state early to trigger lazy loading before LLM call
-      // This prevents blockConcurrencyWhile timeout during long LLM operations
-      void this.state.messages;
+      // Get LLM provider from environment bindings
+      // Note: Type assertion needed due to TypeScript limitation with anonymous class inheritance
+      const llmProvider = config.createProvider(
+        (this as unknown as { env: TEnv }).env,
+      );
 
-      const agent = this._ensureInitialized();
+      // Build messages for LLM call
+      const llmMessages = [
+        { role: "system" as const, content: config.systemPrompt },
+        ...this.state.messages.map((m) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
+        { role: "user" as const, content: userMessage },
+      ];
 
-      const response = await agent.chat(userMessage);
+      // Call LLM directly
+      const response = await llmProvider.chat(llmMessages);
+      const assistantContent = response.content;
 
-      // Persist messages asynchronously to avoid blockConcurrencyWhile timeout
-      this._scheduleStateUpdate({
+      // Update state with new messages (trimmed)
+      const newMessages = trimHistory(
+        [
+          ...this.state.messages,
+          { role: "user" as const, content: userMessage },
+          { role: "assistant" as const, content: assistantContent },
+        ],
+        maxHistory,
+      );
+
+      this.setState({
         ...this.state,
-        messages: agent.getMessages(),
+        messages: newMessages,
         updatedAt: Date.now(),
       });
 
-      return response;
+      return assistantContent;
     }
 
     /**
      * Clear conversation history
      */
     async clearHistory(): Promise<string> {
-      if (this._chatAgent) {
-        this._chatAgent.clearHistory();
-      }
-
       this.setState({
         ...this.state,
         messages: [],
         updatedAt: Date.now(),
       });
 
-      return 'Conversation history cleared.';
+      return "Conversation history cleared.";
     }
 
     /**
      * Get welcome message
      */
     getWelcome(): string {
-      return config.welcomeMessage ?? 'Hello! How can I help you?';
+      return config.welcomeMessage ?? "Hello! How can I help you?";
     }
 
     /**
      * Get help message
      */
     getHelp(): string {
-      return config.helpMessage ?? 'Commands: /start, /help, /clear';
+      return config.helpMessage ?? "Commands: /start, /help, /clear";
     }
 
     /**
@@ -293,6 +207,88 @@ export function createCloudflareChatAgent<TEnv>(
      */
     getMetadata(): Record<string, unknown> | undefined {
       return this.state.metadata;
+    }
+
+    /**
+     * Handle command and return response message
+     * Routes /start, /help, /clear to appropriate handlers
+     */
+    handleCommand(text: string): string {
+      const command = (text.split(" ")[0] ?? "").toLowerCase();
+
+      switch (command) {
+        case "/start":
+          return this.getWelcome();
+        case "/help":
+          return this.getHelp();
+        case "/clear":
+          // clearHistory is async but returns string synchronously for command response
+          this.setState({
+            ...this.state,
+            messages: [],
+            updatedAt: Date.now(),
+          });
+          return "Conversation history cleared.";
+        default:
+          return `Unknown command: ${command}. Try /help for available commands.`;
+      }
+    }
+
+    /**
+     * Handle incoming message context
+     * Routes to command handler or chat, then sends response via transport
+     *
+     * @param ctx - Platform-specific context
+     * @throws Error if transport is not configured
+     */
+    async handle(ctx: TContext): Promise<void> {
+      if (!transport) {
+        throw new Error(
+          "Transport not configured. Pass transport in config to use handle().",
+        );
+      }
+
+      const input = transport.parseContext(ctx);
+
+      // Initialize state with user/chat context
+      await this.init(input.userId, input.chatId);
+
+      try {
+        // Call beforeHandle hook
+        if (hooks?.beforeHandle) {
+          await hooks.beforeHandle(ctx);
+        }
+
+        let response: string;
+
+        // Route: Command or Chat
+        if (input.text.startsWith("/")) {
+          response = this.handleCommand(input.text);
+        } else {
+          // Send typing indicator
+          if (transport.typing) {
+            await transport.typing(ctx);
+          }
+
+          // Process with LLM
+          response = await this.chat(input.text);
+        }
+
+        // Send response via transport
+        await transport.send(ctx, response);
+
+        // Call afterHandle hook
+        if (hooks?.afterHandle) {
+          await hooks.afterHandle(ctx, response);
+        }
+      } catch (error) {
+        // Call onError hook or rethrow
+        if (hooks?.onError) {
+          await hooks.onError(ctx, error as Error);
+        } else {
+          throw error;
+        }
+      }
     }
   };
 }

@@ -42,7 +42,7 @@ pnpm run build
 pnpm test
 ```
 
-All 399 tests should pass.
+All 443 tests should pass.
 
 ---
 
