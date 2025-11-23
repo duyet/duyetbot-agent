@@ -1,4 +1,5 @@
-import { duyetMcp, githubMcp } from './servers/index.js';
+// Note: duyetMcp temporarily disabled due to 30s timeout issues
+import { githubMcp } from './servers/index.js';
 import type { MCPServerConfig, MCPServerName } from './types.js';
 
 /**
@@ -17,9 +18,10 @@ interface AgentWithMcp {
 
 /**
  * Registry of all available MCP servers
+ * Note: duyet-mcp temporarily disabled due to 30s timeout issues
  */
 const mcpServers: Record<MCPServerName, MCPServerConfig> = {
-  'duyet-mcp': duyetMcp,
+  // 'duyet-mcp': duyetMcp,  // Temporarily disabled - 30s timeout
   'github-mcp': githubMcp,
 };
 

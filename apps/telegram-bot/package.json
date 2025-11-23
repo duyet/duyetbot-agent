@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/mcp-servers": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "agents": "^0.2.23",

@@ -88,8 +88,6 @@ AI_GATEWAY_API_KEY=your_ai_gateway_api_key
 
 # Optional
 TELEGRAM_WEBHOOK_SECRET=your_webhook_secret
-TELEGRAM_ALLOWED_USERS=123456789,987654321
-MODEL=x-ai/grok-4.1-fast
 GITHUB_TOKEN=ghp_xxx
 ```
 
@@ -222,7 +220,6 @@ AI_GATEWAY_NAME=your-gateway-name
 
 # Optional
 TELEGRAM_WEBHOOK_SECRET=your_webhook_secret
-TELEGRAM_ALLOWED_USERS=123456789,987654321
 ```
 
 Then run:

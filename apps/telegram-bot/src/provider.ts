@@ -3,6 +3,7 @@
  */
 
 import type { LLMMessage, LLMProvider, LLMResponse, OpenAITool } from '@duyetbot/chat-agent';
+import { logger } from '@duyetbot/hono-middleware';
 
 export interface ProviderEnv {
   AI: Ai;
@@ -34,17 +35,19 @@ export function createAIGatewayProvider(env: ProviderEnv): LLMProvider {
   return {
     async chat(messages: LLMMessage[], tools?: OpenAITool[]): Promise<LLMResponse> {
       const gateway = env.AI.gateway(env.AI_GATEWAY_NAME);
+      const model = env.MODEL || 'x-ai/grok-4.1-fast';
 
       const headers: Record<string, string> = {
         'Content-Type': 'application/json',
+        'cf-aig-request-timeout': '25000', // 25s timeout to prevent DO blockConcurrencyWhile timeout
       };
       if (env.AI_GATEWAY_API_KEY) {
         headers['cf-aig-authorization'] = `Bearer ${env.AI_GATEWAY_API_KEY}`;
       }
 
       const query: Record<string, unknown> = {
-        model: env.MODEL || 'x-ai/grok-4.1-fast',
-        max_tokens: 1024,
+        model,
+        max_tokens: 512,
         messages,
       };
 
@@ -53,6 +56,15 @@ export function createAIGatewayProvider(env: ProviderEnv): LLMProvider {
         query.tools = tools;
         query.tool_choice = 'auto';
       }
+
+      logger.info('LLM request started', {
+        model,
+        messageCount: messages.length,
+        hasTools: tools && tools.length > 0,
+        toolCount: tools?.length || 0,
+      });
+
+      const startTime = Date.now();
 
       const response = await gateway.run({
         provider: env.AI_GATEWAY_PROVIDER || 'openrouter',
@@ -63,9 +75,16 @@ export function createAIGatewayProvider(env: ProviderEnv): LLMProvider {
 
       if (!response.ok) {
         const error = await response.text();
-        console.error('AI Gateway error:', error);
+        logger.error('AI Gateway error', {
+          status: response.status,
+          error,
+          model,
+        });
         throw new Error(`AI Gateway error: ${response.status}`);
       }
+
+      const durationMs = Date.now() - startTime;
+      logger.info('LLM request completed', { model, durationMs });
 
       const data = (await response.json()) as OpenAIResponse;
       const choice = data.choices?.[0]?.message;

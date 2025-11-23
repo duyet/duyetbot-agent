@@ -5,17 +5,14 @@
  * a clean, reusable agent pattern.
  */
 
-import {
-  type CloudflareAgentState,
-  createCloudflareChatAgent,
-} from "@duyetbot/chat-agent";
+import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
 import {
   TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
-} from "@duyetbot/prompts";
-import type { Agent, AgentNamespace } from "agents";
-import { type ProviderEnv, createAIGatewayProvider } from "./provider.js";
+} from '@duyetbot/prompts';
+import type { Agent, AgentNamespace } from 'agents';
+import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
 
 /**
  * Base environment without self-reference
@@ -39,7 +36,9 @@ interface BaseEnv extends ProviderEnv {
  * Agent class interface for type safety
  */
 interface TelegramAgentClass {
-  new (...args: unknown[]): Agent<BaseEnv, CloudflareAgentState> & {
+  new (
+    ...args: unknown[]
+  ): Agent<BaseEnv, CloudflareAgentState> & {
     init(userId?: string | number, chatId?: string | number): Promise<void>;
     chat(userMessage: string): Promise<string>;
     clearHistory(): Promise<string>;

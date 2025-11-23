@@ -13,7 +13,6 @@
     "test:telegram": "vitest run src/telegram-bot"
   },
   "devDependencies": {
-    "@duyetbot/api": "workspace:*",
     "@duyetbot/agent-server": "workspace:*",
     "@duyetbot/cli": "workspace:*",
     "@duyetbot/core": "workspace:*",

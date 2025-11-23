@@ -1,27 +1,25 @@
 name = "duyetbot-memory"
 main = "src/index.ts"
 compatibility_date = "2024-11-20"
+compatibility_flags = ["nodejs_compat"]
 
 [vars]
 ENVIRONMENT = "production"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
 
 # D1 Database binding
 [[d1_databases]]
 binding = "DB"
 database_name = "duyetbot-memory"
-database_id = "placeholder-will-be-set-after-creation"
-
-# Vectorize binding (for semantic search)
-# [[vectorize]]
-# binding = "VECTORIZE"
-# index_name = "duyetbot-memory-index"
-
-[env.staging]
-name = "duyetbot-memory-staging"
-[env.staging.vars]
-ENVIRONMENT = "staging"
-
-[env.development]
-name = "duyetbot-memory-dev"
-[env.development.vars]
-ENVIRONMENT = "development"
+database_id = "${D1_DATABASE_ID}"

@@ -5,9 +5,8 @@
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createBaseApp } from '@duyetbot/hono-middleware';
 import { Octokit } from '@octokit/rest';
-import { Hono } from 'hono';
-import { logger as honoLogger } from 'hono/logger';
 import { handleMention } from './agent-handler.js';
 import type { Env } from './agent.js';
 import { logger } from './logger.js';
@@ -83,16 +82,14 @@ function verifySignature(payload: string, signature: string, secret: string): bo
  * Create GitHub bot server
  */
 export function createGitHubBot(config: BotConfig) {
-  const app = new Hono();
-  const octokit = new Octokit({ auth: config.githubToken });
-
-  // Add Hono logger middleware
-  app.use('*', honoLogger());
-
-  // Health check
-  app.get('/health', (c) => {
-    return c.json({ status: 'ok', bot: config.botUsername });
+  const app = createBaseApp({
+    name: 'github-bot',
+    version: '1.0.0',
+    logger: true,
+    health: true,
+    ignorePaths: ['/cdn-cgi/'],
   });
+  const octokit = new Octokit({ auth: config.githubToken });
 
   // Webhook endpoint
   app.post('/webhook', async (c) => {

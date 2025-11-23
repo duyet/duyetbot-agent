@@ -179,6 +179,13 @@ bun run format                  # Format code with Biome
 bun run check                   # Run all checks (lint + type-check)
 ```
 
+### Deployment
+```bash
+bun run deploy                  # Deploy all apps (GitHub + Telegram bots)
+bun run deploy:github           # Deploy GitHub bot only
+bun run deploy:telegram         # Deploy Telegram bot only
+```
+
 ### Package-Specific Commands
 ```bash
 bun --filter @duyetbot/cli dev            # Run CLI in dev mode

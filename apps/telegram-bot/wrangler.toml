@@ -17,6 +17,8 @@ ENVIRONMENT = "production"
 MODEL = "x-ai/grok-4.1-fast"
 AI_GATEWAY_NAME = "duyetbot"
 AI_GATEWAY_PROVIDER = "openrouter"
+TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
+TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
 
 [observability]
 enabled = true
@@ -24,6 +26,10 @@ enabled = true
 [observability.logs]
 enabled = true
 invocation_logs = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[observability.traces]
+enabled = true
 head_sampling_rate = 1 # Log 100% of requests
 
 [placement]

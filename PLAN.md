@@ -1999,6 +1999,88 @@ packages/core/src/
 
 ---
 
+---
+
+## Shared Hono Middleware Architecture
+
+### Overview
+
+A shared middleware package (`@duyetbot/hono-middleware`) provides consistent HTTP handling across all Cloudflare Workers apps.
+
+### Design Decision
+
+**Question**: Unified API gateway vs separate platform apps?
+
+**Answer**: **Separate platform apps with shared middleware**
+
+| Approach | Pros | Cons |
+|----------|------|------|
+| Unified Gateway | Single deployment, shared middleware | Single point of failure, can't scale independently |
+| **Separated Apps** ✅ | Fault isolation, independent scaling, smaller bundles | Duplicate boilerplate (solved by shared package) |
+
+### Package Structure
+
+```
+packages/
+└── hono-middleware/
+    ├── src/
+    │   ├── index.ts              # Main exports
+    │   ├── factory.ts            # createBaseApp() factory
+    │   ├── middleware/
+    │   │   ├── logger.ts         # Request logging
+    │   │   ├── rate-limit.ts     # Rate limiting
+    │   │   ├── auth.ts           # Auth middleware
+    │   │   └── error-handler.ts  # Error handling
+    │   ├── routes/
+    │   │   └── health.ts         # /health, /health/live, /health/ready
+    │   └── types.ts
+    └── package.json
+```
+
+### Factory Pattern Usage
+
+```typescript
+// apps/telegram-bot/src/index.ts
+import { createBaseApp } from '@duyetbot/hono-middleware';
+
+const app = createBaseApp<Env>({
+  name: 'telegram-bot',
+  version: '1.0.0',
+  logger: true,
+  rateLimit: { limit: 100, window: 60000 },
+  health: true,  // Adds /health, /health/live, /health/ready
+});
+
+// Only add Telegram-specific routes
+app.post('/webhook', async (c) => { ... });
+
+export default app;
+```
+
+### What Each App Gets Automatically
+
+| Feature | Description |
+|---------|-------------|
+| `GET /health` | Full health status with name, version, timestamp |
+| `GET /health/live` | Kubernetes liveness probe |
+| `GET /health/ready` | Kubernetes readiness probe |
+| Logger middleware | Request logging with unique ID |
+| Error handler | Consistent error responses |
+| Rate limiter | Configurable per-app limits |
+
+### Benefits
+
+- **DRY**: No duplicate middleware code across apps
+- **Consistency**: Uniform behavior for logging, errors, health checks
+- **Maintainability**: Update once, all apps benefit
+- **Flexibility**: Each app can override or extend
+
+### Implementation Phase
+
+This will be implemented as **Phase 8.5** after Telegram Bot, before API Gateway cleanup.
+
+---
+
 ### Phase 8: Telegram Bot Integration (3-4 days) 🔧 IN PROGRESS
 
 **Goal**: Telegram bot using Cloudflare Agents SDK on Workers

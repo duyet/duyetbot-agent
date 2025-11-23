@@ -2,9 +2,9 @@
  * ChatAgent - Reusable chat agent with LLM and tool support
  */
 
-import { formatForLLM, trimHistory } from "./history.js";
-import type { MemoryAdapter } from "./memory-adapter.js";
-import { fromMemoryMessage } from "./memory-adapter.js";
+import { formatForLLM, trimHistory } from './history.js';
+import type { MemoryAdapter } from './memory-adapter.js';
+import { fromMemoryMessage } from './memory-adapter.js';
 import type {
   ChatAgentConfig,
   LLMProvider,
@@ -13,7 +13,7 @@ import type {
   Tool,
   ToolCall,
   ToolExecutor,
-} from "./types.js";
+} from './types.js';
 
 /**
  * ChatAgent handles conversation with LLM including tool calling
@@ -50,11 +50,11 @@ export class ChatAgent {
     const trimmedMessage = userMessage.trim();
 
     if (!trimmedMessage) {
-      return "Please send a message.";
+      return 'Please send a message.';
     }
 
     if (trimmedMessage.length > 4096) {
-      return "Message is too long (max 4096 characters).";
+      return 'Message is too long (max 4096 characters).';
     }
 
     // Load memory on first message if adapter is configured
@@ -63,13 +63,13 @@ export class ChatAgent {
     }
 
     // Add user message to history
-    this.messages.push({ role: "user", content: trimmedMessage });
+    this.messages.push({ role: 'user', content: trimmedMessage });
 
     // Format tools for OpenAI API
     const openAITools: OpenAITool[] | undefined =
       this.tools.length > 0
         ? this.tools.map((t) => ({
-            type: "function" as const,
+            type: 'function' as const,
             function: {
               name: t.name,
               description: t.description,
@@ -93,8 +93,8 @@ export class ChatAgent {
 
       // Add assistant message with tool calls indicator
       this.messages.push({
-        role: "assistant",
-        content: response.content || "",
+        role: 'assistant',
+        content: response.content || '',
       });
 
       // Execute each tool call
@@ -103,7 +103,7 @@ export class ChatAgent {
 
         // Add tool result to messages
         this.messages.push({
-          role: "tool",
+          role: 'tool',
           content: result,
           toolCallId: toolCall.id,
           name: toolCall.name,
@@ -115,9 +115,8 @@ export class ChatAgent {
     }
 
     // Add final assistant response
-    const responseText =
-      response.content || "Sorry, I could not generate a response.";
-    this.messages.push({ role: "assistant", content: responseText });
+    const responseText = response.content || 'Sorry, I could not generate a response.';
+    this.messages.push({ role: 'assistant', content: responseText });
 
     // Trim history
     this.messages = trimHistory(this.messages, this.maxHistory);
@@ -247,11 +246,7 @@ export class ChatAgent {
       return;
     }
 
-    await this.memoryAdapter.saveMemory(
-      this.sessionId,
-      this.messages,
-      metadata,
-    );
+    await this.memoryAdapter.saveMemory(this.sessionId, this.messages, metadata);
   }
 
   /**
@@ -259,7 +254,7 @@ export class ChatAgent {
    */
   async searchMemory(
     query: string,
-    options?: { limit?: number },
+    options?: { limit?: number }
   ): Promise<Array<{ sessionId: string; message: Message; score: number }>> {
     if (!this.memoryAdapter?.searchMemory) {
       return [];

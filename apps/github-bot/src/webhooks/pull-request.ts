@@ -5,6 +5,7 @@
  */
 
 import { Octokit } from '@octokit/rest';
+import { logger } from '../logger.js';
 import type { GitHubPullRequest, GitHubRepository, GitHubUser, MentionContext } from '../types.js';
 
 export interface PullRequestEvent {
@@ -77,6 +78,16 @@ export async function handlePullRequestEvent(
     return;
   }
 
+  logger.info('Pull request event received', {
+    action: event.action,
+    repository: `${event.repository.owner.login}/${event.repository.name}`,
+    prNumber: event.pull_request.number,
+    sender: event.sender.login,
+    changedFiles: event.pull_request.changed_files,
+    additions: event.pull_request.additions,
+    deletions: event.pull_request.deletions,
+  });
+
   // Build context
   const context: MentionContext = {
     task: buildTaskForPREvent(event, config),
@@ -96,9 +107,11 @@ export async function handlePullRequestEvent(
     mentionedBy: event.sender,
   };
 
+  const startTime = Date.now();
   try {
     // Execute agent and get response
     const response = await onMention(context);
+    const durationMs = Date.now() - startTime;
 
     // Post response as comment
     await octokit.issues.createComment({
@@ -107,8 +120,24 @@ export async function handlePullRequestEvent(
       issue_number: event.pull_request.number,
       body: response,
     });
+
+    logger.info('Pull request event handled', {
+      action: event.action,
+      repository: `${event.repository.owner.login}/${event.repository.name}`,
+      prNumber: event.pull_request.number,
+      durationMs,
+      responseLength: response.length,
+    });
   } catch (error) {
-    console.error('Error handling pull request event:', error);
+    const durationMs = Date.now() - startTime;
+    logger.error('Error handling pull request event', {
+      action: event.action,
+      repository: `${event.repository.owner.login}/${event.repository.name}`,
+      prNumber: event.pull_request.number,
+      durationMs,
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     // Don't post error for automatic responses to avoid noise
   }
 }
