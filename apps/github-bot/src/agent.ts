@@ -5,15 +5,12 @@
  * a clean, reusable agent pattern with Durable Object state.
  */
 
-import {
-  type CloudflareAgentState,
-  createCloudflareChatAgent,
-} from "@duyetbot/chat-agent";
-import { GITHUB_SYSTEM_PROMPT } from "@duyetbot/prompts";
-import type { Agent, AgentNamespace } from "agents";
-import { logger } from "./logger.js";
-import { type ProviderEnv, createOpenRouterProvider } from "./provider.js";
-import { type GitHubContext, githubTransport } from "./transport.js";
+import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
+import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
+import type { Agent, AgentNamespace } from 'agents';
+import { logger } from './logger.js';
+import { type ProviderEnv, createOpenRouterProvider } from './provider.js';
+import { type GitHubContext, githubTransport } from './transport.js';
 
 /**
  * Base environment without self-reference
@@ -29,7 +26,9 @@ interface BaseEnv extends ProviderEnv {
  * Agent class interface for type safety
  */
 interface GitHubAgentClass {
-  new (...args: unknown[]): Agent<BaseEnv, CloudflareAgentState> & {
+  new (
+    ...args: unknown[]
+  ): Agent<BaseEnv, CloudflareAgentState> & {
     init(userId?: string | number, chatId?: string | number): Promise<void>;
     chat(userMessage: string): Promise<string>;
     clearHistory(): Promise<string>;
@@ -53,8 +52,7 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
   createProvider: (env) => createOpenRouterProvider(env),
   systemPrompt: GITHUB_SYSTEM_PROMPT,
   welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
-  helpMessage:
-    "Mention me with @duyetbot followed by your question or request.",
+  helpMessage: 'Mention me with @duyetbot followed by your question or request.',
   maxHistory: 10, // Reduced to minimize state size and prevent blockConcurrencyWhile timeout
   transport: githubTransport,
   hooks: {
@@ -66,10 +64,10 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
             owner: ctx.owner,
             repo: ctx.repo,
             comment_id: ctx.commentId,
-            content: "eyes",
+            content: 'eyes',
           });
         } catch (error) {
-          logger.warn("[AGENT] Failed to add reaction", {
+          logger.warn('[AGENT] Failed to add reaction', {
             owner: ctx.owner,
             repo: ctx.repo,
             commentId: ctx.commentId,
@@ -79,7 +77,7 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
       }
     },
     onError: async (ctx, error) => {
-      logger.error("[AGENT] Error in handle()", {
+      logger.error('[AGENT] Error in handle()', {
         owner: ctx.owner,
         repo: ctx.repo,
         issueNumber: ctx.issueNumber,
@@ -91,7 +89,7 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
         owner: ctx.owner,
         repo: ctx.repo,
         issue_number: ctx.issueNumber,
-        body: "Sorry, I encountered an error processing your request. Please try again.",
+        body: 'Sorry, I encountered an error processing your request. Please try again.',
       });
     },
   },

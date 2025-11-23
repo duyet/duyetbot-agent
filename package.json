@@ -21,10 +21,11 @@
     "deploy": "concurrently 'bun run deploy:telegram' 'bun run deploy:github' 'bun run deploy:memory-mcp'",
     "deploy:telegram": "turbo run deploy --filter=@duyetbot/telegram-bot && bun run config:telegram",
     "deploy:github": "turbo run deploy --filter=@duyetbot/github-bot && bun run config:github",
-    "deploy:memory-mcp": "bun run --filter @duyetbot/memory-mcp deploy",
+    "deploy:memory-mcp": "bun run --filter @duyetbot/memory-mcp deploy && bun run config:memory-mcp",
     "config": "concurrently 'bun run config:telegram' 'bun run config:github'",
     "config:telegram": "bun scripts/config.ts telegram",
     "config:github": "bun scripts/config.ts github",
+    "config:memory-mcp": "bun scripts/config.ts memory",
     "config:show": "bun scripts/config.ts show"
   },
   "keywords": ["agent", "bot", "cloudflare-workers", "llm", "claude", "automation", "monorepo"],

@@ -5,13 +5,13 @@
  * Simplified: Uses agent.handle() for clean separation of concerns.
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
-import { createBaseApp } from "@duyetbot/hono-middleware";
-import { Octokit } from "@octokit/rest";
-import { getAgentByName } from "agents";
-import { type Env, GitHubAgent } from "./agent.js";
-import { logger } from "./logger.js";
-import { createGitHubContext } from "./transport.js";
+import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createBaseApp } from '@duyetbot/hono-middleware';
+import { Octokit } from '@octokit/rest';
+import { getAgentByName } from 'agents';
+import { type Env, GitHubAgent } from './agent.js';
+import { logger } from './logger.js';
+import { createGitHubContext } from './transport.js';
 
 // Utility exports
 export {
@@ -20,7 +20,7 @@ export {
   extractAllMentions,
   isCommand,
   parseCommand,
-} from "./mention-parser.js";
+} from './mention-parser.js';
 
 // Type exports
 export type {
@@ -29,22 +29,18 @@ export type {
   GitHubPullRequest,
   GitHubComment,
   GitHubUser,
-} from "./types.js";
+} from './types.js';
 
 // Cloudflare Durable Object exports
-export { GitHubAgent } from "./agent.js";
-export type { Env, GitHubAgentInstance } from "./agent.js";
+export { GitHubAgent } from './agent.js';
+export type { Env, GitHubAgentInstance } from './agent.js';
 
 /**
  * Verify GitHub webhook signature
  */
-function verifySignature(
-  payload: string,
-  signature: string,
-  secret: string,
-): boolean {
-  const hmac = createHmac("sha256", secret);
-  const digest = `sha256=${hmac.update(payload).digest("hex")}`;
+function verifySignature(payload: string, signature: string, secret: string): boolean {
+  const hmac = createHmac('sha256', secret);
+  const digest = `sha256=${hmac.update(payload).digest('hex')}`;
   return timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
 }
 
@@ -52,7 +48,7 @@ function verifySignature(
  * Check if text contains bot mention
  */
 function hasBotMention(text: string, botUsername: string): boolean {
-  const mentionPattern = new RegExp(`@${botUsername}\\b`, "i");
+  const mentionPattern = new RegExp(`@${botUsername}\\b`, 'i');
   return mentionPattern.test(text);
 }
 
@@ -60,41 +56,41 @@ function hasBotMention(text: string, botUsername: string): boolean {
  * Extract task from mention (text after @botname)
  */
 function extractTask(text: string, botUsername: string): string {
-  const mentionPattern = new RegExp(`@${botUsername}\\s*`, "i");
-  return text.replace(mentionPattern, "").trim();
+  const mentionPattern = new RegExp(`@${botUsername}\\s*`, 'i');
+  return text.replace(mentionPattern, '').trim();
 }
 
 // Create base app
 const app = createBaseApp<Env>({
-  name: "github-bot",
-  version: "2.0.0",
+  name: 'github-bot',
+  version: '2.0.0',
   logger: true,
   health: true,
-  ignorePaths: ["/cdn-cgi/"],
+  ignorePaths: ['/cdn-cgi/'],
 });
 
 // Webhook endpoint with Transport Layer pattern
-app.post("/webhook", async (c) => {
+app.post('/webhook', async (c) => {
   const env = c.env;
   const body = await c.req.text();
 
   // Verify signature
-  const signature = c.req.header("x-hub-signature-256");
+  const signature = c.req.header('x-hub-signature-256');
   if (signature && env.GITHUB_WEBHOOK_SECRET) {
     if (!verifySignature(body, signature, env.GITHUB_WEBHOOK_SECRET)) {
-      return c.json({ error: "Invalid signature" }, 401);
+      return c.json({ error: 'Invalid signature' }, 401);
     }
   }
 
   // Parse event
-  const event = c.req.header("x-github-event");
+  const event = c.req.header('x-github-event');
   const payload = JSON.parse(body);
-  const botUsername = env.BOT_USERNAME || "duyetbot";
+  const botUsername = env.BOT_USERNAME || 'duyetbot';
 
-  const repo = payload.repository?.full_name || "unknown";
-  const action = payload.action || "unknown";
+  const repo = payload.repository?.full_name || 'unknown';
+  const action = payload.action || 'unknown';
 
-  logger.info("[WEBHOOK] Received", {
+  logger.info('[WEBHOOK] Received', {
     event,
     action,
     repository: repo,
@@ -103,23 +99,23 @@ app.post("/webhook", async (c) => {
 
   try {
     // Handle issue_comment events with Transport Layer
-    if (event === "issue_comment" && action === "created") {
+    if (event === 'issue_comment' && action === 'created') {
       const comment = payload.comment;
       const issue = payload.issue;
 
       // Check for bot mention
       if (!hasBotMention(comment.body, botUsername)) {
-        logger.debug("[WEBHOOK] No bot mention, skipping", {
+        logger.debug('[WEBHOOK] No bot mention, skipping', {
           repository: repo,
         });
-        return c.json({ ok: true, skipped: "no_mention" });
+        return c.json({ ok: true, skipped: 'no_mention' });
       }
 
       // Extract task from mention
       const task = extractTask(comment.body, botUsername);
       if (!task) {
-        logger.debug("[WEBHOOK] Empty task, skipping", { repository: repo });
-        return c.json({ ok: true, skipped: "empty_task" });
+        logger.debug('[WEBHOOK] Empty task, skipping', { repository: repo });
+        return c.json({ ok: true, skipped: 'empty_task' });
       }
 
       // Create Octokit instance
@@ -133,34 +129,34 @@ app.post("/webhook", async (c) => {
         issue.number,
         task,
         payload.sender,
-        comment.id,
+        comment.id
       );
 
       // Get agent by name (issue-based session)
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
-      logger.info("[WEBHOOK] Getting agent", { agentId });
+      logger.info('[WEBHOOK] Getting agent', { agentId });
 
       const agent = await getAgentByName(env.GitHubAgent, agentId);
 
       // Agent handles everything: parsing, LLM call, sending response
       await agent.handle(ctx);
 
-      logger.info("[WEBHOOK] Processed", { event, repository: repo, agentId });
+      logger.info('[WEBHOOK] Processed', { event, repository: repo, agentId });
       return c.json({ ok: true });
     }
 
     // Handle pull_request_review_comment events
-    if (event === "pull_request_review_comment" && action === "created") {
+    if (event === 'pull_request_review_comment' && action === 'created') {
       const comment = payload.comment;
       const pr = payload.pull_request;
 
       if (!hasBotMention(comment.body, botUsername)) {
-        return c.json({ ok: true, skipped: "no_mention" });
+        return c.json({ ok: true, skipped: 'no_mention' });
       }
 
       const task = extractTask(comment.body, botUsername);
       if (!task) {
-        return c.json({ ok: true, skipped: "empty_task" });
+        return c.json({ ok: true, skipped: 'empty_task' });
       }
 
       const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
@@ -171,7 +167,7 @@ app.post("/webhook", async (c) => {
         pr.number,
         task,
         payload.sender,
-        comment.id,
+        comment.id
       );
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${pr.number}`;
@@ -182,16 +178,16 @@ app.post("/webhook", async (c) => {
     }
 
     // Handle issues with bot mention in body
-    if (event === "issues" && (action === "opened" || action === "edited")) {
+    if (event === 'issues' && (action === 'opened' || action === 'edited')) {
       const issue = payload.issue;
 
-      if (!hasBotMention(issue.body || "", botUsername)) {
-        return c.json({ ok: true, skipped: "no_mention" });
+      if (!hasBotMention(issue.body || '', botUsername)) {
+        return c.json({ ok: true, skipped: 'no_mention' });
       }
 
-      const task = extractTask(issue.body || "", botUsername);
+      const task = extractTask(issue.body || '', botUsername);
       if (!task) {
-        return c.json({ ok: true, skipped: "empty_task" });
+        return c.json({ ok: true, skipped: 'empty_task' });
       }
 
       const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
@@ -201,7 +197,7 @@ app.post("/webhook", async (c) => {
         payload.repository.name,
         issue.number,
         task,
-        payload.sender,
+        payload.sender
       );
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
@@ -212,26 +208,26 @@ app.post("/webhook", async (c) => {
     }
 
     // Handle ping
-    if (event === "ping") {
-      logger.info("[WEBHOOK] Ping received", { repository: repo });
-      return c.json({ ok: true, event: "ping" });
+    if (event === 'ping') {
+      logger.info('[WEBHOOK] Ping received', { repository: repo });
+      return c.json({ ok: true, event: 'ping' });
     }
 
     // Other events - log and skip
-    logger.debug("[WEBHOOK] Unhandled event", {
+    logger.debug('[WEBHOOK] Unhandled event', {
       event,
       action,
       repository: repo,
     });
-    return c.json({ ok: true, skipped: "unhandled_event" });
+    return c.json({ ok: true, skipped: 'unhandled_event' });
   } catch (error) {
-    logger.error("[WEBHOOK] Error", {
+    logger.error('[WEBHOOK] Error', {
       event,
       repository: repo,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
     });
-    return c.json({ error: "Internal error" }, 500);
+    return c.json({ error: 'Internal error' }, 500);
   }
 });
 

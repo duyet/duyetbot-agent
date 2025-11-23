@@ -32,7 +32,7 @@ new_sqlite_classes = ["MemoryMcpAgent"]
 [[d1_databases]]
 binding = "DB"
 database_name = "duyetbot-memory"
-database_id = "fe0f46f3-0467-4b08-9178-aed15b58b00e"
+database_id = "${D1_DATABASE_ID}"
 
 # Service entrypoint for RPC calls from other workers
 [[services]]
