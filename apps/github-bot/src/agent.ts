@@ -19,6 +19,9 @@ interface BaseEnv extends ProviderEnv {
   GITHUB_TOKEN: string;
   GITHUB_WEBHOOK_SECRET?: string;
   BOT_USERNAME?: string;
+
+  // Memory MCP (optional - auto-configured with defaults)
+  MEMORY_MCP_TOKEN?: string;
 }
 
 /**
@@ -41,6 +44,9 @@ interface GitHubAgentClass {
 
 /**
  * GitHub Agent - Cloudflare Durable Object with ChatAgent
+ *
+ * Memory is auto-configured with default MCP URL.
+ * Sessions are identified by github:{context}.
  */
 export const GitHubAgent = createCloudflareChatAgent<BaseEnv>({
   createProvider: (env) => createOpenRouterProvider(env),
@@ -48,6 +54,17 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv>({
   maxHistory: 30, // More history for complex GitHub conversations
   tools: githubTools,
   // Note: onToolCall is set dynamically per request with context
+  // Session ID for memory persistence
+  getSessionId: (userId, chatId) => {
+    // userId is typically the GitHub context like "owner/repo:issue:123"
+    if (userId) {
+      return `github:${userId}`;
+    }
+    if (chatId) {
+      return `github:${chatId}`;
+    }
+    return undefined;
+  },
 }) as unknown as GitHubAgentClass;
 
 /**

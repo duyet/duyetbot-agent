@@ -8,6 +8,8 @@
 import { Agent, type AgentNamespace } from 'agents';
 import { ChatAgent } from './agent.js';
 import { createAgent } from './factory.js';
+import { DEFAULT_MEMORY_MCP_URL, createResilientMCPMemoryAdapter } from './mcp-memory-adapter.js';
+import type { MemoryAdapter } from './memory-adapter.js';
 import type { LLMProvider, Message, Tool, ToolExecutor } from './types.js';
 
 /**
@@ -40,6 +42,14 @@ export interface CloudflareAgentConfig<TEnv> {
   tools?: Tool[];
   /** Tool executor */
   onToolCall?: (env: TEnv) => ToolExecutor;
+  /** Optional: Override memory MCP URL (defaults to DEFAULT_MEMORY_MCP_URL) */
+  memoryMCPUrl?: string;
+  /** Optional: Disable memory adapter entirely */
+  disableMemory?: boolean;
+  /** Optional: Custom memory adapter (overrides auto-config) */
+  createMemoryAdapter?: (env: TEnv) => MemoryAdapter | undefined;
+  /** Function to generate session ID from context */
+  getSessionId?: (userId?: string | number, chatId?: string | number) => string | undefined;
 }
 
 /**
@@ -72,6 +82,30 @@ export function createCloudflareChatAgent<TEnv>(
     _chatAgent: ChatAgent | null = null;
 
     /**
+     * Schedule state update asynchronously to avoid blockConcurrencyWhile timeout
+     * @internal
+     */
+    _scheduleStateUpdate(newState: CloudflareAgentState): void {
+      // Use direct storage to avoid blockConcurrencyWhile timeout
+      // The Agent base class stores state under 'state' key
+      const ctx = (
+        this as unknown as {
+          ctx: {
+            waitUntil: (p: Promise<unknown>) => void;
+            storage: { put: (key: string, value: unknown) => Promise<void> };
+          };
+        }
+      ).ctx;
+      ctx.waitUntil(
+        ctx.storage.put('state', newState).catch((err) => {
+          console.error('Failed to persist state:', err);
+        })
+      );
+      // Update in-memory state immediately for consistency
+      (this as unknown as { state: CloudflareAgentState }).state = newState;
+    }
+
+    /**
      * Lazily initialize ChatAgent on first use
      * @internal
      */
@@ -81,12 +115,42 @@ export function createCloudflareChatAgent<TEnv>(
         const env = (this as unknown as { env: TEnv }).env;
         const llmProvider = config.createProvider(env);
 
+        // Generate session ID
+        const sessionId = config.getSessionId
+          ? config.getSessionId(this.state.userId, this.state.chatId)
+          : this._generateDefaultSessionId();
+
+        // Resolve memory adapter
+        // Priority: 1. Custom adapter, 2. Auto-config (unless disabled)
+        let memoryAdapter: MemoryAdapter | undefined;
+
+        if (config.createMemoryAdapter) {
+          // Use custom adapter if provided
+          memoryAdapter = config.createMemoryAdapter(env);
+        } else if (!config.disableMemory) {
+          // Auto-configure with resilient adapter
+          const memoryUrl = config.memoryMCPUrl || DEFAULT_MEMORY_MCP_URL;
+          const token = (env as Record<string, unknown>).MEMORY_MCP_TOKEN as string | undefined;
+
+          try {
+            memoryAdapter = createResilientMCPMemoryAdapter({
+              baseURL: memoryUrl,
+              token,
+            });
+          } catch (err) {
+            console.warn('Memory MCP unavailable, continuing without memory:', err);
+            memoryAdapter = undefined;
+          }
+        }
+
         this._chatAgent = createAgent({
           llmProvider,
           systemPrompt: config.systemPrompt,
           maxHistory: config.maxHistory ?? 20,
           ...(config.tools && { tools: config.tools }),
           ...(config.onToolCall && { onToolCall: config.onToolCall(env) }),
+          ...(memoryAdapter && { memoryAdapter }),
+          ...(sessionId && { sessionId }),
         });
 
         // Restore messages from state
@@ -96,6 +160,21 @@ export function createCloudflareChatAgent<TEnv>(
       }
 
       return this._chatAgent;
+    }
+
+    /**
+     * Generate default session ID from state
+     * @internal
+     */
+    _generateDefaultSessionId(): string | undefined {
+      const { userId, chatId } = this.state;
+      if (chatId) {
+        return `session:${chatId}`;
+      }
+      if (userId) {
+        return `session:${userId}`;
+      }
+      return undefined;
     }
 
     /**
@@ -120,12 +199,16 @@ export function createCloudflareChatAgent<TEnv>(
      * Chat with the agent
      */
     async chat(userMessage: string): Promise<string> {
+      // Access state early to trigger lazy loading before LLM call
+      // This prevents blockConcurrencyWhile timeout during long LLM operations
+      void this.state.messages;
+
       const agent = this._ensureInitialized();
 
       const response = await agent.chat(userMessage);
 
-      // Persist messages to Durable Object state
-      this.setState({
+      // Persist messages asynchronously to avoid blockConcurrencyWhile timeout
+      this._scheduleStateUpdate({
         ...this.state,
         messages: agent.getMessages(),
         updatedAt: Date.now(),

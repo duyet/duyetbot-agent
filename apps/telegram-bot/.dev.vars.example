@@ -7,4 +7,7 @@ AI_GATEWAY_NAME=your-gateway-name
 
 # Optional
 TELEGRAM_WEBHOOK_SECRET=your_webhook_secret
-TELEGRAM_ALLOWED_USERS=123456789,987654321
+
+# Memory MCP (defaults work out of box)
+MEMORY_MCP_URL=https://duyetbot-memory.duyet.workers.dev
+MEMORY_MCP_TOKEN=duyetbot-X9J

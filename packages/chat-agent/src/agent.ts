@@ -2,7 +2,9 @@
  * ChatAgent - Reusable chat agent with LLM and tool support
  */
 
-import { formatForLLM, trimHistory } from './history.js';
+import { formatForLLM, trimHistory } from "./history.js";
+import type { MemoryAdapter } from "./memory-adapter.js";
+import { fromMemoryMessage } from "./memory-adapter.js";
 import type {
   ChatAgentConfig,
   LLMProvider,
@@ -11,7 +13,7 @@ import type {
   Tool,
   ToolCall,
   ToolExecutor,
-} from './types.js';
+} from "./types.js";
 
 /**
  * ChatAgent handles conversation with LLM including tool calling
@@ -24,6 +26,10 @@ export class ChatAgent {
   private tools: Tool[];
   private onToolCall: ToolExecutor | undefined;
   private maxToolIterations: number;
+  private memoryAdapter: MemoryAdapter | undefined;
+  private sessionId: string | undefined;
+  private autoSave: boolean;
+  private memoryLoaded = false;
 
   constructor(config: ChatAgentConfig) {
     this.llmProvider = config.llmProvider;
@@ -32,6 +38,9 @@ export class ChatAgent {
     this.tools = config.tools ?? [];
     this.onToolCall = config.onToolCall;
     this.maxToolIterations = config.maxToolIterations ?? 5;
+    this.memoryAdapter = config.memoryAdapter;
+    this.sessionId = config.sessionId;
+    this.autoSave = config.autoSave ?? config.memoryAdapter !== undefined;
   }
 
   /**
@@ -41,21 +50,26 @@ export class ChatAgent {
     const trimmedMessage = userMessage.trim();
 
     if (!trimmedMessage) {
-      return 'Please send a message.';
+      return "Please send a message.";
     }
 
     if (trimmedMessage.length > 4096) {
-      return 'Message is too long (max 4096 characters).';
+      return "Message is too long (max 4096 characters).";
+    }
+
+    // Load memory on first message if adapter is configured
+    if (this.memoryAdapter && this.sessionId && !this.memoryLoaded) {
+      await this.loadMemory();
     }
 
     // Add user message to history
-    this.messages.push({ role: 'user', content: trimmedMessage });
+    this.messages.push({ role: "user", content: trimmedMessage });
 
     // Format tools for OpenAI API
     const openAITools: OpenAITool[] | undefined =
       this.tools.length > 0
         ? this.tools.map((t) => ({
-            type: 'function' as const,
+            type: "function" as const,
             function: {
               name: t.name,
               description: t.description,
@@ -79,8 +93,8 @@ export class ChatAgent {
 
       // Add assistant message with tool calls indicator
       this.messages.push({
-        role: 'assistant',
-        content: response.content || '',
+        role: "assistant",
+        content: response.content || "",
       });
 
       // Execute each tool call
@@ -89,7 +103,7 @@ export class ChatAgent {
 
         // Add tool result to messages
         this.messages.push({
-          role: 'tool',
+          role: "tool",
           content: result,
           toolCallId: toolCall.id,
           name: toolCall.name,
@@ -101,11 +115,17 @@ export class ChatAgent {
     }
 
     // Add final assistant response
-    const responseText = response.content || 'Sorry, I could not generate a response.';
-    this.messages.push({ role: 'assistant', content: responseText });
+    const responseText =
+      response.content || "Sorry, I could not generate a response.";
+    this.messages.push({ role: "assistant", content: responseText });
 
     // Trim history
     this.messages = trimHistory(this.messages, this.maxHistory);
+
+    // Auto-save if configured
+    if (this.autoSave && this.memoryAdapter && this.sessionId) {
+      await this.saveMemory();
+    }
 
     return responseText;
   }
@@ -174,5 +194,82 @@ export class ChatAgent {
    */
   setSystemPrompt(prompt: string): void {
     this.systemPrompt = prompt;
+  }
+
+  /**
+   * Set session ID for memory persistence
+   */
+  setSessionId(sessionId: string): void {
+    this.sessionId = sessionId;
+    this.memoryLoaded = false;
+  }
+
+  /**
+   * Get current session ID
+   */
+  getSessionId(): string | undefined {
+    return this.sessionId;
+  }
+
+  /**
+   * Set memory adapter
+   */
+  setMemoryAdapter(adapter: MemoryAdapter): void {
+    this.memoryAdapter = adapter;
+    this.memoryLoaded = false;
+  }
+
+  /**
+   * Load messages from memory adapter
+   */
+  async loadMemory(): Promise<void> {
+    if (!this.memoryAdapter || !this.sessionId) {
+      return;
+    }
+
+    try {
+      const data = await this.memoryAdapter.getMemory(this.sessionId);
+      if (data.messages.length > 0) {
+        this.messages = data.messages.map(fromMemoryMessage);
+      }
+      this.memoryLoaded = true;
+    } catch {
+      // Session may not exist yet, that's okay
+      this.memoryLoaded = true;
+    }
+  }
+
+  /**
+   * Save messages to memory adapter
+   */
+  async saveMemory(metadata?: Record<string, unknown>): Promise<void> {
+    if (!this.memoryAdapter || !this.sessionId) {
+      return;
+    }
+
+    await this.memoryAdapter.saveMemory(
+      this.sessionId,
+      this.messages,
+      metadata,
+    );
+  }
+
+  /**
+   * Search memory
+   */
+  async searchMemory(
+    query: string,
+    options?: { limit?: number },
+  ): Promise<Array<{ sessionId: string; message: Message; score: number }>> {
+    if (!this.memoryAdapter?.searchMemory) {
+      return [];
+    }
+
+    const results = await this.memoryAdapter.searchMemory(query, options);
+    return results.map((r) => ({
+      sessionId: r.sessionId,
+      message: fromMemoryMessage(r.message),
+      score: r.score,
+    }));
   }
 }
