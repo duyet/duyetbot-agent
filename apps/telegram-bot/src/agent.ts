@@ -5,18 +5,16 @@
  * a clean, reusable agent pattern.
  */
 
-import {
-  type CloudflareAgentState,
-  type MemoryServiceBinding,
-  createCloudflareChatAgent,
-} from "@duyetbot/chat-agent";
+import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
+import { logger } from '@duyetbot/hono-middleware';
 import {
   TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
-} from "@duyetbot/prompts";
-import type { Agent, AgentNamespace } from "agents";
-import { type ProviderEnv, createAIGatewayProvider } from "./provider.js";
+} from '@duyetbot/prompts';
+import type { Agent, AgentNamespace } from 'agents';
+import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
+import { type TelegramContext, telegramTransport } from './transport.js';
 
 /**
  * Base environment without self-reference
@@ -31,19 +29,15 @@ interface BaseEnv extends ProviderEnv {
   TELEGRAM_ADMIN?: string; // Admin username for verbose error messages
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
-
-  // Memory MCP (optional - auto-configured with defaults)
-  MEMORY_MCP_TOKEN?: string;
-
-  // Service binding for Memory MCP (preferred over REST)
-  MEMORY_SERVICE?: MemoryServiceBinding;
 }
 
 /**
  * Agent class interface for type safety
  */
 interface TelegramAgentClass {
-  new (...args: unknown[]): Agent<BaseEnv, CloudflareAgentState> & {
+  new (
+    ...args: unknown[]
+  ): Agent<BaseEnv, CloudflareAgentState> & {
     init(userId?: string | number, chatId?: string | number): Promise<void>;
     chat(userMessage: string): Promise<string>;
     clearHistory(): Promise<string>;
@@ -52,28 +46,40 @@ interface TelegramAgentClass {
     getMessageCount(): number;
     setMetadata(metadata: Record<string, unknown>): void;
     getMetadata(): Record<string, unknown> | undefined;
+    handleCommand(text: string): string;
+    handle(ctx: TelegramContext): Promise<void>;
   };
 }
 
 /**
  * Telegram Agent - Cloudflare Durable Object with ChatAgent
  *
- * Memory is auto-configured with default MCP URL.
+ * Simplified: No MCP memory, no tools - just LLM chat with DO state persistence.
  * Sessions are identified by telegram:{chatId}.
  */
-export const TelegramAgent = createCloudflareChatAgent<BaseEnv>({
+export const TelegramAgent = createCloudflareChatAgent<BaseEnv, TelegramContext>({
   createProvider: (env) => createAIGatewayProvider(env),
   systemPrompt: TELEGRAM_SYSTEM_PROMPT,
   welcomeMessage: TELEGRAM_WELCOME_MESSAGE,
   helpMessage: TELEGRAM_HELP_MESSAGE,
-  maxHistory: 20,
-  // Session ID for memory persistence
-  getSessionId: (userId, chatId) => `telegram:${chatId || userId}`,
-  // Use service binding for fast, non-blocking memory operations
-  getMemoryService: (env) => env.MEMORY_SERVICE,
-  // Get user ID for memory operations
-  getMemoryUserId: (state) =>
-    state.userId ? `telegram:${state.userId}` : undefined,
+  transport: telegramTransport,
+  hooks: {
+    onError: async (ctx, error) => {
+      logger.error('[AGENT] Error in handle()', {
+        userId: ctx.userId,
+        chatId: ctx.chatId,
+        error: error.message,
+      });
+
+      // Send error message to user
+      const isAdmin = ctx.adminUsername && ctx.username === ctx.adminUsername;
+      const errorMessage = isAdmin
+        ? `❌ Error: ${error.message}`
+        : '❌ Sorry, an error occurred. Please try again later.';
+
+      await telegramTransport.send(ctx, errorMessage);
+    },
+  },
 }) as unknown as TelegramAgentClass;
 
 /**

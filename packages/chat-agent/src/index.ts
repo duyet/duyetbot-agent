@@ -5,10 +5,10 @@
  */
 
 // Core agent
-export { ChatAgent } from './agent.js';
+export { ChatAgent } from "./agent.js";
 
 // Factory
-export { createAgent } from './factory.js';
+export { createAgent } from "./factory.js";
 
 // Memory adapters
 export type {
@@ -18,8 +18,8 @@ export type {
   MemorySearchResult,
   SaveMemoryResult,
   SessionInfo,
-} from './memory-adapter.js';
-export { fromMemoryMessage, toMemoryMessage } from './memory-adapter.js';
+} from "./memory-adapter.js";
+export { fromMemoryMessage, toMemoryMessage } from "./memory-adapter.js";
 
 export {
   createMCPMemoryAdapter,
@@ -29,7 +29,7 @@ export {
   MCPMemoryAdapterError,
   ResilientMCPMemoryAdapter,
   type MCPMemoryAdapterConfig,
-} from './mcp-memory-adapter.js';
+} from "./mcp-memory-adapter.js";
 
 // Service binding adapter (for Cloudflare Workers)
 export {
@@ -37,7 +37,7 @@ export {
   ServiceBindingMemoryAdapter,
   type MemoryServiceBinding,
   type ServiceBindingMemoryAdapterConfig,
-} from './service-binding-adapter.js';
+} from "./service-binding-adapter.js";
 
 // Cloudflare Durable Object wrapper
 export {
@@ -45,7 +45,15 @@ export {
   type CloudflareAgentConfig,
   type CloudflareAgentState,
   type CloudflareChatAgentNamespace,
-} from './cloudflare-agent.js';
+} from "./cloudflare-agent.js";
+
+// Transport layer
+export type {
+  MessageRef,
+  ParsedInput,
+  Transport,
+  TransportHooks,
+} from "./transport.js";
 
 // Types
 export type {
@@ -60,7 +68,7 @@ export type {
   Tool,
   ToolCall,
   ToolExecutor,
-} from './types.js';
+} from "./types.js";
 
 // Utilities
-export { formatForLLM, getMessageText, trimHistory } from './history.js';
+export { formatForLLM, getMessageText, trimHistory } from "./history.js";

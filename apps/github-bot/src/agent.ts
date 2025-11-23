@@ -5,11 +5,15 @@
  * a clean, reusable agent pattern with Durable Object state.
  */
 
-import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
-import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
-import type { Agent, AgentNamespace } from 'agents';
-import { type ProviderEnv, createOpenRouterProvider } from './provider.js';
-import { githubTools } from './tools/index.js';
+import {
+  type CloudflareAgentState,
+  createCloudflareChatAgent,
+} from "@duyetbot/chat-agent";
+import { GITHUB_SYSTEM_PROMPT } from "@duyetbot/prompts";
+import type { Agent, AgentNamespace } from "agents";
+import { logger } from "./logger.js";
+import { type ProviderEnv, createOpenRouterProvider } from "./provider.js";
+import { type GitHubContext, githubTransport } from "./transport.js";
 
 /**
  * Base environment without self-reference
@@ -19,18 +23,13 @@ interface BaseEnv extends ProviderEnv {
   GITHUB_TOKEN: string;
   GITHUB_WEBHOOK_SECRET?: string;
   BOT_USERNAME?: string;
-
-  // Memory MCP (optional - auto-configured with defaults)
-  MEMORY_MCP_TOKEN?: string;
 }
 
 /**
  * Agent class interface for type safety
  */
 interface GitHubAgentClass {
-  new (
-    ...args: unknown[]
-  ): Agent<BaseEnv, CloudflareAgentState> & {
+  new (...args: unknown[]): Agent<BaseEnv, CloudflareAgentState> & {
     init(userId?: string | number, chatId?: string | number): Promise<void>;
     chat(userMessage: string): Promise<string>;
     clearHistory(): Promise<string>;
@@ -39,31 +38,62 @@ interface GitHubAgentClass {
     getMessageCount(): number;
     setMetadata(metadata: Record<string, unknown>): void;
     getMetadata(): Record<string, unknown> | undefined;
+    handleCommand(text: string): string;
+    handle(ctx: GitHubContext): Promise<void>;
   };
 }
 
 /**
  * GitHub Agent - Cloudflare Durable Object with ChatAgent
  *
- * Memory is auto-configured with default MCP URL.
+ * Simplified: No MCP memory, no tools - just LLM chat with DO state persistence.
  * Sessions are identified by github:{context}.
  */
-export const GitHubAgent = createCloudflareChatAgent<BaseEnv>({
+export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
   createProvider: (env) => createOpenRouterProvider(env),
   systemPrompt: GITHUB_SYSTEM_PROMPT,
-  maxHistory: 30, // More history for complex GitHub conversations
-  tools: githubTools,
-  // Note: onToolCall is set dynamically per request with context
-  // Session ID for memory persistence
-  getSessionId: (userId, chatId) => {
-    // userId is typically the GitHub context like "owner/repo:issue:123"
-    if (userId) {
-      return `github:${userId}`;
-    }
-    if (chatId) {
-      return `github:${chatId}`;
-    }
-    return undefined;
+  welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
+  helpMessage:
+    "Mention me with @duyetbot followed by your question or request.",
+  maxHistory: 10, // Reduced to minimize state size and prevent blockConcurrencyWhile timeout
+  transport: githubTransport,
+  hooks: {
+    beforeHandle: async (ctx) => {
+      // Add "eyes" reaction to acknowledge we're processing
+      if (ctx.commentId) {
+        try {
+          await ctx.octokit.reactions.createForIssueComment({
+            owner: ctx.owner,
+            repo: ctx.repo,
+            comment_id: ctx.commentId,
+            content: "eyes",
+          });
+        } catch (error) {
+          logger.warn("[AGENT] Failed to add reaction", {
+            owner: ctx.owner,
+            repo: ctx.repo,
+            commentId: ctx.commentId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+      }
+    },
+    onError: async (ctx, error) => {
+      logger.error("[AGENT] Error in handle()", {
+        owner: ctx.owner,
+        repo: ctx.repo,
+        issueNumber: ctx.issueNumber,
+        error: error.message,
+      });
+
+      // Send error message as comment
+      await ctx.octokit.issues.createComment({
+        owner: ctx.owner,
+        repo: ctx.repo,
+        issue_number: ctx.issueNumber,
+        body: "Sorry, I encountered an error processing your request. Please try again.",
+      });
+    },
   },
 }) as unknown as GitHubAgentClass;
 
