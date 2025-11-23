@@ -7,6 +7,7 @@
 
 import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
 import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
+import { Octokit } from '@octokit/rest';
 import type { Agent, AgentNamespace } from 'agents';
 import { logger } from './logger.js';
 import { type ProviderEnv, createOpenRouterProvider } from './provider.js';
@@ -60,7 +61,8 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
       // Add "eyes" reaction to acknowledge we're processing
       if (ctx.commentId) {
         try {
-          await ctx.octokit.reactions.createForIssueComment({
+          const octokit = new Octokit({ auth: ctx.githubToken });
+          await octokit.reactions.createForIssueComment({
             owner: ctx.owner,
             repo: ctx.repo,
             comment_id: ctx.commentId,
@@ -85,7 +87,8 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
       });
 
       // Send error message as comment
-      await ctx.octokit.issues.createComment({
+      const octokit = new Octokit({ auth: ctx.githubToken });
+      await octokit.issues.createComment({
         owner: ctx.owner,
         repo: ctx.repo,
         issue_number: ctx.issueNumber,

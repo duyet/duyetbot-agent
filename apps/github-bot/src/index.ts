@@ -7,7 +7,6 @@
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createBaseApp } from '@duyetbot/hono-middleware';
-import { Octokit } from '@octokit/rest';
 import { getAgentByName } from 'agents';
 import { type Env, GitHubAgent } from './agent.js';
 import { logger } from './logger.js';
@@ -118,12 +117,9 @@ app.post('/webhook', async (c) => {
         return c.json({ ok: true, skipped: 'empty_task' });
       }
 
-      // Create Octokit instance
-      const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
-
-      // Create transport context
+      // Create transport context (serializable for DO RPC)
       const ctx = createGitHubContext(
-        octokit,
+        env.GITHUB_TOKEN,
         payload.repository.owner.login,
         payload.repository.name,
         issue.number,
@@ -159,9 +155,8 @@ app.post('/webhook', async (c) => {
         return c.json({ ok: true, skipped: 'empty_task' });
       }
 
-      const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
       const ctx = createGitHubContext(
-        octokit,
+        env.GITHUB_TOKEN,
         payload.repository.owner.login,
         payload.repository.name,
         pr.number,
@@ -190,9 +185,8 @@ app.post('/webhook', async (c) => {
         return c.json({ ok: true, skipped: 'empty_task' });
       }
 
-      const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
       const ctx = createGitHubContext(
-        octokit,
+        env.GITHUB_TOKEN,
         payload.repository.owner.login,
         payload.repository.name,
         issue.number,

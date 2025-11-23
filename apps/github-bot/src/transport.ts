@@ -5,15 +5,19 @@
  */
 
 import type { MessageRef, ParsedInput, Transport } from '@duyetbot/chat-agent';
-import type { Octokit } from '@octokit/rest';
+import { Octokit } from '@octokit/rest';
 import { logger } from './logger.js';
 
 /**
  * GitHub-specific context for transport operations
+ *
+ * Note: This context must be serializable for Cloudflare Durable Object RPC.
+ * We pass the GitHub token instead of an Octokit instance, and create
+ * Octokit lazily in transport methods.
  */
 export interface GitHubContext {
-  /** Octokit instance for API calls */
-  octokit: Octokit;
+  /** GitHub token for API calls (serializable) */
+  githubToken: string;
   /** Repository owner */
   owner: string;
   /** Repository name */
@@ -54,7 +58,8 @@ export const githubTransport: Transport<GitHubContext> = {
       textLength: text.length,
     });
 
-    const result = await ctx.octokit.issues.createComment({
+    const octokit = new Octokit({ auth: ctx.githubToken });
+    const result = await octokit.issues.createComment({
       owner: ctx.owner,
       repo: ctx.repo,
       issue_number: ctx.issueNumber,
@@ -79,7 +84,8 @@ export const githubTransport: Transport<GitHubContext> = {
       textLength: text.length,
     });
 
-    await ctx.octokit.issues.updateComment({
+    const octokit = new Octokit({ auth: ctx.githubToken });
+    await octokit.issues.updateComment({
       owner: ctx.owner,
       repo: ctx.repo,
       comment_id: ref as number,
@@ -101,7 +107,8 @@ export const githubTransport: Transport<GitHubContext> = {
       emoji,
     });
 
-    await ctx.octokit.reactions.createForIssueComment({
+    const octokit = new Octokit({ auth: ctx.githubToken });
+    await octokit.reactions.createForIssueComment({
       owner: ctx.owner,
       repo: ctx.repo,
       comment_id: ref as number,
@@ -133,7 +140,7 @@ export const githubTransport: Transport<GitHubContext> = {
 /**
  * Create GitHubContext from webhook payload
  *
- * @param octokit - Octokit instance
+ * @param githubToken - GitHub token for API calls
  * @param owner - Repository owner
  * @param repo - Repository name
  * @param issueNumber - Issue or PR number
@@ -142,7 +149,7 @@ export const githubTransport: Transport<GitHubContext> = {
  * @param commentId - Comment ID if replying to a comment
  */
 export function createGitHubContext(
-  octokit: Octokit,
+  githubToken: string,
   owner: string,
   repo: string,
   issueNumber: number,
@@ -151,7 +158,7 @@ export function createGitHubContext(
   commentId?: number
 ): GitHubContext {
   const ctx: GitHubContext = {
-    octokit,
+    githubToken,
     owner,
     repo,
     issueNumber,
