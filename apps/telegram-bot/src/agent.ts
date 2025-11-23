@@ -5,7 +5,11 @@
  * a clean, reusable agent pattern.
  */
 
-import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
+import {
+  type CloudflareAgentState,
+  type MCPServerConnection,
+  createCloudflareChatAgent,
+} from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   TELEGRAM_HELP_MESSAGE,
@@ -15,6 +19,18 @@ import {
 import type { Agent, AgentNamespace } from 'agents';
 import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
+
+/**
+ * GitHub MCP server configuration
+ */
+const githubMcpServer: MCPServerConnection = {
+  name: 'github-mcp',
+  url: 'https://api.githubcopilot.com/mcp/sse',
+  getAuthHeader: (env) => {
+    const token = env.GITHUB_TOKEN as string | undefined;
+    return token ? `Bearer ${token}` : undefined;
+  },
+};
 
 /**
  * Base environment without self-reference
@@ -63,6 +79,7 @@ export const TelegramAgent = createCloudflareChatAgent<BaseEnv, TelegramContext>
   welcomeMessage: TELEGRAM_WELCOME_MESSAGE,
   helpMessage: TELEGRAM_HELP_MESSAGE,
   transport: telegramTransport,
+  mcpServers: [githubMcpServer],
   hooks: {
     onError: async (ctx, error) => {
       logger.error('[AGENT] Error in handle()', {

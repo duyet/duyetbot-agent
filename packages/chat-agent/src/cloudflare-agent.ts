@@ -8,7 +8,19 @@
 import { Agent, type AgentNamespace, type Connection } from 'agents';
 import { trimHistory } from './history.js';
 import type { Transport, TransportHooks } from './transport.js';
-import type { LLMProvider, Message } from './types.js';
+import type { LLMProvider, Message, OpenAITool } from './types.js';
+
+/**
+ * MCP server configuration for connecting to external MCP servers
+ */
+export interface MCPServerConnection {
+  /** Unique name for this MCP server connection */
+  name: string;
+  /** URL of the MCP server (SSE endpoint) */
+  url: string;
+  /** Function to get authorization header value from env */
+  getAuthHeader?: (env: Record<string, unknown>) => string | undefined;
+}
 
 /**
  * State persisted in Durable Object
@@ -43,6 +55,8 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   transport?: Transport<TContext>;
   /** Lifecycle hooks for handle() method */
   hooks?: TransportHooks<TContext>;
+  /** MCP servers to connect to for tool capabilities */
+  mcpServers?: MCPServerConnection[];
 }
 
 // Re-export types for backward compatibility
@@ -69,6 +83,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
   const maxHistory = config.maxHistory ?? 100;
   const transport = config.transport;
   const hooks = config.hooks;
+  const mcpServers = config.mcpServers ?? [];
 
   return class CloudflareChatAgent extends Agent<TEnv, CloudflareAgentState> {
     override initialState: CloudflareAgentState = {
@@ -76,6 +91,57 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
+
+    private _mcpInitialized = false;
+
+    /**
+     * Initialize MCP server connections
+     */
+    async initMcp(): Promise<void> {
+      if (this._mcpInitialized || mcpServers.length === 0) {
+        return;
+      }
+
+      const env = (this as unknown as { env: TEnv }).env;
+
+      for (const server of mcpServers) {
+        try {
+          const authHeader = server.getAuthHeader?.(env as Record<string, unknown>);
+          const options: Record<string, unknown> = {};
+
+          if (authHeader) {
+            options.transport = {
+              headers: {
+                Authorization: authHeader,
+              },
+            };
+          }
+
+          console.log(`[MCP] Connecting to ${server.name} at ${server.url}`);
+          const result = await this.mcp.connect(server.url, options);
+          console.log(`[MCP] Connected to ${server.name}: ${result.id}`);
+        } catch (error) {
+          console.error(`[MCP] Failed to connect to ${server.name}:`, error);
+        }
+      }
+
+      this._mcpInitialized = true;
+    }
+
+    /**
+     * Get tools from connected MCP servers in OpenAI format
+     */
+    getMcpTools(): OpenAITool[] {
+      const mcpTools = this.mcp.listTools();
+      return mcpTools.map((tool) => ({
+        type: 'function' as const,
+        function: {
+          name: tool.name,
+          description: tool.description || '',
+          parameters: tool.inputSchema as Record<string, unknown>,
+        },
+      }));
+    }
 
     /**
      * Called when state is updated from any source
@@ -109,12 +175,19 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
-     * Chat with the LLM directly
+     * Chat with the LLM directly, with optional MCP tool support
      */
     async chat(userMessage: string): Promise<string> {
+      // Initialize MCP connections if configured
+      await this.initMcp();
+
       // Get LLM provider from environment bindings
       // Note: Type assertion needed due to TypeScript limitation with anonymous class inheritance
       const llmProvider = config.createProvider((this as unknown as { env: TEnv }).env);
+
+      // Get available tools from MCP servers
+      const tools = this.getMcpTools();
+      const hasTools = tools.length > 0;
 
       // Build messages for LLM call
       const llmMessages = [
@@ -126,8 +199,65 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         { role: 'user' as const, content: userMessage },
       ];
 
-      // Call LLM directly
-      const response = await llmProvider.chat(llmMessages);
+      // Call LLM with tools if available
+      let response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
+
+      // Handle tool calls (up to 5 iterations)
+      let iterations = 0;
+      const maxIterations = 5;
+
+      while (response.toolCalls && response.toolCalls.length > 0 && iterations < maxIterations) {
+        iterations++;
+        console.log(
+          `[MCP] Processing ${response.toolCalls.length} tool calls (iteration ${iterations})`
+        );
+
+        // Add assistant message with tool calls
+        llmMessages.push({
+          role: 'assistant' as const,
+          content: response.content || '',
+        });
+
+        // Execute each tool call via MCP
+        for (const toolCall of response.toolCalls) {
+          try {
+            // Parse tool name to get server ID (format: serverId__toolName)
+            const [serverId, ...toolNameParts] = toolCall.name.split('__');
+            const toolName = toolNameParts.join('__') || toolCall.name;
+
+            console.log(`[MCP] Calling tool: ${toolName} on server ${serverId}`);
+
+            const toolArgs = JSON.parse(toolCall.arguments);
+            const result = (await this.mcp.callTool({
+              serverId: serverId || '',
+              name: toolName,
+              arguments: toolArgs,
+            })) as { content: Array<{ type: string; text?: string }> };
+
+            // Add tool result to messages
+            const resultText = result.content
+              .map((c) => (c.type === 'text' ? c.text : JSON.stringify(c)))
+              .join('\n');
+
+            // Use 'user' role with tool context for compatibility
+            llmMessages.push({
+              role: 'user' as const,
+              content: `[Tool Result for ${toolCall.name}]: ${resultText}`,
+            });
+          } catch (error) {
+            console.error('[MCP] Tool call failed:', error);
+            // Use 'user' role with error context for compatibility
+            llmMessages.push({
+              role: 'user' as const,
+              content: `[Tool Error for ${toolCall.name}]: ${error instanceof Error ? error.message : String(error)}`,
+            });
+          }
+        }
+
+        // Continue conversation with tool results
+        response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
+      }
+
       const assistantContent = response.content;
 
       // Update state with new messages (trimmed)

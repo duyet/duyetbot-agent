@@ -45,6 +45,7 @@ export {
   type CloudflareAgentConfig,
   type CloudflareAgentState,
   type CloudflareChatAgentNamespace,
+  type MCPServerConnection,
 } from './cloudflare-agent.js';
 
 // Transport layer

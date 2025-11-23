@@ -5,13 +5,29 @@
  * a clean, reusable agent pattern with Durable Object state.
  */
 
-import { type CloudflareAgentState, createCloudflareChatAgent } from '@duyetbot/chat-agent';
+import {
+  type CloudflareAgentState,
+  type MCPServerConnection,
+  createCloudflareChatAgent,
+} from '@duyetbot/chat-agent';
 import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
 import { Octokit } from '@octokit/rest';
 import type { Agent, AgentNamespace } from 'agents';
 import { logger } from './logger.js';
 import { type ProviderEnv, createOpenRouterProvider } from './provider.js';
 import { type GitHubContext, githubTransport } from './transport.js';
+
+/**
+ * GitHub MCP server configuration
+ */
+const githubMcpServer: MCPServerConnection = {
+  name: 'github-mcp',
+  url: 'https://api.githubcopilot.com/mcp/sse',
+  getAuthHeader: (env) => {
+    const token = env.GITHUB_TOKEN as string | undefined;
+    return token ? `Bearer ${token}` : undefined;
+  },
+};
 
 /**
  * Base environment without self-reference
@@ -56,6 +72,7 @@ export const GitHubAgent = createCloudflareChatAgent<BaseEnv, GitHubContext>({
   helpMessage: 'Mention me with @duyetbot followed by your question or request.',
   maxHistory: 10, // Reduced to minimize state size and prevent blockConcurrencyWhile timeout
   transport: githubTransport,
+  mcpServers: [githubMcpServer],
   hooks: {
     beforeHandle: async (ctx) => {
       // Add "eyes" reaction to acknowledge we're processing
