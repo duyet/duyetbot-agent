@@ -79,37 +79,34 @@ async function sendTelegramMessage(token: string, chatId: number, text: string):
   let lastMessageId = 0;
 
   for (const chunk of chunks) {
-    logger.debug('[TRANSPORT] Sending message', {
-      chatId,
-      textLength: chunk.length,
-      isChunked: chunks.length > 1,
-    });
+    const payload = { chat_id: chatId, text: chunk, parse_mode: 'Markdown' };
+    logger.debug('[TRANSPORT] Sending message', payload);
 
     // Try with Markdown first
     let response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        text: chunk,
-        parse_mode: 'Markdown',
-      }),
+      body: JSON.stringify(payload),
     });
 
     // Fallback to plain text if Markdown parsing fails (400 error)
     if (response.status === 400) {
-      logger.warn('[TRANSPORT] Markdown parse failed, retrying without parse_mode', {
-        chatId,
-        textLength: chunk.length,
-      });
+      // Consume the error response body to prevent connection pool exhaustion
+      await response.text();
+
+      const withoutMarkdown = {
+        chat_id: chatId,
+        text: chunk,
+      };
+      logger.warn(
+        '[TRANSPORT] Markdown parse failed, retrying without parse_mode',
+        withoutMarkdown
+      );
 
       response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: chunk,
-        }),
+        body: JSON.stringify(withoutMarkdown),
       });
     }
 
@@ -151,44 +148,50 @@ async function editTelegramMessage(
       ? `${text.slice(0, MAX_MESSAGE_LENGTH - 20)}...\n\n[truncated]`
       : text;
 
-  logger.debug('[TRANSPORT] Editing message', {
-    chatId,
-    messageId,
-    textLength: truncatedText.length,
-  });
+  const payload = {
+    chat_id: chatId,
+    message_id: messageId,
+    text: truncatedText,
+    parse_mode: 'Markdown',
+  };
+
+  logger.debug('[TRANSPORT] Editing message', payload);
 
   // Try with Markdown first
   let response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      chat_id: chatId,
-      message_id: messageId,
-      text: truncatedText,
-      parse_mode: 'Markdown',
-    }),
+    body: JSON.stringify(payload),
   });
 
   // Fallback to plain text if Markdown parsing fails
   if (response.status === 400) {
-    logger.warn('[TRANSPORT] Markdown parse failed in edit, retrying without parse_mode', {
-      chatId,
-      messageId,
-    });
+    // Consume the error response body to prevent connection pool exhaustion
+    await response.text();
 
+    const withoutParseMode = {
+      chat_id: chatId,
+      message_id: messageId,
+      text: truncatedText,
+    };
+    logger.warn(
+      '[TRANSPORT] Markdown parse failed in edit, retrying without parse_mode',
+      withoutParseMode
+    );
+
+    // Retry
     response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: chatId,
-        message_id: messageId,
-        text: truncatedText,
-      }),
+      body: JSON.stringify(withoutParseMode),
     });
   }
 
-  if (response.ok) {
-    logger.debug('[TRANSPORT] Message edited', { chatId, messageId });
+  if (response?.ok) {
+    logger.info('[TRANSPORT] Message edited successfully', {
+      chatId,
+      messageId,
+    });
   } else {
     const error = await response.text();
     logger.error('[TRANSPORT] Edit message failed', {
@@ -207,7 +210,7 @@ async function editTelegramMessage(
 async function sendTypingIndicator(token: string, chatId: number): Promise<void> {
   logger.debug('[TRANSPORT] Sending typing indicator', { chatId });
 
-  await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
+  const response = await fetch(`https://api.telegram.org/bot${token}/sendChatAction`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -215,6 +218,10 @@ async function sendTypingIndicator(token: string, chatId: number): Promise<void>
       action: 'typing',
     }),
   });
+
+  // Consume response body to prevent connection pool exhaustion
+  // We don't need to handle errors here - typing indicators are best-effort
+  await response.text();
 }
 
 /**
