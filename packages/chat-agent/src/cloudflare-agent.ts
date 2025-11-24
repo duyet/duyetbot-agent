@@ -5,7 +5,9 @@
  * State persistence via Durable Object storage.
  */
 
+import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection } from 'agents';
+import { zodToJsonSchema } from 'zod-to-json-schema';
 import { trimHistory } from './history.js';
 import type { Transport, TransportHooks } from './transport.js';
 import type { LLMProvider, Message, OpenAITool } from './types.js';
@@ -57,10 +59,44 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   hooks?: TransportHooks<TContext>;
   /** MCP servers to connect to for tool capabilities */
   mcpServers?: MCPServerConnection[];
+  /** Built-in tools from @duyetbot/tools */
+  tools?: Tool[];
 }
 
 // Re-export types for backward compatibility
 export type { MemoryServiceBinding } from './service-binding-adapter.js';
+
+/**
+ * Interface for the CloudflareChatAgent class methods
+ * This defines all public methods added by createCloudflareChatAgent
+ */
+export interface CloudflareChatAgentMethods<TContext = unknown> {
+  initMcp(): Promise<void>;
+  getMcpTools(): OpenAITool[];
+  init(userId?: string | number, chatId?: string | number): Promise<void>;
+  chat(userMessage: string): Promise<string>;
+  clearHistory(): Promise<string>;
+  getWelcome(): string;
+  getHelp(): string;
+  getMessageCount(): number;
+  setMetadata(metadata: Record<string, unknown>): void;
+  getMetadata(): Record<string, unknown> | undefined;
+  handleCommand(text: string): string;
+  handle(ctx: TContext): Promise<void>;
+}
+
+/**
+ * Type for the CloudflareChatAgent class constructor
+ * Extends typeof Agent to maintain compatibility with AgentNamespace
+ */
+export type CloudflareChatAgentClass<TEnv, TContext = unknown> = typeof Agent<
+  TEnv,
+  CloudflareAgentState
+> & {
+  new (
+    ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
+  ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
+};
 
 /**
  * Create a Cloudflare Durable Object Agent class with direct LLM integration
@@ -79,13 +115,30 @@ export type { MemoryServiceBinding } from './service-binding-adapter.js';
  */
 export function createCloudflareChatAgent<TEnv, TContext = unknown>(
   config: CloudflareAgentConfig<TEnv, TContext>
-): typeof Agent<TEnv, CloudflareAgentState> {
+): CloudflareChatAgentClass<TEnv, TContext> {
   const maxHistory = config.maxHistory ?? 100;
   const transport = config.transport;
   const hooks = config.hooks;
   const mcpServers = config.mcpServers ?? [];
+  const builtinTools = config.tools ?? [];
 
-  return class CloudflareChatAgent extends Agent<TEnv, CloudflareAgentState> {
+  // Convert built-in tools to OpenAI format
+  const builtinToolsOpenAI: OpenAITool[] = builtinTools.map((tool) => ({
+    type: 'function' as const,
+    function: {
+      name: tool.name,
+      description: tool.description,
+      parameters: zodToJsonSchema(tool.inputSchema) as Record<string, unknown>,
+    },
+  }));
+
+  // Create a map for quick lookup of built-in tools by name
+  const builtinToolMap = new Map<string, Tool>(builtinTools.map((tool) => [tool.name, tool]));
+
+  // The class has all the methods defined in CloudflareChatAgentMethods
+  // Type assertion is needed because TypeScript can't infer the additional methods
+  // on the class type from the instance methods alone
+  const AgentClass = class CloudflareChatAgent extends Agent<TEnv, CloudflareAgentState> {
     override initialState: CloudflareAgentState = {
       messages: [],
       createdAt: Date.now(),
@@ -118,6 +171,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           }
 
           console.log(`[MCP] Connecting to ${server.name} at ${server.url}`);
+          console.log(
+            `[MCP] Auth header present: ${!!authHeader}, length: ${authHeader?.length || 0}`
+          );
+          console.log('[MCP] Options:', JSON.stringify(options, null, 2));
           const result = await this.mcp.connect(server.url, options);
           console.log(`[MCP] Connected to ${server.name}: ${result.id}`);
         } catch (error) {
@@ -185,8 +242,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Note: Type assertion needed due to TypeScript limitation with anonymous class inheritance
       const llmProvider = config.createProvider((this as unknown as { env: TEnv }).env);
 
-      // Get available tools from MCP servers
-      const tools = this.getMcpTools();
+      // Get available tools from MCP servers and merge with built-in tools
+      const mcpTools = this.getMcpTools();
+      const tools = [...builtinToolsOpenAI, ...mcpTools];
       const hasTools = tools.length > 0;
 
       // Build messages for LLM call
@@ -218,26 +276,50 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           content: response.content || '',
         });
 
-        // Execute each tool call via MCP
+        // Execute each tool call (built-in or MCP)
         for (const toolCall of response.toolCalls) {
           try {
-            // Parse tool name to get server ID (format: serverId__toolName)
-            const [serverId, ...toolNameParts] = toolCall.name.split('__');
-            const toolName = toolNameParts.join('__') || toolCall.name;
-
-            console.log(`[MCP] Calling tool: ${toolName} on server ${serverId}`);
-
             const toolArgs = JSON.parse(toolCall.arguments);
-            const result = (await this.mcp.callTool({
-              serverId: serverId || '',
-              name: toolName,
-              arguments: toolArgs,
-            })) as { content: Array<{ type: string; text?: string }> };
+            let resultText: string;
 
-            // Add tool result to messages
-            const resultText = result.content
-              .map((c) => (c.type === 'text' ? c.text : JSON.stringify(c)))
-              .join('\n');
+            // Check if it's a built-in tool first
+            const builtinTool = builtinToolMap.get(toolCall.name);
+            if (builtinTool) {
+              console.log(`[TOOL] Calling built-in tool: ${toolCall.name}`);
+
+              // Execute built-in tool
+              const toolInput: ToolInput = {
+                content: toolArgs,
+              };
+              const result = await builtinTool.execute(toolInput);
+
+              // Format result
+              resultText =
+                typeof result.content === 'string'
+                  ? result.content
+                  : JSON.stringify(result.content);
+
+              if (result.status === 'error' && result.error) {
+                resultText = `Error: ${result.error.message}`;
+              }
+            } else {
+              // Parse tool name to get server ID (format: serverId__toolName)
+              const [serverId, ...toolNameParts] = toolCall.name.split('__');
+              const toolName = toolNameParts.join('__') || toolCall.name;
+
+              console.log(`[MCP] Calling tool: ${toolName} on server ${serverId}`);
+
+              const result = (await this.mcp.callTool({
+                serverId: serverId || '',
+                name: toolName,
+                arguments: toolArgs,
+              })) as { content: Array<{ type: string; text?: string }> };
+
+              // Format MCP result
+              resultText = result.content
+                .map((c) => (c.type === 'text' ? c.text : JSON.stringify(c)))
+                .join('\n');
+            }
 
             // Use 'user' role with tool context for compatibility
             llmMessages.push({
@@ -245,7 +327,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               content: `[Tool Result for ${toolCall.name}]: ${resultText}`,
             });
           } catch (error) {
-            console.error('[MCP] Tool call failed:', error);
+            console.error('[TOOL] Tool call failed:', error);
             // Use 'user' role with error context for compatibility
             llmMessages.push({
               role: 'user' as const,
@@ -411,15 +493,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
     }
   };
+
+  return AgentClass as CloudflareChatAgentClass<TEnv, TContext>;
 }
 
 /**
  * Type helper for agent namespaces
+ * Use this for the Env interface to get proper typing for agent stubs
  */
-export type CloudflareChatAgentNamespace<TEnv> = AgentNamespace<
-  ReturnType<typeof createCloudflareChatAgent<TEnv>> extends new (
-    ...args: unknown[]
-  ) => infer R
-    ? R
-    : never
+export type CloudflareChatAgentNamespace<TEnv, TContext = unknown> = AgentNamespace<
+  Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>
 >;

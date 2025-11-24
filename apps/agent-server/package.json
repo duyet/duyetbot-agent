@@ -27,14 +27,14 @@
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "@hono/node-server": "^1.13.0",
-    "hono": "^4.10.6",
+    "hono": "catalog:",
     "ws": "^8.18.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "@types/node": "^22.10.0",
+    "@types/node": "catalog:",
     "@types/ws": "^8.5.13",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

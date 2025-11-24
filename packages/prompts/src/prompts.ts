@@ -3,18 +3,20 @@
  */
 
 // Static imports - bundled at build time
+import agentPrompt from '../prompts/agent.md';
 import defaultPrompt from '../prompts/default.md';
 import githubPrompt from '../prompts/github.md';
 import telegramPrompt from '../prompts/telegram.md';
 import { config } from './config.js';
 
 const prompts: Record<string, string> = {
+  agent: agentPrompt,
   default: defaultPrompt,
   github: githubPrompt,
   telegram: telegramPrompt,
 };
 
-export type Platform = 'telegram' | 'github';
+export type Platform = 'telegram' | 'github' | 'agent';
 
 export interface PromptContext {
   botName?: string;

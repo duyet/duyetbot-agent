@@ -6,7 +6,6 @@
  */
 
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
-import { getAgentByName } from 'agents';
 import { type Env, TelegramAgent } from './agent.js';
 import { authorizationMiddleware } from './middlewares/authorization.js';
 import { createTelegramContext } from './transport.js';
@@ -26,12 +25,20 @@ const app = createBaseApp<Env>({
 app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware(), async (c) => {
   const env = c.env;
 
+  // Generate request ID for trace correlation across webhook and DO invocations
+  const requestId = crypto.randomUUID().slice(0, 8);
+
   // Check if we should skip processing
   if (c.get('skipProcessing')) {
     // Handle unauthorized users
     if (c.get('unauthorized')) {
       const webhookCtx = c.get('webhookContext');
-      const ctx = createTelegramContext(env.TELEGRAM_BOT_TOKEN, webhookCtx, env.TELEGRAM_ADMIN);
+      const ctx = createTelegramContext(
+        env.TELEGRAM_BOT_TOKEN,
+        webhookCtx,
+        env.TELEGRAM_ADMIN,
+        requestId
+      );
 
       // Import transport to send unauthorized message
       const { telegramTransport } = await import('./transport.js');
@@ -42,23 +49,35 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
 
   const webhookCtx = c.get('webhookContext');
 
-  // Create transport context
-  const ctx = createTelegramContext(env.TELEGRAM_BOT_TOKEN, webhookCtx, env.TELEGRAM_ADMIN);
+  // Create transport context with requestId for trace correlation
+  const ctx = createTelegramContext(
+    env.TELEGRAM_BOT_TOKEN,
+    webhookCtx,
+    env.TELEGRAM_ADMIN,
+    requestId
+  );
 
-  // Get agent by name
+  // Get agent using direct DO stub (bypasses getAgentByName which causes blockConcurrencyWhile timeout)
   const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
-  logger.info('[WEBHOOK] Getting agent', { agentId });
+  logger.info(`[${requestId}] [WEBHOOK] Getting agent`, {
+    agentId,
+    requestId,
+  });
 
-  const agent = await getAgentByName(env.TelegramAgent, agentId).catch((error) => {
+  try {
+    // Use direct DO stub pattern instead of getAgentByName
+    const id = env.TelegramAgent.idFromName(agentId);
+    const stub = env.TelegramAgent.get(id);
+
+    // Agent handles everything: commands, chat, sending response
+    await stub.handle(ctx);
+  } catch (error) {
     logger.error('[WEBHOOK] Failed to get agent', {
       agentId,
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
-  });
-
-  // Agent handles everything: commands, chat, sending response
-  await agent.handle(ctx);
+  }
 
   return c.text('OK');
 });

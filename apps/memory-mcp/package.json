@@ -37,16 +37,16 @@
     "@cloudflare/workers-oauth-provider": "^0.1.0",
     "@duyetbot/hono-middleware": "workspace:*",
     "@modelcontextprotocol/sdk": "^1.0.0",
-    "agents": "^0.2.23",
-    "hono": "^4.6.0",
+    "agents": "catalog:",
+    "hono": "catalog:",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.24.5"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "@types/node": "^20.0.0",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
-    "wrangler": "4"
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
   }
 }

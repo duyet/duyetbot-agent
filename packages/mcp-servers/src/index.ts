@@ -6,7 +6,7 @@ export type {
 } from './types.js';
 
 // Server configs
-export { duyetMcp } from './servers/index.js';
+export { duyetMcp, githubMcp } from './servers/index.js';
 
 // Registry
 export {

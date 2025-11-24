@@ -118,15 +118,22 @@ app.post('/webhook', async (c) => {
       }
 
       // Create transport context (serializable for DO RPC)
-      const ctx = createGitHubContext(
-        env.GITHUB_TOKEN,
-        payload.repository.owner.login,
-        payload.repository.name,
-        issue.number,
-        task,
-        payload.sender,
-        comment.id
-      );
+      const isPullRequest = !!issue.pull_request;
+      const ctx = createGitHubContext({
+        githubToken: env.GITHUB_TOKEN,
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        issueNumber: issue.number,
+        body: task,
+        sender: payload.sender,
+        commentId: comment.id,
+        url: issue.html_url,
+        title: issue.title,
+        isPullRequest,
+        state: issue.state,
+        labels: (issue.labels || []).map((l: { name: string }) => l.name),
+        description: issue.body,
+      });
 
       // Get agent by name (issue-based session)
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
@@ -155,15 +162,21 @@ app.post('/webhook', async (c) => {
         return c.json({ ok: true, skipped: 'empty_task' });
       }
 
-      const ctx = createGitHubContext(
-        env.GITHUB_TOKEN,
-        payload.repository.owner.login,
-        payload.repository.name,
-        pr.number,
-        task,
-        payload.sender,
-        comment.id
-      );
+      const ctx = createGitHubContext({
+        githubToken: env.GITHUB_TOKEN,
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        issueNumber: pr.number,
+        body: task,
+        sender: payload.sender,
+        commentId: comment.id,
+        url: pr.html_url,
+        title: pr.title,
+        isPullRequest: true,
+        state: pr.state,
+        labels: (pr.labels || []).map((l: { name: string }) => l.name),
+        description: pr.body,
+      });
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${pr.number}`;
       const agent = await getAgentByName(env.GitHubAgent, agentId);
@@ -185,14 +198,20 @@ app.post('/webhook', async (c) => {
         return c.json({ ok: true, skipped: 'empty_task' });
       }
 
-      const ctx = createGitHubContext(
-        env.GITHUB_TOKEN,
-        payload.repository.owner.login,
-        payload.repository.name,
-        issue.number,
-        task,
-        payload.sender
-      );
+      const ctx = createGitHubContext({
+        githubToken: env.GITHUB_TOKEN,
+        owner: payload.repository.owner.login,
+        repo: payload.repository.name,
+        issueNumber: issue.number,
+        body: task,
+        sender: payload.sender,
+        url: issue.html_url,
+        title: issue.title,
+        isPullRequest: false,
+        state: issue.state,
+        labels: (issue.labels || []).map((l: { name: string }) => l.name),
+        description: issue.body,
+      });
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
       const agent = await getAgentByName(env.GitHubAgent, agentId);

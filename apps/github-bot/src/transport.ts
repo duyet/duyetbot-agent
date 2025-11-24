@@ -35,6 +35,18 @@ export interface GitHubContext {
   };
   /** Start time for duration tracking */
   startTime: number;
+  /** Full URL to the issue or PR */
+  url: string;
+  /** Issue or PR title */
+  title: string;
+  /** Whether this is a pull request (true) or issue (false) */
+  isPullRequest: boolean;
+  /** Issue or PR state (open, closed) */
+  state: string;
+  /** Labels on the issue or PR */
+  labels: string[];
+  /** Issue or PR description/body */
+  description?: string;
 }
 
 /**
@@ -117,8 +129,20 @@ export const githubTransport: Transport<GitHubContext> = {
   },
 
   parseContext: (ctx) => {
+    // Build context block to prepend to user message
+    const contextType = ctx.isPullRequest ? 'PR' : 'Issue';
+    const labelStr = ctx.labels.length > 0 ? `**Labels**: ${ctx.labels.join(', ')}\n` : '';
+
+    const contextBlock = `**Context**: ${contextType} #${ctx.issueNumber} "${ctx.title}"
+**URL**: ${ctx.url}
+**State**: ${ctx.state}
+${labelStr}
+---
+
+`;
+
     const result: ParsedInput = {
-      text: ctx.body,
+      text: contextBlock + ctx.body,
       userId: ctx.sender.id,
       chatId: `${ctx.owner}/${ctx.repo}#${ctx.issueNumber}`,
       metadata: {
@@ -127,6 +151,11 @@ export const githubTransport: Transport<GitHubContext> = {
         issueNumber: ctx.issueNumber,
         senderLogin: ctx.sender.login,
         startTime: ctx.startTime,
+        url: ctx.url,
+        title: ctx.title,
+        isPullRequest: ctx.isPullRequest,
+        state: ctx.state,
+        labels: ctx.labels,
       },
     };
     // Only set messageRef if commentId exists
@@ -138,37 +167,63 @@ export const githubTransport: Transport<GitHubContext> = {
 };
 
 /**
+ * Options for creating GitHubContext
+ */
+export interface CreateGitHubContextOptions {
+  /** GitHub token for API calls */
+  githubToken: string;
+  /** Repository owner */
+  owner: string;
+  /** Repository name */
+  repo: string;
+  /** Issue or PR number */
+  issueNumber: number;
+  /** Message body (task/question) */
+  body: string;
+  /** User who triggered the action */
+  sender: { id: number; login: string };
+  /** Comment ID if replying to a comment */
+  commentId?: number;
+  /** Full URL to the issue or PR */
+  url: string;
+  /** Issue or PR title */
+  title: string;
+  /** Whether this is a pull request */
+  isPullRequest: boolean;
+  /** Issue or PR state */
+  state: string;
+  /** Labels on the issue or PR */
+  labels: string[];
+  /** Issue or PR description */
+  description?: string;
+}
+
+/**
  * Create GitHubContext from webhook payload
  *
- * @param githubToken - GitHub token for API calls
- * @param owner - Repository owner
- * @param repo - Repository name
- * @param issueNumber - Issue or PR number
- * @param body - Message body
- * @param sender - User who triggered the action
- * @param commentId - Comment ID if replying to a comment
+ * @param options - Context creation options
  */
-export function createGitHubContext(
-  githubToken: string,
-  owner: string,
-  repo: string,
-  issueNumber: number,
-  body: string,
-  sender: { id: number; login: string },
-  commentId?: number
-): GitHubContext {
+export function createGitHubContext(options: CreateGitHubContextOptions): GitHubContext {
   const ctx: GitHubContext = {
-    githubToken,
-    owner,
-    repo,
-    issueNumber,
-    body,
-    sender,
+    githubToken: options.githubToken,
+    owner: options.owner,
+    repo: options.repo,
+    issueNumber: options.issueNumber,
+    body: options.body,
+    sender: options.sender,
     startTime: Date.now(),
+    url: options.url,
+    title: options.title,
+    isPullRequest: options.isPullRequest,
+    state: options.state,
+    labels: options.labels,
   };
-  // Only set commentId if it's defined
-  if (commentId !== undefined) {
-    ctx.commentId = commentId;
+  // Only set optional properties if defined (exactOptionalPropertyTypes)
+  if (options.commentId !== undefined) {
+    ctx.commentId = options.commentId;
+  }
+  if (options.description !== undefined) {
+    ctx.description = options.description;
   }
   return ctx;
 }

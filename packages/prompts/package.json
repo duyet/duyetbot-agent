@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@duyetbot/config-vitest": "workspace:*",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.9"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

@@ -6,7 +6,8 @@
  */
 
 import {
-  type CloudflareAgentState,
+  type CloudflareChatAgentClass,
+  type CloudflareChatAgentNamespace,
   type MCPServerConnection,
   createCloudflareChatAgent,
 } from '@duyetbot/chat-agent';
@@ -16,7 +17,7 @@ import {
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
 } from '@duyetbot/prompts';
-import type { Agent, AgentNamespace } from 'agents';
+import { getAllBuiltinTools } from '@duyetbot/tools';
 import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
 
@@ -30,6 +31,15 @@ const githubMcpServer: MCPServerConnection = {
     const token = env.GITHUB_TOKEN as string | undefined;
     return token ? `Bearer ${token}` : undefined;
   },
+};
+
+/**
+ * Duyet MCP server configuration
+ * Provides tools for: get_about_duyet, get_cv, get_blog_posts, get_github_activity
+ */
+const duyetMcpServer: MCPServerConnection = {
+  name: 'duyet-mcp',
+  url: 'https://mcp.duyet.net/sse',
 };
 
 /**
@@ -48,56 +58,38 @@ interface BaseEnv extends ProviderEnv {
 }
 
 /**
- * Agent class interface for type safety
- */
-interface TelegramAgentClass {
-  new (
-    ...args: unknown[]
-  ): Agent<BaseEnv, CloudflareAgentState> & {
-    init(userId?: string | number, chatId?: string | number): Promise<void>;
-    chat(userMessage: string): Promise<string>;
-    clearHistory(): Promise<string>;
-    getWelcome(): string;
-    getHelp(): string;
-    getMessageCount(): number;
-    setMetadata(metadata: Record<string, unknown>): void;
-    getMetadata(): Record<string, unknown> | undefined;
-    handleCommand(text: string): string;
-    handle(ctx: TelegramContext): Promise<void>;
-  };
-}
-
-/**
  * Telegram Agent - Cloudflare Durable Object with ChatAgent
  *
  * Simplified: No MCP memory, no tools - just LLM chat with DO state persistence.
  * Sessions are identified by telegram:{chatId}.
  */
-export const TelegramAgent = createCloudflareChatAgent<BaseEnv, TelegramContext>({
-  createProvider: (env) => createAIGatewayProvider(env),
-  systemPrompt: TELEGRAM_SYSTEM_PROMPT,
-  welcomeMessage: TELEGRAM_WELCOME_MESSAGE,
-  helpMessage: TELEGRAM_HELP_MESSAGE,
-  transport: telegramTransport,
-  mcpServers: [githubMcpServer],
-  hooks: {
-    onError: async (ctx, error) => {
-      logger.error('[AGENT] Error in handle()', {
-        userId: ctx.userId,
-        chatId: ctx.chatId,
-        error: error.message,
-      });
+export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
+  createCloudflareChatAgent<BaseEnv, TelegramContext>({
+    createProvider: (env) => createAIGatewayProvider(env),
+    systemPrompt: TELEGRAM_SYSTEM_PROMPT,
+    welcomeMessage: TELEGRAM_WELCOME_MESSAGE,
+    helpMessage: TELEGRAM_HELP_MESSAGE,
+    transport: telegramTransport,
+    mcpServers: [duyetMcpServer, githubMcpServer],
+    tools: getAllBuiltinTools(),
+    hooks: {
+      onError: async (ctx, error) => {
+        logger.error('[AGENT] Error in handle()', {
+          userId: ctx.userId,
+          chatId: ctx.chatId,
+          error: error.message,
+        });
 
-      // Send error message to user
-      const isAdmin = ctx.adminUsername && ctx.username === ctx.adminUsername;
-      const errorMessage = isAdmin
-        ? `❌ Error: ${error.message}`
-        : '❌ Sorry, an error occurred. Please try again later.';
+        // Send error message to user
+        const isAdmin = ctx.adminUsername && ctx.username === ctx.adminUsername;
+        const errorMessage = isAdmin
+          ? `❌ Error: ${error.message}`
+          : '❌ Sorry, an error occurred. Please try again later.';
 
-      await telegramTransport.send(ctx, errorMessage);
+        await telegramTransport.send(ctx, errorMessage);
+      },
     },
-  },
-}) as unknown as TelegramAgentClass;
+  });
 
 /**
  * Type for agent instance
@@ -108,5 +100,5 @@ export type TelegramAgentInstance = InstanceType<typeof TelegramAgent>;
  * Full environment with agent binding
  */
 export interface Env extends BaseEnv {
-  TelegramAgent: AgentNamespace<TelegramAgentInstance>;
+  TelegramAgent: CloudflareChatAgentNamespace<BaseEnv, TelegramContext>;
 }

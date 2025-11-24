@@ -18,7 +18,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
-    "@duyetbot/prompts": "workspace:*"
+    "@duyetbot/prompts": "workspace:*",
+    "@duyetbot/types": "workspace:*",
+    "zod-to-json-schema": "^3.24.5"
   },
   "peerDependencies": {
     "agents": ">=0.0.55"
@@ -30,8 +32,8 @@
   },
   "devDependencies": {
     "@duyetbot/config-vitest": "workspace:*",
-    "agents": "^0.0.90",
-    "typescript": "^5.6.3",
-    "vitest": "^2.1.9"
+    "agents": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

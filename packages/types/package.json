@@ -45,6 +45,6 @@
     "zod": "^3.23.8"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "catalog:"
   }
 }
