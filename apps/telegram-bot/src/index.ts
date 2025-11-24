@@ -9,7 +9,7 @@ import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import { type Env, TelegramAgent } from './agent.js';
 import { authorizationMiddleware } from './middlewares/authorization.js';
-import { createTelegramContext } from './transport.js';
+import { createTelegramContext, telegramTransport } from './transport.js';
 
 // Re-export agent for Durable Object binding
 export { TelegramAgent };
@@ -41,8 +41,6 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
         requestId
       );
 
-      // Import transport to send unauthorized message
-      const { telegramTransport } = await import('./transport.js');
       await telegramTransport.send(ctx, 'Sorry, you are not authorized.');
     }
     return c.text('OK');
@@ -82,7 +80,8 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
         });
 
         // Send error message to user if agent invocation fails
-        const { telegramTransport } = await import('./transport.js');
+        // Note: This only fires when DO invocation fails before sending "Thinking..."
+        // DO's internal error handling edits the thinking message for errors during processing
         try {
           await telegramTransport.send(ctx, '❌ Sorry, an error occurred. Please try again later.');
         } catch {
