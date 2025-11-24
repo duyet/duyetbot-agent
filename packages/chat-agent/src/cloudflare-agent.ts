@@ -61,6 +61,8 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   mcpServers?: MCPServerConnection[];
   /** Built-in tools from @duyetbot/tools */
   tools?: Tool[];
+  /** Loading message shown while processing (default: 'Thinking...') */
+  loadingMessage?: string;
 }
 
 // Re-export types for backward compatibility
@@ -466,18 +468,35 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Route: Command or Chat
         if (input.text.startsWith('/')) {
           response = this.handleCommand(input.text);
+          // Send command response directly
+          await transport.send(ctx, response);
         } else {
           // Send typing indicator
           if (transport.typing) {
             await transport.typing(ctx);
           }
 
+          // Send loading message and get reference for editing
+          const loadingText = config.loadingMessage ?? 'Thinking...';
+          const messageRef = await transport.send(ctx, loadingText);
+
           // Process with LLM
           response = await this.chat(input.text);
-        }
 
-        // Send response via transport
-        await transport.send(ctx, response);
+          // Edit loading message with actual response
+          if (transport.edit) {
+            try {
+              await transport.edit(ctx, messageRef, response);
+            } catch (editError) {
+              // Fallback: send new message if edit fails (e.g., message deleted)
+              console.error('[HANDLE] Edit failed, sending new message:', editError);
+              await transport.send(ctx, response);
+            }
+          } else {
+            // Transport doesn't support edit, send new message
+            await transport.send(ctx, response);
+          }
+        }
 
         // Call afterHandle hook
         if (hooks?.afterHandle) {

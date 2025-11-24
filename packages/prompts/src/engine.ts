@@ -5,26 +5,55 @@
  * - Variable binding: {{ botName }}
  * - Conditionals: {% if hasTools %} ... {% endif %}
  * - Loops: {% for tool in tools %} ... {% endfor %}
- * - Includes: {% include './partials/policy.md' %}
+ * - Includes: {% include 'partials/policy.md' %}
  * - Filters: {{ name | upper }}
  * - Macros: {% macro input(name) %} ... {% endmacro %}
  */
 
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import nunjucks from 'nunjucks';
 
-// Get the directory of this module
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+import agentPrompt from '../prompts/agent.md';
+// Import templates as strings (bundled at build time)
+import defaultPrompt from '../prompts/default.md';
+import githubPrompt from '../prompts/github.md';
+import codingStandardsPartial from '../prompts/partials/coding-standards.md';
+import guidelinesPartial from '../prompts/partials/guidelines.md';
+import historyContextPartial from '../prompts/partials/history-context.md';
+import policyPartial from '../prompts/partials/policy.md';
+import telegramPrompt from '../prompts/telegram.md';
 
-// Configure Nunjucks
-const templatesPath = join(__dirname, '../prompts');
-const env = nunjucks.configure(templatesPath, {
+// Template registry for Workers compatibility (no filesystem access)
+const templates: Record<string, string> = {
+  'default.md': defaultPrompt,
+  'agent.md': agentPrompt,
+  'github.md': githubPrompt,
+  'telegram.md': telegramPrompt,
+  'partials/policy.md': policyPartial,
+  'partials/guidelines.md': guidelinesPartial,
+  'partials/coding-standards.md': codingStandardsPartial,
+  'partials/history-context.md': historyContextPartial,
+};
+
+// Custom loader for bundled templates
+class BundledLoader extends nunjucks.Loader {
+  getSource(name: string) {
+    const src = templates[name];
+    if (!src) {
+      throw new Error(`Template not found: ${name}`);
+    }
+    return {
+      src,
+      path: name,
+      noCache: false,
+    };
+  }
+}
+
+// Configure Nunjucks with bundled loader
+const env = new nunjucks.Environment(new BundledLoader(), {
   autoescape: false, // Keep raw markdown
   trimBlocks: true, // Remove newline after block tags
   lstripBlocks: true, // Strip leading whitespace from block tags
-  noCache: process.env.NODE_ENV === 'development',
 });
 
 // Add custom filters
@@ -59,7 +88,7 @@ export function renderString(template: string, context: TemplateContext = {}): s
  * Pre-compile a template for better performance
  */
 export function compileTemplate(templateName: string) {
-  return nunjucks.compile(templateName, env);
+  return nunjucks.compile(templates[templateName] || templateName, env);
 }
 
 /**
