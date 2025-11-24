@@ -36,7 +36,7 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.69.0",
+    "@anthropic-ai/sdk": "^0.70.1",
     "@duyetbot/types": "workspace:*",
     "zod": "^3.23.8"
   },
