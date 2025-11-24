@@ -8,16 +8,16 @@
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
-  type MCPServerConnection,
   createCloudflareChatAgent,
 } from '@duyetbot/chat-agent';
+import type { MCPServerConnection } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   TELEGRAM_HELP_MESSAGE,
   TELEGRAM_SYSTEM_PROMPT,
   TELEGRAM_WELCOME_MESSAGE,
 } from '@duyetbot/prompts';
-import { getAllBuiltinTools } from '@duyetbot/tools';
+import { getPlatformTools } from '@duyetbot/tools';
 import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
 
@@ -71,22 +71,28 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     helpMessage: TELEGRAM_HELP_MESSAGE,
     transport: telegramTransport,
     mcpServers: [duyetMcpServer, githubMcpServer],
-    tools: getAllBuiltinTools(),
+    tools: getPlatformTools('telegram'),
+    // Reduce history to minimize token usage and subrequests
+    // Cloudflare Workers limit: 50 subrequests per invocation
+    maxHistory: 20,
+    // Increase rotation interval to reduce edit subrequests
+    thinkingRotationInterval: 10000,
     hooks: {
-      onError: async (ctx, error) => {
+      onError: async (ctx, error, messageRef) => {
+        // Log the error for monitoring
         logger.error('[AGENT] Error in handle()', {
           userId: ctx.userId,
           chatId: ctx.chatId,
           error: error.message,
+          messageRef,
         });
 
-        // Send error message to user
+        // Framework automatically edits the thinking message to show error
+        // For admins, send additional detailed error info
         const isAdmin = ctx.adminUsername && ctx.username === ctx.adminUsername;
-        const errorMessage = isAdmin
-          ? `❌ Error: ${error.message}`
-          : '❌ Sorry, an error occurred. Please try again later.';
-
-        await telegramTransport.send(ctx, errorMessage);
+        if (isAdmin) {
+          await telegramTransport.send(ctx, `🔍 Debug: ${error.message}`);
+        }
       },
     },
   });
