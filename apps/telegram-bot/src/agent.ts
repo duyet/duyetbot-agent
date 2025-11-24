@@ -70,7 +70,9 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     welcomeMessage: TELEGRAM_WELCOME_MESSAGE,
     helpMessage: TELEGRAM_HELP_MESSAGE,
     transport: telegramTransport,
-    mcpServers: [duyetMcpServer, githubMcpServer],
+    // Note: GitHub MCP server disabled - causes connection pool exhaustion from hanging SSE
+    // TODO: Re-enable when GitHub Copilot MCP is stable or add proper AbortController support
+    mcpServers: [duyetMcpServer],
     tools: getPlatformTools('telegram'),
     // Reduce history to minimize token usage and subrequests
     // Cloudflare Workers limit: 50 subrequests per invocation
