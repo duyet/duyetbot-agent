@@ -158,7 +158,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _processing = false;
 
     /**
-     * Initialize MCP server connections
+     * Initialize MCP server connections with timeout
      */
     async initMcp(): Promise<void> {
       if (this._mcpInitialized || mcpServers.length === 0) {
@@ -166,6 +166,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
 
       const env = (this as unknown as { env: TEnv }).env;
+      const CONNECTION_TIMEOUT = 10000; // 10 seconds per connection
 
       for (const server of mcpServers) {
         try {
@@ -184,11 +185,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           console.log(
             `[MCP] Auth header present: ${!!authHeader}, length: ${authHeader?.length || 0}`
           );
-          console.log('[MCP] Options:', JSON.stringify(options, null, 2));
-          const result = await this.mcp.connect(server.url, options);
+
+          // Add timeout to prevent hanging connections
+          const connectPromise = this.mcp.connect(server.url, options);
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(
+              () => reject(new Error(`Connection timeout after ${CONNECTION_TIMEOUT}ms`)),
+              CONNECTION_TIMEOUT
+            );
+          });
+
+          const result = await Promise.race([connectPromise, timeoutPromise]);
           console.log(`[MCP] Connected to ${server.name}: ${result.id}`);
         } catch (error) {
           console.error(`[MCP] Failed to connect to ${server.name}:`, error);
+          // Continue to next server - don't block on failed connections
         }
       }
 
