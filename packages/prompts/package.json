@@ -21,9 +21,5 @@
     "test": "vitest run --passWithNoTests"
   },
   "type": "module",
-  "types": "dist/index.d.ts",
-  "dependencies": {
-    "@types/nunjucks": "^3.2.6",
-    "nunjucks": "^3.2.4"
-  }
+  "types": "dist/index.d.ts"
 }

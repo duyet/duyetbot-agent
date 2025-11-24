@@ -1,11 +1,11 @@
 /**
- * System prompts with Nunjucks template engine
+ * System prompts with simple template engine
  */
 
-import { config } from './config.js';
-import { type TemplateContext, renderTemplate } from './engine.js';
+import { config } from "./config.js";
+import { type TemplateContext, renderTemplate } from "./engine.js";
 
-export type Platform = 'telegram' | 'github' | 'agent' | 'default';
+export type Platform = "telegram" | "github" | "agent" | "default";
 
 export interface PromptContext extends TemplateContext {
   botName?: string;
@@ -16,7 +16,10 @@ export interface PromptContext extends TemplateContext {
  * Get the system prompt for a platform
  * Renders with Nunjucks template engine (Jinja2 syntax)
  */
-export function getSystemPrompt(platform: Platform, context?: PromptContext): string {
+export function getSystemPrompt(
+  platform: Platform,
+  context?: PromptContext,
+): string {
   const templateName = `${platform}.md`;
 
   // Merge defaults with provided context
@@ -30,13 +33,13 @@ export function getSystemPrompt(platform: Platform, context?: PromptContext): st
     return renderTemplate(templateName, fullContext);
   } catch {
     // Fallback to default if platform-specific template not found
-    return renderTemplate('default.md', fullContext);
+    return renderTemplate("default.md", fullContext);
   }
 }
 
 // Pre-compiled for backwards compatibility
-export const GITHUB_SYSTEM_PROMPT = getSystemPrompt('github');
-export const TELEGRAM_SYSTEM_PROMPT = getSystemPrompt('telegram');
+export const GITHUB_SYSTEM_PROMPT = getSystemPrompt("github");
+export const TELEGRAM_SYSTEM_PROMPT = getSystemPrompt("telegram");
 
 export const TELEGRAM_WELCOME_MESSAGE = `Hello! I'm ${config.botName}, created by ${config.creator}. Send me a message and I'll help you out.
 

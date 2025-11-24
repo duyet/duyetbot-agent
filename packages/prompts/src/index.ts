@@ -10,14 +10,14 @@ export {
   TELEGRAM_HELP_MESSAGE,
   type Platform,
   type PromptContext,
-} from './prompts.js';
+} from "./prompts.js";
 
 export {
   renderTemplate,
   renderString,
-  addFilter,
-  addGlobal,
+  addTemplate,
+  getTemplateNames,
   type TemplateContext,
-} from './engine.js';
+} from "./engine.js";
 
-export { config } from './config.js';
+export { config } from "./config.js";
