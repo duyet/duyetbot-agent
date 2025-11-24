@@ -24,7 +24,7 @@ import { type TelegramContext, telegramTransport } from './transport.js';
 /**
  * GitHub MCP server configuration
  */
-const githubMcpServer: MCPServerConnection = {
+const _githubMcpServer: MCPServerConnection = {
   name: 'github-mcp',
   url: 'https://api.githubcopilot.com/mcp/sse',
   getAuthHeader: (env) => {
