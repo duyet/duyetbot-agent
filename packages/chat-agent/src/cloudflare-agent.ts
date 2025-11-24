@@ -477,11 +477,18 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * @throws Error if transport is not configured
      */
     async handle(ctx: TContext): Promise<void> {
+      console.log('[HANDLE] Starting handle()');
+
       if (!transport) {
         throw new Error('Transport not configured. Pass transport in config to use handle().');
       }
 
       const input = transport.parseContext(ctx);
+      console.log('[HANDLE] Parsed input', {
+        userId: input.userId,
+        chatId: input.chatId,
+        textLength: input.text.length,
+      });
 
       // Deduplicate requests using requestId from metadata
       const requestId = input.metadata?.requestId as string | undefined;
