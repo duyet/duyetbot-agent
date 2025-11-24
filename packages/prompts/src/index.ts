@@ -11,3 +11,13 @@ export {
   type Platform,
   type PromptContext,
 } from './prompts.js';
+
+export {
+  renderTemplate,
+  renderString,
+  addFilter,
+  addGlobal,
+  type TemplateContext,
+} from './engine.js';
+
+export { config } from './config.js';

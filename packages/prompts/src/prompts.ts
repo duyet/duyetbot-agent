@@ -1,43 +1,37 @@
 /**
- * System prompts with static imports for Workers compatibility
+ * System prompts with Nunjucks template engine
  */
 
-// Static imports - bundled at build time
-import agentPrompt from '../prompts/agent.md';
-import defaultPrompt from '../prompts/default.md';
-import githubPrompt from '../prompts/github.md';
-import telegramPrompt from '../prompts/telegram.md';
 import { config } from './config.js';
+import { type TemplateContext, renderTemplate } from './engine.js';
 
-const prompts: Record<string, string> = {
-  agent: agentPrompt,
-  default: defaultPrompt,
-  github: githubPrompt,
-  telegram: telegramPrompt,
-};
+export type Platform = 'telegram' | 'github' | 'agent' | 'default';
 
-export type Platform = 'telegram' | 'github' | 'agent';
-
-export interface PromptContext {
+export interface PromptContext extends TemplateContext {
   botName?: string;
   creator?: string;
 }
 
 /**
  * Get the system prompt for a platform
- * Falls back to default.md if platform-specific prompt not found
+ * Renders with Nunjucks template engine (Jinja2 syntax)
  */
 export function getSystemPrompt(platform: Platform, context?: PromptContext): string {
-  const content = prompts[platform] ?? defaultPrompt;
+  const templateName = `${platform}.md`;
 
-  // Template binding
-  const botName = context?.botName || config.botName;
-  const creator = context?.creator || config.creator;
+  // Merge defaults with provided context
+  const fullContext: PromptContext = {
+    botName: context?.botName || config.botName,
+    creator: context?.creator || config.creator,
+    ...context,
+  };
 
-  return content
-    .replace(/\{\{botName\}\}/g, botName)
-    .replace(/\{\{creator\}\}/g, creator)
-    .trim();
+  try {
+    return renderTemplate(templateName, fullContext);
+  } catch {
+    // Fallback to default if platform-specific template not found
+    return renderTemplate('default.md', fullContext);
+  }
 }
 
 // Pre-compiled for backwards compatibility
