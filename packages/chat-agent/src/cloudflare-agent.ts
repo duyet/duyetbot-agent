@@ -8,6 +8,11 @@
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import {
+  createThinkingRotator,
+  formatWithEmbeddedHistory,
+  getDefaultThinkingMessages,
+} from './format.js';
 import { trimHistory } from './history.js';
 import type { Transport, TransportHooks } from './transport.js';
 import type { LLMProvider, Message, OpenAITool } from './types.js';
@@ -61,8 +66,10 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   mcpServers?: MCPServerConnection[];
   /** Built-in tools from @duyetbot/tools */
   tools?: Tool[];
-  /** Loading message shown while processing (default: 'Thinking...') */
-  loadingMessage?: string;
+  /** Thinking messages to rotate while processing */
+  thinkingMessages?: string[];
+  /** Interval in ms to rotate thinking messages (default: 5000) */
+  thinkingRotationInterval?: number;
 }
 
 // Re-export types for backward compatibility
@@ -148,6 +155,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     };
 
     private _mcpInitialized = false;
+    private _processing = false;
 
     /**
      * Initialize MCP server connections
@@ -246,18 +254,29 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       // Get available tools from MCP servers and merge with built-in tools
       const mcpTools = this.getMcpTools();
-      const tools = [...builtinToolsOpenAI, ...mcpTools];
+      const allTools = [...builtinToolsOpenAI, ...mcpTools];
+
+      // Deduplicate tools by name (keep first occurrence)
+      const seenNames = new Set<string>();
+      const tools = allTools.filter((tool) => {
+        const name = tool.function.name;
+        if (seenNames.has(name)) {
+          console.log(`[TOOLS] Skipping duplicate tool: ${name}`);
+          return false;
+        }
+        seenNames.add(name);
+        return true;
+      });
+
       const hasTools = tools.length > 0;
 
-      // Build messages for LLM call
-      const llmMessages = [
-        { role: 'system' as const, content: config.systemPrompt },
-        ...this.state.messages.map((m) => ({
-          role: m.role as 'user' | 'assistant',
-          content: m.content,
-        })),
-        { role: 'user' as const, content: userMessage },
-      ];
+      // Build messages with history embedded in user message (XML format)
+      // This embeds conversation history directly in the prompt for AI Gateway compatibility
+      const llmMessages = formatWithEmbeddedHistory(
+        this.state.messages,
+        config.systemPrompt,
+        userMessage
+      );
 
       // Call LLM with tools if available
       let response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
@@ -266,14 +285,20 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       let iterations = 0;
       const maxIterations = 5;
 
+      // Track tool conversation for iterations (separate from embedded history)
+      const toolConversation: Array<{
+        role: 'user' | 'assistant';
+        content: string;
+      }> = [];
+
       while (response.toolCalls && response.toolCalls.length > 0 && iterations < maxIterations) {
         iterations++;
         console.log(
           `[MCP] Processing ${response.toolCalls.length} tool calls (iteration ${iterations})`
         );
 
-        // Add assistant message with tool calls
-        llmMessages.push({
+        // Add assistant message with tool calls to tool conversation
+        toolConversation.push({
           role: 'assistant' as const,
           content: response.content || '',
         });
@@ -324,22 +349,26 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             }
 
             // Use 'user' role with tool context for compatibility
-            llmMessages.push({
+            toolConversation.push({
               role: 'user' as const,
               content: `[Tool Result for ${toolCall.name}]: ${resultText}`,
             });
           } catch (error) {
             console.error('[TOOL] Tool call failed:', error);
             // Use 'user' role with error context for compatibility
-            llmMessages.push({
+            toolConversation.push({
               role: 'user' as const,
               content: `[Tool Error for ${toolCall.name}]: ${error instanceof Error ? error.message : String(error)}`,
             });
           }
         }
 
+        // Rebuild messages with embedded history + tool conversation
+        // Combine: system prompt + embedded history with user message + tool turns
+        const toolMessages = [...llmMessages, ...toolConversation];
+
         // Continue conversation with tool results
-        response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
+        response = await llmProvider.chat(toolMessages, hasTools ? tools : undefined);
       }
 
       const assistantContent = response.content;
@@ -454,8 +483,38 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       const input = transport.parseContext(ctx);
 
+      // Deduplicate requests using requestId from metadata
+      const requestId = input.metadata?.requestId as string | undefined;
+      if (requestId) {
+        const lastRequestId = this.state.metadata?.lastRequestId as string | undefined;
+        if (lastRequestId === requestId) {
+          console.log(`[HANDLE] Duplicate request ${requestId}, skipping`);
+          return;
+        }
+      }
+
+      // Prevent concurrent processing (Telegram may send retries)
+      if (this._processing) {
+        console.log('[HANDLE] Already processing, skipping duplicate request');
+        return;
+      }
+      this._processing = true;
+
+      // Store requestId to prevent future duplicates
+      if (requestId) {
+        this.setState({
+          ...this.state,
+          metadata: { ...this.state.metadata, lastRequestId: requestId },
+          updatedAt: Date.now(),
+        });
+      }
+
       // Initialize state with user/chat context
       await this.init(input.userId, input.chatId);
+
+      // Track message reference for error handling
+      let messageRef: string | number | undefined;
+      let rotator: ReturnType<typeof createThinkingRotator> | undefined;
 
       try {
         // Call beforeHandle hook
@@ -476,14 +535,34 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             await transport.typing(ctx);
           }
 
-          // Send loading message and get reference for editing
-          const loadingText = config.loadingMessage ?? 'Thinking...';
-          const messageRef = await transport.send(ctx, loadingText);
+          // Create thinking message rotator
+          rotator = createThinkingRotator({
+            messages: config.thinkingMessages ?? getDefaultThinkingMessages(),
+            interval: config.thinkingRotationInterval ?? 5000,
+          });
 
-          // Process with LLM
-          response = await this.chat(input.text);
+          // Send initial thinking message
+          messageRef = await transport.send(ctx, rotator.getCurrentMessage());
 
-          // Edit loading message with actual response
+          // Start rotation if transport supports edit
+          if (transport.edit) {
+            rotator.start(async (nextMessage) => {
+              try {
+                await transport.edit!(ctx, messageRef!, nextMessage);
+              } catch {
+                // Ignore edit errors during rotation
+              }
+            });
+          }
+
+          try {
+            // Process with LLM
+            response = await this.chat(input.text);
+          } finally {
+            rotator.stop();
+          }
+
+          // Edit thinking message with actual response
           if (transport.edit) {
             try {
               await transport.edit(ctx, messageRef, response);
@@ -503,12 +582,32 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           await hooks.afterHandle(ctx, response);
         }
       } catch (error) {
-        // Call onError hook or rethrow
+        // Stop rotator if still running
+        if (rotator) {
+          rotator.stop();
+        }
+
+        // Edit thinking message to show error (if we have a message to edit)
+        if (messageRef && transport.edit) {
+          const errorMessage = '❌ Sorry, an error occurred. Please try again later.';
+          try {
+            await transport.edit(ctx, messageRef, errorMessage);
+          } catch {
+            // Fallback: send new message if edit fails
+            await transport.send(ctx, errorMessage);
+          }
+        }
+
+        // Call onError hook for logging/custom handling
         if (hooks?.onError) {
-          await hooks.onError(ctx, error as Error);
-        } else {
+          await hooks.onError(ctx, error as Error, messageRef);
+        } else if (!messageRef) {
+          // No message to edit and no hook - rethrow
           throw error;
         }
+      } finally {
+        // Always reset processing flag
+        this._processing = false;
       }
     }
   };
@@ -523,3 +622,22 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 export type CloudflareChatAgentNamespace<TEnv, TContext = unknown> = AgentNamespace<
   Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>
 >;
+
+/**
+ * Type-safe helper to get a CloudflareChatAgent by name
+ *
+ * Uses the properly typed DO stub pattern - no type assertions needed.
+ *
+ * @example
+ * ```typescript
+ * const agent = getChatAgent(env.TelegramAgent, agentId);
+ * await agent.handle(ctx); // Fully typed!
+ * ```
+ */
+export function getChatAgent<TEnv, TContext>(
+  namespace: CloudflareChatAgentNamespace<TEnv, TContext>,
+  name: string
+) {
+  const id = namespace.idFromName(name);
+  return namespace.get(id);
+}

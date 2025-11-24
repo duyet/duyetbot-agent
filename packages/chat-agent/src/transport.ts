@@ -116,7 +116,11 @@ export interface TransportHooks<TContext> {
 
   /**
    * Called when an error occurs during handling
-   * Use for error reporting, sending error messages to user
+   * Use for error reporting and logging.
+   * Note: The framework automatically edits the thinking message to show the error.
+   * @param ctx - Platform-specific context
+   * @param error - The error that occurred
+   * @param messageRef - Reference to the thinking message (if available)
    */
-  onError?: (ctx: TContext, error: Error) => Promise<void>;
+  onError?: (ctx: TContext, error: Error, messageRef?: MessageRef) => Promise<void>;
 }
