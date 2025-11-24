@@ -44,6 +44,8 @@ export {
   createCloudflareChatAgent,
   type CloudflareAgentConfig,
   type CloudflareAgentState,
+  type CloudflareChatAgentClass,
+  type CloudflareChatAgentMethods,
   type CloudflareChatAgentNamespace,
   type MCPServerConnection,
 } from './cloudflare-agent.js';

@@ -4,6 +4,7 @@
  * Configuration options for SDK query execution
  */
 
+import type { PersistFn, SummarizerFn } from './context/types.js';
 import type {
   MCPServerConfig,
   ModelType,
@@ -83,6 +84,56 @@ export interface QueryOptions {
    * Custom metadata to attach to the session
    */
   metadata?: Record<string, unknown>;
+
+  /**
+   * Context engineering configuration
+   */
+  context?: {
+    /**
+     * Enable automatic context management
+     */
+    enabled?: boolean;
+
+    /**
+     * Maximum context tokens (default: 200000)
+     */
+    maxTokens?: number;
+
+    /**
+     * Trigger compaction at this utilization (default: 0.85)
+     */
+    compactionThreshold?: number;
+
+    /**
+     * Number of recent messages to always preserve (default: 5)
+     */
+    preserveRecentMessages?: number;
+
+    /**
+     * Prune tool results older than N turns (default: 10)
+     */
+    pruneToolResultsAfter?: number;
+
+    /**
+     * Maximum length for individual tool results (default: 2000)
+     */
+    maxToolResultLength?: number;
+
+    /**
+     * Enable automatic memory persistence on compaction
+     */
+    persistOnCompaction?: boolean;
+
+    /**
+     * Custom summarizer function
+     */
+    summarizer?: SummarizerFn;
+
+    /**
+     * Custom persist function for memory storage
+     */
+    persist?: PersistFn;
+  };
 }
 
 /**
@@ -124,7 +175,10 @@ export function mergeOptions(
 /**
  * Validate options
  */
-export function validateOptions(options: QueryOptions): { valid: boolean; errors: string[] } {
+export function validateOptions(options: QueryOptions): {
+  valid: boolean;
+  errors: string[];
+} {
   const errors: string[] = [];
 
   // Validate model

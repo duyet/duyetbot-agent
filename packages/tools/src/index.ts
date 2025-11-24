@@ -14,6 +14,7 @@ import { bashTool } from './bash.js';
 import { gitTool } from './git.js';
 import { planTool } from './plan.js';
 import { researchTool } from './research.js';
+import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
 
 export * from './sleep.js';
@@ -23,6 +24,7 @@ export * from './git.js';
 export * from './research.js';
 export * from './registry.js';
 export * from './github.js';
+export * from './scratchpad.js';
 
 /**
  * Get all built-in tools
@@ -31,5 +33,5 @@ export * from './github.js';
  * Note: github tool requires Octokit instance, use createGitHubTool() separately.
  */
 export function getAllBuiltinTools(): Tool[] {
-  return [bashTool, gitTool, planTool, researchTool, sleepTool];
+  return [bashTool, gitTool, planTool, researchTool, scratchpadTool, sleepTool];
 }

@@ -22,9 +22,9 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "agents": "^0.0.77"
+    "agents": "catalog:"
   },
   "devDependencies": {
-    "typescript": "^5.7.2"
+    "typescript": "catalog:"
   }
 }

@@ -13,13 +13,14 @@
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/mcp-servers": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
-    "agents": "^0.2.23",
-    "hono": "^4.6.0"
+    "@duyetbot/providers": "workspace:*",
+    "agents": "catalog:",
+    "hono": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "typescript": "^5.0.0",
-    "vitest": "^2.0.0",
-    "wrangler": "^4.50.0"
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
   }
 }
