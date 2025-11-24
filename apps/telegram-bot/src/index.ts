@@ -5,6 +5,7 @@
  * Uses transport layer pattern for clean separation of concerns.
  */
 
+import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import { type Env, TelegramAgent } from './agent.js';
 import { authorizationMiddleware } from './middlewares/authorization.js';
@@ -57,28 +58,41 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
     requestId
   );
 
-  // Get agent using direct DO stub (bypasses getAgentByName which causes blockConcurrencyWhile timeout)
+  // Get agent by name (consistent with github-bot pattern)
   const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
   logger.info(`[${requestId}] [WEBHOOK] Getting agent`, {
     agentId,
     requestId,
   });
 
-  try {
-    // Use direct DO stub pattern instead of getAgentByName
-    const id = env.TelegramAgent.idFromName(agentId);
-    const stub = env.TelegramAgent.get(id);
+  // Use waitUntil to process in background - respond immediately to prevent Telegram retries
+  // Telegram retries if response takes >10s, causing duplicate "Thinking" messages
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        const agent = getChatAgent(env.TelegramAgent, agentId);
 
-    // Agent handles everything: commands, chat, sending response
-    await stub.handle(ctx);
-  } catch (error) {
-    logger.error('[WEBHOOK] Failed to get agent', {
-      agentId,
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
+        // Agent handles everything: commands, chat, sending response
+        await agent.handle(ctx);
+      } catch (error) {
+        logger.error('[WEBHOOK] Failed to process message', {
+          agentId,
+          requestId,
+          error: error instanceof Error ? error.message : String(error),
+        });
 
+        // Send error message to user if agent invocation fails
+        const { telegramTransport } = await import('./transport.js');
+        try {
+          await telegramTransport.send(ctx, '❌ Sorry, an error occurred. Please try again later.');
+        } catch {
+          // Ignore if we can't send the error message
+        }
+      }
+    })()
+  );
+
+  // Return immediately to Telegram
   return c.text('OK');
 });
 
