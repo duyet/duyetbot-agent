@@ -106,11 +106,58 @@ app.post('/webhook', async (c) => {
   const agentId = env.TELEGRAM_AGENT.idFromName(String(ctx.chatId));
   const agent = env.TELEGRAM_AGENT.get(agentId);
 
-  // Agent handles everything
-  await agent.handle(ctx);
+  // Fire-and-forget: DO runs independently
+  agent.handle(ctx).catch((error: unknown) => {
+    logger.error('DO invocation failed', { error });
+  });
 
+  // Return immediately
   return c.json({ ok: true });
 });
+```
+
+### Webhook Execution Pattern: Fire-and-Forget
+
+**Critical Implementation Detail:** Durable Object invocations use fire-and-forget pattern instead of `waitUntil()` or `await`.
+
+**Why Not `waitUntil()`?**
+```typescript
+// ❌ WRONG: Couples DO to webhook's 30s IoContext timeout
+c.executionCtx.waitUntil(
+  agent.handle(ctx)
+);
+
+// ✅ CORRECT: DO runs independently with its own timeout
+agent.handle(ctx).catch(() => {});
+```
+
+**The Problem with `waitUntil()`:**
+- When a DO invocation is wrapped in `waitUntil()`, it inherits the webhook's execution context
+- Cloudflare Workers have a hard 30-second IoContext timeout for background tasks
+- If the DO processing takes >30s, the entire context is cancelled
+- User never receives a response, and the DO's work is lost
+
+**The Solution:**
+- Invoke the DO directly without `await` or `waitUntil()`
+- Durable Objects run in their own isolated execution context
+- Each DO has its own independent 30s timeout
+- Webhook returns immediately (preventing platform timeouts)
+- DO continues processing independently until completion
+
+**Benefits:**
+- ✅ Webhook responds in <100ms (no Telegram/GitHub retries)
+- ✅ DO processes for full duration without interruption
+- ✅ Independent timeout management per DO
+- ✅ Better error isolation and debugging
+
+**Timeline:**
+```
+T+0ms:    Webhook receives request
+T+1ms:    DO invocation triggered (fire-and-forget)
+T+2ms:    Webhook returns 'OK' to platform
+T+10ms:   DO sends "Thinking..." message
+T+5000ms: DO completes LLM processing
+T+5500ms: DO edits message with final response
 ```
 
 ## The Hybrid Supervisor-Worker Model

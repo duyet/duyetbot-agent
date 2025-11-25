@@ -64,33 +64,37 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
     requestId,
   });
 
-  // Use waitUntil to process in background - respond immediately to prevent Telegram retries
-  // Telegram retries if response takes >10s, causing duplicate "Thinking" messages
-  c.executionCtx.waitUntil(
-    (async () => {
-      try {
-        const agent = getChatAgent(env.TelegramAgent, agentId);
+  // Fire-and-forget DO invocation - no waitUntil needed
+  // DO runs in its own execution context with independent timeout
+  // Webhook returns immediately to prevent Telegram retries (>10s causes duplicate messages)
+  try {
+    const agent = getChatAgent(env.TelegramAgent, agentId);
 
-        // Agent handles everything: commands, chat, sending response
-        await agent.handle(ctx);
-      } catch (error) {
-        logger.error('[WEBHOOK] Failed to process message', {
-          agentId,
-          requestId,
-          error: error instanceof Error ? error.message : String(error),
-        });
+    // Agent handles everything: commands, chat, sending response
+    // Don't await - let DO run independently
+    agent.handle(ctx).catch((error: unknown) => {
+      logger.error('[WEBHOOK] DO invocation failed', {
+        agentId,
+        requestId,
+        error: error instanceof Error ? error.message : String(error),
+      });
 
-        // Send error message to user if agent invocation fails
-        // Note: This only fires when DO invocation fails before sending "Thinking..."
-        // DO's internal error handling edits the thinking message for errors during processing
-        try {
-          await telegramTransport.send(ctx, '❌ Sorry, an error occurred. Please try again later.');
-        } catch {
+      // Send error message to user if DO processing fails
+      // Note: This only fires when DO invocation fails before sending "Thinking..."
+      // DO's internal error handling edits the thinking message for errors during processing
+      telegramTransport
+        .send(ctx, '❌ Sorry, an error occurred. Please try again later.')
+        .catch(() => {
           // Ignore if we can't send the error message
-        }
-      }
-    })()
-  );
+        });
+    });
+  } catch (error) {
+    logger.error('[WEBHOOK] Failed to get agent', {
+      agentId,
+      requestId,
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
 
   // Return immediately to Telegram
   return c.text('OK');
