@@ -1,7 +1,6 @@
 /// <reference types="bun-types" />
 
 // Build with Bun
-// biome-ignore lint/correctness/noUndeclaredVariables: Bun global
 await Bun.build({
   entrypoints: ['./src/index.ts', './src/server.ts'],
   outdir: './dist',
@@ -14,6 +13,9 @@ await Bun.build({
 
 // Generate type declarations
 import { execSync } from 'node:child_process';
-execSync('tsc --emitDeclarationOnly --declaration --outDir dist', { stdio: 'inherit' });
+
+execSync('tsc --emitDeclarationOnly --declaration --outDir dist', {
+  stdio: 'inherit',
+});
 
 console.log('✅ Build complete');

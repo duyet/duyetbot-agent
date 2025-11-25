@@ -1,0 +1,88 @@
+name = "duyetbot-telegram"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Bundle .md files as text
+[[rules]]
+type = "Text"
+globs = ["**/*.md"]
+fallthrough = true
+
+[ai]
+binding = "AI"
+
+[vars]
+ENVIRONMENT = "production"
+MODEL = "x-ai/grok-4.1-fast"
+AI_GATEWAY_NAME = "duyetbot"
+AI_GATEWAY_PROVIDER = "openrouter"
+TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
+TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[placement]
+mode = "smart"
+
+# Durable Objects for Agent state
+[[durable_objects.bindings]]
+name = "TelegramAgent"
+class_name = "TelegramAgent"
+
+[[durable_objects.bindings]]
+name = "RouterAgent"
+class_name = "RouterAgent"
+
+[[durable_objects.bindings]]
+name = "SimpleAgent"
+class_name = "SimpleAgent"
+
+[[durable_objects.bindings]]
+name = "HITLAgent"
+class_name = "HITLAgent"
+
+[[durable_objects.bindings]]
+name = "OrchestratorAgent"
+class_name = "OrchestratorAgent"
+
+[[durable_objects.bindings]]
+name = "CodeWorker"
+class_name = "CodeWorker"
+
+[[durable_objects.bindings]]
+name = "ResearchWorker"
+class_name = "ResearchWorker"
+
+[[durable_objects.bindings]]
+name = "GitHubWorker"
+class_name = "GitHubWorker"
+
+# Migrations for SQLite state persistence
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TelegramAgent"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RouterAgent"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker"]
+
+# Service binding to Memory MCP for RPC calls
+[[services]]
+binding = "MEMORY_SERVICE"
+service = "duyetbot-memory"
+entrypoint = "MemoryServiceEntrypoint"

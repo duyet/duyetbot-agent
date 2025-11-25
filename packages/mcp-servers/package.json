@@ -1,0 +1,30 @@
+{
+  "name": "@duyetbot/mcp-servers",
+  "version": "0.1.0",
+  "description": "Shared MCP server configurations for duyetbot-agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["mcp", "servers", "duyetbot"],
+  "author": "duyet",
+  "license": "MIT",
+  "dependencies": {
+    "agents": "catalog:"
+  },
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

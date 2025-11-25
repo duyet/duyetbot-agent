@@ -1,0 +1,492 @@
+/**
+ * Router Agent
+ *
+ * Classifies incoming queries and routes them to appropriate handlers.
+ * Uses LLM-based classification with quick pattern matching for common cases.
+ *
+ * This is the entry point for all queries in the new routing architecture.
+ */
+
+import { logger } from '@duyetbot/hono-middleware';
+import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
+import {
+  type ClassificationContext,
+  type ClassifierConfig,
+  type QueryClassification,
+  type RouteTarget,
+  determineRouteTarget,
+  hybridClassify,
+} from '../routing/index.js';
+import type { LLMProvider, Message } from '../types.js';
+import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+
+/**
+ * Router agent state
+ */
+export interface RouterAgentState {
+  /** Session identifier */
+  sessionId: string;
+  /** Last classification result */
+  lastClassification: QueryClassification | undefined;
+  /** Routing history for analytics */
+  routingHistory: Array<{
+    query: string;
+    classification: QueryClassification;
+    routedTo: RouteTarget;
+    timestamp: number;
+    durationMs: number;
+  }>;
+  /** Creation timestamp */
+  createdAt: number;
+  /** Last update timestamp */
+  updatedAt: number;
+}
+
+/**
+ * Environment bindings for router agent
+ */
+export interface RouterAgentEnv {
+  /** LLM provider configuration */
+  AI_GATEWAY_ACCOUNT_ID?: string;
+  AI_GATEWAY_ID?: string;
+  ANTHROPIC_API_KEY?: string;
+  OPENROUTER_API_KEY?: string;
+
+  /** Agent bindings - these are optional since not all may be deployed */
+  SimpleAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+  OrchestratorAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+  HITLAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+  CodeWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+  ResearchWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+  GitHubWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+}
+
+/**
+ * Configuration for router agent
+ */
+export interface RouterAgentConfig<TEnv extends RouterAgentEnv> {
+  /** Function to create LLM provider from env */
+  createProvider: (env: TEnv) => LLMProvider;
+  /** Maximum routing history to keep */
+  maxHistory?: number;
+  /** Custom classification prompt override */
+  customClassificationPrompt?: string;
+  /** Enable detailed logging */
+  debug?: boolean;
+}
+
+/**
+ * Methods exposed by RouterAgent
+ */
+export interface RouterAgentMethods {
+  route(query: string, context: AgentContext): Promise<AgentResult>;
+  getStats(): {
+    totalRouted: number;
+    byTarget: Record<string, number>;
+    avgDurationMs: number;
+  };
+  getRoutingHistory(limit?: number): RouterAgentState['routingHistory'];
+  getLastClassification(): QueryClassification | undefined;
+  clearHistory(): void;
+}
+
+/**
+ * Type for RouterAgent class
+ */
+export type RouterAgentClass<TEnv extends RouterAgentEnv> = typeof Agent<TEnv, RouterAgentState> & {
+  new (
+    ...args: ConstructorParameters<typeof Agent<TEnv, RouterAgentState>>
+  ): Agent<TEnv, RouterAgentState> & RouterAgentMethods;
+};
+
+/**
+ * Create a Router Agent class
+ *
+ * @example
+ * ```typescript
+ * export const RouterAgent = createRouterAgent({
+ *   createProvider: (env) => createAIGatewayProvider(env),
+ * });
+ * ```
+ */
+export function createRouterAgent<TEnv extends RouterAgentEnv>(
+  config: RouterAgentConfig<TEnv>
+): RouterAgentClass<TEnv> {
+  const maxHistory = config.maxHistory ?? 50;
+  const debug = config.debug ?? false;
+
+  const AgentClass = class RouterAgent extends Agent<TEnv, RouterAgentState> {
+    override initialState: RouterAgentState = {
+      sessionId: '',
+      lastClassification: undefined,
+      routingHistory: [],
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    };
+
+    /**
+     * Handle state updates
+     */
+    override onStateUpdate(_state: RouterAgentState, source: 'server' | Connection): void {
+      if (debug) {
+        logger.info('[RouterAgent] State updated', { source });
+      }
+    }
+
+    /**
+     * Route a query to the appropriate handler
+     */
+    async route(query: string, context: AgentContext): Promise<AgentResult> {
+      const startTime = Date.now();
+      const traceId = context.traceId ?? AgentMixin.generateId('trace');
+
+      AgentMixin.log('RouterAgent', 'Routing query', {
+        traceId,
+        queryLength: query.length,
+        platform: context.platform,
+      });
+
+      try {
+        // Get LLM provider
+        const env = (this as unknown as { env: TEnv }).env;
+        const provider = config.createProvider(env);
+
+        // Build classification context
+        const validPlatforms = ['telegram', 'github', 'api', 'cli'] as const;
+        const platform = validPlatforms.includes(
+          context.platform as (typeof validPlatforms)[number]
+        )
+          ? (context.platform as (typeof validPlatforms)[number])
+          : undefined;
+
+        const classificationContext: ClassificationContext = {
+          platform,
+          recentMessages: this.state.routingHistory.slice(-3).map((h) => ({
+            role: 'user',
+            content: h.query,
+          })),
+        };
+
+        // Classify the query
+        const classifierConfig: ClassifierConfig = { provider };
+        if (config.customClassificationPrompt) {
+          classifierConfig.customPrompt = config.customClassificationPrompt;
+        }
+        const classification = await hybridClassify(query, classifierConfig, classificationContext);
+
+        // Determine route target
+        const target = determineRouteTarget(classification);
+
+        const durationMs = Date.now() - startTime;
+
+        // Structured debug logging for routing decision
+        if (debug) {
+          const logEntry = {
+            timestamp: new Date().toISOString(),
+            traceId,
+            query: query.slice(0, 100), // Truncated for logging
+            classification: {
+              type: classification.type,
+              category: classification.category,
+              complexity: classification.complexity,
+              confidence: classification.confidence,
+              reasoning: classification.reasoning?.slice(0, 200),
+            },
+            target,
+            durationMs,
+            sessionId: this.state.sessionId,
+            platform: context.platform,
+          };
+
+          logger.info('[ROUTER_DEBUG] Routing decision', logEntry);
+        }
+
+        // Update state with routing history
+        this.setState({
+          ...this.state,
+          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
+          lastClassification: classification,
+          routingHistory: [
+            ...this.state.routingHistory.slice(-(maxHistory - 1)),
+            {
+              query: query.slice(0, 200), // Truncate for storage
+              classification,
+              routedTo: target,
+              timestamp: Date.now(),
+              durationMs,
+            },
+          ],
+          updatedAt: Date.now(),
+        });
+
+        AgentMixin.log('RouterAgent', 'Classification complete', {
+          traceId,
+          type: classification.type,
+          category: classification.category,
+          complexity: classification.complexity,
+          target,
+          durationMs,
+        });
+
+        // Route to target agent
+        const result = await this.dispatchToTarget(target, query, context, classification);
+
+        // Log successful routing outcome
+        if (debug) {
+          logger.info('[ROUTER_DEBUG] Routing outcome', {
+            traceId,
+            target,
+            success: result.success,
+            resultDurationMs: result.durationMs,
+            totalDurationMs: Date.now() - startTime,
+          });
+        }
+
+        return result;
+      } catch (error) {
+        const durationMs = Date.now() - startTime;
+
+        // Enhanced error logging
+        if (debug) {
+          logger.error('[ROUTER_DEBUG] Routing error', {
+            traceId,
+            query: query.slice(0, 100),
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            durationMs,
+          });
+        }
+
+        AgentMixin.logError('RouterAgent', 'Routing failed', error, {
+          traceId,
+          durationMs,
+        });
+
+        return AgentMixin.createErrorResult(error, durationMs);
+      }
+    }
+
+    /**
+     * Dispatch query to target agent/worker
+     */
+    private async dispatchToTarget(
+      target: RouteTarget,
+      query: string,
+      context: AgentContext,
+      classification: QueryClassification
+    ): Promise<AgentResult> {
+      const startTime = Date.now();
+      const env = (this as unknown as { env: TEnv }).env;
+
+      // Build enhanced context for target
+      const targetContext: AgentContext = {
+        ...context,
+        data: {
+          ...context.data,
+          classification,
+          routedFrom: 'router-agent',
+        },
+      };
+
+      try {
+        switch (target) {
+          case 'simple-agent': {
+            if (!env.SimpleAgent) {
+              // Fallback: handle simple queries directly
+              return this.handleSimpleQuery(query, targetContext);
+            }
+            const agent = await getAgentByName(
+              env.SimpleAgent,
+              targetContext.chatId?.toString() || 'default'
+            );
+            return (
+              agent as unknown as {
+                execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+              }
+            ).execute(query, targetContext);
+          }
+
+          case 'orchestrator-agent': {
+            if (!env.OrchestratorAgent) {
+              return AgentMixin.createErrorResult(
+                new Error('OrchestratorAgent not available'),
+                Date.now() - startTime
+              );
+            }
+            const agent = await getAgentByName(
+              env.OrchestratorAgent,
+              targetContext.chatId?.toString() || 'default'
+            );
+            return (
+              agent as unknown as {
+                orchestrate: (q: string, c: AgentContext) => Promise<AgentResult>;
+              }
+            ).orchestrate(query, targetContext);
+          }
+
+          case 'hitl-agent': {
+            if (!env.HITLAgent) {
+              return AgentMixin.createErrorResult(
+                new Error('HITLAgent not available'),
+                Date.now() - startTime
+              );
+            }
+            const agent = await getAgentByName(
+              env.HITLAgent,
+              targetContext.chatId?.toString() || 'default'
+            );
+            return (
+              agent as unknown as {
+                handle: (q: string, c: AgentContext) => Promise<AgentResult>;
+              }
+            ).handle(query, targetContext);
+          }
+
+          case 'code-worker': {
+            if (!env.CodeWorker) {
+              // Fallback to simple handling
+              return this.handleSimpleQuery(query, targetContext);
+            }
+            const agent = await getAgentByName(env.CodeWorker, AgentMixin.generateId('worker'));
+            return (
+              agent as unknown as {
+                execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+              }
+            ).execute(query, targetContext);
+          }
+
+          case 'research-worker': {
+            if (!env.ResearchWorker) {
+              return this.handleSimpleQuery(query, targetContext);
+            }
+            const agent = await getAgentByName(env.ResearchWorker, AgentMixin.generateId('worker'));
+            return (
+              agent as unknown as {
+                execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+              }
+            ).execute(query, targetContext);
+          }
+
+          case 'github-worker': {
+            if (!env.GitHubWorker) {
+              return this.handleSimpleQuery(query, targetContext);
+            }
+            const agent = await getAgentByName(env.GitHubWorker, AgentMixin.generateId('worker'));
+            return (
+              agent as unknown as {
+                execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+              }
+            ).execute(query, targetContext);
+          }
+
+          default: {
+            // Fallback for unknown targets
+            AgentMixin.log('RouterAgent', 'Unknown target, using simple handler', {
+              target,
+            });
+            return this.handleSimpleQuery(query, targetContext);
+          }
+        }
+      } catch (error) {
+        AgentMixin.logError('RouterAgent', 'Dispatch failed', error, {
+          target,
+        });
+        return AgentMixin.createErrorResult(error, Date.now() - startTime);
+      }
+    }
+
+    /**
+     * Handle simple queries directly (fallback when SimpleAgent not available)
+     */
+    private async handleSimpleQuery(query: string, _context: AgentContext): Promise<AgentResult> {
+      const startTime = Date.now();
+      const env = (this as unknown as { env: TEnv }).env;
+
+      try {
+        const provider = config.createProvider(env);
+        const messages: Message[] = [
+          {
+            role: 'system',
+            content: 'You are a helpful assistant. Respond concisely and accurately.',
+          },
+          { role: 'user', content: query },
+        ];
+
+        const response = await provider.chat(
+          messages.map((m) => ({
+            role: m.role as 'system' | 'user' | 'assistant',
+            content: m.content,
+          }))
+        );
+
+        return AgentMixin.createResult(true, response.content, Date.now() - startTime);
+      } catch (error) {
+        return AgentMixin.createErrorResult(error, Date.now() - startTime);
+      }
+    }
+
+    /**
+     * Get routing statistics
+     */
+    getStats(): {
+      totalRouted: number;
+      byTarget: Record<string, number>;
+      avgDurationMs: number;
+    } {
+      const history = this.state.routingHistory;
+      const byTarget: Record<string, number> = {};
+
+      for (const entry of history) {
+        byTarget[entry.routedTo] = (byTarget[entry.routedTo] || 0) + 1;
+      }
+
+      const avgDurationMs =
+        history.length > 0 ? history.reduce((sum, h) => sum + h.durationMs, 0) / history.length : 0;
+
+      return {
+        totalRouted: history.length,
+        byTarget,
+        avgDurationMs,
+      };
+    }
+
+    /**
+     * Get routing history with optional limit
+     */
+    getRoutingHistory(limit?: number): RouterAgentState['routingHistory'] {
+      const history = this.state.routingHistory;
+      if (limit && limit > 0) {
+        return history.slice(-limit);
+      }
+      return history;
+    }
+
+    /**
+     * Get last classification result
+     */
+    getLastClassification(): QueryClassification | undefined {
+      return this.state.lastClassification;
+    }
+
+    /**
+     * Clear routing history
+     */
+    clearHistory(): void {
+      this.setState({
+        ...this.state,
+        routingHistory: [],
+        lastClassification: undefined,
+        updatedAt: Date.now(),
+      });
+    }
+  };
+
+  return AgentClass as RouterAgentClass<TEnv>;
+}
+
+/**
+ * Type for router agent instance
+ */
+export type RouterAgentInstance<TEnv extends RouterAgentEnv> = InstanceType<
+  ReturnType<typeof createRouterAgent<TEnv>>
+>;

@@ -143,9 +143,9 @@ export function createProviderConfig(custom: CustomProviderConfig, model: string
  * Re-export types from @duyetbot/types
  */
 export type {
-  LLMProvider,
-  ProviderConfig,
   LLMMessage,
+  LLMProvider,
   LLMResponse,
+  ProviderConfig,
   QueryOptions,
 } from '@duyetbot/types';

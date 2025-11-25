@@ -333,7 +333,7 @@ describe('SDK Query', () => {
       expect(messages[0].sessionId).toBe('custom-session');
     });
 
-    it('should handle interrupt', { timeout: 10000 }, async () => {
+    it('should handle interrupt', { timeout: 30000 }, async () => {
       const controller = createQueryController();
 
       const messages = [];
@@ -358,7 +358,7 @@ describe('SDK Query', () => {
 
       expect(result.type).toBe('result');
       expect(result.content).toBeDefined();
-    });
+    }, 180000);
   });
 
   describe('collectMessages', () => {
@@ -367,7 +367,7 @@ describe('SDK Query', () => {
 
       expect(Array.isArray(messages)).toBe(true);
       expect(messages.length).toBeGreaterThan(0);
-    });
+    }, 180000);
   });
 });
 

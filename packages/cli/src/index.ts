@@ -2,53 +2,45 @@
  * CLI Package Exports
  */
 
-export type { CLIConfig, ProviderConfig, AuthConfig } from './config.js';
+export type { AuthCredentials, AuthState, AuthUser } from './auth.js';
+export { AuthManager } from './auth.js';
+export type { ChatContext, ChatOptions } from './chat.js';
+export { runPrompt, startChat } from './chat.js';
+export { startInkChat } from './chat-ink.js';
+export { CloudSessionManager } from './cloud-sessions.js';
+export type { AuthConfig, CLIConfig, ProviderConfig } from './config.js';
 export {
+  getConfigDir,
+  getConfigPath,
   getDefaultConfig,
   loadConfig,
   saveConfig,
   updateConfig,
-  getConfigDir,
-  getConfigPath,
 } from './config.js';
-
-export type { AuthUser, AuthCredentials, AuthState } from './auth.js';
-export { AuthManager } from './auth.js';
-
+export type { ModeDetectionResult } from './mode-detector.js';
+export { checkMCPServer, detectMode, getEffectiveMode } from './mode-detector.js';
+export type { AccessTokenResponse, DeviceCodeResponse } from './oauth.js';
+export { GitHubDeviceAuth, startDeviceLogin } from './oauth.js';
 export type {
+  CreateSessionInput,
+  ListSessionsOptions,
   LocalSession,
   SessionState,
-  CreateSessionInput,
   UpdateSessionInput,
-  ListSessionsOptions,
 } from './sessions.js';
 export { FileSessionManager } from './sessions.js';
-
-export { CloudSessionManager } from './cloud-sessions.js';
-
-export type { ChatOptions, ChatContext } from './chat.js';
-export { startChat, runPrompt } from './chat.js';
-
-export { startInkChat } from './chat-ink.js';
-
 export type {
-  ChatViewProps,
-  StatusBarProps,
   AppProps,
+  ChatViewProps,
   SessionItem,
   SessionListProps,
+  StatusBarProps,
 } from './ui/index.js';
 export {
-  ChatView,
-  StatusBar,
   App,
+  ChatView,
   SessionList,
   SessionListHeader,
   SessionListView,
+  StatusBar,
 } from './ui/index.js';
-
-export type { DeviceCodeResponse, AccessTokenResponse } from './oauth.js';
-export { GitHubDeviceAuth, startDeviceLogin } from './oauth.js';
-
-export type { ModeDetectionResult } from './mode-detector.js';
-export { checkMCPServer, detectMode, getEffectiveMode } from './mode-detector.js';

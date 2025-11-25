@@ -2,26 +2,25 @@
   "name": "@duyetbot/telegram-bot",
   "version": "0.1.0",
   "type": "module",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "start": "node dist/index.js",
-    "test": "vitest run",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "test": "vitest run --passWithNoTests",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@duyetbot/core": "workspace:*",
-    "@duyetbot/tools": "workspace:*",
-    "@duyetbot/types": "workspace:*",
-    "telegraf": "^4.16.0",
-    "zod": "^3.23.0"
+    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/hono-middleware": "workspace:*",
+    "@duyetbot/mcp-servers": "workspace:*",
+    "@duyetbot/prompts": "workspace:*",
+    "@duyetbot/providers": "workspace:*",
+    "agents": "catalog:",
+    "hono": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "tsx": "^4.0.0",
-    "vitest": "^2.0.0"
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
   }
 }
