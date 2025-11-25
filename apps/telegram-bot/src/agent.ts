@@ -75,7 +75,6 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
   ROUTER_DEBUG?: string;
-  ROUTER_ENABLED?: string;
 }
 
 /**
