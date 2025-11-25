@@ -32,13 +32,10 @@ bunx wrangler secret put GITHUB_WEBHOOK_SECRET
 bunx wrangler secret put OPENROUTER_API_KEY
 ```
 
-## Routing Control
+## Routing Debug
 
 ```bash
-# Disable routing (emergency)
-bunx wrangler secret put ROUTER_ENABLED --text "false"
-
-# Enable debug logs
+# Enable debug logs for routing decisions
 bunx wrangler secret put ROUTER_DEBUG --text "true"
 ```
 
