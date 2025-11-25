@@ -53,6 +53,13 @@ export interface AIGatewayProviderOptions {
   cacheKey?: string;
   /** Retry configuration */
   retry?: AIGatewayRetryConfig;
+  /**
+   * Enable reasoning/thinking mode for supported models (Grok, o1, etc.)
+   * Set to false to disable reasoning for faster responses.
+   * @default false (disabled for better latency)
+   * @see https://openrouter.ai/docs/use-cases/reasoning-tokens
+   */
+  reasoning?: boolean;
   /** Custom logger (defaults to console) */
   logger?: {
     info: (message: string, data?: Record<string, unknown>) => void;
@@ -113,6 +120,7 @@ export function createAIGatewayProvider(
     cacheTtl,
     cacheKey,
     retry,
+    reasoning = false, // Disabled by default for faster responses
     logger = console,
   } = options;
 
@@ -161,6 +169,11 @@ export function createAIGatewayProvider(
         messages,
       };
 
+      // Add reasoning configuration for supported models (Grok, o1, etc.)
+      // This explicitly disables "thinking" mode for faster responses
+      // @see https://openrouter.ai/docs/use-cases/reasoning-tokens
+      query.reasoning = { enabled: reasoning };
+
       // Add tools if provided
       if (tools && tools.length > 0) {
         query.tools = tools;
@@ -176,8 +189,7 @@ export function createAIGatewayProvider(
         toolCount: tools?.length || 0,
         maxTokens,
         requestTimeout,
-        cacheTtl,
-        retry,
+        reasoning,
       });
 
       const startTime = Date.now();
@@ -242,12 +254,13 @@ export function createAIGatewayProvider(
       const durationMs = Date.now() - startTime;
 
       logger.info('AI Gateway request completed', {
-        model,
-        provider,
-        durationMs,
+        content: choice?.content || '',
         hasContent: !!choice?.content,
         contentLength: choice?.content?.length || 0,
         toolCallCount: toolCalls?.length || 0,
+        durationMs,
+        provider,
+        model,
       });
 
       return {

@@ -79,6 +79,20 @@ Built-in tools (SDK-compatible format):
 - Local and cloud modes
 - GitHub OAuth authentication
 
+**5. Chat Agent Package** (`packages/chat-agent/`)
+Reusable agent abstraction for Cloudflare Workers with routing system:
+- **Routing System**: Query classifier and RouterAgent for intelligent request routing
+- **Agent Types**: SimpleAgent, HITLAgent (Human-in-the-Loop), OrchestratorAgent
+- **Workers**: CodeWorker, ResearchWorker, GitHubWorker for specialized tasks
+- **Orchestration**: Task decomposition, parallel execution, result aggregation
+- **Feature Flags**: Environment-based routing configuration (ROUTER_ENABLED, ROUTER_DEBUG)
+- **226 tests passing** (routing, HITL, orchestration, platform integration)
+
+**6. Prompts Package** (`packages/prompts/`)
+- Shared system prompts for agents
+- Markdown-based prompt management
+- Prompt engine with variable interpolation
+
 ### Applications
 
 **1. GitHub Bot** (`apps/github-bot/`)
@@ -278,6 +292,23 @@ duyetbot-agent/
 │   │   │   └── auth/           # GitHub OAuth
 │   │   └── package.json
 │   │
+│   ├── chat-agent/              # Cloudflare agent patterns
+│   │   ├── src/
+│   │   │   ├── agents/         # RouterAgent, SimpleAgent, HITLAgent, OrchestratorAgent
+│   │   │   ├── routing/        # Query classifier and schemas
+│   │   │   ├── hitl/           # Human-in-the-loop state machine
+│   │   │   ├── orchestration/  # Task planner and executor
+│   │   │   ├── workers/        # CodeWorker, ResearchWorker, GitHubWorker
+│   │   │   ├── feature-flags.ts # Routing configuration
+│   │   │   └── __tests__/      # 226 tests
+│   │   └── package.json
+│   │
+│   ├── prompts/                 # Shared prompts
+│   │   ├── src/
+│   │   │   ├── prompts.ts      # Markdown prompts
+│   │   │   └── engine.ts       # Prompt interpolation
+│   │   └── package.json
+│   │
 │   └── types/                   # Shared TypeScript types
 │       └── package.json
 │
@@ -338,6 +369,42 @@ GITHUB_TOKEN=<token>
 
 # Telegram
 TELEGRAM_BOT_TOKEN=<token>
+
+# Routing System (Optional - defaults shown)
+ROUTER_ENABLED=true    # Enable/disable routing system
+ROUTER_DEBUG=false     # Enable debug logging for routing decisions
+```
+
+### Routing System Configuration
+
+The chat-agent package includes an intelligent routing system that classifies queries and routes them to specialized agents:
+
+**Environment Variables**:
+- `ROUTER_ENABLED` - Enable/disable routing (default: `true`)
+- `ROUTER_DEBUG` - Enable debug logging (default: `false`)
+
+**Routing Architecture**:
+```
+User Query → QueryClassifier → RouterAgent → [SimpleAgent|HITLAgent|OrchestratorAgent]
+                                               └→ Workers (Code|Research|GitHub)
+```
+
+**Agent Types**:
+- **SimpleAgent**: Direct LLM responses for straightforward queries
+- **HITLAgent**: Human-in-the-loop for tool confirmations
+- **OrchestratorAgent**: Task decomposition and parallel worker execution
+
+**Configuration in Applications**:
+```typescript
+// apps/telegram-bot/src/agent.ts
+export const TelegramAgent = createCloudflareChatAgent({
+  createProvider: (env) => createAIGatewayProvider(env),
+  systemPrompt: TELEGRAM_SYSTEM_PROMPT,
+  router: {
+    platform: 'telegram',
+    debug: false,  // Set to true for routing logs
+  },
+});
 ```
 
 ### Z.AI Support (Base URL Override)
@@ -350,14 +417,17 @@ export ANTHROPIC_BASE_URL="https://api.z.ai/api/anthropic"
 ## Testing
 
 ### Test Coverage
-- **443 tests** across all packages
+- **669+ tests** across all packages
 - Core: 101 tests (44 SDK tests)
 - Providers: 38 tests
 - Tools: 51 tests
-- Memory-MCP: 93 tests
+- Memory-MCP: 90 tests
 - CLI: 67 tests
 - GitHub-Bot: 57 tests
 - Server: 36 tests
+- Chat-Agent: 226 tests (routing, HITL, orchestration, platform integration)
+- Prompts: 12 tests
+- Integration: 7 tests
 
 ### Running Tests
 ```bash
@@ -411,6 +481,16 @@ const options = {
 
 ## References
 
+### External Documentation
 - [Claude Agent SDK Docs](https://platform.claude.com/docs/en/agent-sdk/typescript)
 - [Model Context Protocol](https://www.anthropic.com/news/model-context-protocol)
 - [Anthropic: Building Effective Agents](https://www.anthropic.com/engineering/building-effective-agents)
+- [Cloudflare Agents Patterns](https://developers.cloudflare.com/agents/patterns/)
+- [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
+
+### Internal Documentation
+- [PLAN.md](PLAN.md) - Implementation roadmap and project plan
+- [DEPLOYMENT.md](docs/DEPLOYMENT.md) - Deployment runbook and procedures
+- [Agent Patterns Refactoring](docs/designs/AGENT_PATTERNS_REFACTORING.md) - Design document
+- [Agent Patterns Implementation Status](docs/designs/AGENT_PATTERNS_IMPLEMENTATION_STATUS.md) - Progress tracker
+- [Architecture](docs/architecture.md) - System architecture overview

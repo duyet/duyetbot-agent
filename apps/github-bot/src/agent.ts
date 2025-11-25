@@ -9,10 +9,13 @@ import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
   type MCPServerConnection,
+  type RouterAgentClass,
+  type RouterAgentEnv,
   createCloudflareChatAgent,
+  createRouterAgent,
 } from '@duyetbot/chat-agent';
 import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
-import { getAllBuiltinTools } from '@duyetbot/tools';
+import { getPlatformTools } from '@duyetbot/tools';
 import { Octokit } from '@octokit/rest';
 import { logger } from './logger.js';
 import { type ProviderEnv, createOpenRouterProvider } from './provider.js';
@@ -33,11 +36,12 @@ const githubMcpServer: MCPServerConnection = {
 /**
  * Base environment without self-reference
  */
-interface BaseEnv extends ProviderEnv {
-  // GitHub Configuration
+interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   GITHUB_TOKEN: string;
   GITHUB_WEBHOOK_SECRET?: string;
   BOT_USERNAME?: string;
+  ROUTER_DEBUG?: string;
+  ROUTER_ENABLED?: string;
 }
 
 /**
@@ -52,10 +56,14 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
     systemPrompt: GITHUB_SYSTEM_PROMPT,
     welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
     helpMessage: 'Mention me with @duyetbot followed by your question or request.',
-    maxHistory: 10, // Reduced to minimize state size and prevent blockConcurrencyWhile timeout
+    maxHistory: 10,
     transport: githubTransport,
     mcpServers: [githubMcpServer],
-    tools: getAllBuiltinTools(),
+    tools: getPlatformTools('github'),
+    router: {
+      platform: 'github',
+      debug: false,
+    },
     hooks: {
       beforeHandle: async (ctx) => {
         // Add "eyes" reaction to acknowledge we're processing
@@ -102,6 +110,14 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
  * Type for agent instance
  */
 export type GitHubAgentInstance = InstanceType<typeof GitHubAgent>;
+
+/**
+ * RouterAgent for query classification
+ */
+export const RouterAgent: RouterAgentClass<BaseEnv> = createRouterAgent<BaseEnv>({
+  createProvider: (env) => createOpenRouterProvider(env),
+  debug: false,
+});
 
 /**
  * Full environment with agent binding

@@ -2,7 +2,7 @@
  * CLI Auth Commands Tests
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it } from 'vitest';
 import { AuthManager, AuthState } from '../auth.js';
 
 describe('AuthManager', () => {

@@ -5,8 +5,7 @@
  */
 
 import type { ToolRegistry } from '@duyetbot/tools/registry';
-import type { LLMMessage, LLMProvider, LLMResponse } from '@duyetbot/types';
-import type { ToolInput, ToolOutput } from '@duyetbot/types';
+import type { LLMMessage, LLMProvider, LLMResponse, ToolInput, ToolOutput } from '@duyetbot/types';
 import type {
   CreateSessionInput,
   Session,

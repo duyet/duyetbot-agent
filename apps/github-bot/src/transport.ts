@@ -4,7 +4,7 @@
  * Implements the Transport interface for GitHub Issues/PRs API.
  */
 
-import type { MessageRef, ParsedInput, Transport } from '@duyetbot/chat-agent';
+import type { ParsedInput, Transport } from '@duyetbot/chat-agent';
 import { Octokit } from '@octokit/rest';
 import { logger } from './logger.js';
 

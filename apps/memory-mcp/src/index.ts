@@ -6,13 +6,12 @@
 
 import { createAuth, createBaseApp } from '@duyetbot/hono-middleware';
 import { D1Storage } from './storage/d1.js';
-import type { Env } from './types.js';
-
 import { authenticate, authenticateSchema } from './tools/authenticate.js';
 import { getMemory, getMemorySchema } from './tools/get-memory.js';
 import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 import { saveMemory, saveMemorySchema } from './tools/save-memory.js';
 import { searchMemory, searchMemorySchema } from './tools/search-memory.js';
+import type { Env } from './types.js';
 
 // Export MCP agent for Durable Object binding
 // Note: Dynamic import to avoid cloudflare: protocol issues in tests
@@ -128,6 +127,6 @@ app.post('/api/sessions/list', async (c: any) => {
 
 export default app;
 
+export { D1Storage } from './storage/d1.js';
 // Re-export types and utilities
 export * from './types.js';
-export { D1Storage } from './storage/d1.js';
