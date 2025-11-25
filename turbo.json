@@ -46,6 +46,14 @@
     },
     "format": {
       "cache": false
+    },
+    "@duyetbot/telegram-bot#deploy": {
+      "dependsOn": ["@duyetbot/shared-agents#deploy"],
+      "cache": false
+    },
+    "@duyetbot/github-bot#deploy": {
+      "dependsOn": ["@duyetbot/shared-agents#deploy"],
+      "cache": false
     }
   }
 }

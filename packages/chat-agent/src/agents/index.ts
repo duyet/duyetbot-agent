@@ -55,3 +55,14 @@ export {
   type SimpleAgentMethods,
   type SimpleAgentState,
 } from './simple-agent.js';
+// Duyet Info agent
+export {
+  createDuyetInfoAgent,
+  duyetToolFilter,
+  type DuyetInfoAgentClass,
+  type DuyetInfoAgentConfig,
+  type DuyetInfoAgentEnv,
+  type DuyetInfoAgentInstance,
+  type DuyetInfoAgentMethods,
+  type DuyetInfoAgentState,
+} from './duyet-info-agent.js';

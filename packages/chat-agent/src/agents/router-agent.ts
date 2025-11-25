@@ -59,6 +59,7 @@ export interface RouterAgentEnv {
   CodeWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
   ResearchWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
   GitHubWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+  DuyetInfoAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
 }
 
 /**
@@ -372,6 +373,21 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
               return this.handleSimpleQuery(query, targetContext);
             }
             const agent = await getAgentByName(env.GitHubWorker, AgentMixin.generateId('worker'));
+            return (
+              agent as unknown as {
+                execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+              }
+            ).execute(query, targetContext);
+          }
+
+          case 'duyet-info-agent': {
+            if (!env.DuyetInfoAgent) {
+              return this.handleSimpleQuery(query, targetContext);
+            }
+            const agent = await getAgentByName(
+              env.DuyetInfoAgent,
+              targetContext.chatId?.toString() || 'default'
+            );
             return (
               agent as unknown as {
                 execute: (q: string, c: AgentContext) => Promise<AgentResult>;
