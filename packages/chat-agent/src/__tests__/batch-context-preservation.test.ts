@@ -9,9 +9,9 @@
  * Fix: Use originalContext from the first pending message.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { PendingMessage } from '../batch-types.js';
-import type { ParsedInput, Transport } from '../transport.js';
+import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { PendingMessage } from "../batch-types.js";
+import type { ParsedInput, Transport } from "../transport.js";
 
 /**
  * Telegram-like context with bot token
@@ -42,8 +42,8 @@ interface GitHubTestContext {
   senderLogin: string;
 }
 
-describe('Batch Context Preservation', () => {
-  describe('Telegram Context', () => {
+describe("Batch Context Preservation", () => {
+  describe("Telegram Context", () => {
     const createTelegramTransport = (): Transport<TelegramTestContext> => ({
       send: vi.fn().mockResolvedValue(123),
       edit: vi.fn().mockResolvedValue(undefined),
@@ -57,15 +57,15 @@ describe('Batch Context Preservation', () => {
       }),
     });
 
-    it('preserves bot token in originalContext when queuing', () => {
+    it("preserves bot token in originalContext when queuing", () => {
       const ctx: TelegramTestContext = {
-        token: 'secret-bot-token-12345',
+        token: "secret-bot-token-12345",
         chatId: 453193179,
         userId: 453193179,
-        text: 'hello test',
-        username: 'testuser',
+        text: "hello test",
+        username: "testuser",
         startTime: Date.now(),
-        requestId: 'req-123',
+        requestId: "req-123",
       };
 
       // Simulate queueMessage storing originalContext
@@ -80,68 +80,68 @@ describe('Batch Context Preservation', () => {
 
       // Verify token is preserved in originalContext
       expect(pendingMessage.originalContext).toBeDefined();
-      expect(pendingMessage.originalContext?.token).toBe('secret-bot-token-12345');
+      expect(pendingMessage.originalContext?.token).toBe(
+        "secret-bot-token-12345",
+      );
     });
 
-    it('uses originalContext (with token) in processBatch instead of minimal context', () => {
+    it("uses originalContext (with token) in processBatch instead of minimal context", () => {
       const mockSend = vi.fn().mockResolvedValue(123);
       const transport = createTelegramTransport();
       transport.send = mockSend;
 
       const originalContext: TelegramTestContext = {
-        token: 'actual-bot-token',
+        token: "actual-bot-token",
         chatId: 123,
         userId: 456,
-        text: 'original message',
+        text: "original message",
         startTime: Date.now(),
       };
 
       const pendingMessage: PendingMessage<TelegramTestContext> = {
-        text: 'original message',
+        text: "original message",
         timestamp: Date.now(),
-        requestId: 'req-1',
+        requestId: "req-1",
         userId: 456,
         chatId: 123,
         originalContext,
       };
 
       // Simulate processBatch using originalContext (THE FIX)
-      const combinedText = 'combined messages';
+      const combinedText = "combined messages";
       const ctx = {
         ...pendingMessage.originalContext!,
         text: combinedText,
       };
 
       // Call transport.send with reconstructed context
-      transport.send(ctx, 'thinking...');
+      transport.send(ctx, "thinking...");
 
       // Verify send was called with full context including token
       expect(mockSend).toHaveBeenCalledWith(
         expect.objectContaining({
-          token: 'actual-bot-token',
+          token: "actual-bot-token",
           chatId: 123,
           userId: 456,
           text: combinedText,
         }),
-        'thinking...'
+        "thinking...",
       );
     });
 
-    it('would fail with minimal context (demonstrates the bug)', () => {
-      const mockSend = vi.fn().mockResolvedValue(123);
-
+    it("would fail with minimal context (demonstrates the bug)", () => {
       const pendingMessage: PendingMessage<TelegramTestContext> = {
-        text: 'message',
+        text: "message",
         timestamp: Date.now(),
-        requestId: 'req-1',
+        requestId: "req-1",
         userId: 456,
         chatId: 123,
         // Note: originalContext exists but wasn't being used
         originalContext: {
-          token: 'real-token',
+          token: "real-token",
           chatId: 123,
           userId: 456,
-          text: 'message',
+          text: "message",
           startTime: Date.now(),
         },
       };
@@ -150,26 +150,26 @@ describe('Batch Context Preservation', () => {
       const buggyCtx = {
         chatId: pendingMessage.chatId,
         userId: pendingMessage.userId,
-        text: 'combined',
-        metadata: { requestId: 'batch-123' },
+        text: "combined",
+        metadata: { requestId: "batch-123" },
       } as TelegramTestContext;
 
       // This would cause "botundefined" in the URL
       expect(buggyCtx.token).toBeUndefined();
     });
 
-    it('correctly uses originalContext (demonstrates the fix)', () => {
+    it("correctly uses originalContext (demonstrates the fix)", () => {
       const pendingMessage: PendingMessage<TelegramTestContext> = {
-        text: 'message',
+        text: "message",
         timestamp: Date.now(),
-        requestId: 'req-1',
+        requestId: "req-1",
         userId: 456,
         chatId: 123,
         originalContext: {
-          token: 'real-token',
+          token: "real-token",
           chatId: 123,
           userId: 456,
-          text: 'message',
+          text: "message",
           startTime: Date.now(),
         },
       };
@@ -184,89 +184,91 @@ describe('Batch Context Preservation', () => {
 
       const ctx = {
         ...baseCtx,
-        text: 'combined messages',
+        text: "combined messages",
       };
 
       // Token is preserved!
-      expect(ctx.token).toBe('real-token');
-      expect(ctx.text).toBe('combined messages');
+      expect(ctx.token).toBe("real-token");
+      expect(ctx.text).toBe("combined messages");
     });
   });
 
-  describe('GitHub Context', () => {
-    it('preserves GitHub token in originalContext', () => {
+  describe("GitHub Context", () => {
+    it("preserves GitHub token in originalContext", () => {
       const ctx: GitHubTestContext = {
-        githubToken: 'ghp_xxxxxxxxxxxx',
-        owner: 'duyet',
-        repo: 'duyetbot-agent',
+        githubToken: "ghp_xxxxxxxxxxxx",
+        owner: "duyet",
+        repo: "duyetbot-agent",
         issueNumber: 123,
-        text: '@bot help',
-        senderLogin: 'user',
+        text: "@bot help",
+        senderLogin: "user",
       };
 
       const pendingMessage: PendingMessage<GitHubTestContext> = {
         text: ctx.text,
         timestamp: Date.now(),
-        requestId: 'req-456',
-        userId: 'user',
-        chatId: '123',
+        requestId: "req-456",
+        userId: "user",
+        chatId: "123",
         originalContext: ctx,
       };
 
       // Verify GitHub-specific context is preserved
-      expect(pendingMessage.originalContext?.githubToken).toBe('ghp_xxxxxxxxxxxx');
-      expect(pendingMessage.originalContext?.owner).toBe('duyet');
-      expect(pendingMessage.originalContext?.repo).toBe('duyetbot-agent');
+      expect(pendingMessage.originalContext?.githubToken).toBe(
+        "ghp_xxxxxxxxxxxx",
+      );
+      expect(pendingMessage.originalContext?.owner).toBe("duyet");
+      expect(pendingMessage.originalContext?.repo).toBe("duyetbot-agent");
       expect(pendingMessage.originalContext?.issueNumber).toBe(123);
     });
 
-    it('uses originalContext for GitHub API calls', () => {
+    it("uses originalContext for GitHub API calls", () => {
       const originalContext: GitHubTestContext = {
-        githubToken: 'ghp_real_token',
-        owner: 'owner',
-        repo: 'repo',
+        githubToken: "ghp_real_token",
+        owner: "owner",
+        repo: "repo",
         issueNumber: 42,
-        text: 'original',
-        senderLogin: 'sender',
+        text: "original",
+        senderLogin: "sender",
       };
 
       const pendingMessage: PendingMessage<GitHubTestContext> = {
-        text: 'original',
+        text: "original",
         timestamp: Date.now(),
-        requestId: 'req-1',
-        userId: 'sender',
-        chatId: '42',
+        requestId: "req-1",
+        userId: "sender",
+        chatId: "42",
         originalContext,
       };
 
       // Fixed processBatch behavior
       const ctx = {
         ...pendingMessage.originalContext!,
-        text: 'combined messages',
+        text: "combined messages",
       };
 
       // All GitHub context preserved
-      expect(ctx.githubToken).toBe('ghp_real_token');
-      expect(ctx.owner).toBe('owner');
-      expect(ctx.repo).toBe('repo');
+      expect(ctx.githubToken).toBe("ghp_real_token");
+      expect(ctx.owner).toBe("owner");
+      expect(ctx.repo).toBe("repo");
       expect(ctx.issueNumber).toBe(42);
     });
   });
 
-  describe('Error Context Preservation', () => {
-    it('uses originalContext for error messages after max retries', () => {
+  describe("Error Context Preservation", () => {
+    it("uses originalContext for error messages after max retries", () => {
       const originalContext: TelegramTestContext = {
-        token: 'error-case-token',
+        token: "error-case-token",
         chatId: 999,
         userId: 888,
-        text: 'failed message',
+        text: "failed message",
         startTime: Date.now(),
       };
 
       const pendingMessage: PendingMessage<TelegramTestContext> = {
-        text: 'failed message',
+        text: "failed message",
         timestamp: Date.now(),
-        requestId: 'req-error',
+        requestId: "req-error",
         userId: 888,
         chatId: 999,
         originalContext,
@@ -275,18 +277,18 @@ describe('Batch Context Preservation', () => {
       // Fixed: use originalContext for error message sending
       if (pendingMessage.originalContext) {
         const errorCtx = pendingMessage.originalContext;
-        expect(errorCtx.token).toBe('error-case-token');
+        expect(errorCtx.token).toBe("error-case-token");
       }
     });
   });
 
-  describe('Edge Cases', () => {
-    it('handles missing originalContext gracefully', () => {
+  describe("Edge Cases", () => {
+    it("handles missing originalContext gracefully", () => {
       // Edge case: originalContext somehow not set
       const pendingMessage: PendingMessage<TelegramTestContext> = {
-        text: 'message',
+        text: "message",
         timestamp: Date.now(),
-        requestId: 'req-1',
+        requestId: "req-1",
         userId: 456,
         chatId: 123,
         // originalContext is undefined
@@ -298,7 +300,7 @@ describe('Batch Context Preservation', () => {
         ({
           chatId: pendingMessage.chatId,
           userId: pendingMessage.userId,
-          text: 'combined',
+          text: "combined",
         } as TelegramTestContext);
 
       // Still works, just without token (would fail API call but won't crash)
@@ -306,48 +308,48 @@ describe('Batch Context Preservation', () => {
       expect(ctx.userId).toBe(456);
     });
 
-    it('preserves additional platform-specific fields', () => {
+    it("preserves additional platform-specific fields", () => {
       interface ExtendedContext extends TelegramTestContext {
         customField: string;
         nestedData: { foo: string };
       }
 
       const ctx: ExtendedContext = {
-        token: 'token',
+        token: "token",
         chatId: 1,
         userId: 2,
-        text: 'hi',
+        text: "hi",
         startTime: Date.now(),
-        customField: 'custom value',
-        nestedData: { foo: 'bar' },
+        customField: "custom value",
+        nestedData: { foo: "bar" },
       };
 
       const pendingMessage: PendingMessage<ExtendedContext> = {
         text: ctx.text,
         timestamp: Date.now(),
-        requestId: 'req-1',
+        requestId: "req-1",
         userId: ctx.userId,
         chatId: ctx.chatId,
         originalContext: ctx,
       };
 
       const restored = pendingMessage.originalContext!;
-      expect(restored.customField).toBe('custom value');
-      expect(restored.nestedData.foo).toBe('bar');
+      expect(restored.customField).toBe("custom value");
+      expect(restored.nestedData.foo).toBe("bar");
     });
 
-    it('updates text while preserving other context fields', () => {
+    it("updates text while preserving other context fields", () => {
       const originalContext: TelegramTestContext = {
-        token: 'preserve-me',
+        token: "preserve-me",
         chatId: 100,
         userId: 200,
-        text: 'original text',
+        text: "original text",
         startTime: 1234567890,
-        username: 'testuser',
-        adminUsername: 'admin',
+        username: "testuser",
+        adminUsername: "admin",
       };
 
-      const combinedText = 'message1\nmessage2\nmessage3';
+      const combinedText = "message1\nmessage2\nmessage3";
 
       // Pattern from the fix
       const ctx = {
@@ -356,12 +358,12 @@ describe('Batch Context Preservation', () => {
       };
 
       // All fields preserved except text (which is updated)
-      expect(ctx.token).toBe('preserve-me');
+      expect(ctx.token).toBe("preserve-me");
       expect(ctx.chatId).toBe(100);
       expect(ctx.userId).toBe(200);
       expect(ctx.startTime).toBe(1234567890);
-      expect(ctx.username).toBe('testuser');
-      expect(ctx.adminUsername).toBe('admin');
+      expect(ctx.username).toBe("testuser");
+      expect(ctx.adminUsername).toBe("admin");
       // Text is updated to combined
       expect(ctx.text).toBe(combinedText);
     });
