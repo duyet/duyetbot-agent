@@ -881,7 +881,45 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // Process with LLM - must await to keep DO alive
           // Note: Worker may timeout on long LLM calls, but DO continues
           try {
-            response = await this.chat(chatMessage);
+            // Check if routing is enabled for this user
+            const userIdStr = input.userId?.toString();
+            const useRouting = this.shouldRoute(userIdStr);
+
+            if (useRouting) {
+              // Build agent context for RouterAgent
+              const agentContext: AgentContext = {
+                query: chatMessage,
+                userId: input.userId?.toString(),
+                chatId: input.chatId?.toString(),
+                platform: routerConfig?.platform || 'api',
+                ...(input.metadata && { data: input.metadata }),
+              };
+
+              logger.info('[HANDLE] Routing enabled, calling RouterAgent', {
+                platform: agentContext.platform,
+                userId: agentContext.userId,
+              });
+
+              // Try routing through RouterAgent
+              const routeResult = await this.routeQuery(chatMessage, agentContext);
+
+              if (routeResult?.success && routeResult.content) {
+                // Routing succeeded - use the routed response
+                response = routeResult.content;
+                logger.info('[HANDLE] RouterAgent returned response', {
+                  routedTo: (routeResult.data as Record<string, unknown>)?.routedTo ?? 'unknown',
+                  durationMs: routeResult.durationMs,
+                });
+              } else {
+                // Routing failed or returned null - fall back to direct chat
+                logger.info('[HANDLE] Routing failed or unavailable, falling back to chat()');
+                response = await this.chat(chatMessage);
+              }
+            } else {
+              // Routing disabled - use direct chat
+              logger.info('[HANDLE] Routing disabled, using direct chat()');
+              response = await this.chat(chatMessage);
+            }
           } finally {
             rotator.stop();
           }

@@ -10,7 +10,13 @@ command = "bun run build"
 [durable_objects]
 bindings = [
   { name = "GitHubAgent", class_name = "GitHubAgent" },
-  { name = "RouterAgent", class_name = "RouterAgent" }
+  { name = "RouterAgent", class_name = "RouterAgent" },
+  { name = "SimpleAgent", class_name = "SimpleAgent" },
+  { name = "HITLAgent", class_name = "HITLAgent" },
+  { name = "OrchestratorAgent", class_name = "OrchestratorAgent" },
+  { name = "CodeWorker", class_name = "CodeWorker" },
+  { name = "ResearchWorker", class_name = "ResearchWorker" },
+  { name = "GitHubWorker", class_name = "GitHubWorker" }
 ]
 
 [[migrations]]
@@ -20,6 +26,10 @@ new_sqlite_classes = ["GitHubAgent"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["RouterAgent"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker"]
 
 [ai]
 binding = "AI"

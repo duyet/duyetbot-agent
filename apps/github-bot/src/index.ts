@@ -14,7 +14,16 @@ import { createGitHubContext } from './transport.js';
 
 export type { Env, GitHubAgentInstance } from './agent.js';
 // Cloudflare Durable Object exports
-export { GitHubAgent, RouterAgent } from './agent.js';
+export {
+  GitHubAgent,
+  RouterAgent,
+  SimpleAgent,
+  HITLAgent,
+  OrchestratorAgent,
+  CodeWorker,
+  ResearchWorker,
+  GitHubWorker,
+} from './agent.js';
 // Utility exports
 export {
   extractAllMentions,

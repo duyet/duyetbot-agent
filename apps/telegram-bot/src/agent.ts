@@ -3,16 +3,33 @@
  *
  * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern.
+ *
+ * Full multi-agent system with:
+ * - RouterAgent: Query classification and routing
+ * - SimpleAgent: Quick responses without tools
+ * - HITLAgent: Human-in-the-loop for sensitive operations
+ * - OrchestratorAgent: Complex task decomposition
+ * - Workers: CodeWorker, ResearchWorker, GitHubWorker
  */
 
 import type { MCPServerConnection } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
+  type HITLAgentClass,
+  type OrchestratorAgentClass,
   type RouterAgentClass,
   type RouterAgentEnv,
+  type SimpleAgentClass,
+  type WorkerClass,
   createCloudflareChatAgent,
+  createCodeWorker,
+  createGitHubWorker,
+  createHITLAgent,
+  createOrchestratorAgent,
+  createResearchWorker,
   createRouterAgent,
+  createSimpleAgent,
 } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
@@ -123,6 +140,56 @@ export type TelegramAgentInstance = InstanceType<typeof TelegramAgent>;
 export const RouterAgent: RouterAgentClass<BaseEnv> = createRouterAgent<BaseEnv>({
   createProvider: (env) => createAIGatewayProvider(env),
   debug: false,
+});
+
+/**
+ * SimpleAgent for quick responses without tools
+ */
+export const SimpleAgent: SimpleAgentClass<BaseEnv> = createSimpleAgent<BaseEnv>({
+  createProvider: (env) => createAIGatewayProvider(env),
+  systemPrompt: TELEGRAM_SYSTEM_PROMPT,
+  maxHistory: 20,
+});
+
+/**
+ * HITLAgent for human-in-the-loop confirmations
+ */
+export const HITLAgent: HITLAgentClass<BaseEnv> = createHITLAgent<BaseEnv>({
+  createProvider: (env) => createAIGatewayProvider(env),
+  systemPrompt: TELEGRAM_SYSTEM_PROMPT,
+  confirmationThreshold: 'high',
+});
+
+/**
+ * OrchestratorAgent for complex task decomposition
+ */
+export const OrchestratorAgent: OrchestratorAgentClass<BaseEnv> = createOrchestratorAgent<BaseEnv>({
+  createProvider: (env) => createAIGatewayProvider(env),
+  maxSteps: 10,
+  maxParallel: 3,
+  continueOnError: true,
+});
+
+/**
+ * CodeWorker for code analysis and generation
+ */
+export const CodeWorker: WorkerClass<BaseEnv> = createCodeWorker<BaseEnv>({
+  createProvider: (env) => createAIGatewayProvider(env),
+  defaultLanguage: 'typescript',
+});
+
+/**
+ * ResearchWorker for web research and documentation
+ */
+export const ResearchWorker: WorkerClass<BaseEnv> = createResearchWorker<BaseEnv>({
+  createProvider: (env) => createAIGatewayProvider(env),
+});
+
+/**
+ * GitHubWorker for GitHub operations
+ */
+export const GitHubWorker: WorkerClass<BaseEnv> = createGitHubWorker<BaseEnv>({
+  createProvider: (env) => createAIGatewayProvider(env),
 });
 
 /**
