@@ -16,7 +16,7 @@ import {
   type RouterAgentEnv,
   createCloudflareChatAgent,
 } from '@duyetbot/chat-agent';
-import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
+import { getGitHubBotPrompt } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
 import { Octokit } from '@octokit/rest';
 import { logger } from './logger.js';
@@ -54,7 +54,7 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
 export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
   createCloudflareChatAgent<BaseEnv, GitHubContext>({
     createProvider: (env) => createOpenRouterProvider(env),
-    systemPrompt: GITHUB_SYSTEM_PROMPT,
+    systemPrompt: getGitHubBotPrompt(),
     welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
     helpMessage: 'Mention me with @duyetbot followed by your question or request.',
     maxHistory: 10,

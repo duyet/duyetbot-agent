@@ -17,9 +17,9 @@ import {
 } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
-  TELEGRAM_HELP_MESSAGE,
-  TELEGRAM_SYSTEM_PROMPT,
-  TELEGRAM_WELCOME_MESSAGE,
+  getTelegramHelpMessage,
+  getTelegramPrompt,
+  getTelegramWelcomeMessage,
 } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
 import { isAdminUser } from './debug-footer.js';
@@ -70,9 +70,9 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
 export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
   createCloudflareChatAgent<BaseEnv, TelegramContext>({
     createProvider: (env) => createAIGatewayProvider(env),
-    systemPrompt: TELEGRAM_SYSTEM_PROMPT,
-    welcomeMessage: TELEGRAM_WELCOME_MESSAGE,
-    helpMessage: TELEGRAM_HELP_MESSAGE,
+    systemPrompt: getTelegramPrompt(),
+    welcomeMessage: getTelegramWelcomeMessage(),
+    helpMessage: getTelegramHelpMessage(),
     transport: telegramTransport,
     // Note: GitHub MCP server disabled - causes connection pool exhaustion from hanging SSE
     // TODO: Re-enable when GitHub Copilot MCP is stable or add proper AbortController support

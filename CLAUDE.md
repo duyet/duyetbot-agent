@@ -75,7 +75,7 @@ interface Transport<TContext> {
 | `@duyetbot/chat-agent` | Cloudflare agent patterns | `CloudflareChatAgent`, routing, HITL |
 | `@duyetbot/tools` | Built-in tools | `bash`, `git`, `github`, `research`, `plan` |
 | `@duyetbot/providers` | LLM providers | Claude, OpenRouter, AI Gateway |
-| `@duyetbot/prompts` | System prompts | `TELEGRAM_SYSTEM_PROMPT`, `GITHUB_SYSTEM_PROMPT` |
+| `@duyetbot/prompts` | System prompts | `getTelegramPrompt()`, `getGitHubBotPrompt()` |
 | `@duyetbot/hono-middleware` | Shared Hono utilities | `createBaseApp()`, health routes |
 | `@duyetbot/types` | Shared types | `Tool`, `Message`, `Agent` |
 

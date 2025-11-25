@@ -56,7 +56,7 @@ export interface GitHubContext {
  * ```typescript
  * const GitHubAgent = createCloudflareChatAgent({
  *   createProvider: (env) => createOpenRouterProvider(env),
- *   systemPrompt: GITHUB_SYSTEM_PROMPT,
+ *   systemPrompt: getGitHubBotPrompt(),
  *   transport: githubTransport,
  * });
  * ```
