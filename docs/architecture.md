@@ -342,6 +342,231 @@ tag = "v2"
 new_sqlite_classes = ["RouterAgent"]
 ```
 
+## Agent Implementation Details
+
+This section covers the concrete implementation patterns for the multi-agent routing system.
+
+### File Structure
+
+The routing system is organized into dedicated modules for separation of concerns:
+
+```
+packages/chat-agent/src/
+├── agents/
+│   ├── index.ts                 # Agent exports
+│   ├── base-agent.ts            # Abstract base with Durable Object functionality
+│   ├── router-agent.ts          # Query classification & routing orchestration
+│   ├── simple-agent.ts          # Direct LLM responses (stateless)
+│   └── hitl-agent.ts            # Human-in-the-loop tool confirmations
+│
+├── workers/
+│   ├── index.ts                 # Worker exports
+│   ├── base-worker.ts           # Abstract worker base
+│   ├── code-worker.ts           # Code analysis/review/generation
+│   ├── research-worker.ts       # Web research & documentation
+│   └── github-worker.ts         # GitHub operations via MCP
+│
+├── routing/
+│   ├── index.ts                 # Routing exports
+│   ├── classifier.ts            # Query classification logic
+│   ├── schemas.ts               # Zod schemas for classification
+│   └── router.ts                # Route selection algorithms
+│
+├── orchestration/
+│   ├── index.ts                 # Orchestration exports
+│   ├── planner.ts               # Task planning with LLM
+│   ├── executor.ts              # Parallel execution engine
+│   └── aggregator.ts            # Result synthesis
+│
+├── hitl/
+│   ├── index.ts                 # HITL exports
+│   ├── confirmation.ts          # Tool confirmation workflow
+│   ├── state-machine.ts         # HITL state management
+│   └── executions.ts            # Tool execution handlers
+│
+└── [existing files - kept for backward compatibility]
+    ├── cloudflare-agent.ts
+    ├── agent.ts
+    ├── transport.ts
+    └── types.ts
+```
+
+### Key Classification Schemas
+
+The routing system uses Zod schemas to structure query classification:
+
+```typescript
+// Schema for query classification
+const ClassificationSchema = z.object({
+  type: z.enum(['simple', 'complex', 'tool_confirmation']),
+  category: z.enum(['general', 'code', 'research', 'github', 'admin']),
+  complexity: z.enum(['low', 'medium', 'high']),
+  requiresHumanApproval: z.boolean(),
+  reasoning: z.string(),
+});
+
+// Schema for orchestrator execution plans
+const ExecutionPlanSchema = z.object({
+  taskId: z.string(),
+  summary: z.string(),
+  steps: z.array(
+    z.object({
+      id: z.string(),
+      description: z.string(),
+      workerType: z.enum(['code', 'research', 'github']),
+      task: z.string(),
+      dependsOn: z.array(z.string()).optional(),
+      priority: z.number().min(1).max(10),
+    })
+  ),
+  estimatedComplexity: z.enum(['low', 'medium', 'high']),
+});
+
+// Schema for tool confirmation requests
+interface ToolConfirmation {
+  id: string;
+  toolName: string;
+  toolArgs: Record<string, unknown>;
+  status: 'pending' | 'approved' | 'rejected';
+  requestedAt: number;
+  respondedAt?: number;
+  reason?: string;
+}
+```
+
+### Agent Implementation Patterns
+
+#### RouterAgent - Query Classification
+
+The RouterAgent uses a **hybrid classifier**:
+1. **Pattern matching** for instant routing (greetings, help, confirmations)
+2. **LLM-based classification** for semantic analysis (fallback)
+
+Maintains routing history in Durable Object state for context across messages.
+
+**Routing Logic**:
+- `tool_confirmation` → HITLAgent
+- `complexity: high` → OrchestratorAgent
+- `requiresHumanApproval: true` → HITLAgent
+- `type: simple` → SimpleAgent
+- `category: code` → CodeWorker
+- `category: research` → ResearchWorker
+- `category: github` → GitHubWorker
+- Default → SimpleAgent
+
+#### OrchestratorAgent - Task Decomposition
+
+The OrchestratorAgent breaks complex tasks into executable steps:
+
+**Three-phase execution**:
+1. **Planning**: Uses LLM to decompose task into independent steps
+2. **Execution**: Groups steps by dependencies, executes in parallel
+3. **Aggregation**: Synthesizes results from all steps into coherent response
+
+Supports dependency management - steps can depend on results from previous steps.
+
+#### HITLAgent - Human-in-the-Loop
+
+Implements tool confirmation workflow for sensitive operations:
+
+**Lifecycle**:
+1. Agent reaches decision point for tool that requires confirmation
+2. Creates ToolConfirmation record with pending status
+3. Streams back to user (or Check Run) asking for approval
+4. User approves/rejects via UI
+5. Agent resumes execution based on user decision
+
+Maintains state machine: `idle` → `awaiting_confirmation` → `executing` → `completed`
+
+#### Specialized Workers
+
+Workers are **stateless** agents optimized for specific task categories:
+- **CodeWorker**: Code review, generation, analysis
+- **ResearchWorker**: Web search, documentation lookup
+- **GitHubWorker**: PR operations, issue management, CI checks
+
+Workers receive task description + context (results from dependencies) and return structured results.
+
+### Testing Strategy
+
+#### Unit Tests - Routing
+
+```typescript
+describe('QueryClassifier', () => {
+  it('classifies simple queries correctly', async () => {
+    const result = await classifier.classify('What time is it?');
+    expect(result.type).toBe('simple');
+    expect(result.complexity).toBe('low');
+  });
+
+  it('classifies complex queries correctly', async () => {
+    const result = await classifier.classify(
+      'Review this PR for security issues, summarize, and post to Slack'
+    );
+    expect(result.type).toBe('complex');
+    expect(result.complexity).toBe('high');
+  });
+
+  it('identifies tool confirmation queries', async () => {
+    const result = await classifier.classify('Delete all test files');
+    expect(result.requiresHumanApproval).toBe(true);
+  });
+});
+```
+
+#### Integration Tests - Orchestration
+
+```typescript
+describe('Orchestrator E2E', () => {
+  it('plans and executes multi-step tasks in parallel', async () => {
+    const orchestrator = await getAgentByName(env.OrchestratorAgent, 'test');
+
+    const result = await orchestrator.orchestrate(
+      'Review the authentication code and summarize security concerns',
+      { repo: 'test/repo' }
+    );
+
+    expect(result.stepCount).toBeGreaterThan(1);
+    expect(result.successCount).toBe(result.stepCount);
+  });
+});
+```
+
+### Implementation Phases
+
+The migration to the routing system is structured in five phases:
+
+| Phase | Duration | Focus | Status |
+|-------|----------|-------|--------|
+| 1 | Week 1-2 | Core infrastructure (base agents, routing, schemas) | ✅ Complete |
+| 2 | Week 2-3 | Human-in-the-loop (confirmation workflows) | ⏳ In progress |
+| 3 | Week 3-4 | Orchestrator-Workers (task decomposition, parallel execution) | ⏳ Pending |
+| 4 | Week 4-5 | Platform integration (TelegramAgent, GitHubAgent) | ⏳ Pending |
+| 5 | Week 5-6 | Validation & rollout (A/B testing, monitoring, migration guide) | ⏳ Pending |
+
+For detailed progress tracking, see [AGENT_PATTERNS_IMPLEMENTATION_STATUS.md](designs/AGENT_PATTERNS_IMPLEMENTATION_STATUS.md).
+
+### Metrics & Monitoring
+
+**Key metrics to track**:
+- **Routing Accuracy**: % of queries routed to correct handler
+- **Orchestration Efficiency**: Parallel vs sequential execution ratio
+- **HITL Conversion**: % of confirmations approved vs rejected
+- **Latency**: P50, P95, P99 for each agent type
+- **Cost**: Token usage per query type
+
+**Structured Logging Pattern**:
+```typescript
+logger.info('[ROUTER] Query classified', {
+  queryId,
+  type: classification.type,
+  category: classification.category,
+  complexity: classification.complexity,
+  routedTo: route,
+  latencyMs: Date.now() - startTime,
+});
+```
+
 ## Claude Agent SDK Integration
 
 The Claude Agent SDK is the **primary execution engine** running on Fly.io Machines:
