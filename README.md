@@ -2,7 +2,7 @@
 
 Autonomous AI agent system with persistent memory and multi-interface access.
 
-[![Tests](https://img.shields.io/badge/tests-399%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-746%20passing-brightgreen)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://duyet.github.io/duyetbot-agent)
 
@@ -16,6 +16,49 @@ Personal AI assistant that maintains context across CLI, GitHub, and Telegram. B
 - GitHub bot for PR reviews and issue management
 - CLI tool for local development
 - Edge deployment on Cloudflare Workers
+
+## Architecture
+
+```
+Platform Layer (Telegram, GitHub, CLI)
+         │
+         ▼
+  CloudflareChatAgent
+         │
+         ▼
+┌─────────────────────────────┐
+│      RouterAgent (DO)       │
+│  ┌───────────────────────┐  │
+│  │   Hybrid Classifier   │  │
+│  │  1. Quick Regex Match │  │
+│  │  2. LLM Fallback      │  │
+│  └───────────────────────┘  │
+│            │                │
+│  Route Target Decision      │
+│  • tool_confirm → HITL      │
+│  • high complexity → Orch   │
+│  • needs approval → HITL    │
+│  • simple+low → Simple      │
+│  • by category → Workers    │
+└─────────────────────────────┘
+         │
+    ┌────┼────┐
+    │    │    │
+    ▼    ▼    ▼
+┌───────┬───────┬─────────────┐
+│Simple │ HITL  │Orchestrator │
+│Agent  │ Agent │   Agent     │
+└───────┴───────┴─────────────┘
+                      │
+              ┌───────┼───────┐
+              ▼       ▼       ▼
+           ┌─────┐ ┌─────┐ ┌──────┐
+           │Code │ │Rsrch│ │GitHub│
+           │Wrkr │ │Wrkr │ │Wrkr  │
+           └─────┘ └─────┘ └──────┘
+```
+
+See [docs/architecture.md](./docs/architecture.md) for detailed documentation.
 
 ## Quick Start
 
