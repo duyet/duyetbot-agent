@@ -5,6 +5,7 @@
  * Determines query type, category, complexity, and whether human approval is needed.
  */
 
+import { getRouterPrompt } from '@duyetbot/prompts';
 import type { LLMProvider } from '../types.js';
 import {
   type QueryClassification,
@@ -40,37 +41,9 @@ export interface ClassifierConfig {
 
 /**
  * System prompt for classification
+ * Imported from centralized @duyetbot/prompts package
  */
-const CLASSIFICATION_SYSTEM_PROMPT = `You are a query classifier for an AI agent system. Analyze user queries and classify them accurately.
-
-Your task is to determine:
-1. **type**: How should this query be processed?
-   - "simple": Quick answer, no tools needed (greetings, simple questions, explanations)
-   - "complex": Multi-step task requiring planning and multiple operations
-   - "tool_confirmation": Query is responding to a pending tool approval request
-
-2. **category**: What domain does this belong to?
-   - "general": General questions, chitchat, explanations
-   - "code": Code review, generation, analysis, debugging
-   - "research": Web search, documentation lookup, comparisons
-   - "github": GitHub operations (PRs, issues, comments, reviews)
-   - "admin": Settings, configuration, system commands
-
-3. **complexity**: How resource-intensive is this?
-   - "low": Single step, fast response (< 1 tool call)
-   - "medium": Few steps, moderate processing (1-3 tool calls)
-   - "high": Many steps, needs orchestration (4+ tool calls or parallel work)
-
-4. **requiresHumanApproval**: Does this involve sensitive operations?
-   - true: Deleting files, merging PRs, sending emails, modifying configs
-   - false: Reading, analyzing, generating content
-
-5. **reasoning**: Brief explanation of your classification
-
-6. **suggestedTools**: List tool names that might be needed (optional)
-
-Be conservative with complexity - prefer "low" or "medium" unless clearly complex.
-Be strict with requiresHumanApproval - flag anything destructive or irreversible.`;
+const CLASSIFICATION_SYSTEM_PROMPT = getRouterPrompt();
 
 /**
  * Format the classification prompt
@@ -152,12 +125,17 @@ export function determineRouteTarget(classification: QueryClassification): Route
     return 'hitl-agent';
   }
 
+  // Route duyet queries to DuyetInfoAgent (before simple-agent fallback)
+  if (classification.category === 'duyet') {
+    return 'duyet-info-agent';
+  }
+
   // Simple queries with low complexity go to simple agent
   if (classification.type === 'simple' && classification.complexity === 'low') {
     return 'simple-agent';
   }
 
-  // Route by category to specialized workers
+  // Route by category to specialized workers/agents
   switch (classification.category) {
     case 'code':
       return 'code-worker';
@@ -218,6 +196,22 @@ export function quickClassify(query: string): QueryClassification | null {
       complexity: 'low',
       requiresHumanApproval: false,
       reasoning: 'Tool confirmation response',
+    };
+  }
+
+  // Duyet-specific queries - blog, personal info, CV, etc.
+  if (
+    /\b(duyet|duyệt|blog\.duyet|who\s+(is|are)\s+duyet)\b/i.test(lower) ||
+    /\b(your?\s+)?(cv|resume|about\s+me|contact\s+info|bio|experience|skills?|education)\b/i.test(
+      lower
+    )
+  ) {
+    return {
+      type: 'simple',
+      category: 'duyet',
+      complexity: 'low',
+      requiresHumanApproval: false,
+      reasoning: 'Duyet personal/blog info query',
     };
   }
 
