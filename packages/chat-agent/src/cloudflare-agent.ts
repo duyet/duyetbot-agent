@@ -11,12 +11,7 @@ import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'age
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { AgentContext, AgentResult } from './agents/base-agent.js';
 import type { RouterAgentEnv } from './agents/router-agent.js';
-import {
-  type FeatureFlagEnv,
-  type RoutingFlags,
-  evaluateFlag,
-  parseFlagsFromEnv,
-} from './feature-flags.js';
+import type { RoutingFlags } from './feature-flags.js';
 import {
   createThinkingRotator,
   formatWithEmbeddedHistory,
@@ -614,26 +609,19 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
-     * Check if routing is enabled for this request based on feature flags
+     * Check if routing is enabled for this request.
+     * Routing is always enabled when routerConfig is present.
      */
-    shouldRoute(userId?: string): boolean {
+    shouldRoute(_userId?: string): boolean {
       if (!routerConfig) {
         return false;
       }
 
-      const env = (this as unknown as { env: TEnv }).env;
-      const flags = routerConfig.flags ?? parseFlagsFromEnv(env as FeatureFlagEnv);
-      const result = evaluateFlag(flags, userId);
-
       if (routerConfig.debug) {
-        logger.info('[ROUTER] shouldRoute evaluation', {
-          userId,
-          enabled: result.enabled,
-          reason: result.reason,
-        });
+        logger.info('[ROUTER] shouldRoute: routing enabled');
       }
 
-      return result.enabled;
+      return true;
     }
 
     /**

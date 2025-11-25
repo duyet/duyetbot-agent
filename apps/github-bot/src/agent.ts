@@ -58,7 +58,6 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   GITHUB_WEBHOOK_SECRET?: string;
   BOT_USERNAME?: string;
   ROUTER_DEBUG?: string;
-  ROUTER_ENABLED?: string;
 }
 
 /**

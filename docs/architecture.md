@@ -283,8 +283,8 @@ User Message → Platform Webhook (Telegram/GitHub)
                         ▼
             CloudflareChatAgent.handle()
                         │
-              shouldRoute(userId)?
-              (based on ROUTER_ENABLED)
+              Route Query
+              via RouterAgent
                         │
            ┌────────────┴────────────┐
            ▼                         ▼
@@ -377,7 +377,6 @@ User Message → Platform Webhook (Telegram/GitHub)
 
 ```bash
 # Environment variables
-ROUTER_ENABLED=true   # Enable/disable routing (default: true)
 ROUTER_DEBUG=true     # Enable debug logging (default: false)
 ```
 

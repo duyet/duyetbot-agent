@@ -2,12 +2,12 @@
  * Feature Flags Configuration
  *
  * Simple configuration for routing system.
+ * Note: Routing is always enabled - only debug mode is configurable.
  */
 
 import { z } from 'zod';
 
 export const RoutingFlagsSchema = z.object({
-  enabled: z.boolean().default(true),
   debug: z.boolean().default(false),
 });
 
@@ -15,7 +15,6 @@ export type RoutingFlags = z.infer<typeof RoutingFlagsSchema>;
 
 export interface FeatureFlagEnv {
   ROUTER_DEBUG?: string;
-  ROUTER_ENABLED?: string;
 }
 
 /**
@@ -23,20 +22,6 @@ export interface FeatureFlagEnv {
  */
 export function parseFlagsFromEnv(env: FeatureFlagEnv): RoutingFlags {
   return {
-    enabled: env.ROUTER_ENABLED !== 'false' && env.ROUTER_ENABLED !== '0',
     debug: env.ROUTER_DEBUG === 'true' || env.ROUTER_DEBUG === '1',
   };
-}
-
-/**
- * Evaluate if routing should be used.
- */
-export function evaluateFlag(
-  flags: RoutingFlags,
-  _userId?: string
-): { enabled: boolean; reason: string } {
-  if (!flags.enabled) {
-    return { enabled: false, reason: 'disabled' };
-  }
-  return { enabled: true, reason: 'enabled' };
 }

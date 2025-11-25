@@ -134,7 +134,6 @@ export {
 } from './agents/index.js';
 // Feature Flags
 export {
-  evaluateFlag,
   type FeatureFlagEnv,
   parseFlagsFromEnv,
   type RoutingFlags,

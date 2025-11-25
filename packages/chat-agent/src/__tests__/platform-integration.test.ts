@@ -5,24 +5,13 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { type RoutingFlags, evaluateFlag, parseFlagsFromEnv } from '../feature-flags.js';
+import { type RoutingFlags, parseFlagsFromEnv } from '../feature-flags.js';
 
 describe('Feature Flags', () => {
   describe('parseFlagsFromEnv', () => {
-    it('should enable routing by default', () => {
+    it('should have debug disabled by default', () => {
       const flags = parseFlagsFromEnv({});
-      expect(flags.enabled).toBe(true);
       expect(flags.debug).toBe(false);
-    });
-
-    it('should disable routing when ROUTER_ENABLED=false', () => {
-      const flags = parseFlagsFromEnv({ ROUTER_ENABLED: 'false' });
-      expect(flags.enabled).toBe(false);
-    });
-
-    it('should disable routing when ROUTER_ENABLED=0', () => {
-      const flags = parseFlagsFromEnv({ ROUTER_ENABLED: '0' });
-      expect(flags.enabled).toBe(false);
     });
 
     it('should enable debug when ROUTER_DEBUG=true', () => {
@@ -34,27 +23,10 @@ describe('Feature Flags', () => {
       const flags = parseFlagsFromEnv({ ROUTER_DEBUG: '1' });
       expect(flags.debug).toBe(true);
     });
-  });
 
-  describe('evaluateFlag', () => {
-    it('should return enabled when flags.enabled is true', () => {
-      const flags: RoutingFlags = { enabled: true, debug: false };
-      const result = evaluateFlag(flags);
-      expect(result.enabled).toBe(true);
-      expect(result.reason).toBe('enabled');
-    });
-
-    it('should return disabled when flags.enabled is false', () => {
-      const flags: RoutingFlags = { enabled: false, debug: false };
-      const result = evaluateFlag(flags);
-      expect(result.enabled).toBe(false);
-      expect(result.reason).toBe('disabled');
-    });
-
-    it('should ignore userId parameter (simplified implementation)', () => {
-      const flags: RoutingFlags = { enabled: true, debug: false };
-      const result = evaluateFlag(flags, 'user-123');
-      expect(result.enabled).toBe(true);
+    it('should keep debug disabled for other values', () => {
+      const flags = parseFlagsFromEnv({ ROUTER_DEBUG: 'false' });
+      expect(flags.debug).toBe(false);
     });
   });
 });
