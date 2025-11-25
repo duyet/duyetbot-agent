@@ -9,9 +9,7 @@
  * Provider format: <provider>:<model_id>
  */
 
-export * from './factory.js';
+export * from './ai-gateway.js';
 export * from './claude.js';
+export * from './factory.js';
 export * from './openrouter.js';
-
-// TODO: Implement remaining provider modules
-// export * from './openai.js';

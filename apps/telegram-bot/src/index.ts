@@ -1,208 +1,117 @@
 /**
- * Telegram Bot Entry Point
+ * Telegram Bot using Hono + Cloudflare Agents SDK
  *
- * Telegraf-based bot for @duyetbot
+ * Simple webhook handler with stateful agent sessions via Durable Objects.
+ * Uses transport layer pattern for clean separation of concerns.
  */
 
-import { Context, Telegraf } from 'telegraf';
+import { getChatAgent } from '@duyetbot/chat-agent';
+import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import {
-  clearCommand,
-  helpCommand,
-  sessionsCommand,
-  startCommand,
-  statusCommand,
-} from './commands/index.js';
-import { handleMessage, isUserAllowed } from './handlers/message.js';
-import { TelegramSessionManager, createMCPClient, createSessionId } from './session-manager.js';
-import type { BotConfig, TelegramUser } from './types.js';
+  CodeWorker,
+  type Env,
+  GitHubWorker,
+  HITLAgent,
+  OrchestratorAgent,
+  ResearchWorker,
+  RouterAgent,
+  SimpleAgent,
+  TelegramAgent,
+} from './agent.js';
+import { authorizationMiddleware } from './middlewares/authorization.js';
+import { createTelegramContext, telegramTransport } from './transport.js';
 
-export { TelegramSessionManager, createMCPClient, createSessionId } from './session-manager.js';
-export { handleMessage, isUserAllowed } from './handlers/message.js';
-export type { BotConfig, TelegramUser, ChatSession, CommandContext } from './types.js';
+// Re-export agents for Durable Object bindings
+export {
+  TelegramAgent,
+  RouterAgent,
+  SimpleAgent,
+  HITLAgent,
+  OrchestratorAgent,
+  CodeWorker,
+  ResearchWorker,
+  GitHubWorker,
+};
 
-/**
- * Create Telegram bot
- */
-export function createTelegramBot(config: BotConfig): {
-  bot: Telegraf<Context>;
-  sessionManager: TelegramSessionManager;
-} {
-  const bot = new Telegraf(config.botToken);
+const app = createBaseApp<Env>({
+  name: 'telegram-bot',
+  version: '1.0.0',
+  logger: true,
+  health: true,
+  ignorePaths: ['/cdn-cgi/'],
+});
 
-  // Initialize session manager
-  let sessionManager: TelegramSessionManager;
-  if (config.mcpServerUrl) {
-    const mcpClient = createMCPClient(config.mcpServerUrl, config.mcpAuthToken);
-    sessionManager = new TelegramSessionManager(mcpClient);
-  } else {
-    sessionManager = new TelegramSessionManager();
+// Telegram webhook handler
+app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware(), async (c) => {
+  const env = c.env;
+
+  // Generate request ID for trace correlation across webhook and DO invocations
+  const requestId = crypto.randomUUID().slice(0, 8);
+
+  // Check if we should skip processing
+  if (c.get('skipProcessing')) {
+    // Handle unauthorized users
+    if (c.get('unauthorized')) {
+      const webhookCtx = c.get('webhookContext');
+      const ctx = createTelegramContext(
+        env.TELEGRAM_BOT_TOKEN,
+        webhookCtx,
+        env.TELEGRAM_ADMIN,
+        requestId
+      );
+
+      await telegramTransport.send(ctx, 'Sorry, you are not authorized.');
+    }
+    return c.text('OK');
   }
 
-  // Helper to extract user info
-  const getUser = (ctx: {
-    from?: { id: number; username?: string; first_name: string; last_name?: string };
-  }): TelegramUser | null => {
-    if (!ctx.from) {
-      return null;
-    }
-    return {
-      id: ctx.from.id,
-      username: ctx.from.username,
-      firstName: ctx.from.first_name,
-      lastName: ctx.from.last_name,
-    };
-  };
+  const webhookCtx = c.get('webhookContext');
 
-  // Authorization middleware
-  bot.use(async (ctx: Context, next: () => Promise<void>) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
+  // Create transport context with requestId for trace correlation
+  const ctx = createTelegramContext(
+    env.TELEGRAM_BOT_TOKEN,
+    webhookCtx,
+    env.TELEGRAM_ADMIN,
+    requestId
+  );
 
-    if (!isUserAllowed(user.id, config.allowedUsers)) {
-      await ctx.reply('Sorry, you are not authorized to use this bot.');
-      return;
-    }
-
-    await next();
+  // Get agent by name (consistent with github-bot pattern)
+  const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
+  logger.info(`[${requestId}] [WEBHOOK] Getting agent`, {
+    agentId,
+    requestId,
   });
 
-  // /start command
-  bot.command('start', async (ctx) => {
-    const result = startCommand();
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
+  // Use waitUntil to process in background - respond immediately to prevent Telegram retries
+  // Telegram retries if response takes >10s, causing duplicate "Thinking" messages
+  c.executionCtx.waitUntil(
+    (async () => {
+      try {
+        const agent = getChatAgent(env.TelegramAgent, agentId);
 
-  // /help command
-  bot.command('help', async (ctx) => {
-    const result = helpCommand();
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
+        // Agent handles everything: commands, chat, sending response
+        await agent.handle(ctx);
+      } catch (error) {
+        logger.error('[WEBHOOK] Failed to process message', {
+          agentId,
+          requestId,
+          error: error instanceof Error ? error.message : String(error),
+        });
 
-  // /status command
-  bot.command('status', async (ctx) => {
-    const result = statusCommand(sessionManager);
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
+        // Send error message to user if agent invocation fails
+        // Note: This only fires when DO invocation fails before sending "Thinking..."
+        // DO's internal error handling edits the thinking message for errors during processing
+        try {
+          await telegramTransport.send(ctx, '❌ Sorry, an error occurred. Please try again later.');
+        } catch {
+          // Ignore if we can't send the error message
+        }
+      }
+    })()
+  );
 
-  // /clear command
-  bot.command('clear', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
+  // Return immediately to Telegram
+  return c.text('OK');
+});
 
-    const sessionId = createSessionId(user.id, ctx.chat.id);
-    const result = await clearCommand(sessionId, sessionManager);
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
-
-  // /sessions command
-  bot.command('sessions', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    const sessionId = createSessionId(user.id, ctx.chat.id);
-    const result = sessionsCommand(sessionId);
-    await ctx.reply(result.text, { parse_mode: result.parseMode });
-  });
-
-  // /chat command with inline message
-  bot.command('chat', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    const text = ctx.message.text.replace(/^\/chat\s*/, '').trim();
-    if (!text) {
-      await ctx.reply('Please provide a message. Example: /chat Hello!');
-      return;
-    }
-
-    // Show typing indicator
-    await ctx.sendChatAction('typing');
-
-    const response = await handleMessage(text, user, ctx.chat.id, config, sessionManager);
-    await ctx.reply(response, { parse_mode: 'Markdown' }).catch(() => {
-      // Retry without markdown if parsing fails
-      return ctx.reply(response);
-    });
-  });
-
-  // Handle regular text messages
-  bot.on('text', async (ctx) => {
-    const user = getUser(ctx);
-    if (!user) {
-      return;
-    }
-
-    const text = ctx.message.text;
-
-    // Show typing indicator
-    await ctx.sendChatAction('typing');
-
-    const response = await handleMessage(text, user, ctx.chat.id, config, sessionManager);
-    await ctx.reply(response, { parse_mode: 'Markdown' }).catch(() => {
-      // Retry without markdown if parsing fails
-      return ctx.reply(response);
-    });
-  });
-
-  // Error handling
-  bot.catch((err: unknown, ctx: Context) => {
-    console.error('Telegram bot error:', err);
-    ctx.reply('Sorry, an error occurred. Please try again.').catch(console.error);
-  });
-
-  return { bot, sessionManager };
-}
-
-/**
- * Start the bot in polling mode (development)
- */
-export async function startPolling(config: BotConfig): Promise<void> {
-  const { bot } = createTelegramBot(config);
-
-  console.log('Starting Telegram bot in polling mode...');
-
-  // Graceful shutdown
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
-
-  await bot.launch();
-  console.log('Telegram bot is running!');
-}
-
-/**
- * Start the bot in webhook mode (production)
- */
-export async function startWebhook(config: BotConfig, port = 3002): Promise<void> {
-  if (!config.webhookUrl) {
-    throw new Error('webhookUrl is required for webhook mode');
-  }
-
-  const { bot } = createTelegramBot(config);
-
-  console.log(`Starting Telegram bot webhook on port ${port}...`);
-
-  await bot.launch({
-    webhook: {
-      domain: config.webhookUrl,
-      port,
-      secretToken: config.webhookSecretPath,
-    },
-  });
-
-  console.log('Telegram bot webhook is running!');
-
-  // Graceful shutdown
-  process.once('SIGINT', () => bot.stop('SIGINT'));
-  process.once('SIGTERM', () => bot.stop('SIGTERM'));
-}
-
-// Export default for direct usage
-export default createTelegramBot;
+export default app;

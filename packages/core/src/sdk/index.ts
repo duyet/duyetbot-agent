@@ -5,8 +5,10 @@
  * integrating it with duyetbot's existing architecture.
  */
 
-export * from './query.js';
-export * from './tool.js';
+// Context engineering
+export * from './context/index.js';
 export * from './options.js';
+export * from './query.js';
 export * from './subagent.js';
+export * from './tool.js';
 export * from './types.js';

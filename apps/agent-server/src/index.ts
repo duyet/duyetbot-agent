@@ -5,27 +5,26 @@
  */
 
 export type { ServerConfig } from './config';
-export { loadConfig, validateConfig, getDefaultConfig } from './config';
-export { AgentSessionManager } from './session-manager';
-export type {
-  AgentSession,
-  SessionState,
-  CreateSessionInput,
-  UpdateSessionInput,
-  ListSessionsOptions,
-} from './session-manager';
-export { createHealthRoutes, createAgentRoutes } from './routes/index';
+export { getDefaultConfig, loadConfig, validateConfig } from './config';
 export type { AgentRoutesConfig } from './routes/index';
-export { createWebSocketServer, AgentWebSocketServer } from './websocket';
-export type { WebSocketMessage, WebSocketResponse, WebSocketConfig } from './websocket';
-export { startServer, main } from './server';
-export type { ServerInstance } from './server';
-
+export { createAgentRoutes, createHealthRoutes } from './routes/index';
 // SDK adapter exports
 export {
-  toSDKTool,
-  toSDKTools,
+  createQueryController,
   executeQuery,
   streamQuery,
-  createQueryController,
+  toSDKTool,
+  toSDKTools,
 } from './sdk-adapter';
+export type { ServerInstance } from './server';
+export { main, startServer } from './server';
+export type {
+  AgentSession,
+  CreateSessionInput,
+  ListSessionsOptions,
+  SessionState,
+  UpdateSessionInput,
+} from './session-manager';
+export { AgentSessionManager } from './session-manager';
+export type { WebSocketConfig, WebSocketMessage, WebSocketResponse } from './websocket';
+export { AgentWebSocketServer, createWebSocketServer } from './websocket';

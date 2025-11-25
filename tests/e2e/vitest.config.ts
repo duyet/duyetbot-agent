@@ -12,12 +12,6 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      // API package
-      {
-        find: /^@duyetbot\/api\/(.*)$/,
-        replacement: resolve(__dirname, '../../apps/api/src/$1.ts'),
-      },
-      { find: '@duyetbot/api', replacement: resolve(__dirname, '../../apps/api/src/index.ts') },
       // Agent server package
       {
         find: /^@duyetbot\/agent-server\/(.*)$/,
@@ -68,7 +62,10 @@ export default defineConfig({
         find: /^@duyetbot\/cli\/(.*)$/,
         replacement: resolve(__dirname, '../../packages/cli/src/$1.ts'),
       },
-      { find: '@duyetbot/cli', replacement: resolve(__dirname, '../../packages/cli/src/index.ts') },
+      {
+        find: '@duyetbot/cli',
+        replacement: resolve(__dirname, '../../packages/cli/src/index.ts'),
+      },
     ],
   },
 });

@@ -1,10 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import {
-  InMemorySessionManager,
-  type Session,
-  SessionError,
-  type SessionState,
-} from '../agent/session.js';
+import { InMemorySessionManager, SessionError } from '../agent/session.js';
 
 describe('InMemorySessionManager', () => {
   let manager: InMemorySessionManager;

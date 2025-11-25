@@ -14,8 +14,8 @@ import {
 } from '@duyetbot/core';
 import { getAllBuiltinTools } from '@duyetbot/tools';
 import type { LLMMessage } from '@duyetbot/types';
-import { FileSessionManager } from './sessions.js';
 import type { LocalSession } from './sessions.js';
+import { FileSessionManager } from './sessions.js';
 
 // Convert all built-in tools to SDK format once at startup
 const builtinSDKTools = toSDKTools(getAllBuiltinTools());

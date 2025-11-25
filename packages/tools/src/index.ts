@@ -14,15 +14,22 @@ import { bashTool } from './bash.js';
 import { gitTool } from './git.js';
 import { planTool } from './plan.js';
 import { researchTool } from './research.js';
+import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
 
-export * from './sleep.js';
-export * from './plan.js';
 export * from './bash.js';
 export * from './git.js';
-export * from './research.js';
-export * from './registry.js';
 export * from './github.js';
+export * from './plan.js';
+export * from './registry.js';
+export * from './research.js';
+export * from './scratchpad.js';
+export * from './sleep.js';
+
+/**
+ * Agent platform types
+ */
+export type AgentPlatform = 'cli' | 'server' | 'telegram' | 'github';
 
 /**
  * Get all built-in tools
@@ -31,5 +38,57 @@ export * from './github.js';
  * Note: github tool requires Octokit instance, use createGitHubTool() separately.
  */
 export function getAllBuiltinTools(): Tool[] {
-  return [bashTool, gitTool, planTool, researchTool, sleepTool];
+  return [bashTool, gitTool, planTool, researchTool, scratchpadTool, sleepTool];
+}
+
+/**
+ * Get tools that are safe for serverless/cloudflare workers environments
+ *
+ * Excludes tools that require:
+ * - Shell access (bash)
+ * - Local git installation (git)
+ * - Long-running processes (sleep)
+ */
+export function getCloudflareTools(): Tool[] {
+  return [planTool, researchTool, scratchpadTool];
+}
+
+/**
+ * Get tools appropriate for a specific platform
+ *
+ * Platform capabilities:
+ * - cli: Full access to all local tools (bash, git, etc.)
+ * - server: Full access to all local tools
+ * - telegram: Cloudflare Workers - no shell/git access
+ * - github: Cloudflare Workers - no shell/git access
+ *
+ * @param platform - The agent platform type
+ * @returns Array of tools appropriate for the platform
+ */
+export function getPlatformTools(platform: AgentPlatform): Tool[] {
+  switch (platform) {
+    case 'cli':
+    case 'server':
+      // Full access - can run bash, git, etc.
+      return getAllBuiltinTools();
+
+    case 'telegram':
+    case 'github':
+      // Cloudflare Workers - limited to safe tools
+      // These platforms rely on MCP servers for GitHub operations
+      return getCloudflareTools();
+
+    default:
+      // Default to safe tools for unknown platforms
+      return getCloudflareTools();
+  }
+}
+
+/**
+ * Get tool names for a specific platform
+ *
+ * Useful for logging and debugging
+ */
+export function getPlatformToolNames(platform: AgentPlatform): string[] {
+  return getPlatformTools(platform).map((tool) => tool.name);
 }

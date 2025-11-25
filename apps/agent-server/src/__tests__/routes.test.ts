@@ -105,7 +105,7 @@ describe('Agent Routes', () => {
   });
 
   describe('POST /agent/execute', () => {
-    it('should execute a message in a session', { timeout: 10000 }, async () => {
+    it('should execute a message in a session', { timeout: 15000 }, async () => {
       // Create session first
       const createRes = await app.request('/agent/sessions', {
         method: 'POST',

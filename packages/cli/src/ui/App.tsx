@@ -6,7 +6,7 @@
 
 import type { LLMMessage } from '@duyetbot/types';
 import { Box } from 'ink';
-import React, { useState, useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { FileSessionManager } from '../sessions.js';
 import { ChatView } from './ChatView.js';
 import { StatusBar } from './StatusBar.js';
