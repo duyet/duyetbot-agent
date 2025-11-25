@@ -8,31 +8,29 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createBaseApp } from '@duyetbot/hono-middleware';
 import { getAgentByName } from 'agents';
-import { type Env, GitHubAgent } from './agent.js';
+import { type Env } from './agent.js';
 import { logger } from './logger.js';
 import { createGitHubContext } from './transport.js';
 
+export type { Env, GitHubAgentInstance } from './agent.js';
+// Cloudflare Durable Object exports
+export { GitHubAgent, RouterAgent } from './agent.js';
 // Utility exports
 export {
-  parseMention,
-  hasMention,
   extractAllMentions,
+  hasMention,
   isCommand,
   parseCommand,
+  parseMention,
 } from './mention-parser.js';
-
 // Type exports
 export type {
-  GitHubRepository,
+  GitHubComment,
   GitHubIssue,
   GitHubPullRequest,
-  GitHubComment,
+  GitHubRepository,
   GitHubUser,
 } from './types.js';
-
-// Cloudflare Durable Object exports
-export { GitHubAgent } from './agent.js';
-export type { Env, GitHubAgentInstance } from './agent.js';
 
 /**
  * Verify GitHub webhook signature

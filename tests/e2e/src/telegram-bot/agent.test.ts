@@ -466,11 +466,7 @@ describe('Telegram Bot E2E', () => {
   });
 });
 
-function createTelegramUpdate(options: {
-  text: string;
-  chatId: number;
-  userId: number;
-}) {
+function createTelegramUpdate(options: { text: string; chatId: number; userId: number }) {
   return {
     update_id: Date.now(),
     message: {

@@ -18,8 +18,10 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/types": "workspace:*",
+    "zod": "^3.24.0",
     "zod-to-json-schema": "^3.24.5"
   },
   "peerDependencies": {

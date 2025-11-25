@@ -4,17 +4,14 @@
  * Barrel export for all type definitions
  */
 
+// Agent types
+export * from './agent.js';
+// Message types
+export * from './message.js';
 // Provider types
 export * from './provider.js';
 
-// Tool types
-export * from './tool.js';
-
-// Agent types
-export * from './agent.js';
-
 // Session types
 export * from './session.js';
-
-// Message types
-export * from './message.js';
+// Tool types
+export * from './tool.js';

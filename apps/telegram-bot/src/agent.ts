@@ -5,12 +5,15 @@
  * a clean, reusable agent pattern.
  */
 
+import type { MCPServerConnection } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
+  type RouterAgentClass,
+  type RouterAgentEnv,
   createCloudflareChatAgent,
+  createRouterAgent,
 } from '@duyetbot/chat-agent';
-import type { MCPServerConnection } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   TELEGRAM_HELP_MESSAGE,
@@ -36,31 +39,31 @@ const _githubMcpServer: MCPServerConnection = {
 /**
  * Duyet MCP server configuration
  * Provides tools for: get_about_duyet, get_cv, get_blog_posts, get_github_activity
+ *
+ * Note: Temporarily disabled to investigate gateway timeouts
  */
-const duyetMcpServer: MCPServerConnection = {
-  name: 'duyet-mcp',
-  url: 'https://mcp.duyet.net/sse',
-};
+// const duyetMcpServer: MCPServerConnection = {
+//   name: 'duyet-mcp',
+//   url: 'https://mcp.duyet.net/sse',
+// };
 
 /**
  * Base environment without self-reference
  */
-interface BaseEnv extends ProviderEnv {
-  // Required
+interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   TELEGRAM_BOT_TOKEN: string;
-
-  // Optional
   TELEGRAM_WEBHOOK_SECRET?: string;
   TELEGRAM_ALLOWED_USERS?: string;
-  TELEGRAM_ADMIN?: string; // Admin username for verbose error messages
+  TELEGRAM_ADMIN?: string;
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
+  ROUTER_DEBUG?: string;
+  ROUTER_ENABLED?: string;
 }
 
 /**
  * Telegram Agent - Cloudflare Durable Object with ChatAgent
  *
- * Simplified: No MCP memory, no tools - just LLM chat with DO state persistence.
  * Sessions are identified by telegram:{chatId}.
  */
 export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
@@ -72,13 +75,23 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     transport: telegramTransport,
     // Note: GitHub MCP server disabled - causes connection pool exhaustion from hanging SSE
     // TODO: Re-enable when GitHub Copilot MCP is stable or add proper AbortController support
-    mcpServers: [duyetMcpServer],
+    // Note: duyet-mcp temporarily disabled to investigate gateway timeouts
+    mcpServers: [],
     tools: getPlatformTools('telegram'),
     // Reduce history to minimize token usage and subrequests
     // Cloudflare Workers limit: 50 subrequests per invocation
     maxHistory: 20,
     // Increase rotation interval to reduce edit subrequests
     thinkingRotationInterval: 10000,
+    // Limit tool call iterations to prevent gateway timeouts
+    maxToolIterations: 3,
+    // Limit number of tools to reduce token overhead and prevent timeouts
+    // Priority: built-in tools first, then MCP tools
+    maxTools: 5,
+    router: {
+      platform: 'telegram',
+      debug: false,
+    },
     hooks: {
       onError: async (ctx, error, messageRef) => {
         // Log the error for monitoring
@@ -103,6 +116,14 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
  * Type for agent instance
  */
 export type TelegramAgentInstance = InstanceType<typeof TelegramAgent>;
+
+/**
+ * RouterAgent for query classification
+ */
+export const RouterAgent: RouterAgentClass<BaseEnv> = createRouterAgent<BaseEnv>({
+  createProvider: (env) => createAIGatewayProvider(env),
+  debug: false,
+});
 
 /**
  * Full environment with agent binding

@@ -4,18 +4,13 @@
  * Tools for managing agent context: monitoring, compaction, and pruning
  */
 
-// Types
-export type {
-  CompactedContext,
-  ContextBreakdown,
-  ContextConfig,
-  ContextMetrics,
-  PersistFn,
-  SummarizerFn,
-} from './types.js';
-
-export { createContextConfig, DEFAULT_CONTEXT_CONFIG } from './types.js';
-
+// Compaction
+export {
+  compactContext,
+  createAIGatewaySummarizer,
+  createContextManager,
+  createDefaultSummarizer,
+} from './compaction.js';
 // Monitoring
 export {
   estimateMessageTokens,
@@ -25,7 +20,6 @@ export {
   monitorContext,
   needsCompaction,
 } from './monitor.js';
-
 // Pruning
 export {
   applyPruning,
@@ -33,11 +27,13 @@ export {
   pruneToolResults,
   truncateToolResults,
 } from './pruning.js';
-
-// Compaction
-export {
-  compactContext,
-  createAIGatewaySummarizer,
-  createContextManager,
-  createDefaultSummarizer,
-} from './compaction.js';
+// Types
+export type {
+  CompactedContext,
+  ContextBreakdown,
+  ContextConfig,
+  ContextMetrics,
+  PersistFn,
+  SummarizerFn,
+} from './types.js';
+export { createContextConfig, DEFAULT_CONTEXT_CONFIG } from './types.js';

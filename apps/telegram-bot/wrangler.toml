@@ -40,10 +40,18 @@ mode = "smart"
 name = "TelegramAgent"
 class_name = "TelegramAgent"
 
+[[durable_objects.bindings]]
+name = "RouterAgent"
+class_name = "RouterAgent"
+
 # Migrations for SQLite state persistence
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["TelegramAgent"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RouterAgent"]
 
 # Service binding to Memory MCP for RPC calls
 [[services]]

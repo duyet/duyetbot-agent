@@ -9,12 +9,17 @@ command = "bun run build"
 # Durable Objects for stateful agents
 [durable_objects]
 bindings = [
-  { name = "GitHubAgent", class_name = "GitHubAgent" }
+  { name = "GitHubAgent", class_name = "GitHubAgent" },
+  { name = "RouterAgent", class_name = "RouterAgent" }
 ]
 
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GitHubAgent"]
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RouterAgent"]
 
 [ai]
 binding = "AI"

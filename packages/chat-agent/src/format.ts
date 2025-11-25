@@ -2,6 +2,8 @@
  * Progress formatting utilities for tool execution updates
  */
 
+import type { LLMMessage, Message } from './types.js';
+
 /**
  * Tool execution status
  */
@@ -169,11 +171,11 @@ export function formatCompleteResponse(
  */
 const THINKING_MESSAGES = [
   'Thinking...',
+  'Processing...',
   'Pondering...',
   'Cogitating...',
   'Ruminating...',
   'Contemplating...',
-  'Processing...',
   'Analyzing...',
   'Computing...',
   'Deliberating...',
@@ -248,4 +250,222 @@ export function formatErrorMessage(
     return `❌ **Error**: ${error}`;
   }
   return `❌ Error: ${error}`;
+}
+
+/**
+ * Configuration for thinking message rotator
+ */
+export interface ThinkingRotatorConfig {
+  /** Custom messages to rotate through */
+  messages?: string[];
+  /** Rotation interval in milliseconds (default: 5000) */
+  interval?: number;
+  /** Start from a random message instead of the first (default: true) */
+  random?: boolean;
+}
+
+/**
+ * Thinking message rotator interface
+ */
+export interface ThinkingRotator {
+  /** Get current message without advancing */
+  getCurrentMessage(): string;
+  /** Start rotation, calling onMessage for each new message. Supports async callbacks. */
+  start(onMessage: (message: string) => void | Promise<void>): void;
+  /** Stop rotation */
+  stop(): void;
+}
+
+/**
+ * Create a thinking message rotator for showing progress during long operations
+ *
+ * @param config - Rotator configuration
+ * @returns ThinkingRotator instance
+ *
+ * @example
+ * ```typescript
+ * const rotator = createThinkingRotator({
+ *   messages: ['Thinking...', 'Processing...', 'Almost done...'],
+ *   interval: 3000
+ * });
+ *
+ * const initial = rotator.getCurrentMessage();
+ * rotator.start((msg) => updateUI(msg));
+ * // ... do work ...
+ * rotator.stop();
+ * ```
+ */
+export function createThinkingRotator(config: ThinkingRotatorConfig = {}): ThinkingRotator {
+  const messages = config.messages ?? THINKING_MESSAGES;
+  const interval = config.interval ?? 5000;
+  const random = config.random ?? true;
+
+  let messageIndex = random ? Math.floor(Math.random() * messages.length) : 0;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  let stopped = false;
+
+  // Recursive function to schedule next rotation after current one completes
+  const scheduleNext = (onMessage: (message: string) => void | Promise<void>) => {
+    if (stopped) {
+      return;
+    }
+
+    timer = setTimeout(async () => {
+      if (stopped) {
+        return;
+      }
+
+      // Pick a random different message each rotation for variety
+      if (random && messages.length > 2) {
+        let newIndex: number;
+        do {
+          newIndex = Math.floor(Math.random() * messages.length);
+        } while (newIndex === messageIndex);
+        messageIndex = newIndex;
+      } else {
+        messageIndex = (messageIndex + 1) % messages.length;
+      }
+
+      try {
+        // Await the callback to ensure edit completes before scheduling next
+        await onMessage(messages[messageIndex] ?? 'Processing...');
+      } catch (err) {
+        console.error('[ROTATOR] Callback failed:', err);
+      }
+
+      // Schedule next rotation only after this one completes
+      scheduleNext(onMessage);
+    }, interval);
+  };
+
+  return {
+    getCurrentMessage() {
+      return messages[messageIndex] ?? 'Thinking...';
+    },
+
+    start(onMessage: (message: string) => void | Promise<void>) {
+      if (timer || messages.length <= 1) {
+        return;
+      }
+
+      stopped = false;
+      scheduleNext(onMessage);
+    },
+
+    stop() {
+      stopped = true;
+      if (timer) {
+        clearTimeout(timer);
+        timer = null;
+      }
+    },
+  };
+}
+
+/**
+ * Get a copy of the default thinking messages array
+ * Useful for extending or customizing the default set
+ */
+export function getDefaultThinkingMessages(): string[] {
+  return [...THINKING_MESSAGES];
+}
+
+/**
+ * Get a copy of the extended thinking messages array
+ * For longer operations that need more variety
+ */
+export function getExtendedThinkingMessages(): string[] {
+  return [...EXTENDED_THINKING_MESSAGES];
+}
+
+/**
+ * Format conversation history as XML for embedding in user message
+ *
+ * Instead of passing history in the messages[] array, this embeds it
+ * directly in the user message using XML tags for AI Gateway compatibility.
+ *
+ * @param history - Array of messages to format
+ * @returns XML-formatted string of conversation history
+ *
+ * @example
+ * ```typescript
+ * const history = [
+ *   { role: 'user', content: 'Hello' },
+ *   { role: 'assistant', content: 'Hi there!' }
+ * ];
+ * formatHistoryAsXML(history);
+ * // Returns:
+ * // <conversation_history>
+ * // <message role="user">Hello</message>
+ * // <message role="assistant">Hi there!</message>
+ * // </conversation_history>
+ * ```
+ */
+export function formatHistoryAsXML(history: Message[]): string {
+  if (history.length === 0) {
+    return '';
+  }
+
+  const messages = history
+    .filter((m) => m.role === 'user' || m.role === 'assistant')
+    .map((m) => `<message role="${m.role}">${escapeXML(m.content)}</message>`)
+    .join('\n');
+
+  return `<conversation_history>\n${messages}\n</conversation_history>`;
+}
+
+/**
+ * Escape XML special characters
+ */
+function escapeXML(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+/**
+ * Format messages for LLM with history embedded in user message
+ *
+ * This transforms the standard messages array format into a single user message
+ * with conversation history embedded as XML. This is useful for AI Gateways
+ * that benefit from having context in a single message.
+ *
+ * @param messages - Current conversation messages
+ * @param systemPrompt - System prompt for the agent
+ * @param userMessage - Current user message
+ * @returns LLM messages with history embedded in user message
+ *
+ * @example
+ * ```typescript
+ * const llmMessages = formatWithEmbeddedHistory(
+ *   previousMessages,
+ *   'You are a helpful assistant',
+ *   'What is the weather?'
+ * );
+ * // Returns:
+ * // [
+ * //   { role: 'system', content: 'You are a helpful assistant' },
+ * //   { role: 'user', content: '<conversation_history>...</conversation_history>\n\nWhat is the weather?' }
+ * // ]
+ * ```
+ */
+export function formatWithEmbeddedHistory(
+  messages: Message[],
+  systemPrompt: string,
+  userMessage: string
+): LLMMessage[] {
+  const historyXML = formatHistoryAsXML(messages);
+
+  // Build user message with embedded history
+  const userContent = historyXML
+    ? `${historyXML}\n\n<current_message>\n${userMessage}\n</current_message>`
+    : userMessage;
+
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: userContent },
+  ];
 }

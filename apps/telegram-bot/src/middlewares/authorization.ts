@@ -135,11 +135,11 @@ export function authorizationMiddleware(): MiddlewareHandler<{
 
     const { message } = parsed;
     const webhookCtx: WebhookContext = {
+      text: message.text!,
       userId: message.from!.id,
       chatId: message.chat.id,
       startTime: Date.now(),
       username: message.from!.username,
-      text: message.text!,
     };
 
     logger.info('[WEBHOOK] Message received', { ...webhookCtx });

@@ -9,8 +9,8 @@ import { runPrompt, startChat } from './chat.js';
 import { CloudSessionManager } from './cloud-sessions.js';
 import { loadConfig, saveConfig } from './config.js';
 import { startDeviceLogin } from './oauth.js';
-import { FileSessionManager } from './sessions.js';
 import type { ListSessionsOptions } from './sessions.js';
+import { FileSessionManager } from './sessions.js';
 
 const program = new Command();
 

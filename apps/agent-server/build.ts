@@ -13,6 +13,7 @@ await Bun.build({
 
 // Generate type declarations
 import { execSync } from 'node:child_process';
+
 execSync('tsc --emitDeclarationOnly --declaration --outDir dist', {
   stdio: 'inherit',
 });

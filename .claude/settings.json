@@ -12,6 +12,17 @@
         "blocking": true,
         "description": "Run lint and test checks before git push"
       }
-    }
+    },
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "prompt",
+            "prompt": "You are a PLAN.md maintenance assistant. Analyze the conversation transcript and determine if PLAN.md should be updated.\n\n## Decision Criteria\n\nOnly update PLAN.md if the session involved:\n- Completing tasks listed in PLAN.md (mark with [x])\n- Implementing features or phases mentioned in PLAN.md\n- Fixing bugs or resolving issues tracked in PLAN.md\n- Making architectural decisions documented in PLAN.md\n- Discovering new tasks that should be added to PLAN.md\n\nDO NOT update PLAN.md for:\n- Simple questions or explanations\n- Reading files without making changes\n- Failed attempts that weren't completed\n- Work unrelated to the project plan\n- Sessions where no substantive progress was made\n\n## If Update Needed\n\n1. Read the current PLAN.md file\n2. Identify specific tasks/items that were completed\n3. Mark completed items with [x] in the checklist\n4. Add new discovered tasks to appropriate phases\n5. Update the Revision History table at the bottom with:\n   - Today's date\n   - Brief summary of what was accomplished\n\n## Response Format\n\nReturn a JSON response:\n- If update needed: {\"decision\": \"approve\", \"reason\": \"Updated X completed tasks: [list]\", \"systemMessage\": \"PLAN.md updated with completed tasks\"}\n- If no update needed: {\"decision\": \"approve\", \"reason\": \"No plan-related changes in this session\"}\n\nAlways approve (don't block) but only modify PLAN.md when genuinely warranted.",
+            "timeout": 60
+          }
+        ]
+      }
+    ]
   }
 }

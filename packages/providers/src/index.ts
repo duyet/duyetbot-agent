@@ -9,7 +9,7 @@
  * Provider format: <provider>:<model_id>
  */
 
-export * from './factory.js';
-export * from './claude.js';
-export * from './openrouter.js';
 export * from './ai-gateway.js';
+export * from './claude.js';
+export * from './factory.js';
+export * from './openrouter.js';

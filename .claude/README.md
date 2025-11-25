@@ -55,13 +55,46 @@ You can manually run the pre-push checks:
 ./.claude/hooks/pre-push.sh
 ```
 
+### PLAN.md Auto-Update Hook (LLM-based)
+
+An intelligent Stop hook that automatically maintains PLAN.md after each Claude Code session.
+
+**How it works:**
+
+1. **Triggers**: Runs when Claude finishes responding (Stop event)
+2. **Analyzes**: Uses LLM to review the conversation transcript
+3. **Decides**: Determines if substantive progress was made on plan items
+4. **Updates**: If warranted, marks completed tasks and updates revision history
+
+**What gets updated:**
+
+- Completed tasks marked with `[x]`
+- New discovered tasks added to appropriate phases
+- Revision History table updated with date and summary
+
+**When it updates:**
+
+- ✅ Completing tasks listed in PLAN.md
+- ✅ Implementing features or phases
+- ✅ Fixing bugs tracked in the plan
+- ✅ Making architectural decisions
+
+**When it skips:**
+
+- ❌ Simple questions or explanations
+- ❌ Reading files without changes
+- ❌ Failed/incomplete attempts
+- ❌ Work unrelated to the project plan
+
+**Configuration**: Defined as a `Stop` hook with `type: prompt` in `settings.json`.
+
 ## Settings
 
 The `settings.json` file configures Claude Code hooks:
 
+- **sessionStart**: Runs setup script on session start
 - **bash.post hook**: Triggers after bash commands matching `^git push`
-- **blocking**: true - Prevents push if checks fail
-- **command**: Runs the pre-push.sh script
+- **Stop hook**: LLM-based PLAN.md maintenance after each response
 
 ## Alternative: Git Hooks
 
