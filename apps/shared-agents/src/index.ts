@@ -32,7 +32,7 @@ import {
   createRouterAgent,
   createSimpleAgent,
 } from '@duyetbot/chat-agent';
-import { GENERIC_SYSTEM_PROMPT } from '@duyetbot/prompts';
+import { getSimpleAgentPrompt } from '@duyetbot/prompts';
 import { type ProviderEnv, createProvider } from './provider.js';
 
 /**
@@ -53,7 +53,7 @@ export const RouterAgent: RouterAgentClass<SharedEnv> = createRouterAgent<Shared
  */
 export const SimpleAgent: SimpleAgentClass<SharedEnv> = createSimpleAgent<SharedEnv>({
   createProvider: (env) => createProvider(env),
-  systemPrompt: GENERIC_SYSTEM_PROMPT,
+  systemPrompt: getSimpleAgentPrompt(),
   maxHistory: 20,
 });
 
@@ -62,7 +62,7 @@ export const SimpleAgent: SimpleAgentClass<SharedEnv> = createSimpleAgent<Shared
  */
 export const HITLAgent: HITLAgentClass<SharedEnv> = createHITLAgent<SharedEnv>({
   createProvider: (env) => createProvider(env),
-  systemPrompt: GENERIC_SYSTEM_PROMPT,
+  systemPrompt: getSimpleAgentPrompt(),
   confirmationThreshold: 'high',
 });
 

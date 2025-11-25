@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getDuyetInfoPrompt, getRouterPrompt, getSimpleAgentPrompt } from './agents/index.js';
 import { PromptBuilder, createPrompt } from './builder.js';
-import { GENERIC_SYSTEM_PROMPT, GITHUB_SYSTEM_PROMPT, TELEGRAM_SYSTEM_PROMPT } from './index.js';
 import { getGitHubBotPrompt, getTelegramPrompt } from './platforms/index.js';
 
 describe('PromptBuilder', () => {
@@ -210,34 +209,31 @@ describe('Platform Prompts', () => {
   });
 });
 
-describe('Backward Compatibility', () => {
-  it('should export TELEGRAM_SYSTEM_PROMPT', () => {
-    expect(TELEGRAM_SYSTEM_PROMPT).toBeDefined();
-    expect(typeof TELEGRAM_SYSTEM_PROMPT).toBe('string');
-    expect(TELEGRAM_SYSTEM_PROMPT.length).toBeGreaterThan(100);
+describe('Getter Functions', () => {
+  it('getTelegramPrompt should return a valid prompt', () => {
+    const prompt = getTelegramPrompt();
+    expect(prompt).toBeDefined();
+    expect(typeof prompt).toBe('string');
+    expect(prompt.length).toBeGreaterThan(100);
   });
 
-  it('should export GITHUB_SYSTEM_PROMPT', () => {
-    expect(GITHUB_SYSTEM_PROMPT).toBeDefined();
-    expect(typeof GITHUB_SYSTEM_PROMPT).toBe('string');
-    expect(GITHUB_SYSTEM_PROMPT.length).toBeGreaterThan(100);
+  it('getGitHubBotPrompt should return a valid prompt', () => {
+    const prompt = getGitHubBotPrompt();
+    expect(prompt).toBeDefined();
+    expect(typeof prompt).toBe('string');
+    expect(prompt.length).toBeGreaterThan(100);
   });
 
-  it('should export GENERIC_SYSTEM_PROMPT', () => {
-    expect(GENERIC_SYSTEM_PROMPT).toBeDefined();
-    expect(typeof GENERIC_SYSTEM_PROMPT).toBe('string');
-    expect(GENERIC_SYSTEM_PROMPT.length).toBeGreaterThan(100);
+  it('getSimpleAgentPrompt should return a valid prompt', () => {
+    const prompt = getSimpleAgentPrompt();
+    expect(prompt).toBeDefined();
+    expect(typeof prompt).toBe('string');
+    expect(prompt.length).toBeGreaterThan(100);
   });
 
-  it('TELEGRAM_SYSTEM_PROMPT should match getTelegramPrompt()', () => {
-    expect(TELEGRAM_SYSTEM_PROMPT).toBe(getTelegramPrompt());
-  });
-
-  it('GITHUB_SYSTEM_PROMPT should match getGitHubBotPrompt()', () => {
-    expect(GITHUB_SYSTEM_PROMPT).toBe(getGitHubBotPrompt());
-  });
-
-  it('GENERIC_SYSTEM_PROMPT should match getSimpleAgentPrompt()', () => {
-    expect(GENERIC_SYSTEM_PROMPT).toBe(getSimpleAgentPrompt());
+  it('getter functions should return consistent results', () => {
+    expect(getTelegramPrompt()).toBe(getTelegramPrompt());
+    expect(getGitHubBotPrompt()).toBe(getGitHubBotPrompt());
+    expect(getSimpleAgentPrompt()).toBe(getSimpleAgentPrompt());
   });
 });

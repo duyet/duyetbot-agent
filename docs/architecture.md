@@ -125,64 +125,78 @@ This architecture solves the fundamental challenge: heavy LLM tasks need a "comp
 ## High-Level System Design
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                        User Interactions                          │
-├────────────────┬────────────────┬──────────────┬─────────────────┤
-│ GitHub @mentions│ Telegram Bot   │  CLI Tool    │ Web UI (future) │
-└────────┬───────┴────────┬───────┴──────┬───────┴─────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                            User Interactions                                  │
+├────────────────┬────────────────┬──────────────┬────────────────────────────┤
+│ GitHub @mentions│ Telegram Bot   │  CLI Tool    │ Web UI (future)            │
+└────────┬───────┴────────┬───────┴──────┬───────┴────────────────────────────┘
          │                │              │
          ▼                ▼              │
-┌─────────────────────────────────────────────────────────────────┐
-│        Cloudflare Workers (Tier 1 - Lightweight Agents)          │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │  @duyetbot/hono-middleware (Shared)                         │ │
-│  │  • Logger, error handler, rate limiting                     │ │
-│  │  • Health routes (/health, /health/live, /health/ready)     │ │
-│  │  • Auth middleware (webhook signatures, API keys)           │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-│                          │                                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │ github-bot   │  │ telegram-bot │  │  memory-mcp  │           │
-│  │ (DO Agent)   │  │ (DO Agent)   │  │  (D1 + KV)   │           │
-│  │ + Transport  │  │ + Transport  │  │              │           │
-│  └──────┬───────┘  └──────┬───────┘  └──────────────┘           │
-└─────────┼─────────────────┼─────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────────────────┐
+│              Cloudflare Workers (Tier 1 - Edge Agents)                        │
+│  ┌─────────────────────────────────────────────────────────────────────────┐ │
+│  │  @duyetbot/hono-middleware (Shared Foundation)                          │ │
+│  │  • Logger, error handler, rate limiting, health routes, auth            │ │
+│  └─────────────────────────────────────────────────────────────────────────┘ │
+│                                                                               │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌─────────────────┐  │
+│  │ github-bot   │  │ telegram-bot │  │ memory-mcp   │  │ shared-agents   │  │
+│  │ (DO Agent)   │  │ (DO Agent)   │  │ (D1 + KV)    │  │ (8 DOs)         │  │
+│  │ + Transport  │  │ + Transport  │  │ MCP Server   │  │ Routing Logic   │  │
+│  └──────┬───────┘  └──────┬───────┘  └──────────────┘  └─────────────────┘  │
+└─────────┼─────────────────┼──────────────────────────────────────────────────┘
           │                 │
-          ▼                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│           Workflow Supervisor (Cloudflare Durable Object)        │
-│  • State machine: status, machine_id, volume_id                  │
-│  • Provisions Fly.io resources                                   │
-│  • Manages Human-in-the-Loop wait states                         │
-│  • Can sleep for days/weeks without cost                         │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│        Agent Runner (Tier 2 - Heavy Compute, Fly.io Machine)     │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Docker Container                                          │ │
-│  │  • Node.js + git + gh + ripgrep                            │ │
-│  │  • Claude Agent SDK                                        │ │
-│  │  • Custom tools (GitHub, Research)                         │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                          │                                       │
-│                          ▼                                       │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Persistent Volume (NVMe)                                  │ │
-│  │  • Session state (/root/.claude)                           │ │
-│  │  • Conversation history                                    │ │
-│  │  • Cloned repositories                                     │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-              ┌───────────┼───────────┐
-              │           │           │
-              ▼           ▼           ▼
-         ┌────────┐  ┌────────┐  ┌────────┐
-         │ GitHub │  │Anthropic│  │  MCP   │
-         │  API   │  │   API   │  │ Memory │
-         └────────┘  └────────┘  └────────┘
+          └────────┬────────┘
+                   │
+                   ▼
+┌──────────────────────────────────────────────────────────────────────────────┐
+│               Multi-Agent Routing System (Durable Objects)                    │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │ RouterAgent: Hybrid Classifier (Pattern Match + LLM)                   │  │
+│  │   → Classifies: type, category, complexity, approval needs             │  │
+│  └────────┬───────────────────────────────────────────────────────────────┘  │
+│           │                                                                   │
+│  ┌────────┴────────────┬───────────────────┬───────────────────┐             │
+│  ▼                     ▼                   ▼                   ▼             │
+│ ┌───────────┐  ┌─────────────────┐  ┌──────────────┐  ┌─────────────────┐  │
+│ │SimpleAgent│  │  HITLAgent      │  │ Orchestrator │  │ DuyetInfoAgent  │  │
+│ │Quick Q&A  │  │  Confirmations  │  │ Task Decomp  │  │ Personal Info   │  │
+│ └───────────┘  └─────────────────┘  └──────┬───────┘  └─────────────────┘  │
+│                                             │                                │
+│                            ┌────────────────┼────────────────┐               │
+│                            ▼                ▼                ▼               │
+│                    ┌──────────────┐ ┌──────────────┐ ┌──────────────┐      │
+│                    │ CodeWorker   │ │ResearchWorker│ │ GitHubWorker │      │
+│                    │ Code Review  │ │ Web Search   │ │ PR/Issues    │      │
+│                    └──────────────┘ └──────────────┘ └──────────────┘      │
+│                                                                               │
+│  State Management:                                                            │
+│  • Each agent = Durable Object with SQLite storage                           │
+│  • Conversation history + routing metrics + session state                    │
+│  • Memory persistence via memory-mcp (D1 + KV)                               │
+└──────────────────────────────────────────────────────────────────────────────┘
+                                      │
+                    ┌─────────────────┼─────────────────┐
+                    │                 │                 │
+                    ▼                 ▼                 ▼
+         ┌────────────────┐  ┌────────────────┐  ┌────────────────┐
+         │ LLM Providers  │  │ External APIs  │  │ MCP Servers    │
+         │ • Anthropic    │  │ • GitHub API   │  │ • duyet-mcp    │
+         │ • OpenRouter   │  │ • Telegram API │  │ • github-mcp   │
+         │ • AI Gateway   │  │                │  │ • memory-mcp   │
+         └────────────────┘  └────────────────┘  └────────────────┘
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│          Tier 2: Heavy Compute Layer (Future - Agent Server)                 │
+│  ┌────────────────────────────────────────────────────────────────────────┐  │
+│  │  Container (Fly.io/Cloudflare) with Claude Agent SDK                   │  │
+│  │  • Full filesystem access (git clone, file operations)                 │  │
+│  │  • Shell tools (bash, git, gh CLI, ripgrep)                            │  │
+│  │  • Long-running tasks (code review, test execution)                    │  │
+│  │  • Persistent volume for session state                                 │  │
+│  └────────────────────────────────────────────────────────────────────────┘  │
+│  Triggered by: Cloudflare Workflows for complex multi-step operations        │
+└──────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Why Hybrid? Platform Comparison
@@ -267,13 +281,15 @@ User Message → Cloudflare Agent (Tier 1) → Quick Response
 
 The Tier 1 agents use a **RouterAgent** to classify queries and route them to specialized handlers. The system implements all five [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
 
-| Pattern | Implementation | Component |
-|---------|---------------|-----------|
-| Prompt Chaining | LLM→Tool→LLM flow | `CloudflareChatAgent.chat()` |
-| Routing | Hybrid classification | `RouterAgent` + `classifier.ts` |
-| Parallelization | Concurrent step execution | `executor.ts` |
-| Orchestrator-Workers | Task decomposition | `OrchestratorAgent` + Workers |
-| Evaluator-Optimizer | Result synthesis | `aggregator.ts` |
+| Pattern | Implementation | Component | Status |
+|---------|---------------|-----------|--------|
+| Prompt Chaining | LLM→Tool→LLM flow | `CloudflareChatAgent.chat()` | ✅ Complete |
+| Routing | Hybrid classification | `RouterAgent` + `classifier.ts` | ✅ Complete |
+| Parallelization | Concurrent step execution | `executor.ts` | ✅ Complete |
+| Orchestrator-Workers | Task decomposition | `OrchestratorAgent` + Workers | ✅ Complete |
+| Evaluator-Optimizer | Result synthesis | `aggregator.ts` | ✅ Complete |
+
+**DuyetInfoAgent**: Specialized agent for personal blog queries using `duyet-mcp` MCP server (✅ Complete)
 
 ### Complete Query Flow
 
@@ -364,14 +380,15 @@ User Message → Platform Webhook (Telegram/GitHub)
 
 ### Agent Responsibilities
 
-| Agent | Purpose | Triggers | Complexity |
-|-------|---------|----------|------------|
-| **SimpleAgent** | Quick responses, direct LLM | Greetings, help, simple Q&A | Low |
-| **HITLAgent** | Human approval workflow | Confirmations, destructive ops | Low-Medium |
-| **OrchestratorAgent** | Task decomposition | Multi-step, high complexity | High |
-| **CodeWorker** | Code analysis | Review, debug, refactor | Medium |
-| **ResearchWorker** | Information gathering | Web search, docs | Medium |
-| **GitHubWorker** | GitHub operations | PRs, issues, reviews | Medium |
+| Agent | Purpose | Triggers | Complexity | Status |
+|-------|---------|----------|------------|--------|
+| **SimpleAgent** | Quick responses, direct LLM | Greetings, help, simple Q&A | Low | ✅ Deployed |
+| **HITLAgent** | Human approval workflow | Confirmations, destructive ops | Low-Medium | ✅ Deployed |
+| **OrchestratorAgent** | Task decomposition | Multi-step, high complexity | High | ✅ Deployed |
+| **CodeWorker** | Code analysis | Review, debug, refactor | Medium | ✅ Deployed |
+| **ResearchWorker** | Information gathering | Web search, docs | Medium | ✅ Deployed |
+| **GitHubWorker** | GitHub operations | PRs, issues, reviews | Medium | ✅ Deployed |
+| **DuyetInfoAgent** | Personal blog/info queries | Duyet-related questions | Low | ✅ Deployed |
 
 ### Routing Configuration
 
@@ -597,47 +614,51 @@ All five Cloudflare Agent Patterns are fully implemented and deployed:
 
 All patterns are fully implemented and deployed. See the [README](../README.md) for current status.
 
-### Deployed Durable Objects (per bot)
+### Shared Agent Deployment Pattern
 
-Each bot (Telegram/GitHub) now deploys 8 Durable Objects:
+The system uses a **shared agent deployment pattern** via `apps/shared-agents` to avoid code duplication:
+
+```
+apps/shared-agents (Worker: duyetbot-shared-agents)
+  ├── RouterAgent
+  ├── SimpleAgent
+  ├── HITLAgent
+  ├── OrchestratorAgent
+  ├── CodeWorker
+  ├── ResearchWorker
+  ├── GitHubWorker
+  └── DuyetInfoAgent
+
+Referenced by all bots via script_name binding:
+  apps/telegram-bot
+  apps/github-bot
+```
+
+**Benefits**:
+- ✅ No code duplication across bots
+- ✅ Single agent instance per user/chat across all platforms
+- ✅ Consistent behavior everywhere
+- ✅ Update once, deploy everywhere
+- ✅ Reduced deployment size and complexity
 
 ```toml
-# wrangler.toml - all DO bindings
+# wrangler.toml - Telegram/GitHub bot configuration
 [[durable_objects.bindings]]
-name = "TelegramAgent"  # or GitHubAgent
+name = "TelegramAgent"  # or GitHubAgent (platform-specific)
 class_name = "TelegramAgent"
 
+# All other agents imported from shared worker
 [[durable_objects.bindings]]
 name = "RouterAgent"
 class_name = "RouterAgent"
+script_name = "duyetbot-shared-agents"  # ← Shared!
 
 [[durable_objects.bindings]]
 name = "SimpleAgent"
 class_name = "SimpleAgent"
+script_name = "duyetbot-shared-agents"
 
-[[durable_objects.bindings]]
-name = "HITLAgent"
-class_name = "HITLAgent"
-
-[[durable_objects.bindings]]
-name = "OrchestratorAgent"
-class_name = "OrchestratorAgent"
-
-[[durable_objects.bindings]]
-name = "CodeWorker"
-class_name = "CodeWorker"
-
-[[durable_objects.bindings]]
-name = "ResearchWorker"
-class_name = "ResearchWorker"
-
-[[durable_objects.bindings]]
-name = "GitHubWorker"
-class_name = "GitHubWorker"
-
-[[migrations]]
-tag = "v3"
-new_sqlite_classes = ["SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker"]
+# ... same for all 8 agents
 ```
 
 ### Metrics & Monitoring
@@ -879,7 +900,7 @@ Shared system prompts as markdown files:
 - `prompts/github.md` - GitHub bot personality
 - `prompts/default.md` - Base prompt fragments
 - `loadPrompt()` - Async prompt loader
-- `TELEGRAM_SYSTEM_PROMPT`, `GITHUB_SYSTEM_PROMPT` - Pre-loaded exports
+- `getTelegramPrompt()`, `getGitHubBotPrompt()` - Prompt getter functions
 
 ### Tools (`packages/tools`)
 Built-in tools (SDK-compatible):
