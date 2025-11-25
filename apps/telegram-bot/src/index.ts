@@ -7,31 +7,13 @@
 
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
-import {
-  CodeWorker,
-  type Env,
-  GitHubWorker,
-  HITLAgent,
-  OrchestratorAgent,
-  ResearchWorker,
-  RouterAgent,
-  SimpleAgent,
-  TelegramAgent,
-} from './agent.js';
+import { type Env, TelegramAgent } from './agent.js';
 import { authorizationMiddleware } from './middlewares/authorization.js';
 import { createTelegramContext, telegramTransport } from './transport.js';
 
-// Re-export agents for Durable Object bindings
-export {
-  TelegramAgent,
-  RouterAgent,
-  SimpleAgent,
-  HITLAgent,
-  OrchestratorAgent,
-  CodeWorker,
-  ResearchWorker,
-  GitHubWorker,
-};
+// Re-export local agent for Durable Object binding
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+export { TelegramAgent };
 
 const app = createBaseApp<Env>({
   name: 'telegram-bot',

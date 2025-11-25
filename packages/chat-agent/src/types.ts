@@ -111,3 +111,30 @@ export interface AgentState {
   createdAt: number;
   updatedAt: number;
 }
+
+/**
+ * Debug context for routing/orchestration tracing
+ * Used by admin users to see agent flow and timing
+ */
+export interface DebugContext {
+  /** Routing flow showing agent -> agent transitions */
+  routingFlow: Array<{
+    /** Agent name (e.g., 'router', 'simple-agent', 'orchestrator') */
+    agent: string;
+    /** Tools used by this agent (if any) */
+    tools?: string[];
+    /** Execution duration for this step in milliseconds */
+    durationMs?: number;
+  }>;
+  /** Total execution duration in milliseconds */
+  totalDurationMs?: number;
+  /** Query classification details */
+  classification?: {
+    /** Query type (simple, complex, tool_confirmation) */
+    type: string;
+    /** Query category (general, code, research, github, admin) */
+    category: string;
+    /** Complexity level (low, medium, high) */
+    complexity: string;
+  };
+}

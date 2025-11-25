@@ -26,6 +26,7 @@ export const QueryCategory = z.enum([
   'research', // Web search, documentation lookup
   'github', // GitHub operations (PRs, issues, comments)
   'admin', // Administrative tasks (settings, config)
+  'duyet', // Duyet's blog and personal info queries
 ]);
 export type QueryCategory = z.infer<typeof QueryCategory>;
 
@@ -72,6 +73,7 @@ export const RouteTarget = z.enum([
   'code-worker', // Code-specific tasks
   'research-worker', // Research tasks
   'github-worker', // GitHub operations
+  'duyet-info-agent', // Duyet's blog and personal info
 ]);
 export type RouteTarget = z.infer<typeof RouteTarget>;
 

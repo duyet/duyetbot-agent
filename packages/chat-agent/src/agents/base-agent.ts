@@ -49,6 +49,8 @@ export interface AgentContext {
   userId?: string | number;
   /** Chat/session identifier */
   chatId?: string | number;
+  /** Username (platform-specific: Telegram @username, GitHub login) */
+  username?: string;
   /** Platform (telegram, github, api) */
   platform?: string;
   /** Additional context data */

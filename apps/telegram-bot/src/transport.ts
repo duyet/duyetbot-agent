@@ -4,7 +4,7 @@
  * Implements the Transport interface for Telegram Bot API.
  */
 
-import type { Transport } from '@duyetbot/chat-agent';
+import type { DebugContext, Transport } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 
 /** Telegram message length limit */
@@ -66,6 +66,8 @@ export interface TelegramContext {
   adminUsername?: string;
   /** Request ID for trace correlation across webhook and DO invocations */
   requestId?: string;
+  /** Debug context for admin users (routing flow, timing, classification) */
+  debugContext?: DebugContext;
 }
 
 /**
@@ -253,8 +255,8 @@ export const telegramTransport: Transport<TelegramContext> = {
     text: ctx.text,
     userId: ctx.userId,
     chatId: ctx.chatId,
+    username: ctx.username,
     metadata: {
-      username: ctx.username,
       startTime: ctx.startTime,
       requestId: ctx.requestId,
     },

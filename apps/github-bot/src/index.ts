@@ -13,17 +13,9 @@ import { logger } from './logger.js';
 import { createGitHubContext } from './transport.js';
 
 export type { Env, GitHubAgentInstance } from './agent.js';
-// Cloudflare Durable Object exports
-export {
-  GitHubAgent,
-  RouterAgent,
-  SimpleAgent,
-  HITLAgent,
-  OrchestratorAgent,
-  CodeWorker,
-  ResearchWorker,
-  GitHubWorker,
-} from './agent.js';
+// Local Durable Object export
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+export { GitHubAgent } from './agent.js';
 // Utility exports
 export {
   extractAllMentions,

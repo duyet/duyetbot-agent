@@ -4,32 +4,17 @@
  * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern with Durable Object state.
  *
- * Full multi-agent system with:
- * - RouterAgent: Query classification and routing
- * - SimpleAgent: Quick responses without tools
- * - HITLAgent: Human-in-the-loop for sensitive operations
- * - OrchestratorAgent: Complex task decomposition
- * - Workers: CodeWorker, ResearchWorker, GitHubWorker
+ * This file only exports GitHubAgent (local DO).
+ * Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from
+ * duyetbot-agents worker via script_name in wrangler.toml.
  */
 
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
-  type HITLAgentClass,
   type MCPServerConnection,
-  type OrchestratorAgentClass,
-  type RouterAgentClass,
   type RouterAgentEnv,
-  type SimpleAgentClass,
-  type WorkerClass,
   createCloudflareChatAgent,
-  createCodeWorker,
-  createGitHubWorker,
-  createHITLAgent,
-  createOrchestratorAgent,
-  createResearchWorker,
-  createRouterAgent,
-  createSimpleAgent,
 } from '@duyetbot/chat-agent';
 import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
@@ -126,64 +111,6 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
  * Type for agent instance
  */
 export type GitHubAgentInstance = InstanceType<typeof GitHubAgent>;
-
-/**
- * RouterAgent for query classification
- */
-export const RouterAgent: RouterAgentClass<BaseEnv> = createRouterAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  debug: false,
-});
-
-/**
- * SimpleAgent for quick responses without tools
- */
-export const SimpleAgent: SimpleAgentClass<BaseEnv> = createSimpleAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  systemPrompt: GITHUB_SYSTEM_PROMPT,
-  maxHistory: 10,
-});
-
-/**
- * HITLAgent for human-in-the-loop confirmations
- */
-export const HITLAgent: HITLAgentClass<BaseEnv> = createHITLAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  systemPrompt: GITHUB_SYSTEM_PROMPT,
-  confirmationThreshold: 'high',
-});
-
-/**
- * OrchestratorAgent for complex task decomposition
- */
-export const OrchestratorAgent: OrchestratorAgentClass<BaseEnv> = createOrchestratorAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  maxSteps: 10,
-  maxParallel: 3,
-  continueOnError: true,
-});
-
-/**
- * CodeWorker for code analysis and generation
- */
-export const CodeWorker: WorkerClass<BaseEnv> = createCodeWorker<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  defaultLanguage: 'typescript',
-});
-
-/**
- * ResearchWorker for web research and documentation
- */
-export const ResearchWorker: WorkerClass<BaseEnv> = createResearchWorker<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-});
-
-/**
- * GitHubWorker for GitHub operations
- */
-export const GitHubWorker: WorkerClass<BaseEnv> = createGitHubWorker<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-});
 
 /**
  * Full environment with agent binding

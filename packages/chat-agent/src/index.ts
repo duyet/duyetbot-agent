@@ -78,6 +78,7 @@ export type {
 export type {
   AgentState,
   ChatAgentConfig,
+  DebugContext,
   LLMMessage,
   LLMProvider,
   LLMResponse,
@@ -93,7 +94,7 @@ export type {
 // NEW: Routing & Orchestration Architecture
 // =============================================================================
 
-// Agents (Router, Simple, HITL, Orchestrator)
+// Agents (Router, Simple, HITL, Orchestrator, DuyetInfo)
 export {
   type AgentContext,
   AgentMixin,
@@ -101,10 +102,18 @@ export {
   type BaseAgentConfig,
   type BaseAgentState,
   createBaseState,
+  createDuyetInfoAgent,
   createHITLAgent,
   createOrchestratorAgent,
   createRouterAgent,
   createSimpleAgent,
+  duyetToolFilter,
+  type DuyetInfoAgentClass,
+  type DuyetInfoAgentConfig,
+  type DuyetInfoAgentEnv,
+  type DuyetInfoAgentInstance,
+  type DuyetInfoAgentMethods,
+  type DuyetInfoAgentState,
   getTypedAgent,
   type HITLAgentClass,
   type HITLAgentConfig,

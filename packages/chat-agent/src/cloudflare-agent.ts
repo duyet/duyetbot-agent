@@ -879,6 +879,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 query: chatMessage,
                 userId: input.userId?.toString(),
                 chatId: input.chatId?.toString(),
+                ...(input.username && { username: input.username }),
                 platform: routerConfig?.platform || 'api',
                 ...(input.metadata && { data: input.metadata }),
               };

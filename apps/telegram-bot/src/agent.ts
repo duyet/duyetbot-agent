@@ -4,32 +4,16 @@
  * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern.
  *
- * Full multi-agent system with:
- * - RouterAgent: Query classification and routing
- * - SimpleAgent: Quick responses without tools
- * - HITLAgent: Human-in-the-loop for sensitive operations
- * - OrchestratorAgent: Complex task decomposition
- * - Workers: CodeWorker, ResearchWorker, GitHubWorker
+ * This file only exports TelegramAgent (local DO).
+ * Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from
+ * duyetbot-agents worker via script_name in wrangler.toml.
  */
 
-import type { MCPServerConnection } from '@duyetbot/chat-agent';
+import type { MCPServerConnection, RouterAgentEnv } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
-  type HITLAgentClass,
-  type OrchestratorAgentClass,
-  type RouterAgentClass,
-  type RouterAgentEnv,
-  type SimpleAgentClass,
-  type WorkerClass,
   createCloudflareChatAgent,
-  createCodeWorker,
-  createGitHubWorker,
-  createHITLAgent,
-  createOrchestratorAgent,
-  createResearchWorker,
-  createRouterAgent,
-  createSimpleAgent,
 } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
@@ -38,6 +22,7 @@ import {
   TELEGRAM_WELCOME_MESSAGE,
 } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
+import { isAdminUser } from './debug-footer.js';
 import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
 
@@ -120,8 +105,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
 
         // Framework automatically edits the thinking message to show error
         // For admins, send additional detailed error info
-        const isAdmin = ctx.adminUsername && ctx.username === ctx.adminUsername;
-        if (isAdmin) {
+        if (isAdminUser(ctx)) {
           await telegramTransport.send(ctx, `🔍 Debug: ${error.message}`);
         }
       },
@@ -132,64 +116,6 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
  * Type for agent instance
  */
 export type TelegramAgentInstance = InstanceType<typeof TelegramAgent>;
-
-/**
- * RouterAgent for query classification
- */
-export const RouterAgent: RouterAgentClass<BaseEnv> = createRouterAgent<BaseEnv>({
-  createProvider: (env) => createAIGatewayProvider(env),
-  debug: false,
-});
-
-/**
- * SimpleAgent for quick responses without tools
- */
-export const SimpleAgent: SimpleAgentClass<BaseEnv> = createSimpleAgent<BaseEnv>({
-  createProvider: (env) => createAIGatewayProvider(env),
-  systemPrompt: TELEGRAM_SYSTEM_PROMPT,
-  maxHistory: 20,
-});
-
-/**
- * HITLAgent for human-in-the-loop confirmations
- */
-export const HITLAgent: HITLAgentClass<BaseEnv> = createHITLAgent<BaseEnv>({
-  createProvider: (env) => createAIGatewayProvider(env),
-  systemPrompt: TELEGRAM_SYSTEM_PROMPT,
-  confirmationThreshold: 'high',
-});
-
-/**
- * OrchestratorAgent for complex task decomposition
- */
-export const OrchestratorAgent: OrchestratorAgentClass<BaseEnv> = createOrchestratorAgent<BaseEnv>({
-  createProvider: (env) => createAIGatewayProvider(env),
-  maxSteps: 10,
-  maxParallel: 3,
-  continueOnError: true,
-});
-
-/**
- * CodeWorker for code analysis and generation
- */
-export const CodeWorker: WorkerClass<BaseEnv> = createCodeWorker<BaseEnv>({
-  createProvider: (env) => createAIGatewayProvider(env),
-  defaultLanguage: 'typescript',
-});
-
-/**
- * ResearchWorker for web research and documentation
- */
-export const ResearchWorker: WorkerClass<BaseEnv> = createResearchWorker<BaseEnv>({
-  createProvider: (env) => createAIGatewayProvider(env),
-});
-
-/**
- * GitHubWorker for GitHub operations
- */
-export const GitHubWorker: WorkerClass<BaseEnv> = createGitHubWorker<BaseEnv>({
-  createProvider: (env) => createAIGatewayProvider(env),
-});
 
 /**
  * Full environment with agent binding

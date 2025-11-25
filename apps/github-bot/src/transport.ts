@@ -145,6 +145,7 @@ ${labelStr}
       text: contextBlock + ctx.body,
       userId: ctx.sender.id,
       chatId: `${ctx.owner}/${ctx.repo}#${ctx.issueNumber}`,
+      username: ctx.sender.login,
       metadata: {
         owner: ctx.owner,
         repo: ctx.repo,
