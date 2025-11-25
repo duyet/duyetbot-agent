@@ -5,17 +5,12 @@
  * State persistence via Durable Object storage.
  */
 
-import { logger } from "@duyetbot/hono-middleware";
-import type { Tool, ToolInput } from "@duyetbot/types";
-import {
-  Agent,
-  type AgentNamespace,
-  type Connection,
-  getAgentByName,
-} from "agents";
-import { zodToJsonSchema } from "zod-to-json-schema";
-import type { AgentContext, AgentResult } from "./agents/base-agent.js";
-import type { RouterAgentEnv } from "./agents/router-agent.js";
+import { logger } from '@duyetbot/hono-middleware';
+import type { Tool, ToolInput } from '@duyetbot/types';
+import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import type { AgentContext, AgentResult } from './agents/base-agent.js';
+import type { RouterAgentEnv } from './agents/router-agent.js';
 import {
   type BatchConfig,
   type BatchState,
@@ -28,16 +23,16 @@ import {
   createInitialBatchState,
   isDuplicateMessage,
   shouldProcessImmediately,
-} from "./batch-types.js";
-import type { RoutingFlags } from "./feature-flags.js";
+} from './batch-types.js';
+import type { RoutingFlags } from './feature-flags.js';
 import {
   createThinkingRotator,
   formatWithEmbeddedHistory,
   getDefaultThinkingMessages,
-} from "./format.js";
-import { trimHistory } from "./history.js";
-import type { Transport, TransportHooks } from "./transport.js";
-import type { LLMProvider, Message, OpenAITool } from "./types.js";
+} from './format.js';
+import { trimHistory } from './history.js';
+import type { Transport, TransportHooks } from './transport.js';
+import type { LLMProvider, Message, OpenAITool } from './types.js';
 
 /**
  * MCP server configuration for connecting to external MCP servers
@@ -72,7 +67,7 @@ export interface CloudflareAgentState {
  */
 export interface RouterConfig {
   /** Platform identifier for routing decisions */
-  platform: "telegram" | "github" | "cli" | "api";
+  platform: 'telegram' | 'github' | 'cli' | 'api';
   /** Feature flags (if not provided, parsed from env) */
   flags?: RoutingFlags;
   /** Enable debug logging for routing decisions */
@@ -129,7 +124,7 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
 }
 
 // Re-export types for backward compatibility
-export type { MemoryServiceBinding } from "./service-binding-adapter.js";
+export type { MemoryServiceBinding } from './service-binding-adapter.js';
 
 /**
  * Interface for the CloudflareChatAgent class methods
@@ -222,7 +217,7 @@ export type CloudflareChatAgentClass<TEnv, TContext = unknown> = typeof Agent<
  * ```
  */
 export function createCloudflareChatAgent<TEnv, TContext = unknown>(
-  config: CloudflareAgentConfig<TEnv, TContext>,
+  config: CloudflareAgentConfig<TEnv, TContext>
 ): CloudflareChatAgentClass<TEnv, TContext> {
   const maxHistory = config.maxHistory ?? 100;
   const maxToolIterations = config.maxToolIterations ?? 5;
@@ -243,7 +238,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
   // Convert built-in tools to OpenAI format
   const builtinToolsOpenAI: OpenAITool[] = builtinTools.map((tool) => ({
-    type: "function" as const,
+    type: 'function' as const,
     function: {
       name: tool.name,
       description: tool.description,
@@ -252,17 +247,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
   }));
 
   // Create a map for quick lookup of built-in tools by name
-  const builtinToolMap = new Map<string, Tool>(
-    builtinTools.map((tool) => [tool.name, tool]),
-  );
+  const builtinToolMap = new Map<string, Tool>(builtinTools.map((tool) => [tool.name, tool]));
 
   // The class has all the methods defined in CloudflareChatAgentMethods
   // Type assertion is needed because TypeScript can't infer the additional methods
   // on the class type from the instance methods alone
-  const AgentClass = class CloudflareChatAgent extends Agent<
-    TEnv,
-    CloudflareAgentState
-  > {
+  const AgentClass = class CloudflareChatAgent extends Agent<TEnv, CloudflareAgentState> {
     override initialState: CloudflareAgentState = {
       messages: [],
       createdAt: Date.now(),
@@ -285,9 +275,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       for (const server of mcpServers) {
         try {
-          const authHeader = server.getAuthHeader?.(
-            env as Record<string, unknown>,
-          );
+          const authHeader = server.getAuthHeader?.(env as Record<string, unknown>);
           const options: Record<string, unknown> = {};
 
           if (authHeader) {
@@ -298,33 +286,24 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             };
           }
 
+          logger.info(`[CloudflareAgent][MCP] Connecting to ${server.name} at ${server.url}`);
           logger.info(
-            `[CloudflareAgent][MCP] Connecting to ${server.name} at ${server.url}`,
-          );
-          logger.info(
-            `[CloudflareAgent][MCP] Auth header present: ${!!authHeader}, length: ${authHeader?.length || 0}`,
+            `[CloudflareAgent][MCP] Auth header present: ${!!authHeader}, length: ${authHeader?.length || 0}`
           );
 
           // Add timeout to prevent hanging connections
           const connectPromise = this.mcp.connect(server.url, options);
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(
-              () =>
-                reject(
-                  new Error(`Connection timeout after ${CONNECTION_TIMEOUT}ms`),
-                ),
-              CONNECTION_TIMEOUT,
+              () => reject(new Error(`Connection timeout after ${CONNECTION_TIMEOUT}ms`)),
+              CONNECTION_TIMEOUT
             );
           });
 
           const result = await Promise.race([connectPromise, timeoutPromise]);
-          logger.info(
-            `[CloudflareAgent][MCP] Connected to ${server.name}: ${result.id}`,
-          );
+          logger.info(`[CloudflareAgent][MCP] Connected to ${server.name}: ${result.id}`);
         } catch (error) {
-          logger.error(
-            `[CloudflareAgent][MCP] Failed to connect to ${server.name}: ${error}`,
-          );
+          logger.error(`[CloudflareAgent][MCP] Failed to connect to ${server.name}: ${error}`);
           // Continue to next server - don't block on failed connections
         }
       }
@@ -338,10 +317,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     getMcpTools(): OpenAITool[] {
       const mcpTools = this.mcp.listTools();
       return mcpTools.map((tool) => ({
-        type: "function" as const,
+        type: 'function' as const,
         function: {
           name: tool.name,
-          description: tool.description || "",
+          description: tool.description || '',
           parameters: tool.inputSchema as Record<string, unknown>,
         },
       }));
@@ -350,22 +329,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Called when state is updated from any source
      */
-    override onStateUpdate(
-      state: CloudflareAgentState,
-      source: "server" | Connection,
-    ) {
-      logger.info(
-        `[CloudflareAgent] State updated: ${JSON.stringify(state)}, Source: ${source}`,
-      );
+    override onStateUpdate(state: CloudflareAgentState, source: 'server' | Connection) {
+      logger.info(`[CloudflareAgent] State updated: ${JSON.stringify(state)}, Source: ${source}`);
     }
 
     /**
      * Initialize agent with context (userId, chatId)
      */
-    async init(
-      userId?: string | number,
-      chatId?: string | number,
-    ): Promise<void> {
+    async init(userId?: string | number, chatId?: string | number): Promise<void> {
       const needsUpdate =
         (this.state.userId === undefined && userId !== undefined) ||
         (this.state.chatId === undefined && chatId !== undefined);
@@ -393,7 +364,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Trim history if it exceeds maxHistory (handles bloated state from older versions)
       if (this.state.messages.length > maxHistory) {
         logger.info(
-          `[CloudflareAgent][CHAT] Trimming bloated history: ${this.state.messages.length} -> ${maxHistory}`,
+          `[CloudflareAgent][CHAT] Trimming bloated history: ${this.state.messages.length} -> ${maxHistory}`
         );
         const trimmedMessages = trimHistory(this.state.messages, maxHistory);
         this.setState({
@@ -408,9 +379,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       // Get LLM provider from environment bindings
       // Note: Type assertion needed due to TypeScript limitation with anonymous class inheritance
-      const llmProvider = config.createProvider(
-        (this as unknown as { env: TEnv }).env,
-      );
+      const llmProvider = config.createProvider((this as unknown as { env: TEnv }).env);
 
       // Get available tools from MCP servers and merge with built-in tools
       const mcpTools = this.getMcpTools();
@@ -421,9 +390,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       let deduplicatedTools = allTools.filter((tool) => {
         const name = tool.function.name;
         if (seenNames.has(name)) {
-          logger.info(
-            `[CloudflareAgent][TOOLS] Skipping duplicate tool: ${name}`,
-          );
+          logger.info(`[CloudflareAgent][TOOLS] Skipping duplicate tool: ${name}`);
           return false;
         }
         seenNames.add(name);
@@ -433,7 +400,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Apply maxTools limit if configured
       if (maxTools !== undefined && deduplicatedTools.length > maxTools) {
         logger.info(
-          `[CloudflareAgent][TOOLS] Limiting tools from ${deduplicatedTools.length} to ${maxTools}`,
+          `[CloudflareAgent][TOOLS] Limiting tools from ${deduplicatedTools.length} to ${maxTools}`
         );
         deduplicatedTools = deduplicatedTools.slice(0, maxTools);
       }
@@ -446,21 +413,18 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const llmMessages = formatWithEmbeddedHistory(
         this.state.messages,
         config.systemPrompt,
-        userMessage,
+        userMessage
       );
 
       // Call LLM with tools if available
-      let response = await llmProvider.chat(
-        llmMessages,
-        hasTools ? tools : undefined,
-      );
+      let response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
 
       // Handle tool calls (up to maxToolIterations)
       let iterations = 0;
 
       // Track tool conversation for iterations (separate from embedded history)
       const toolConversation: Array<{
-        role: "user" | "assistant";
+        role: 'user' | 'assistant';
         content: string;
       }> = [];
 
@@ -471,13 +435,13 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       ) {
         iterations++;
         logger.info(
-          `[CloudflareAgent][MCP] Processing ${response.toolCalls.length} tool calls (iteration ${iterations})`,
+          `[CloudflareAgent][MCP] Processing ${response.toolCalls.length} tool calls (iteration ${iterations})`
         );
 
         // Add assistant message with tool calls to tool conversation
         toolConversation.push({
-          role: "assistant" as const,
-          content: response.content || "",
+          role: 'assistant' as const,
+          content: response.content || '',
         });
 
         // Execute each tool call (built-in or MCP)
@@ -489,9 +453,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // Check if it's a built-in tool first
             const builtinTool = builtinToolMap.get(toolCall.name);
             if (builtinTool) {
-              logger.info(
-                `[CloudflareAgent][TOOL] Calling built-in tool: ${toolCall.name}`,
-              );
+              logger.info(`[CloudflareAgent][TOOL] Calling built-in tool: ${toolCall.name}`);
 
               // Execute built-in tool
               const toolInput: ToolInput = {
@@ -501,44 +463,42 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
               // Format result
               resultText =
-                typeof result.content === "string"
+                typeof result.content === 'string'
                   ? result.content
                   : JSON.stringify(result.content);
 
-              if (result.status === "error" && result.error) {
+              if (result.status === 'error' && result.error) {
                 resultText = `Error: ${result.error.message}`;
               }
             } else {
               // Parse tool name to get server ID (format: serverId__toolName)
-              const [serverId, ...toolNameParts] = toolCall.name.split("__");
-              const toolName = toolNameParts.join("__") || toolCall.name;
+              const [serverId, ...toolNameParts] = toolCall.name.split('__');
+              const toolName = toolNameParts.join('__') || toolCall.name;
 
-              logger.info(
-                `[CloudflareAgent][MCP] Calling tool: ${toolName} on server ${serverId}`,
-              );
+              logger.info(`[CloudflareAgent][MCP] Calling tool: ${toolName} on server ${serverId}`);
 
               const result = (await this.mcp.callTool({
-                serverId: serverId || "",
+                serverId: serverId || '',
                 name: toolName,
                 arguments: toolArgs,
               })) as { content: Array<{ type: string; text?: string }> };
 
               // Format MCP result
               resultText = result.content
-                .map((c) => (c.type === "text" ? c.text : JSON.stringify(c)))
-                .join("\n");
+                .map((c) => (c.type === 'text' ? c.text : JSON.stringify(c)))
+                .join('\n');
             }
 
             // Use 'user' role with tool context for compatibility
             toolConversation.push({
-              role: "user" as const,
+              role: 'user' as const,
               content: `[Tool Result for ${toolCall.name}]: ${resultText}`,
             });
           } catch (error) {
             logger.error(`[CloudflareAgent][TOOL] Tool call failed: ${error}`);
             // Use 'user' role with error context for compatibility
             toolConversation.push({
-              role: "user" as const,
+              role: 'user' as const,
               content: `[Tool Error for ${toolCall.name}]: ${error instanceof Error ? error.message : String(error)}`,
             });
           }
@@ -549,10 +509,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         const toolMessages = [...llmMessages, ...toolConversation];
 
         // Continue conversation with tool results
-        response = await llmProvider.chat(
-          toolMessages,
-          hasTools ? tools : undefined,
-        );
+        response = await llmProvider.chat(toolMessages, hasTools ? tools : undefined);
       }
 
       const assistantContent = response.content;
@@ -561,10 +518,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const newMessages = trimHistory(
         [
           ...this.state.messages,
-          { role: "user" as const, content: userMessage },
-          { role: "assistant" as const, content: assistantContent },
+          { role: 'user' as const, content: userMessage },
+          { role: 'assistant' as const, content: assistantContent },
         ],
-        maxHistory,
+        maxHistory
       );
 
       this.setState({
@@ -586,21 +543,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         updatedAt: Date.now(),
       });
 
-      return "Conversation history cleared.";
+      return 'Conversation history cleared.';
     }
 
     /**
      * Get welcome message
      */
     getWelcome(): string {
-      return config.welcomeMessage ?? "Hello! How can I help you?";
+      return config.welcomeMessage ?? 'Hello! How can I help you?';
     }
 
     /**
      * Get help message
      */
     getHelp(): string {
-      return config.helpMessage ?? "Commands: /start, /help, /clear";
+      return config.helpMessage ?? 'Commands: /start, /help, /clear';
     }
 
     /**
@@ -634,14 +591,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Returns null for unknown commands (should fall back to chat)
      */
     handleBuiltinCommand(text: string): string | null {
-      const command = (text.split(" ")[0] ?? "").toLowerCase();
+      const command = (text.split(' ')[0] ?? '').toLowerCase();
 
       switch (command) {
-        case "/start":
+        case '/start':
           return this.getWelcome();
-        case "/help":
+        case '/help':
           return this.getHelp();
-        case "/clear": {
+        case '/clear': {
           // Full DO state reset - clears messages, metadata, and resets MCP
           this._mcpInitialized = false;
           const freshState: CloudflareAgentState = {
@@ -657,7 +614,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             freshState.chatId = this.state.chatId;
           }
           this.setState(freshState);
-          return "🧹 All conversation data cleared. Fresh start!";
+          return '🧹 All conversation data cleared. Fresh start!';
         }
         default:
           // Return null for unknown commands - will fall back to chat/tools/MCP
@@ -672,7 +629,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     handleCommand(text: string): string {
       return (
         this.handleBuiltinCommand(text) ??
-        `Unknown command: ${text.split(" ")[0]}. Try /help for available commands.`
+        `Unknown command: ${text.split(' ')[0]}. Try /help for available commands.`
       );
     }
 
@@ -684,7 +641,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     transformSlashCommand(text: string): string {
       // Remove leading slash and split into command + args
       const withoutSlash = text.slice(1);
-      const spaceIndex = withoutSlash.indexOf(" ");
+      const spaceIndex = withoutSlash.indexOf(' ');
 
       if (spaceIndex === -1) {
         // Just command, no args: "/translate" → "translate"
@@ -708,7 +665,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
 
       if (routerConfig.debug) {
-        logger.info("[CloudflareAgent][ROUTER] shouldRoute: routing enabled");
+        logger.info('[CloudflareAgent][ROUTER] shouldRoute: routing enabled');
       }
 
       return true;
@@ -718,10 +675,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Route a query through RouterAgent if enabled
      * Returns null if routing is disabled or RouterAgent is unavailable
      */
-    async routeQuery(
-      query: string,
-      context: AgentContext,
-    ): Promise<AgentResult | null> {
+    async routeQuery(query: string, context: AgentContext): Promise<AgentResult | null> {
       if (!routerConfig) {
         return null;
       }
@@ -734,29 +688,20 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Check if RouterAgent binding is available
       if (!routerEnv.RouterAgent) {
         if (routerConfig.debug) {
-          logger.warn(
-            "[CloudflareAgent][ROUTER] RouterAgent binding not available",
-          );
+          logger.warn('[CloudflareAgent][ROUTER] RouterAgent binding not available');
         }
         return null;
       }
 
       try {
         // Get RouterAgent by session/chat ID for state persistence
-        const routerId =
-          context.chatId?.toString() || context.userId?.toString() || "default";
-        const routerAgent = await getAgentByName(
-          routerEnv.RouterAgent,
-          routerId,
-        );
+        const routerId = context.chatId?.toString() || context.userId?.toString() || 'default';
+        const routerAgent = await getAgentByName(routerEnv.RouterAgent, routerId);
 
         // Call the route method
         const result = await (
           routerAgent as unknown as {
-            route: (
-              query: string,
-              context: AgentContext,
-            ) => Promise<AgentResult>;
+            route: (query: string, context: AgentContext) => Promise<AgentResult>;
           }
         ).route(query, {
           ...context,
@@ -764,7 +709,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         });
 
         if (routerConfig.debug) {
-          logger.info("[CloudflareAgent][ROUTER] Route result", {
+          logger.info('[CloudflareAgent][ROUTER] Route result', {
             success: result.success,
             durationMs: result.durationMs,
           });
@@ -772,7 +717,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         return result;
       } catch (error) {
-        logger.error("[CloudflareAgent][ROUTER] Failed to route query", {
+        logger.error('[CloudflareAgent][ROUTER] Failed to route query', {
           error: error instanceof Error ? error.message : String(error),
         });
         return null;
@@ -802,13 +747,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       try {
         const routerId =
-          this.state.chatId?.toString() ||
-          this.state.userId?.toString() ||
-          "default";
-        const routerAgent = await getAgentByName(
-          routerEnv.RouterAgent,
-          routerId,
-        );
+          this.state.chatId?.toString() || this.state.userId?.toString() || 'default';
+        const routerAgent = await getAgentByName(routerEnv.RouterAgent, routerId);
 
         return (
           routerAgent as unknown as {
@@ -820,7 +760,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           }
         ).getStats();
       } catch (error) {
-        logger.error("[CloudflareAgent][ROUTER] Failed to get stats", {
+        logger.error('[CloudflareAgent][ROUTER] Failed to get stats', {
           error: error instanceof Error ? error.message : String(error),
         });
         return null;
@@ -846,13 +786,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       try {
         const routerId =
-          this.state.chatId?.toString() ||
-          this.state.userId?.toString() ||
-          "default";
-        const routerAgent = await getAgentByName(
-          routerEnv.RouterAgent,
-          routerId,
-        );
+          this.state.chatId?.toString() || this.state.userId?.toString() || 'default';
+        const routerAgent = await getAgentByName(routerEnv.RouterAgent, routerId);
 
         return (
           routerAgent as unknown as {
@@ -860,7 +795,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           }
         ).getRoutingHistory(limit);
       } catch (error) {
-        logger.error("[CloudflareAgent][ROUTER] Failed to get history", {
+        logger.error('[CloudflareAgent][ROUTER] Failed to get history', {
           error: error instanceof Error ? error.message : String(error),
         });
         return null;
@@ -875,40 +810,28 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * @throws Error if transport is not configured
      */
     async handle(ctx: TContext): Promise<void> {
-      logger.info(
-        `[CloudflareAgent][HANDLE] Starting handle (${JSON.stringify(ctx)}`,
-      );
+      logger.info(`[CloudflareAgent][HANDLE] Starting handle (${JSON.stringify(ctx)}`);
 
       if (!transport) {
-        throw new Error(
-          "Transport not configured. Pass transport in config to use handle().",
-        );
+        throw new Error('Transport not configured. Pass transport in config to use handle().');
       }
 
       const input = transport.parseContext(ctx);
-      logger.info(
-        `[CloudflareAgent][HANDLE] Parsed input: ${JSON.stringify(input)}`,
-      );
+      logger.info(`[CloudflareAgent][HANDLE] Parsed input: ${JSON.stringify(input)}`);
 
       // Deduplicate requests using requestId from metadata
       const requestId = input.metadata?.requestId as string | undefined;
       if (requestId) {
-        const lastRequestId = this.state.metadata?.lastRequestId as
-          | string
-          | undefined;
+        const lastRequestId = this.state.metadata?.lastRequestId as string | undefined;
         if (lastRequestId === requestId) {
-          logger.info(
-            `[CloudflareAgent][HANDLE] Duplicate request ${requestId}, skipping`,
-          );
+          logger.info(`[CloudflareAgent][HANDLE] Duplicate request ${requestId}, skipping`);
           return;
         }
       }
 
       // Prevent concurrent processing (Telegram may send retries)
       if (this._processing) {
-        logger.info(
-          "[CloudflareAgent][HANDLE] Already processing, skipping duplicate request",
-        );
+        logger.info('[CloudflareAgent][HANDLE] Already processing, skipping duplicate request');
         return;
       }
       this._processing = true;
@@ -935,11 +858,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           await hooks.beforeHandle(ctx);
         }
 
-        let response = "";
+        let response = '';
         let chatMessage: string = input.text;
 
         // Route: Built-in Command, Dynamic Command, or Chat
-        if (input.text.startsWith("/")) {
+        if (input.text.startsWith('/')) {
           // Try built-in commands first (/start, /help, /clear)
           const builtinResponse = this.handleBuiltinCommand(input.text);
 
@@ -952,16 +875,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // e.g., "/translate hello" → "translate: hello"
             chatMessage = this.transformSlashCommand(input.text);
             logger.info(
-              `[CloudflareAgent][HANDLE] Dynamic command: "${input.text}" → "${chatMessage}"`,
+              `[CloudflareAgent][HANDLE] Dynamic command: "${input.text}" → "${chatMessage}"`
             );
 
             // Fall through to chat processing below
-            response = ""; // Will be set in chat block
+            response = ''; // Will be set in chat block
           }
         }
 
         // Process with chat if not a built-in command
-        if (!input.text.startsWith("/") || chatMessage !== input.text) {
+        if (!input.text.startsWith('/') || chatMessage !== input.text) {
           // Send typing indicator
           if (transport.typing) {
             await transport.typing(ctx);
@@ -980,9 +903,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           if (transport.edit) {
             rotator.start(async (nextMessage) => {
               try {
-                logger.info(
-                  `[CloudflareAgent][ROTATOR] Editing to: ${nextMessage}`,
-                );
+                logger.info(`[CloudflareAgent][ROTATOR] Editing to: ${nextMessage}`);
                 await transport.edit!(ctx, messageRef!, nextMessage);
               } catch (err) {
                 logger.error(`[CloudflareAgent][ROTATOR] Edit failed: ${err}`);
@@ -1004,48 +925,35 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 userId: input.userId?.toString(),
                 chatId: input.chatId?.toString(),
                 ...(input.username && { username: input.username }),
-                platform: routerConfig?.platform || "api",
+                platform: routerConfig?.platform || 'api',
                 ...(input.metadata && { data: input.metadata }),
               };
 
-              logger.info(
-                "[CloudflareAgent][HANDLE] Routing enabled, calling RouterAgent",
-                {
-                  platform: agentContext.platform,
-                  userId: agentContext.userId,
-                },
-              );
+              logger.info('[CloudflareAgent][HANDLE] Routing enabled, calling RouterAgent', {
+                platform: agentContext.platform,
+                userId: agentContext.userId,
+              });
 
               // Try routing through RouterAgent
-              const routeResult = await this.routeQuery(
-                chatMessage,
-                agentContext,
-              );
+              const routeResult = await this.routeQuery(chatMessage, agentContext);
 
               if (routeResult?.success && routeResult.content) {
                 // Routing succeeded - use the routed response
                 response = routeResult.content;
-                logger.info(
-                  "[CloudflareAgent][HANDLE] RouterAgent returned response",
-                  {
-                    routedTo:
-                      (routeResult.data as Record<string, unknown>)?.routedTo ??
-                      "unknown",
-                    durationMs: routeResult.durationMs,
-                  },
-                );
+                logger.info('[CloudflareAgent][HANDLE] RouterAgent returned response', {
+                  routedTo: (routeResult.data as Record<string, unknown>)?.routedTo ?? 'unknown',
+                  durationMs: routeResult.durationMs,
+                });
               } else {
                 // Routing failed or returned null - fall back to direct chat
                 logger.info(
-                  "[CloudflareAgent][HANDLE] Routing failed or unavailable, falling back to chat()",
+                  '[CloudflareAgent][HANDLE] Routing failed or unavailable, falling back to chat()'
                 );
                 response = await this.chat(chatMessage);
               }
             } else {
               // Routing disabled - use direct chat
-              logger.info(
-                "[CloudflareAgent][HANDLE] Routing disabled, using direct chat()",
-              );
+              logger.info('[CloudflareAgent][HANDLE] Routing disabled, using direct chat()');
               response = await this.chat(chatMessage);
             }
           } finally {
@@ -1055,14 +963,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // Edit thinking message with actual response
           if (transport.edit) {
             try {
-              logger.info(
-                `[CloudflareAgent][HANDLE] Editing final response: ${response}`,
-              );
+              logger.info(`[CloudflareAgent][HANDLE] Editing final response: ${response}`);
               await transport.edit(ctx, messageRef, response);
             } catch (editError) {
               // Fallback: send new message if edit fails (e.g., message deleted)
               logger.error(
-                `[CloudflareAgent][HANDLE] Edit failed, sending new message: ${editError}`,
+                `[CloudflareAgent][HANDLE] Edit failed, sending new message: ${editError}`
               );
               await transport.send(ctx, response);
             }
@@ -1086,8 +992,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         // Edit thinking message to show error (if we have a message to edit)
         if (messageRef && transport.edit) {
-          const errorMessage =
-            "❌ Sorry, an error occurred. Please try again later.";
+          const errorMessage = '❌ Sorry, an error occurred. Please try again later.';
           try {
             await transport.edit(ctx, messageRef, errorMessage);
           } catch {
@@ -1113,18 +1018,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Queue a message for batch processing with alarm-based execution
      * Messages arriving within the batch window are combined into a single LLM call
      */
-    async queueMessage(
-      ctx: TContext,
-    ): Promise<{ queued: boolean; batchId?: string }> {
+    async queueMessage(ctx: TContext): Promise<{ queued: boolean; batchId?: string }> {
       if (!transport) {
         throw new Error(
-          "Transport not configured. Pass transport in config to use queueMessage().",
+          'Transport not configured. Pass transport in config to use queueMessage().'
         );
       }
 
       const input = transport.parseContext(ctx);
-      const requestId =
-        (input.metadata?.requestId as string) || crypto.randomUUID();
+      const requestId = (input.metadata?.requestId as string) || crypto.randomUUID();
       const now = Date.now();
 
       // Initialize batch state if not present
@@ -1132,9 +1034,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       // Check for duplicate request
       if (isDuplicateMessage(requestId, batch.pendingMessages)) {
-        logger.info(
-          `[CloudflareAgent][BATCH] Duplicate request ${requestId}, skipping`,
-        );
+        logger.info(`[CloudflareAgent][BATCH] Duplicate request ${requestId}, skipping`);
         return { queued: false };
       }
 
@@ -1154,8 +1054,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       batch.lastMessageAt = now;
 
       // Set batch start time if this is the first message
-      if (batch.status === "idle") {
-        batch.status = "collecting";
+      if (batch.status === 'idle') {
+        batch.status = 'collecting';
         batch.batchStartedAt = now;
         batch.batchId = crypto.randomUUID();
       }
@@ -1167,7 +1067,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         updatedAt: now,
       });
 
-      logger.info("[CloudflareAgent][BATCH] Message queued", {
+      logger.info('[CloudflareAgent][BATCH] Message queued', {
         requestId,
         batchId: batch.batchId,
         pendingCount: batch.pendingMessages.length,
@@ -1175,19 +1075,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       // Check if we should process immediately (max messages or max window)
       if (shouldProcessImmediately(batch, batchConfig)) {
-        logger.info(
-          "[CloudflareAgent][BATCH] Processing immediately (limit reached)",
-        );
+        logger.info('[CloudflareAgent][BATCH] Processing immediately (limit reached)');
         // Schedule alarm for immediate processing (0.001 seconds = 1ms minimum)
-        await this.schedule(0.001, "onBatchAlarm", { batchId: batch.batchId });
+        await this.schedule(0.001, 'onBatchAlarm', { batchId: batch.batchId });
       } else {
         // Schedule/reset alarm for batch window
         // Each new message resets the timer
         const delaySeconds = batchConfig.windowMs / 1000;
-        logger.info(
-          `[CloudflareAgent][BATCH] Scheduling alarm in ${batchConfig.windowMs}ms`,
-        );
-        await this.schedule(delaySeconds, "onBatchAlarm", {
+        logger.info(`[CloudflareAgent][BATCH] Scheduling alarm in ${batchConfig.windowMs}ms`);
+        await this.schedule(delaySeconds, 'onBatchAlarm', {
           batchId: batch.batchId,
         });
       }
@@ -1208,16 +1104,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const batch = this.state.batch;
 
       if (!batch || batch.pendingMessages.length === 0) {
-        logger.info("[CloudflareAgent][BATCH] No pending messages to process");
+        logger.info('[CloudflareAgent][BATCH] No pending messages to process');
         return;
       }
 
-      if (batch.status === "processing") {
-        logger.info("[CloudflareAgent][BATCH] Already processing, skipping");
+      if (batch.status === 'processing') {
+        logger.info('[CloudflareAgent][BATCH] Already processing, skipping');
         return;
       }
 
-      logger.info("[CloudflareAgent][BATCH] Processing batch", {
+      logger.info('[CloudflareAgent][BATCH] Processing batch', {
         batchId: batch.batchId,
         messageCount: batch.pendingMessages.length,
         retryCount: batch.retryCount,
@@ -1226,7 +1122,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Update status to processing
       const processingBatch: BatchState = {
         ...batch,
-        status: "processing",
+        status: 'processing',
       };
       this.setState({
         ...this.state,
@@ -1244,11 +1140,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           updatedAt: Date.now(),
         });
 
-        logger.info("[CloudflareAgent][BATCH] Batch processed successfully", {
+        logger.info('[CloudflareAgent][BATCH] Batch processed successfully', {
           batchId: batch.batchId,
         });
       } catch (error) {
-        logger.error("[CloudflareAgent][BATCH] Batch processing failed", {
+        logger.error('[CloudflareAgent][BATCH] Batch processing failed', {
           batchId: batch.batchId,
           error: error instanceof Error ? error.message : String(error),
           retryCount: batch.retryCount,
@@ -1259,7 +1155,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           const delay = calculateRetryDelay(batch.retryCount, retryConfig);
           const retryBatch: BatchState = {
             ...batch,
-            status: "collecting",
+            status: 'collecting',
             retryCount: batch.retryCount + 1,
             error: error instanceof Error ? error.message : String(error),
           };
@@ -1270,21 +1166,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             updatedAt: Date.now(),
           });
 
-          logger.info("[CloudflareAgent][BATCH] Scheduling retry", {
+          logger.info('[CloudflareAgent][BATCH] Scheduling retry', {
             batchId: batch.batchId,
             retryCount: retryBatch.retryCount,
             delayMs: delay,
           });
 
           const delaySeconds = delay / 1000;
-          await this.schedule(delaySeconds, "onBatchAlarm", {
+          await this.schedule(delaySeconds, 'onBatchAlarm', {
             batchId: batch.batchId,
           });
         } else {
           // Max retries reached - fail the batch
           const failedBatch: BatchState = {
             ...batch,
-            status: "failed",
+            status: 'failed',
             error: error instanceof Error ? error.message : String(error),
           };
 
@@ -1294,13 +1190,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             updatedAt: Date.now(),
           });
 
-          logger.error(
-            "[CloudflareAgent][BATCH] Batch failed after max retries",
-            {
-              batchId: batch.batchId,
-              maxRetries: retryConfig.maxRetries,
-            },
-          );
+          logger.error('[CloudflareAgent][BATCH] Batch failed after max retries', {
+            batchId: batch.batchId,
+            maxRetries: retryConfig.maxRetries,
+          });
 
           // Send error message to user if transport available
           if (transport) {
@@ -1310,18 +1203,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 // Use originalContext to preserve platform-specific data (e.g., bot token)
                 await transport.send(
                   firstMessage.originalContext as TContext,
-                  "❌ Sorry, an error occurred processing your message. Please try again.",
+                  '❌ Sorry, an error occurred processing your message. Please try again.'
                 );
               } catch (sendError) {
-                logger.error(
-                  "[CloudflareAgent][BATCH] Failed to send error message",
-                  {
-                    error:
-                      sendError instanceof Error
-                        ? sendError.message
-                        : String(sendError),
-                  },
-                );
+                logger.error('[CloudflareAgent][BATCH] Failed to send error message', {
+                  error: sendError instanceof Error ? sendError.message : String(sendError),
+                });
               }
             }
           }
@@ -1347,14 +1234,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
 
       if (!transport) {
-        throw new Error("Transport not configured");
+        throw new Error('Transport not configured');
       }
 
       // Combine messages
       const combinedText = combineBatchMessages(batch.pendingMessages);
       const firstMessage = batch.pendingMessages[0];
 
-      logger.info("[CloudflareAgent][BATCH] Combined messages", {
+      logger.info('[CloudflareAgent][BATCH] Combined messages', {
         count: batch.pendingMessages.length,
         combinedLength: combinedText.length,
       });
@@ -1406,9 +1293,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           try {
             await transport.edit!(ctx, messageRef, nextMessage);
           } catch (err) {
-            logger.error(
-              `[CloudflareAgent][BATCH] Rotator edit failed: ${err}`,
-            );
+            logger.error(`[CloudflareAgent][BATCH] Rotator edit failed: ${err}`);
           }
         });
       }
@@ -1424,7 +1309,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // Build context conditionally to satisfy exactOptionalPropertyTypes
           const agentContext: AgentContext = {
             query: combinedText,
-            platform: routerConfig?.platform || "api",
+            platform: routerConfig?.platform || 'api',
             ...(firstMessage?.userId !== undefined && {
               userId: firstMessage.userId.toString(),
             }),
@@ -1481,10 +1366,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
  * Type helper for agent namespaces
  * Use this for the Env interface to get proper typing for agent stubs
  */
-export type CloudflareChatAgentNamespace<
-  TEnv,
-  TContext = unknown,
-> = AgentNamespace<
+export type CloudflareChatAgentNamespace<TEnv, TContext = unknown> = AgentNamespace<
   Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>
 >;
 
@@ -1501,7 +1383,7 @@ export type CloudflareChatAgentNamespace<
  */
 export function getChatAgent<TEnv, TContext>(
   namespace: CloudflareChatAgentNamespace<TEnv, TContext>,
-  name: string,
+  name: string
 ) {
   const id = namespace.idFromName(name);
   return namespace.get(id);
