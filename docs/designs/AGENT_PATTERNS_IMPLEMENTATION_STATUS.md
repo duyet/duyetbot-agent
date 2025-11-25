@@ -318,10 +318,12 @@ bun run deploy:github
 
 ## References
 
+- [Agent Flow Architecture](../AGENT_FLOW.md) - **Visual diagram of the complete routing system**
 - [Cloudflare Agents Patterns](https://developers.cloudflare.com/agents/patterns/)
 - [Cloudflare Agents API](https://developers.cloudflare.com/agents/api-reference/)
 - [Design Document](./AGENT_PATTERNS_REFACTORING.md)
 - [Building Agents with Cloudflare](https://blog.cloudflare.com/building-agents-with-openai-and-cloudflares-agents-sdk/)
+- [Deployment Runbook](../DEPLOYMENT.md)
 
 ---
 
