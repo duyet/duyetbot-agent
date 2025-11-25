@@ -140,10 +140,20 @@ app.post('/webhook', async (c) => {
 
       const agent = await getAgentByName(env.GitHubAgent, agentId);
 
-      // Agent handles everything: parsing, LLM call, sending response
-      await agent.handle(ctx);
+      // Fire-and-forget: DO runs independently
+      // Don't await - return immediately to prevent GitHub webhook timeout
+      agent.handle(ctx).catch((error: unknown) => {
+        logger.error('[WEBHOOK] DO invocation failed', {
+          agentId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
-      logger.info('[WEBHOOK] Processed', { event, repository: repo, agentId });
+      logger.info('[WEBHOOK] Triggered agent', {
+        event,
+        repository: repo,
+        agentId,
+      });
       return c.json({ ok: true });
     }
 
@@ -179,7 +189,14 @@ app.post('/webhook', async (c) => {
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${pr.number}`;
       const agent = await getAgentByName(env.GitHubAgent, agentId);
-      await agent.handle(ctx);
+
+      // Fire-and-forget: DO runs independently
+      agent.handle(ctx).catch((error: unknown) => {
+        logger.error('[WEBHOOK] DO invocation failed', {
+          agentId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
       return c.json({ ok: true });
     }
@@ -214,7 +231,14 @@ app.post('/webhook', async (c) => {
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
       const agent = await getAgentByName(env.GitHubAgent, agentId);
-      await agent.handle(ctx);
+
+      // Fire-and-forget: DO runs independently
+      agent.handle(ctx).catch((error: unknown) => {
+        logger.error('[WEBHOOK] DO invocation failed', {
+          agentId,
+          error: error instanceof Error ? error.message : String(error),
+        });
+      });
 
       return c.json({ ok: true });
     }
