@@ -26,28 +26,42 @@ const app = createBaseApp<Env>({
 // Telegram webhook handler
 app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware(), async (c) => {
   const env = c.env;
+  const startTime = Date.now();
 
   // Generate request ID for trace correlation across webhook and DO invocations
   const requestId = crypto.randomUUID().slice(0, 8);
 
+  // Log incoming webhook (webhookCtx is set by authorizationMiddleware)
+  const webhookCtx = c.get('webhookContext');
+  logger.info(`[${requestId}] [WEBHOOK] Received`, {
+    requestId,
+    chatId: webhookCtx?.chatId,
+    userId: webhookCtx?.userId,
+    username: webhookCtx?.username,
+    text: webhookCtx?.text?.substring(0, 100), // Truncate for logging
+  });
+
   // Check if we should skip processing
   if (c.get('skipProcessing')) {
+    const reason = c.get('unauthorized') ? 'unauthorized' : 'skip_flag';
+    logger.info(`[${requestId}] [WEBHOOK] Skipping`, {
+      requestId,
+      reason,
+      durationMs: Date.now() - startTime,
+    });
+
     // Handle unauthorized users
     if (c.get('unauthorized')) {
-      const webhookCtx = c.get('webhookContext');
       const ctx = createTelegramContext(
         env.TELEGRAM_BOT_TOKEN,
         webhookCtx,
         env.TELEGRAM_ADMIN,
         requestId
       );
-
       await telegramTransport.send(ctx, 'Sorry, you are not authorized.');
     }
     return c.text('OK');
   }
-
-  const webhookCtx = c.get('webhookContext');
 
   // Create transport context with requestId for trace correlation
   const ctx = createTelegramContext(
@@ -59,9 +73,14 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
 
   // Get agent by name (consistent with github-bot pattern)
   const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
-  logger.info(`[${requestId}] [WEBHOOK] Getting agent`, {
-    agentId,
+
+  logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
     requestId,
+    agentId,
+    userId: ctx.userId,
+    chatId: ctx.chatId,
+    text: ctx.text?.substring(0, 100),
+    isCommand: ctx.text?.startsWith('/'),
   });
 
   // Fire-and-forget DO invocation - no waitUntil needed
@@ -70,13 +89,20 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
   try {
     const agent = getChatAgent(env.TelegramAgent, agentId);
 
+    logger.info(`[${requestId}] [WEBHOOK] Triggering agent`, {
+      requestId,
+      agentId,
+      durationMs: Date.now() - startTime,
+    });
+
     // Agent handles everything: commands, chat, sending response
     // Don't await - let DO run independently
     agent.handle(ctx).catch((error: unknown) => {
-      logger.error('[WEBHOOK] DO invocation failed', {
-        agentId,
+      logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
         requestId,
+        agentId,
         error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
       });
 
       // Send error message to user if DO processing fails
@@ -88,11 +114,19 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
           // Ignore if we can't send the error message
         });
     });
-  } catch (error) {
-    logger.error('[WEBHOOK] Failed to get agent', {
-      agentId,
+
+    logger.info(`[${requestId}] [WEBHOOK] Returning OK`, {
       requestId,
+      agentId,
+      durationMs: Date.now() - startTime,
+    });
+  } catch (error) {
+    logger.error(`[${requestId}] [WEBHOOK] Failed to get agent`, {
+      requestId,
+      agentId,
       error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+      durationMs: Date.now() - startTime,
     });
   }
 

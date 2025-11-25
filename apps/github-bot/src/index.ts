@@ -70,29 +70,42 @@ const app = createBaseApp<Env>({
 // Webhook endpoint with Transport Layer pattern
 app.post('/webhook', async (c) => {
   const env = c.env;
+  const startTime = Date.now();
   const body = await c.req.text();
+
+  // Generate request ID for trace correlation
+  const requestId = crypto.randomUUID().slice(0, 8);
 
   // Verify signature
   const signature = c.req.header('x-hub-signature-256');
   if (signature && env.GITHUB_WEBHOOK_SECRET) {
     if (!verifySignature(body, signature, env.GITHUB_WEBHOOK_SECRET)) {
+      logger.warn(`[${requestId}] [WEBHOOK] Invalid signature`, {
+        requestId,
+        hasSignature: !!signature,
+      });
       return c.json({ error: 'Invalid signature' }, 401);
     }
   }
 
   // Parse event
   const event = c.req.header('x-github-event');
+  const deliveryId = c.req.header('x-github-delivery');
   const payload = JSON.parse(body);
   const botUsername = env.BOT_USERNAME || 'duyetbot';
 
   const repo = payload.repository?.full_name || 'unknown';
   const action = payload.action || 'unknown';
 
-  logger.info('[WEBHOOK] Received', {
+  logger.info(`[${requestId}] [WEBHOOK] Received`, {
+    requestId,
+    deliveryId,
     event,
     action,
     repository: repo,
     sender: payload.sender?.login,
+    issueNumber: payload.issue?.number || payload.pull_request?.number,
+    commentId: payload.comment?.id,
   });
 
   try {
@@ -103,8 +116,10 @@ app.post('/webhook', async (c) => {
 
       // Check for bot mention
       if (!hasBotMention(comment.body, botUsername)) {
-        logger.debug('[WEBHOOK] No bot mention, skipping', {
+        logger.debug(`[${requestId}] [WEBHOOK] No bot mention, skipping`, {
+          requestId,
           repository: repo,
+          durationMs: Date.now() - startTime,
         });
         return c.json({ ok: true, skipped: 'no_mention' });
       }
@@ -112,9 +127,22 @@ app.post('/webhook', async (c) => {
       // Extract task from mention
       const task = extractTask(comment.body, botUsername);
       if (!task) {
-        logger.debug('[WEBHOOK] Empty task, skipping', { repository: repo });
+        logger.debug(`[${requestId}] [WEBHOOK] Empty task, skipping`, {
+          requestId,
+          repository: repo,
+          durationMs: Date.now() - startTime,
+        });
         return c.json({ ok: true, skipped: 'empty_task' });
       }
+
+      logger.info(`[${requestId}] [WEBHOOK] Processing issue_comment`, {
+        requestId,
+        repository: repo,
+        issueNumber: issue.number,
+        isPullRequest: !!issue.pull_request,
+        task: task.substring(0, 100),
+        sender: payload.sender?.login,
+      });
 
       // Create transport context (serializable for DO RPC)
       const isPullRequest = !!issue.pull_request;
@@ -136,23 +164,35 @@ app.post('/webhook', async (c) => {
 
       // Get agent by name (issue-based session)
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
-      logger.info('[WEBHOOK] Getting agent', { agentId });
+      logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
 
       const agent = await getAgentByName(env.GitHubAgent, agentId);
+
+      logger.info(`[${requestId}] [WEBHOOK] Triggering DO`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
 
       // Fire-and-forget: DO runs independently
       // Don't await - return immediately to prevent GitHub webhook timeout
       agent.handle(ctx).catch((error: unknown) => {
-        logger.error('[WEBHOOK] DO invocation failed', {
+        logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
+          requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
         });
       });
 
-      logger.info('[WEBHOOK] Triggered agent', {
-        event,
-        repository: repo,
+      logger.info(`[${requestId}] [WEBHOOK] Returning OK`, {
+        requestId,
         agentId,
+        durationMs: Date.now() - startTime,
       });
       return c.json({ ok: true });
     }
@@ -163,13 +203,33 @@ app.post('/webhook', async (c) => {
       const pr = payload.pull_request;
 
       if (!hasBotMention(comment.body, botUsername)) {
+        logger.debug(`[${requestId}] [WEBHOOK] No bot mention in PR review, skipping`, {
+          requestId,
+          repository: repo,
+          prNumber: pr.number,
+          durationMs: Date.now() - startTime,
+        });
         return c.json({ ok: true, skipped: 'no_mention' });
       }
 
       const task = extractTask(comment.body, botUsername);
       if (!task) {
+        logger.debug(`[${requestId}] [WEBHOOK] Empty task in PR review, skipping`, {
+          requestId,
+          repository: repo,
+          prNumber: pr.number,
+          durationMs: Date.now() - startTime,
+        });
         return c.json({ ok: true, skipped: 'empty_task' });
       }
+
+      logger.info(`[${requestId}] [WEBHOOK] Processing PR review comment`, {
+        requestId,
+        repository: repo,
+        prNumber: pr.number,
+        task: task.substring(0, 100),
+        sender: payload.sender?.login,
+      });
 
       const ctx = createGitHubContext({
         githubToken: env.GITHUB_TOKEN,
@@ -188,16 +248,35 @@ app.post('/webhook', async (c) => {
       });
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${pr.number}`;
+      logger.info(`[${requestId}] [WEBHOOK] Creating agent for PR review`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
+
       const agent = await getAgentByName(env.GitHubAgent, agentId);
+
+      logger.info(`[${requestId}] [WEBHOOK] Triggering DO for PR review`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
 
       // Fire-and-forget: DO runs independently
       agent.handle(ctx).catch((error: unknown) => {
-        logger.error('[WEBHOOK] DO invocation failed', {
+        logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
+          requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
         });
       });
 
+      logger.info(`[${requestId}] [WEBHOOK] Returning OK for PR review`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
       return c.json({ ok: true });
     }
 
@@ -206,13 +285,34 @@ app.post('/webhook', async (c) => {
       const issue = payload.issue;
 
       if (!hasBotMention(issue.body || '', botUsername)) {
+        logger.debug(`[${requestId}] [WEBHOOK] No bot mention in issue body, skipping`, {
+          requestId,
+          repository: repo,
+          issueNumber: issue.number,
+          durationMs: Date.now() - startTime,
+        });
         return c.json({ ok: true, skipped: 'no_mention' });
       }
 
       const task = extractTask(issue.body || '', botUsername);
       if (!task) {
+        logger.debug(`[${requestId}] [WEBHOOK] Empty task in issue body, skipping`, {
+          requestId,
+          repository: repo,
+          issueNumber: issue.number,
+          durationMs: Date.now() - startTime,
+        });
         return c.json({ ok: true, skipped: 'empty_task' });
       }
+
+      logger.info(`[${requestId}] [WEBHOOK] Processing issue body mention`, {
+        requestId,
+        repository: repo,
+        issueNumber: issue.number,
+        task: task.substring(0, 100),
+        sender: payload.sender?.login,
+        action,
+      });
 
       const ctx = createGitHubContext({
         githubToken: env.GITHUB_TOKEN,
@@ -230,38 +330,65 @@ app.post('/webhook', async (c) => {
       });
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
+      logger.info(`[${requestId}] [WEBHOOK] Creating agent for issue`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
+
       const agent = await getAgentByName(env.GitHubAgent, agentId);
+
+      logger.info(`[${requestId}] [WEBHOOK] Triggering DO for issue`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
 
       // Fire-and-forget: DO runs independently
       agent.handle(ctx).catch((error: unknown) => {
-        logger.error('[WEBHOOK] DO invocation failed', {
+        logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
+          requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
         });
       });
 
+      logger.info(`[${requestId}] [WEBHOOK] Returning OK for issue`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
+      });
       return c.json({ ok: true });
     }
 
     // Handle ping
     if (event === 'ping') {
-      logger.info('[WEBHOOK] Ping received', { repository: repo });
+      logger.info(`[${requestId}] [WEBHOOK] Ping received`, {
+        requestId,
+        repository: repo,
+        durationMs: Date.now() - startTime,
+      });
       return c.json({ ok: true, event: 'ping' });
     }
 
     // Other events - log and skip
-    logger.debug('[WEBHOOK] Unhandled event', {
+    logger.debug(`[${requestId}] [WEBHOOK] Unhandled event`, {
+      requestId,
       event,
       action,
       repository: repo,
+      durationMs: Date.now() - startTime,
     });
     return c.json({ ok: true, skipped: 'unhandled_event' });
   } catch (error) {
-    logger.error('[WEBHOOK] Error', {
+    logger.error(`[${requestId}] [WEBHOOK] Error`, {
+      requestId,
       event,
       repository: repo,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
+      durationMs: Date.now() - startTime,
     });
     return c.json({ error: 'Internal error' }, 500);
   }
