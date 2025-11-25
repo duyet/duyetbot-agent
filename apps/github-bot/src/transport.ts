@@ -47,6 +47,8 @@ export interface GitHubContext {
   labels: string[];
   /** Issue or PR description/body */
   description?: string;
+  /** Request ID for trace correlation and deduplication */
+  requestId?: string;
 }
 
 /**
@@ -157,6 +159,7 @@ ${labelStr}
         isPullRequest: ctx.isPullRequest,
         state: ctx.state,
         labels: ctx.labels,
+        requestId: ctx.requestId,
       },
     };
     // Only set messageRef if commentId exists
@@ -197,6 +200,8 @@ export interface CreateGitHubContextOptions {
   labels: string[];
   /** Issue or PR description */
   description?: string;
+  /** Request ID for trace correlation */
+  requestId?: string;
 }
 
 /**
@@ -225,6 +230,9 @@ export function createGitHubContext(options: CreateGitHubContextOptions): GitHub
   }
   if (options.description !== undefined) {
     ctx.description = options.description;
+  }
+  if (options.requestId !== undefined) {
+    ctx.requestId = options.requestId;
   }
   return ctx;
 }

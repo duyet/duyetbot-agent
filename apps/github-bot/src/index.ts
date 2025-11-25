@@ -2,12 +2,12 @@
  * GitHub Bot Entry Point
  *
  * Hono-based webhook server using Transport Layer pattern.
- * Simplified: Uses agent.handle() for clean separation of concerns.
+ * Uses alarm-based batch processing for reliable message handling.
  */
 
 import { createHmac, timingSafeEqual } from 'node:crypto';
+import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp } from '@duyetbot/hono-middleware';
-import { getAgentByName } from 'agents';
 import { type Env } from './agent.js';
 import { logger } from './logger.js';
 import { createGitHubContext } from './transport.js';
@@ -144,7 +144,7 @@ app.post('/webhook', async (c) => {
         sender: payload.sender?.login,
       });
 
-      // Create transport context (serializable for DO RPC)
+      // Create transport context with requestId for trace correlation
       const isPullRequest = !!issue.pull_request;
       const ctx = createGitHubContext({
         githubToken: env.GITHUB_TOKEN,
@@ -160,6 +160,7 @@ app.post('/webhook', async (c) => {
         state: issue.state,
         labels: (issue.labels || []).map((l: { name: string }) => l.name),
         description: issue.body,
+        requestId,
       });
 
       // Get agent by name (issue-based session)
@@ -170,30 +171,35 @@ app.post('/webhook', async (c) => {
         durationMs: Date.now() - startTime,
       });
 
-      const agent = await getAgentByName(env.GitHubAgent, agentId);
+      const agent = getChatAgent(env.GitHubAgent, agentId);
 
-      logger.info(`[${requestId}] [WEBHOOK] Triggering DO`, {
+      logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
 
-      // Fire-and-forget: DO runs independently
-      // Don't await - return immediately to prevent GitHub webhook timeout
-      agent.handle(ctx).catch((error: unknown) => {
-        logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
+      // Queue message - alarm will fire after batch window (200ms by default for GitHub)
+      // Await to ensure message is queued before returning
+      try {
+        const { queued, batchId } = await agent.queueMessage(ctx);
+        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+          requestId,
+          agentId,
+          queued,
+          batchId,
+          durationMs: Date.now() - startTime,
+        });
+      } catch (error) {
+        logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
           requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
+          durationMs: Date.now() - startTime,
         });
-      });
+      }
 
-      logger.info(`[${requestId}] [WEBHOOK] Returning OK`, {
-        requestId,
-        agentId,
-        durationMs: Date.now() - startTime,
-      });
       return c.json({ ok: true });
     }
 
@@ -245,6 +251,7 @@ app.post('/webhook', async (c) => {
         state: pr.state,
         labels: (pr.labels || []).map((l: { name: string }) => l.name),
         description: pr.body,
+        requestId,
       });
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${pr.number}`;
@@ -254,29 +261,33 @@ app.post('/webhook', async (c) => {
         durationMs: Date.now() - startTime,
       });
 
-      const agent = await getAgentByName(env.GitHubAgent, agentId);
+      const agent = getChatAgent(env.GitHubAgent, agentId);
 
-      logger.info(`[${requestId}] [WEBHOOK] Triggering DO for PR review`, {
+      logger.info(`[${requestId}] [WEBHOOK] Queueing message for PR review`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
 
-      // Fire-and-forget: DO runs independently
-      agent.handle(ctx).catch((error: unknown) => {
-        logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
+      try {
+        const { queued, batchId } = await agent.queueMessage(ctx);
+        logger.info(`[${requestId}] [WEBHOOK] Message queued for PR review`, {
+          requestId,
+          agentId,
+          queued,
+          batchId,
+          durationMs: Date.now() - startTime,
+        });
+      } catch (error) {
+        logger.error(`[${requestId}] [WEBHOOK] Failed to queue PR review message`, {
           requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
+          durationMs: Date.now() - startTime,
         });
-      });
+      }
 
-      logger.info(`[${requestId}] [WEBHOOK] Returning OK for PR review`, {
-        requestId,
-        agentId,
-        durationMs: Date.now() - startTime,
-      });
       return c.json({ ok: true });
     }
 
@@ -327,6 +338,7 @@ app.post('/webhook', async (c) => {
         state: issue.state,
         labels: (issue.labels || []).map((l: { name: string }) => l.name),
         description: issue.body,
+        requestId,
       });
 
       const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
@@ -336,29 +348,33 @@ app.post('/webhook', async (c) => {
         durationMs: Date.now() - startTime,
       });
 
-      const agent = await getAgentByName(env.GitHubAgent, agentId);
+      const agent = getChatAgent(env.GitHubAgent, agentId);
 
-      logger.info(`[${requestId}] [WEBHOOK] Triggering DO for issue`, {
+      logger.info(`[${requestId}] [WEBHOOK] Queueing message for issue`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
 
-      // Fire-and-forget: DO runs independently
-      agent.handle(ctx).catch((error: unknown) => {
-        logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
+      try {
+        const { queued, batchId } = await agent.queueMessage(ctx);
+        logger.info(`[${requestId}] [WEBHOOK] Message queued for issue`, {
+          requestId,
+          agentId,
+          queued,
+          batchId,
+          durationMs: Date.now() - startTime,
+        });
+      } catch (error) {
+        logger.error(`[${requestId}] [WEBHOOK] Failed to queue issue message`, {
           requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
           stack: error instanceof Error ? error.stack : undefined,
+          durationMs: Date.now() - startTime,
         });
-      });
+      }
 
-      logger.info(`[${requestId}] [WEBHOOK] Returning OK for issue`, {
-        requestId,
-        agentId,
-        durationMs: Date.now() - startTime,
-      });
       return c.json({ ok: true });
     }
 

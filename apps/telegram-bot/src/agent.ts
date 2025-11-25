@@ -83,9 +83,9 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // Cloudflare Workers limit: 50 subrequests per invocation
     maxHistory: 20,
     // Increase rotation interval to reduce edit subrequests
-    thinkingRotationInterval: 10000,
+    thinkingRotationInterval: 5000,
     // Limit tool call iterations to prevent gateway timeouts
-    maxToolIterations: 3,
+    maxToolIterations: 10,
     // Limit number of tools to reduce token overhead and prevent timeouts
     // Priority: built-in tools first, then MCP tools
     maxTools: 5,

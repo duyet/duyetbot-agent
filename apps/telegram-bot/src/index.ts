@@ -83,51 +83,44 @@ app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware()
     isCommand: ctx.text?.startsWith('/'),
   });
 
-  // Fire-and-forget DO invocation - no waitUntil needed
-  // DO runs in its own execution context with independent timeout
-  // Webhook returns immediately to prevent Telegram retries (>10s causes duplicate messages)
+  // Queue message for batch processing with alarm-based execution
+  // Messages arriving within 500ms are combined into a single LLM call
+  // This handles rapid typing, corrections, and multi-message input naturally
   try {
     const agent = getChatAgent(env.TelegramAgent, agentId);
 
-    logger.info(`[${requestId}] [WEBHOOK] Triggering agent`, {
+    logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
       requestId,
       agentId,
       durationMs: Date.now() - startTime,
     });
 
-    // Agent handles everything: commands, chat, sending response
-    // Don't await - let DO run independently
-    agent.handle(ctx).catch((error: unknown) => {
-      logger.error(`[${requestId}] [WEBHOOK] DO invocation failed`, {
-        requestId,
-        agentId,
-        error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
-      });
+    // Queue message - alarm will fire after batch window (500ms by default)
+    // Await to ensure message is queued before returning
+    const { queued, batchId } = await agent.queueMessage(ctx);
 
-      // Send error message to user if DO processing fails
-      // Note: This only fires when DO invocation fails before sending "Thinking..."
-      // DO's internal error handling edits the thinking message for errors during processing
-      telegramTransport
-        .send(ctx, '❌ Sorry, an error occurred. Please try again later.')
-        .catch(() => {
-          // Ignore if we can't send the error message
-        });
-    });
-
-    logger.info(`[${requestId}] [WEBHOOK] Returning OK`, {
+    logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
       requestId,
       agentId,
+      queued,
+      batchId,
       durationMs: Date.now() - startTime,
     });
   } catch (error) {
-    logger.error(`[${requestId}] [WEBHOOK] Failed to get agent`, {
+    logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
       requestId,
       agentId,
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined,
       durationMs: Date.now() - startTime,
     });
+
+    // Send error message to user if queueing fails
+    await telegramTransport
+      .send(ctx, '❌ Sorry, an error occurred. Please try again later.')
+      .catch(() => {
+        // Ignore if we can't send the error message
+      });
   }
 
   // Return immediately to Telegram
