@@ -7,8 +7,20 @@
 
 /**
  * Status of a message batch
+ * - idle: No batch in progress
+ * - collecting: Accumulating messages within time window
+ * - processing: Batch is being processed by LLM
+ * - completed: Batch completed successfully
+ * - failed: Batch failed after max retries
+ * - delegated: Batch delegated to another DO via fire-and-forget pattern
  */
-export type BatchStatus = 'idle' | 'collecting' | 'processing' | 'completed' | 'failed';
+export type BatchStatus =
+  | 'idle'
+  | 'collecting'
+  | 'processing'
+  | 'completed'
+  | 'failed'
+  | 'delegated';
 
 /**
  * A pending message waiting to be processed

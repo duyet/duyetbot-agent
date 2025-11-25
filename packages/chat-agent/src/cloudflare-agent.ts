@@ -803,6 +803,72 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
+     * Schedule routing to RouterAgent without blocking (fire-and-forget pattern)
+     *
+     * Instead of blocking on routeQuery(), this method schedules the work
+     * on RouterAgent via its alarm handler. The caller returns immediately
+     * after scheduling, and RouterAgent handles response delivery.
+     *
+     * @param query - The query to route
+     * @param context - Agent context
+     * @param responseTarget - Where to send the response
+     * @returns Promise<boolean> - true if scheduling succeeded
+     */
+    private async scheduleRouting(
+      query: string,
+      context: AgentContext,
+      responseTarget: {
+        chatId: string;
+        messageRef: { messageId: number };
+        platform: string;
+        botToken?: string | undefined;
+      }
+    ): Promise<boolean> {
+      if (!routerConfig) {
+        return false;
+      }
+
+      const env = (this as unknown as { env: TEnv }).env;
+      const routerEnv = env as unknown as RouterAgentEnv & {
+        RouterAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+      };
+
+      if (!routerEnv.RouterAgent) {
+        logger.warn('[CloudflareAgent] RouterAgent binding not available for scheduling');
+        return false;
+      }
+
+      try {
+        const routerId = context.chatId?.toString() || context.userId?.toString() || 'default';
+        const routerAgent = await getAgentByName(routerEnv.RouterAgent, routerId);
+
+        // Call fire-and-forget method on RouterAgent
+        const result = await (
+          routerAgent as unknown as {
+            scheduleExecution: (
+              query: string,
+              context: AgentContext,
+              target: typeof responseTarget
+            ) => Promise<{ scheduled: boolean; executionId: string }>;
+          }
+        ).scheduleExecution(query, context, responseTarget);
+
+        logger.info('[CloudflareAgent] Delegated to RouterAgent (fire-and-forget)', {
+          executionId: result.executionId,
+          scheduled: result.scheduled,
+          chatId: responseTarget.chatId,
+        });
+
+        return result.scheduled;
+      } catch (error) {
+        logger.error('[CloudflareAgent] Failed to schedule routing', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return false;
+      }
+    }
+
+    /**
      * Handle incoming message context
      * Routes to command handler or chat, then sends response via transport
      *
@@ -1242,6 +1308,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const firstMessage = batch.pendingMessages[0];
 
       logger.info('[CloudflareAgent][BATCH] Combined messages', {
+        combinedText,
         count: batch.pendingMessages.length,
         combinedLength: combinedText.length,
       });
@@ -1318,14 +1385,48 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             }),
           };
 
-          const routeResult = await this.routeQuery(combinedText, agentContext);
+          // Try fire-and-forget pattern first - delegate to RouterAgent via alarm
+          // This prevents blockConcurrencyWhile timeout by returning immediately
+          const env = (this as unknown as { env: TEnv }).env;
+          const envWithToken = env as unknown as {
+            TELEGRAM_BOT_TOKEN?: string;
+          };
 
-          if (routeResult?.success && routeResult.content) {
-            response = routeResult.content;
-          } else {
-            response = await this.chat(combinedText);
+          const scheduled = await this.scheduleRouting(combinedText, agentContext, {
+            chatId: firstMessage?.chatId?.toString() || '',
+            messageRef: { messageId: messageRef as number },
+            platform: routerConfig?.platform || 'telegram',
+            botToken: envWithToken.TELEGRAM_BOT_TOKEN,
+          });
+
+          if (scheduled) {
+            // Successfully delegated to RouterAgent - it will handle response delivery
+            rotator.stop();
+
+            // Mark batch as delegated (not completed yet - RouterAgent will complete it)
+            this.setState({
+              ...this.state,
+              batch: { ...batch, status: 'delegated' },
+              updatedAt: Date.now(),
+            });
+
+            logger.info(
+              '[CloudflareAgent][BATCH] Delegated to RouterAgent, returning immediately',
+              {
+                batchId: batch.batchId,
+              }
+            );
+
+            return; // Exit immediately - don't block waiting for LLM response
           }
+
+          // Fire-and-forget scheduling failed - fall back to direct chat
+          logger.info(
+            '[CloudflareAgent][BATCH] Fire-and-forget scheduling failed, falling back to chat()'
+          );
+          response = await this.chat(combinedText);
         } else {
+          // Routing disabled - use direct chat
           response = await this.chat(combinedText);
         }
 
