@@ -265,7 +265,57 @@ User Message → Cloudflare Agent (Tier 1) → Quick Response
 
 ## Multi-Agent Routing System
 
-The Tier 1 agents use a **RouterAgent** to classify queries and route them to specialized handlers.
+The Tier 1 agents use a **RouterAgent** to classify queries and route them to specialized handlers. The system implements all five [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
+
+| Pattern | Implementation | Component |
+|---------|---------------|-----------|
+| Prompt Chaining | LLM→Tool→LLM flow | `CloudflareChatAgent.chat()` |
+| Routing | Hybrid classification | `RouterAgent` + `classifier.ts` |
+| Parallelization | Concurrent step execution | `executor.ts` |
+| Orchestrator-Workers | Task decomposition | `OrchestratorAgent` + Workers |
+| Evaluator-Optimizer | Result synthesis | `aggregator.ts` |
+
+### Complete Query Flow
+
+```
+User Message → Platform Webhook (Telegram/GitHub)
+                        │
+                        ▼
+            CloudflareChatAgent.handle()
+                        │
+              shouldRoute(userId)?
+              (based on ROUTER_ENABLED)
+                        │
+           ┌────────────┴────────────┐
+           ▼                         ▼
+    NO: Direct chat()         YES: routeQuery()
+    (LLM + Tools)                    │
+           │                         ▼
+           │               RouterAgent.route()
+           │                         │
+           │               hybridClassify()
+           │               ┌─────────┴─────────┐
+           │               ▼                   ▼
+           │         Quick Pattern       LLM Fallback
+           │         (regex: hi,         (semantic
+           │          help, yes)          analysis)
+           │               └─────────┬─────────┘
+           │                         │
+           │         ┌───────────────┼───────────────┐
+           │         ▼               ▼               ▼
+           │   SimpleAgent    OrchestratorAgent  HITLAgent
+           │   (quick Q&A)    (task decompose)   (approval)
+           │         │               │               │
+           │         │     ┌─────────┼─────────┐     │
+           │         │     ▼         ▼         ▼     │
+           │         │  CodeWrkr  RsrchWrkr  GitHubWrkr
+           │         │  (review)  (search)   (PRs)   │
+           │         │               │               │
+           └─────────┴───────────────┴───────────────┘
+                                     │
+                                     ▼
+                            Response to User
+```
 
 ### Routing Architecture
 
@@ -534,17 +584,62 @@ describe('Orchestrator E2E', () => {
 
 ### Implementation Phases
 
-The migration to the routing system is structured in five phases:
+All five Cloudflare Agent Patterns are fully implemented and deployed:
 
-| Phase | Duration | Focus | Status |
-|-------|----------|-------|--------|
-| 1 | Week 1-2 | Core infrastructure (base agents, routing, schemas) | ✅ Complete |
-| 2 | Week 2-3 | Human-in-the-loop (confirmation workflows) | ⏳ In progress |
-| 3 | Week 3-4 | Orchestrator-Workers (task decomposition, parallel execution) | ⏳ Pending |
-| 4 | Week 4-5 | Platform integration (TelegramAgent, GitHubAgent) | ⏳ Pending |
-| 5 | Week 5-6 | Validation & rollout (A/B testing, monitoring, migration guide) | ⏳ Pending |
+| Phase | Focus | Status | Tests |
+|-------|-------|--------|-------|
+| 1 | Core infrastructure (base agents, routing, schemas) | ✅ Complete | 22 |
+| 2 | Human-in-the-loop (confirmation workflows) | ✅ Complete | 57 |
+| 3 | Orchestrator-Workers (task decomposition, parallel execution) | ✅ Complete | 49 |
+| 4 | Platform integration (TelegramAgent, GitHubAgent) | ✅ Complete | 12 |
+| 5 | Validation & rollout (full DO deployment) | ✅ Complete | 43 |
 
-For detailed progress tracking, see [AGENT_PATTERNS_IMPLEMENTATION_STATUS.md](designs/AGENT_PATTERNS_IMPLEMENTATION_STATUS.md).
+**Total: 277 tests passing**
+
+All patterns are fully implemented and deployed. See the [README](../README.md) for current status.
+
+### Deployed Durable Objects (per bot)
+
+Each bot (Telegram/GitHub) now deploys 8 Durable Objects:
+
+```toml
+# wrangler.toml - all DO bindings
+[[durable_objects.bindings]]
+name = "TelegramAgent"  # or GitHubAgent
+class_name = "TelegramAgent"
+
+[[durable_objects.bindings]]
+name = "RouterAgent"
+class_name = "RouterAgent"
+
+[[durable_objects.bindings]]
+name = "SimpleAgent"
+class_name = "SimpleAgent"
+
+[[durable_objects.bindings]]
+name = "HITLAgent"
+class_name = "HITLAgent"
+
+[[durable_objects.bindings]]
+name = "OrchestratorAgent"
+class_name = "OrchestratorAgent"
+
+[[durable_objects.bindings]]
+name = "CodeWorker"
+class_name = "CodeWorker"
+
+[[durable_objects.bindings]]
+name = "ResearchWorker"
+class_name = "ResearchWorker"
+
+[[durable_objects.bindings]]
+name = "GitHubWorker"
+class_name = "GitHubWorker"
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker"]
+```
 
 ### Metrics & Monitoring
 

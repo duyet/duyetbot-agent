@@ -7,12 +7,31 @@
 
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
-import { type Env, RouterAgent, TelegramAgent } from './agent.js';
+import {
+  CodeWorker,
+  type Env,
+  GitHubWorker,
+  HITLAgent,
+  OrchestratorAgent,
+  ResearchWorker,
+  RouterAgent,
+  SimpleAgent,
+  TelegramAgent,
+} from './agent.js';
 import { authorizationMiddleware } from './middlewares/authorization.js';
 import { createTelegramContext, telegramTransport } from './transport.js';
 
 // Re-export agents for Durable Object bindings
-export { TelegramAgent, RouterAgent };
+export {
+  TelegramAgent,
+  RouterAgent,
+  SimpleAgent,
+  HITLAgent,
+  OrchestratorAgent,
+  CodeWorker,
+  ResearchWorker,
+  GitHubWorker,
+};
 
 const app = createBaseApp<Env>({
   name: 'telegram-bot',

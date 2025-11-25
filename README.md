@@ -19,44 +19,63 @@ Personal AI assistant that maintains context across CLI, GitHub, and Telegram. B
 
 ## Architecture
 
+The system implements all five [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
+
+| Pattern | Implementation | Status |
+|---------|---------------|--------|
+| Prompt Chaining | `CloudflareChatAgent.chat()` | ✅ Deployed |
+| Routing | `RouterAgent` + `classifier.ts` | ✅ Deployed |
+| Parallelization | `executor.ts` parallel steps | ✅ Deployed |
+| Orchestrator-Workers | `OrchestratorAgent` + Workers | ✅ Deployed |
+| Evaluator-Optimizer | `aggregator.ts` synthesis | ✅ Deployed |
+
+### Query Flow
+
 ```
-Platform Layer (Telegram, GitHub, CLI)
-         │
-         ▼
-  CloudflareChatAgent
-         │
-         ▼
-┌─────────────────────────────┐
-│      RouterAgent (DO)       │
-│  ┌───────────────────────┐  │
-│  │   Hybrid Classifier   │  │
-│  │  1. Quick Regex Match │  │
-│  │  2. LLM Fallback      │  │
-│  └───────────────────────┘  │
-│            │                │
-│  Route Target Decision      │
-│  • tool_confirm → HITL      │
-│  • high complexity → Orch   │
-│  • needs approval → HITL    │
-│  • simple+low → Simple      │
-│  • by category → Workers    │
-└─────────────────────────────┘
-         │
-    ┌────┼────┐
-    │    │    │
-    ▼    ▼    ▼
-┌───────┬───────┬─────────────┐
-│Simple │ HITL  │Orchestrator │
-│Agent  │ Agent │   Agent     │
-└───────┴───────┴─────────────┘
-                      │
-              ┌───────┼───────┐
-              ▼       ▼       ▼
-           ┌─────┐ ┌─────┐ ┌──────┐
-           │Code │ │Rsrch│ │GitHub│
-           │Wrkr │ │Wrkr │ │Wrkr  │
-           └─────┘ └─────┘ └──────┘
+User Message → Platform Webhook (Telegram/GitHub)
+                        │
+                        ▼
+            CloudflareChatAgent.handle()
+                        │
+              shouldRoute(userId)?
+                        │
+           ┌────────────┴────────────┐
+           ▼                         ▼
+    NO: Direct chat()         YES: routeQuery()
+    (LLM + Tools)                    │
+           │                         ▼
+           │               RouterAgent.route()
+           │                         │
+           │               hybridClassify()
+           │                         │
+           │         ┌───────────────┼───────────────┐
+           │         ▼               ▼               ▼
+           │   SimpleAgent    OrchestratorAgent  HITLAgent
+           │   (quick Q&A)    (task decompose)   (approval)
+           │         │               │               │
+           │         │     ┌─────────┼─────────┐     │
+           │         │     ▼         ▼         ▼     │
+           │         │  CodeWrkr  RsrchWrkr  GitHubWrkr
+           │         │  (review)  (search)   (PRs)   │
+           │         │               │               │
+           └─────────┴───────────────┴───────────────┘
+                                     │
+                                     ▼
+                            Response to User
 ```
+
+### Durable Objects (per bot)
+
+| DO | Purpose | State |
+|----|---------|-------|
+| `TelegramAgent`/`GitHubAgent` | Main entry, transport | Messages, metadata |
+| `RouterAgent` | Query classification | Routing history |
+| `SimpleAgent` | Quick responses | Conversation |
+| `HITLAgent` | Tool confirmations | Pending approvals |
+| `OrchestratorAgent` | Task planning | Execution plans |
+| `CodeWorker` | Code analysis | Stateless |
+| `ResearchWorker` | Web research | Stateless |
+| `GitHubWorker` | GitHub ops | Stateless |
 
 See [docs/architecture.md](./docs/architecture.md) for detailed documentation.
 

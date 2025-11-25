@@ -44,6 +44,30 @@ class_name = "TelegramAgent"
 name = "RouterAgent"
 class_name = "RouterAgent"
 
+[[durable_objects.bindings]]
+name = "SimpleAgent"
+class_name = "SimpleAgent"
+
+[[durable_objects.bindings]]
+name = "HITLAgent"
+class_name = "HITLAgent"
+
+[[durable_objects.bindings]]
+name = "OrchestratorAgent"
+class_name = "OrchestratorAgent"
+
+[[durable_objects.bindings]]
+name = "CodeWorker"
+class_name = "CodeWorker"
+
+[[durable_objects.bindings]]
+name = "ResearchWorker"
+class_name = "ResearchWorker"
+
+[[durable_objects.bindings]]
+name = "GitHubWorker"
+class_name = "GitHubWorker"
+
 # Migrations for SQLite state persistence
 [[migrations]]
 tag = "v1"
@@ -52,6 +76,10 @@ new_sqlite_classes = ["TelegramAgent"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["RouterAgent"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker"]
 
 # Service binding to Memory MCP for RPC calls
 [[services]]
