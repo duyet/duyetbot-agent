@@ -263,6 +263,85 @@ User Message → Cloudflare Agent (Tier 1) → Quick Response
 - Lightweight Workflows: Deferred tasks without compute cost (free sleep up to 365 days)
 - Tier 2: Full Linux environment for heavy tasks, billed only when running
 
+## Multi-Agent Routing System
+
+The Tier 1 agents use a **RouterAgent** to classify queries and route them to specialized handlers.
+
+### Routing Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                      RouterAgent (DO)                           │
+│  ┌───────────────────────────────────────────────────────────┐  │
+│  │               Hybrid Classifier                           │  │
+│  │  1. Quick Pattern Match (regex) ─── Instant Response     │  │
+│  │     • Greetings: hi, hello, hey                          │  │
+│  │     • Help: help, ?, what can you do                     │  │
+│  │     • Confirmations: yes, no, approve, reject            │  │
+│  │  2. LLM Classification (fallback) ── ~200-500ms          │  │
+│  │     • Analyzes query semantics                           │  │
+│  │     • Determines type, category, complexity              │  │
+│  └───────────────────────────────────────────────────────────┘  │
+│                              │                                   │
+│  Route Target Decision (Priority Order):                        │
+│  1. tool_confirmation ────────────────► hitl-agent              │
+│  2. complexity: high ─────────────────► orchestrator-agent      │
+│  3. requiresHumanApproval: true ──────► hitl-agent              │
+│  4. type: simple + complexity: low ───► simple-agent            │
+│  5. category: code ───────────────────► code-worker             │
+│  6. category: research ───────────────► research-worker         │
+│  7. category: github ─────────────────► github-worker           │
+│  8. default ──────────────────────────► simple-agent            │
+└─────────────────────────────────────────────────────────────────┘
+                              │
+         ┌────────────────────┼────────────────────┐
+         ▼                    ▼                    ▼
+┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐
+│  SimpleAgent    │  │   HITLAgent     │  │  OrchestratorAgent  │
+│  • Quick Q&A    │  │  • Tool approval│  │  • Task decompose   │
+│  • Greetings    │  │  • Confirmations│  │  • Parallel exec    │
+│  • Direct LLM   │  │  • State machine│  │  • Worker coord     │
+└─────────────────┘  └─────────────────┘  └─────────┬───────────┘
+                                                    │
+                                    ┌───────────────┼───────────────┐
+                                    ▼               ▼               ▼
+                              ┌──────────┐  ┌───────────┐  ┌────────────┐
+                              │CodeWorker│  │ResearchWkr│  │GitHubWorker│
+                              │• Review  │  │• Web search│  │• PRs/Issues│
+                              │• Debug   │  │• Doc lookup│  │• CI status │
+                              └──────────┘  └───────────┘  └────────────┘
+```
+
+### Agent Responsibilities
+
+| Agent | Purpose | Triggers | Complexity |
+|-------|---------|----------|------------|
+| **SimpleAgent** | Quick responses, direct LLM | Greetings, help, simple Q&A | Low |
+| **HITLAgent** | Human approval workflow | Confirmations, destructive ops | Low-Medium |
+| **OrchestratorAgent** | Task decomposition | Multi-step, high complexity | High |
+| **CodeWorker** | Code analysis | Review, debug, refactor | Medium |
+| **ResearchWorker** | Information gathering | Web search, docs | Medium |
+| **GitHubWorker** | GitHub operations | PRs, issues, reviews | Medium |
+
+### Routing Configuration
+
+```bash
+# Environment variables
+ROUTER_ENABLED=true   # Enable/disable routing (default: true)
+ROUTER_DEBUG=true     # Enable debug logging (default: false)
+```
+
+```toml
+# wrangler.toml - Durable Object binding
+[[durable_objects.bindings]]
+name = "RouterAgent"
+class_name = "RouterAgent"
+
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["RouterAgent"]
+```
+
 ## Claude Agent SDK Integration
 
 The Claude Agent SDK is the **primary execution engine** running on Fly.io Machines:
