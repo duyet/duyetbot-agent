@@ -65,6 +65,13 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
       platform: 'github',
       debug: false,
     },
+    // Shorter batch window for GitHub (200ms vs 500ms for Telegram)
+    // GitHub comments are typically complete when sent, not rapid-fire like chat
+    batchConfig: {
+      windowMs: 200,
+      maxWindowMs: 3000,
+      maxMessages: 5,
+    },
     hooks: {
       beforeHandle: async (ctx) => {
         // Add "eyes" reaction to acknowledge we're processing

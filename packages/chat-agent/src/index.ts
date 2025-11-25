@@ -89,6 +89,21 @@ export type {
   ToolCall,
   ToolExecutor,
 } from './types.js';
+// Batch types (alarm-based processing)
+export {
+  type BatchConfig,
+  type BatchState,
+  type BatchStatus,
+  calculateRetryDelay,
+  combineBatchMessages,
+  createInitialBatchState,
+  DEFAULT_BATCH_CONFIG,
+  DEFAULT_RETRY_CONFIG,
+  isDuplicateMessage,
+  type PendingMessage,
+  type RetryConfig,
+  shouldProcessImmediately,
+} from './batch-types.js';
 
 // =============================================================================
 // NEW: Routing & Orchestration Architecture
