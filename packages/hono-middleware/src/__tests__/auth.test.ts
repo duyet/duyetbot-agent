@@ -272,7 +272,7 @@ describe('createAuth', () => {
   describe('context passing', () => {
     it('should pass context to validate function', async () => {
       let receivedContext: unknown;
-      const validateFn = vi.fn().mockImplementation(async (token, c) => {
+      const validateFn = vi.fn().mockImplementation(async (_token, c) => {
         receivedContext = c;
         return { id: 1 };
       });
