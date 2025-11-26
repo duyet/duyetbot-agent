@@ -11,9 +11,18 @@ import { logger } from '@duyetbot/hono-middleware';
 const MAX_MESSAGE_LENGTH = 4096;
 
 /**
- * Split long text into chunks for Telegram's message limit
+ * Minimum acceptable break point threshold (50% of max length).
+ * If no natural break is found above this threshold, we hard-split at max length.
  */
-function splitMessage(text: string): string[] {
+const MIN_BREAK_THRESHOLD = MAX_MESSAGE_LENGTH / 2;
+
+/**
+ * Split long text into chunks for Telegram's message limit.
+ * Prefers breaking at newlines, then spaces, then hard-splits if necessary.
+ *
+ * @internal Exported for testing
+ */
+export function splitMessage(text: string): string[] {
   if (text.length <= MAX_MESSAGE_LENGTH) {
     return [text];
   }
@@ -29,10 +38,10 @@ function splitMessage(text: string): string[] {
 
     // Find a good break point (newline or space)
     let breakPoint = remaining.lastIndexOf('\n', MAX_MESSAGE_LENGTH);
-    if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
+    if (breakPoint === -1 || breakPoint < MIN_BREAK_THRESHOLD) {
       breakPoint = remaining.lastIndexOf(' ', MAX_MESSAGE_LENGTH);
     }
-    if (breakPoint === -1 || breakPoint < MAX_MESSAGE_LENGTH / 2) {
+    if (breakPoint === -1 || breakPoint < MIN_BREAK_THRESHOLD) {
       breakPoint = MAX_MESSAGE_LENGTH;
     }
 
