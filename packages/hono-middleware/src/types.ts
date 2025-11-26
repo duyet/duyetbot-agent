@@ -42,15 +42,17 @@ export interface RateLimitOptions {
 
 /**
  * Auth middleware options
+ *
+ * Note: For webhook signature verification, use platform-specific middleware:
+ * - GitHub: apps/github-bot/src/middlewares/signature.ts
+ * - Telegram: @duyetbot/hono-middleware/createTelegramWebhookAuth
  */
 export interface AuthOptions {
   /** Auth type */
-  type: 'bearer' | 'api-key' | 'github-webhook';
+  type: 'bearer' | 'api-key';
   /** Token validation function */
   validate?: (token: string, c: Context) => Promise<Record<string, unknown> | null>;
-  /** Secret for webhook signature (can be function) */
-  secret?: string | ((c: Context) => string);
-  /** Header name for API key */
+  /** Header name for API key (only used with api-key type) */
   headerName?: string;
 }
 

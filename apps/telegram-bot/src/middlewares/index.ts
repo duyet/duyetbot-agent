@@ -5,7 +5,6 @@
  *
  * - Parser middleware: Parses webhook requests and extracts message context
  * - Auth middleware: Validates user authorization
- * - Authorization middleware (deprecated): Combined parser + auth for backward compatibility
  *
  * @example
  * ```typescript
@@ -38,6 +37,3 @@ export {
   isUserAuthorized,
   AuthErrorCodes,
 } from './auth.js';
-
-// Deprecated combined middleware (for backward compatibility)
-export { authorizationMiddleware } from './authorization.js';

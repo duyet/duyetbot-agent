@@ -1,5 +1,5 @@
 /**
- * Tests for authorization middleware
+ * Tests for authorization middleware (parser + auth)
  */
 
 import { Hono } from 'hono';
@@ -9,9 +9,10 @@ import {
   type Env,
   type TelegramUpdate,
   type WebhookContext,
-  authorizationMiddleware,
+  createTelegramAuthMiddleware,
+  createTelegramParserMiddleware,
   isUserAuthorized,
-} from '../middlewares/authorization.js';
+} from '../middlewares/index.js';
 
 /** Response type from test endpoint */
 interface TestResponse {
@@ -34,8 +35,9 @@ function createTestApp(envOverrides: Partial<Env> = {}) {
     return next();
   });
 
-  // Add authorization middleware
-  app.use('*', authorizationMiddleware());
+  // Add parser and auth middlewares (replaced deprecated authorizationMiddleware)
+  app.use('*', createTelegramParserMiddleware());
+  app.use('*', createTelegramAuthMiddleware());
 
   // Test endpoint that returns middleware state
   app.post('/webhook', (c) => {
