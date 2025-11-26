@@ -112,12 +112,7 @@ export function createTelegramParserMiddleware(): MiddlewareHandler<{
     const { message } = parsed;
     const webhookCtx = extractWebhookContext(message);
 
-    logger.info('[WEBHOOK] Message received', {
-      userId: webhookCtx.userId,
-      chatId: webhookCtx.chatId,
-      username: webhookCtx.username,
-      textLength: webhookCtx.text.length,
-    });
+    logger.info('[WEBHOOK] Message received', JSON.parse(JSON.stringify(webhookCtx)));
 
     // Set context for downstream handlers
     c.set('webhookContext', webhookCtx);

@@ -206,7 +206,7 @@ export interface HeartbeatConfig {
  * Default heartbeat configuration
  */
 export const DEFAULT_HEARTBEAT_CONFIG: HeartbeatConfig = {
-  maxHeartbeatAgeMs: 30000, // 30 seconds - 6 missed heartbeats
+  maxHeartbeatAgeMs: 20000, // 20 seconds - 4 missed heartbeats (P99 response time + buffer)
   heartbeatIntervalMs: 5000, // 5 seconds - matches ThinkingRotator
 };
 
@@ -259,4 +259,59 @@ export function isBatchStuckByHeartbeat(
   }
 
   return { isStuck: false };
+}
+
+/**
+ * Check if a message is duplicate across both active and pending batches
+ *
+ * @param requestId - Request ID to check
+ * @param activeBatch - Currently processing batch
+ * @param pendingBatch - Batch collecting new messages
+ * @returns True if duplicate found in either batch
+ */
+export function isDuplicateInBothBatches(
+  requestId: string,
+  activeBatch: BatchState | undefined,
+  pendingBatch: BatchState | undefined
+): boolean {
+  // Check activeBatch if it exists
+  if (activeBatch && isDuplicateMessage(requestId, activeBatch.pendingMessages)) {
+    return true;
+  }
+
+  // Check pendingBatch if it exists
+  if (pendingBatch && isDuplicateMessage(requestId, pendingBatch.pendingMessages)) {
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Migrate legacy single-batch state to two-batch architecture
+ * This provides backward compatibility for existing Durable Object state
+ *
+ * Migration strategy:
+ * - If batch is processing → make it activeBatch
+ * - Otherwise → make it pendingBatch
+ *
+ * @param batch - Legacy single-batch state
+ * @returns Object with activeBatch and pendingBatch
+ */
+export function migrateLegacyBatchState(batch: BatchState): {
+  activeBatch?: BatchState;
+  pendingBatch?: BatchState;
+} {
+  // If batch is currently processing, it becomes activeBatch
+  if (batch.status === 'processing') {
+    return {
+      activeBatch: batch,
+      pendingBatch: createInitialBatchState(),
+    };
+  }
+
+  // Otherwise, it becomes pendingBatch
+  return {
+    pendingBatch: batch,
+  };
 }

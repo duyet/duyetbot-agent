@@ -8,6 +8,7 @@
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import { type Env, TelegramAgent } from './agent.js';
+import { handleAdminCommand } from './commands/admin.js';
 import {
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
@@ -88,6 +89,21 @@ app.post(
       env.TELEGRAM_ADMIN,
       requestId
     );
+
+    // Check for admin commands
+    if (ctx.text.startsWith('/')) {
+      const response = await handleAdminCommand(ctx.text, ctx);
+      if (response) {
+        logger.info(`[${requestId}] [WEBHOOK] Admin command executed`, {
+          requestId,
+          command: ctx.text,
+          isAdmin: ctx.isAdmin,
+          durationMs: Date.now() - startTime,
+        });
+        await telegramTransport.send(ctx, response);
+        return c.text('OK');
+      }
+    }
 
     // Get agent by name (consistent with github-bot pattern)
     const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;

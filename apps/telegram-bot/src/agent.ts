@@ -22,7 +22,6 @@ import {
   getTelegramWelcomeMessage,
 } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
-import { isAdminUser } from './debug-footer.js';
 import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
 
@@ -77,11 +76,12 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
           chatId: ctx.chatId,
           error: error.message,
           messageRef,
+          isAdmin: ctx.isAdmin,
         });
 
         // Framework automatically edits the thinking message to show error
         // For admins, send additional detailed error info
-        if (isAdminUser(ctx)) {
+        if (ctx.isAdmin) {
           await telegramTransport.send(ctx, `🔍 Debug: ${error.message}`);
         }
       },

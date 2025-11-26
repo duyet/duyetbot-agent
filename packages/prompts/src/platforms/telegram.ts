@@ -51,7 +51,7 @@ export function getTelegramWelcomeMessage(): string {
   return `Hello! I'm ${config.botName}, created by ${config.creator}. Send me a message and I'll help you out.
 
 Commands:
-/help - Show help
+/help - Show all available commands
 /clear - Clear conversation history`;
 }
 
@@ -59,10 +59,16 @@ Commands:
  * Telegram help message
  */
 export function getTelegramHelpMessage(): string {
-  return `Commands:
-/start - Start bot
-/help - Show this help
+  return `📚 Available Commands:
+
+🤖 Basic Commands
+/start - Start the bot
+/help - Show this help message
 /clear - Clear conversation history
 
-Just send me any message!`;
+🔧 Admin Commands (Admin only)
+/debug - Show debug information
+/status - Show system status
+
+💬 Just send me any message and I'll help you out!`;
 }

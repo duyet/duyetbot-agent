@@ -14,16 +14,11 @@ import type { RouterAgentEnv } from './agents/router-agent.js';
 import {
   type BatchConfig,
   type BatchState,
-  DEFAULT_BATCH_CONFIG,
-  DEFAULT_RETRY_CONFIG,
   type PendingMessage,
-  type RetryConfig,
-  calculateRetryDelay,
   combineBatchMessages,
   createInitialBatchState,
-  isBatchStuckByHeartbeat,
-  isDuplicateMessage,
-  shouldProcessImmediately,
+  isDuplicateInBothBatches,
+  migrateLegacyBatchState,
 } from './batch-types.js';
 import type { RoutingFlags } from './feature-flags.js';
 import {
@@ -57,7 +52,20 @@ export interface CloudflareAgentState {
   createdAt: number;
   updatedAt: number;
   metadata?: Record<string, unknown>;
-  /** Batch state for alarm-based message processing */
+  /**
+   * Active batch - currently being processed (IMMUTABLE during processing)
+   * Once a batch starts processing, it cannot be modified
+   */
+  activeBatch?: BatchState;
+  /**
+   * Pending batch - collecting new messages (MUTABLE)
+   * New messages always go here, never to activeBatch
+   */
+  pendingBatch?: BatchState;
+  /**
+   * @deprecated Legacy single-batch field for backward compatibility
+   * Will be migrated to activeBatch/pendingBatch automatically
+   */
   batch?: BatchState;
   /** Request IDs for deduplication (rolling window) */
   processedRequestIds?: string[];
@@ -118,10 +126,6 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
    * When enabled, rapid messages are combined within a time window
    */
   batchConfig?: Partial<BatchConfig>;
-  /**
-   * Retry configuration for failed batch processing
-   */
-  retryConfig?: Partial<RetryConfig>;
 }
 
 // Re-export types for backward compatibility
@@ -228,14 +232,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
   const mcpServers = config.mcpServers ?? [];
   const builtinTools = config.tools ?? [];
   const routerConfig = config.router;
-  const batchConfig: BatchConfig = {
-    ...DEFAULT_BATCH_CONFIG,
-    ...config.batchConfig,
-  };
-  const retryConfig: RetryConfig = {
-    ...DEFAULT_RETRY_CONFIG,
-    ...config.retryConfig,
-  };
+  // Batch config for future use (alarm scheduling, etc.)
+  // const batchConfig: BatchConfig = {
+  //   ...DEFAULT_BATCH_CONFIG,
+  //   ...config.batchConfig,
+  // };
 
   // Convert built-in tools to OpenAI format
   const builtinToolsOpenAI: OpenAITool[] = builtinTools.map((tool) => ({
@@ -592,7 +593,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Returns null for unknown commands (should fall back to chat)
      */
     handleBuiltinCommand(text: string): string | null {
-      const command = (text.split(' ')[0] ?? '').toLowerCase();
+      const command = (text.split(/[\s\n]/)[0] ?? '').toLowerCase();
 
       switch (command) {
         case '/start':
@@ -600,22 +601,32 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         case '/help':
           return this.getHelp();
         case '/clear': {
-          // Full DO state reset - clears messages, metadata, and resets MCP
+          // Full DO state reset - clears messages, metadata, batch, and resets MCP
           this._mcpInitialized = false;
+
           const freshState: CloudflareAgentState = {
             messages: [],
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };
-          // Preserve userId/chatId if they exist
+
+          // Preserve userId/chatId for session continuity
           if (this.state.userId !== undefined) {
             freshState.userId = this.state.userId;
           }
           if (this.state.chatId !== undefined) {
             freshState.chatId = this.state.chatId;
           }
+
           this.setState(freshState);
-          return '🧹 All conversation data cleared. Fresh start!';
+
+          logger.info('[CloudflareAgent][CLEAR] State cleared', {
+            userId: freshState.userId,
+            chatId: freshState.chatId,
+            mcpReset: true,
+          });
+
+          return '🧹 All conversation data and agent connections cleared. Fresh start!';
         }
         default:
           // Return null for unknown commands - will fall back to chat/tools/MCP
@@ -1088,6 +1099,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Queue a message for batch processing with alarm-based execution
      * Messages arriving within the batch window are combined into a single LLM call
+     *
+     * TWO-BATCH QUEUE ARCHITECTURE:
+     * - activeBatch: Currently being processed (IMMUTABLE)
+     * - pendingBatch: Collecting new messages (MUTABLE)
+     * - NEW messages ALWAYS go to pendingBatch, NEVER to activeBatch
      */
     async queueMessage(ctx: TContext): Promise<{ queued: boolean; batchId?: string }> {
       if (!transport) {
@@ -1100,102 +1116,92 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const requestId = (input.metadata?.requestId as string) || crypto.randomUUID();
       const now = Date.now();
 
-      // Initialize batch state if not present
-      let batch = this.state.batch ?? createInitialBatchState();
-
-      // Check for stuck batch using heartbeat detection
-      // If processing but no heartbeat for >30s, the DO is stuck/crashed - force recovery
-      const stuckCheck = isBatchStuckByHeartbeat(batch);
-      if (stuckCheck.isStuck) {
-        logger.warn(
-          '[CloudflareAgent][BATCH] Detected stuck batch via heartbeat, forcing recovery',
-          {
-            batchId: batch.batchId,
-            reason: stuckCheck.reason,
-            pendingCount: batch.pendingMessages.length,
-            retryCount: batch.retryCount,
-          }
-        );
-
-        // Force reset to collecting state for retry
-        batch = {
-          ...batch,
-          status: 'collecting',
-          retryCount: batch.retryCount + 1,
-          error: `Auto-recovered: ${stuckCheck.reason}`,
-          lastHeartbeat: undefined,
-        };
-
-        this.setState({
-          ...this.state,
-          batch,
+      // Migrate legacy single-batch state if needed (backward compatibility)
+      if (this.state.batch && !this.state.activeBatch && !this.state.pendingBatch) {
+        const migrated = migrateLegacyBatchState(this.state.batch);
+        const { batch, ...stateWithoutBatch } = this.state;
+        const newState: CloudflareAgentState = {
+          ...stateWithoutBatch,
+          ...migrated,
           updatedAt: now,
+        };
+        this.setState(newState);
+        logger.info('[CloudflareAgent][BATCH] Migrated legacy batch state', {
+          hadActiveBatch: !!migrated.activeBatch,
+          hadPendingBatch: !!migrated.pendingBatch,
         });
-
-        // Schedule immediate reprocessing
-        await this.schedule(0.001, 'onBatchAlarm', { batchId: batch.batchId });
       }
 
-      // Check for duplicate request
-      if (isDuplicateMessage(requestId, batch.pendingMessages)) {
+      // Get or create pendingBatch (NEW messages ALWAYS go here)
+      const pendingBatch = this.state.pendingBatch ?? createInitialBatchState();
+
+      // Check for duplicates across BOTH batches
+      if (isDuplicateInBothBatches(requestId, this.state.activeBatch, pendingBatch)) {
         logger.info(`[CloudflareAgent][BATCH] Duplicate request ${requestId}, skipping`);
         return { queued: false };
       }
 
       // Create pending message with original context for transport operations
-      // The original context contains platform-specific data (e.g., bot token for Telegram)
       const pendingMessage: PendingMessage<TContext> = {
         text: input.text,
         timestamp: now,
         requestId,
         userId: input.userId,
         chatId: input.chatId,
+        ...(input.username && { username: input.username }),
         originalContext: ctx,
       };
 
-      // Add to pending messages
-      batch.pendingMessages.push(pendingMessage);
-      batch.lastMessageAt = now;
+      // Add to pendingBatch
+      pendingBatch.pendingMessages.push(pendingMessage);
+      pendingBatch.lastMessageAt = now;
 
-      // Set batch start time if this is the first message
-      if (batch.status === 'idle') {
-        batch.status = 'collecting';
-        batch.batchStartedAt = now;
-        batch.batchId = crypto.randomUUID();
+      // Initialize pendingBatch if this is the first message
+      if (pendingBatch.status === 'idle') {
+        pendingBatch.status = 'collecting';
+        pendingBatch.batchStartedAt = now;
+        pendingBatch.batchId = crypto.randomUUID();
       }
 
-      // Update state
+      // Determine if we need to schedule alarm
+      // Only schedule if NO active batch is processing
+      const shouldSchedule = !this.state.activeBatch && pendingBatch.pendingMessages.length === 1;
+
+      // Update state with new pendingBatch
       this.setState({
         ...this.state,
-        batch,
+        pendingBatch,
         updatedAt: now,
       });
 
-      logger.info('[CloudflareAgent][BATCH] Message queued', {
+      logger.info('[CloudflareAgent][BATCH] Message queued to pendingBatch', {
         requestId,
-        batchId: batch.batchId,
-        pendingCount: batch.pendingMessages.length,
+        batchId: pendingBatch.batchId,
+        pendingCount: pendingBatch.pendingMessages.length,
+        hasActiveBatch: !!this.state.activeBatch,
+        willScheduleAlarm: shouldSchedule,
       });
 
-      // Check if we should process immediately (max messages or max window)
-      if (shouldProcessImmediately(batch, batchConfig)) {
-        logger.info('[CloudflareAgent][BATCH] Processing immediately (limit reached)');
-        // Schedule alarm for immediate processing (0.001 seconds = 1ms minimum)
-        await this.schedule(0.001, 'onBatchAlarm', { batchId: batch.batchId });
-      } else {
-        // Schedule/reset alarm for batch window
-        // Each new message resets the timer
-        const delaySeconds = batchConfig.windowMs / 1000;
-        logger.info(`[CloudflareAgent][BATCH] Scheduling alarm in ${batchConfig.windowMs}ms`);
-        await this.schedule(delaySeconds, 'onBatchAlarm', {
-          batchId: batch.batchId,
+      // Schedule alarm ONLY if no active batch and this is first pending message
+      if (shouldSchedule) {
+        logger.info(
+          '[CloudflareAgent][BATCH] Scheduling alarm (no active batch, first pending message)'
+        );
+        await this.schedule(0.001, 'onBatchAlarm', {
+          batchId: pendingBatch.batchId,
+        });
+        logger.info('[CloudflareAgent][BATCH][ALARM] Scheduled', {
+          batchId: pendingBatch.batchId,
+          delayMs: 1,
+          scheduledFor: Date.now() + 1,
+          reason: 'first_pending_message',
         });
       }
 
-      // Use spread to conditionally include batchId only if it exists
+      // Return result
       const result: { queued: boolean; batchId?: string } = { queued: true };
-      if (batch.batchId) {
-        result.batchId = batch.batchId;
+      if (pendingBatch.batchId) {
+        result.batchId = pendingBatch.batchId;
       }
       return result;
     }
@@ -1203,127 +1209,130 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Alarm handler for batch processing
      * Called by Cloudflare Agents SDK schedule system
+     *
+     * TWO-BATCH QUEUE LOGIC:
+     * 1. Check if already processing (activeBatch exists) → skip
+     * 2. Promote pendingBatch to activeBatch atomically
+     * 3. Clear pendingBatch
+     * 4. Process activeBatch
+     * 5. On success: clear activeBatch, schedule alarm if pendingBatch has messages
+     * 6. On failure: clear activeBatch, don't retry (discard stuck messages)
      */
     async onBatchAlarm(_data: { batchId: string | null }): Promise<void> {
-      const batch = this.state.batch;
+      logger.info('[CloudflareAgent][BATCH][ALARM] Fired', {
+        batchId: _data.batchId,
+        firedAt: Date.now(),
+        hasActiveBatch: !!this.state.activeBatch,
+        hasPendingBatch: !!this.state.pendingBatch,
+        pendingCount: this.state.pendingBatch?.pendingMessages.length || 0,
+        activeCount: this.state.activeBatch?.pendingMessages.length || 0,
+      });
 
-      if (!batch || batch.pendingMessages.length === 0) {
+      // Check if already processing
+      if (this.state.activeBatch) {
+        logger.info(
+          '[CloudflareAgent][BATCH] Already processing (activeBatch exists), skipping alarm'
+        );
+        return;
+      }
+
+      // Check if there are pending messages to process
+      if (!this.state.pendingBatch || this.state.pendingBatch.pendingMessages.length === 0) {
         logger.info('[CloudflareAgent][BATCH] No pending messages to process');
         return;
       }
 
-      if (batch.status === 'processing') {
-        logger.info('[CloudflareAgent][BATCH] Already processing, skipping');
-        return;
-      }
-
-      logger.info('[CloudflareAgent][BATCH] Processing batch', {
-        batchId: batch.batchId,
-        messageCount: batch.pendingMessages.length,
-        retryCount: batch.retryCount,
-      });
-
-      // Update status to processing and initialize heartbeat
       const now = Date.now();
-      const processingBatch: BatchState = {
-        ...batch,
+
+      // Promote pendingBatch to activeBatch atomically
+      const activeBatch: BatchState = {
+        ...this.state.pendingBatch,
         status: 'processing',
         lastHeartbeat: now, // Initialize heartbeat for stuck detection
       };
+
+      // Clear pendingBatch immediately
       this.setState({
         ...this.state,
-        batch: processingBatch,
+        activeBatch,
+        pendingBatch: createInitialBatchState(),
         updatedAt: now,
+      });
+
+      logger.info('[CloudflareAgent][BATCH] Promoted pendingBatch to activeBatch', {
+        batchId: activeBatch.batchId,
+        messageCount: activeBatch.pendingMessages.length,
       });
 
       try {
         await this.processBatch();
 
-        // Success - clear batch state
-        this.setState({
-          ...this.state,
-          batch: createInitialBatchState(),
+        // Success - clear activeBatch
+        const { activeBatch: _removed, ...stateWithoutActive } = this.state;
+        const newState: CloudflareAgentState = {
+          ...stateWithoutActive,
           updatedAt: Date.now(),
-        });
+        };
+        this.setState(newState);
 
         logger.info('[CloudflareAgent][BATCH] Batch processed successfully', {
-          batchId: batch.batchId,
+          batchId: activeBatch.batchId,
         });
+
+        // Check if new messages arrived during processing
+        const currentPendingBatch = this.state.pendingBatch;
+        if (currentPendingBatch && currentPendingBatch.pendingMessages.length > 0) {
+          logger.info(
+            '[CloudflareAgent][BATCH] New messages arrived during processing, scheduling alarm',
+            {
+              pendingCount: currentPendingBatch.pendingMessages.length,
+              pendingBatchId: currentPendingBatch.batchId,
+            }
+          );
+          await this.schedule(0.001, 'onBatchAlarm', {
+            batchId: currentPendingBatch.batchId,
+          });
+        }
       } catch (error) {
         logger.error('[CloudflareAgent][BATCH] Batch processing failed', {
-          batchId: batch.batchId,
+          batchId: activeBatch.batchId,
           error: error instanceof Error ? error.message : String(error),
-          retryCount: batch.retryCount,
         });
 
-        // Check if we should retry
-        if (batch.retryCount < retryConfig.maxRetries) {
-          const delay = calculateRetryDelay(batch.retryCount, retryConfig);
-          const retryBatch: BatchState = {
-            ...batch,
-            status: 'collecting',
-            retryCount: batch.retryCount + 1,
-            error: error instanceof Error ? error.message : String(error),
-          };
+        // Failure - discard activeBatch (don't retry stuck messages)
+        const { activeBatch: _removed, ...stateWithoutActive } = this.state;
+        const newState: CloudflareAgentState = {
+          ...stateWithoutActive,
+          updatedAt: Date.now(),
+        };
+        this.setState(newState);
 
-          this.setState({
-            ...this.state,
-            batch: retryBatch,
-            updatedAt: Date.now(),
-          });
-
-          logger.info('[CloudflareAgent][BATCH] Scheduling retry', {
-            batchId: batch.batchId,
-            retryCount: retryBatch.retryCount,
-            delayMs: delay,
-          });
-
-          const delaySeconds = delay / 1000;
-          await this.schedule(delaySeconds, 'onBatchAlarm', {
-            batchId: batch.batchId,
-          });
-        } else {
-          // Max retries reached - fail the batch
-          const failedBatch: BatchState = {
-            ...batch,
-            status: 'failed',
-            error: error instanceof Error ? error.message : String(error),
-          };
-
-          this.setState({
-            ...this.state,
-            batch: failedBatch,
-            updatedAt: Date.now(),
-          });
-
-          logger.error('[CloudflareAgent][BATCH] Batch failed after max retries', {
-            batchId: batch.batchId,
-            maxRetries: retryConfig.maxRetries,
-          });
-
-          // Send error message to user if transport available
-          if (transport) {
-            const firstMessage = batch.pendingMessages[0];
-            if (firstMessage?.originalContext) {
-              try {
-                // Use originalContext to preserve platform-specific data (e.g., bot token)
-                await transport.send(
-                  firstMessage.originalContext as TContext,
-                  '❌ Sorry, an error occurred processing your message. Please try again.'
-                );
-              } catch (sendError) {
-                logger.error('[CloudflareAgent][BATCH] Failed to send error message', {
-                  error: sendError instanceof Error ? sendError.message : String(sendError),
-                });
-              }
+        // Send error message to user if transport available
+        if (transport) {
+          const firstMessage = activeBatch.pendingMessages[0];
+          if (firstMessage?.originalContext) {
+            try {
+              await transport.send(
+                firstMessage.originalContext as TContext,
+                '❌ Sorry, an error occurred processing your message. Please try again.'
+              );
+            } catch (sendError) {
+              logger.error('[CloudflareAgent][BATCH] Failed to send error message', {
+                error: sendError instanceof Error ? sendError.message : String(sendError),
+              });
             }
           }
+        }
 
-          // Reset batch state for next messages
-          this.setState({
-            ...this.state,
-            batch: createInitialBatchState(),
-            updatedAt: Date.now(),
+        // If pendingBatch has new messages, schedule alarm to process them
+        const currentPendingBatch = this.state.pendingBatch;
+        if (currentPendingBatch && currentPendingBatch.pendingMessages.length > 0) {
+          logger.info('[CloudflareAgent][BATCH] Scheduling retry for pendingBatch after error', {
+            pendingCount: currentPendingBatch.pendingMessages.length,
+            pendingBatchId: currentPendingBatch.batchId,
+          });
+          await this.schedule(2, 'onBatchAlarm', {
+            batchId: currentPendingBatch.batchId,
           });
         }
       }
@@ -1332,9 +1341,13 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Process the current batch of messages
      * Combines messages and sends to LLM
+     *
+     * TWO-BATCH ARCHITECTURE:
+     * - Only processes activeBatch (immutable during processing)
+     * - pendingBatch continues collecting new messages independently
      */
     private async processBatch(): Promise<void> {
-      const batch = this.state.batch;
+      const batch = this.state.activeBatch;
       if (!batch || batch.pendingMessages.length === 0) {
         return;
       }
@@ -1343,9 +1356,56 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         throw new Error('Transport not configured');
       }
 
+      // Check if first message is /clear command - process alone and discard others
+      const firstMessage = batch.pendingMessages[0];
+      if (!firstMessage) {
+        return; // Should never happen due to length check above, but TypeScript needs this
+      }
+
+      const firstText = firstMessage.text ?? '';
+      const firstCommand = firstText.split(/[\s\n]/)[0]?.toLowerCase();
+
+      if (firstCommand === '/clear') {
+        logger.info(
+          '[CloudflareAgent][BATCH] Detected /clear - processing alone and discarding other messages',
+          {
+            batchId: batch.batchId,
+            messageCount: batch.pendingMessages.length,
+            discardedCount: batch.pendingMessages.length - 1,
+          }
+        );
+
+        // Use originalContext from first message to preserve platform-specific data
+        // Fall back to minimal context only if originalContext is missing (shouldn't happen in normal operation)
+        const baseCtx =
+          firstMessage.originalContext ??
+          ({
+            chatId: firstMessage.chatId,
+            userId: firstMessage.userId,
+            text: firstText,
+            metadata: { requestId: batch.batchId },
+          } as TContext);
+
+        // Update the text (originalContext may have original single message text)
+        const ctx = {
+          ...baseCtx,
+          text: firstText,
+        } as TContext;
+
+        // Initialize state with user/chat context
+        await this.init(firstMessage.userId, firstMessage.chatId);
+
+        // Process /clear command through normal handle() flow
+        // This will call handleBuiltinCommand() which clears state and sends response
+        await this.handle(ctx);
+
+        // Done - other messages in batch are intentionally discarded
+        return;
+      }
+
+      // Normal batch processing for non-clear messages
       // Combine messages
       const combinedText = combineBatchMessages(batch.pendingMessages);
-      const firstMessage = batch.pendingMessages[0];
 
       logger.info('[CloudflareAgent][BATCH] Combined messages', {
         combinedText,
@@ -1387,10 +1447,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Send initial thinking message
       const messageRef = await transport.send(ctx, rotator.getCurrentMessage());
 
-      // Update batch state with message ref
+      // Update activeBatch state with message ref
       this.setState({
         ...this.state,
-        batch: { ...batch, messageRef },
+        activeBatch: { ...batch, messageRef },
         updatedAt: Date.now(),
       });
 
@@ -1401,11 +1461,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           try {
             // Update heartbeat FIRST - proves DO is alive regardless of edit success
             // This prevents false stuck detection when user deletes the "thinking" message
-            const currentBatch = this.state.batch;
+            const currentBatch = this.state.activeBatch;
             if (currentBatch) {
               this.setState({
                 ...this.state,
-                batch: {
+                activeBatch: {
                   ...currentBatch,
                   lastHeartbeat: Date.now(),
                 },
@@ -1478,10 +1538,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // Successfully delegated to RouterAgent - it will handle response delivery
             rotator.stop();
 
-            // Mark batch as delegated (not completed yet - RouterAgent will complete it)
+            // Mark activeBatch as delegated (not completed yet - RouterAgent will complete it)
             this.setState({
               ...this.state,
-              batch: { ...batch, status: 'delegated' },
+              activeBatch: { ...batch, status: 'delegated' },
               updatedAt: Date.now(),
             });
 
