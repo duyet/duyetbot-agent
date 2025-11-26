@@ -21,6 +21,7 @@ import {
   calculateRetryDelay,
   combineBatchMessages,
   createInitialBatchState,
+  isBatchStuckByHeartbeat,
   isDuplicateMessage,
   shouldProcessImmediately,
 } from './batch-types.js';
@@ -811,7 +812,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      *
      * @param query - The query to route
      * @param context - Agent context
-     * @param responseTarget - Where to send the response
+     * @param responseTarget - Where to send the response (includes admin context for debug footer)
      * @returns Promise<boolean> - true if scheduling succeeded
      */
     private async scheduleRouting(
@@ -822,6 +823,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         messageRef: { messageId: number };
         platform: string;
         botToken?: string | undefined;
+        /** Admin username for debug footer (Phase 5) */
+        adminUsername?: string | undefined;
+        /** Current user's username for admin check (Phase 5) */
+        username?: string | undefined;
       }
     ): Promise<boolean> {
       if (!routerConfig) {
@@ -1096,7 +1101,40 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const now = Date.now();
 
       // Initialize batch state if not present
-      const batch = this.state.batch ?? createInitialBatchState();
+      let batch = this.state.batch ?? createInitialBatchState();
+
+      // Check for stuck batch using heartbeat detection
+      // If processing but no heartbeat for >30s, the DO is stuck/crashed - force recovery
+      const stuckCheck = isBatchStuckByHeartbeat(batch);
+      if (stuckCheck.isStuck) {
+        logger.warn(
+          '[CloudflareAgent][BATCH] Detected stuck batch via heartbeat, forcing recovery',
+          {
+            batchId: batch.batchId,
+            reason: stuckCheck.reason,
+            pendingCount: batch.pendingMessages.length,
+            retryCount: batch.retryCount,
+          }
+        );
+
+        // Force reset to collecting state for retry
+        batch = {
+          ...batch,
+          status: 'collecting',
+          retryCount: batch.retryCount + 1,
+          error: `Auto-recovered: ${stuckCheck.reason}`,
+          lastHeartbeat: undefined,
+        };
+
+        this.setState({
+          ...this.state,
+          batch,
+          updatedAt: now,
+        });
+
+        // Schedule immediate reprocessing
+        await this.schedule(0.001, 'onBatchAlarm', { batchId: batch.batchId });
+      }
 
       // Check for duplicate request
       if (isDuplicateMessage(requestId, batch.pendingMessages)) {
@@ -1185,15 +1223,17 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         retryCount: batch.retryCount,
       });
 
-      // Update status to processing
+      // Update status to processing and initialize heartbeat
+      const now = Date.now();
       const processingBatch: BatchState = {
         ...batch,
         status: 'processing',
+        lastHeartbeat: now, // Initialize heartbeat for stuck detection
       };
       this.setState({
         ...this.state,
         batch: processingBatch,
-        updatedAt: Date.now(),
+        updatedAt: now,
       });
 
       try {
@@ -1355,11 +1395,35 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       });
 
       // Start rotation if transport supports edit
+      // The rotator also serves as a heartbeat - we record lastHeartbeat on each rotation
       if (transport.edit) {
         rotator.start(async (nextMessage) => {
           try {
+            // Update heartbeat FIRST - proves DO is alive regardless of edit success
+            // This prevents false stuck detection when user deletes the "thinking" message
+            const currentBatch = this.state.batch;
+            if (currentBatch) {
+              this.setState({
+                ...this.state,
+                batch: {
+                  ...currentBatch,
+                  lastHeartbeat: Date.now(),
+                },
+                updatedAt: Date.now(),
+              });
+            }
+
+            // Refresh typing indicator every rotation cycle (5s)
+            // Telegram's typing indicator only lasts ~5s, so we refresh it
+            if (transport.typing) {
+              await transport.typing(ctx);
+            }
+
+            // Then attempt edit (may fail if message was deleted by user)
             await transport.edit!(ctx, messageRef, nextMessage);
           } catch (err) {
+            // Edit failed (message deleted, network error, etc.)
+            // Heartbeat already updated above, so DO won't be marked as stuck
             logger.error(`[CloudflareAgent][BATCH] Rotator edit failed: ${err}`);
           }
         });
@@ -1390,6 +1454,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           const env = (this as unknown as { env: TEnv }).env;
           const envWithToken = env as unknown as {
             TELEGRAM_BOT_TOKEN?: string;
+            ADMIN_USERNAME?: string;
+          };
+
+          // Extract admin context from ctx for debug footer
+          // ctx may have adminUsername/username from TelegramContext
+          const ctxWithAdmin = ctx as {
+            adminUsername?: string;
+            username?: string;
           };
 
           const scheduled = await this.scheduleRouting(combinedText, agentContext, {
@@ -1397,6 +1469,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             messageRef: { messageId: messageRef as number },
             platform: routerConfig?.platform || 'telegram',
             botToken: envWithToken.TELEGRAM_BOT_TOKEN,
+            // Pass admin context for debug footer (Phase 5)
+            adminUsername: ctxWithAdmin.adminUsername || envWithToken.ADMIN_USERNAME,
+            username: ctxWithAdmin.username || firstMessage?.username,
           });
 
           if (scheduled) {

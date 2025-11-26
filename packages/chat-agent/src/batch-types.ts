@@ -36,6 +36,8 @@ export interface PendingMessage<TContext = unknown> {
   userId?: string | number;
   /** Chat/conversation ID */
   chatId?: string | number;
+  /** Username of the sender (for debug footer admin check) */
+  username?: string;
   /**
    * Original context for transport operations
    * Stored as serialized JSON to preserve full context (e.g., bot token for Telegram)
@@ -64,6 +66,8 @@ export interface BatchState {
   lastMessageAt: number;
   /** Timestamp when batch started collecting */
   batchStartedAt: number;
+  /** Heartbeat timestamp - updated every 5s during processing via ThinkingRotator */
+  lastHeartbeat?: number | undefined;
 }
 
 /**
@@ -186,4 +190,73 @@ export function shouldProcessImmediately(
  */
 export function isDuplicateMessage(requestId: string, messages: PendingMessage[]): boolean {
   return messages.some((m) => m.requestId === requestId);
+}
+
+/**
+ * Configuration for heartbeat-based stuck detection
+ */
+export interface HeartbeatConfig {
+  /** Max time since last heartbeat before considering stuck (ms, default: 30000) */
+  maxHeartbeatAgeMs: number;
+  /** Heartbeat update interval (ms, default: 5000) - matches ThinkingRotator */
+  heartbeatIntervalMs: number;
+}
+
+/**
+ * Default heartbeat configuration
+ */
+export const DEFAULT_HEARTBEAT_CONFIG: HeartbeatConfig = {
+  maxHeartbeatAgeMs: 30000, // 30 seconds - 6 missed heartbeats
+  heartbeatIntervalMs: 5000, // 5 seconds - matches ThinkingRotator
+};
+
+/**
+ * Result of stuck batch detection
+ */
+export interface StuckCheckResult {
+  /** Whether the batch is stuck */
+  isStuck: boolean;
+  /** Reason for being stuck (if applicable) */
+  reason?: string;
+}
+
+/**
+ * Check if batch is stuck based on heartbeat timestamp
+ *
+ * A batch is considered stuck if:
+ * - Status is 'processing' AND
+ * - Last heartbeat was more than maxHeartbeatAgeMs ago
+ *
+ * @param batch - Current batch state
+ * @param config - Heartbeat configuration
+ * @returns StuckCheckResult with isStuck and optional reason
+ */
+export function isBatchStuckByHeartbeat(
+  batch: BatchState,
+  config: HeartbeatConfig = DEFAULT_HEARTBEAT_CONFIG
+): StuckCheckResult {
+  // Only check if actually processing
+  if (batch.status !== 'processing') {
+    return { isStuck: false };
+  }
+
+  const now = Date.now();
+  // Fall back to batchStartedAt if no heartbeat recorded yet
+  const lastHeartbeat = batch.lastHeartbeat ?? batch.batchStartedAt;
+
+  // If no timestamps at all, can't determine stuck state
+  if (lastHeartbeat === 0) {
+    return { isStuck: false };
+  }
+
+  const heartbeatAge = now - lastHeartbeat;
+
+  if (heartbeatAge > config.maxHeartbeatAgeMs) {
+    return {
+      isStuck: true,
+      reason: `No heartbeat for ${Math.round(heartbeatAge / 1000)}s (threshold: ${config.maxHeartbeatAgeMs / 1000}s)`,
+    };
+  }
+
+  return { isStuck: false };
 }
