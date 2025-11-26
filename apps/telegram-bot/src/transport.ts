@@ -6,6 +6,7 @@
 
 import type { DebugContext, Transport } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
+import { prepareMessageWithDebug } from './debug-footer.js';
 
 /** Telegram message length limit */
 const MAX_MESSAGE_LENGTH = 4096;
@@ -83,41 +84,55 @@ export interface TelegramContext {
  * Send a message via Telegram Bot API
  *
  * Handles long messages by chunking and falls back to plain text
- * if Markdown parsing fails.
+ * if parsing fails.
+ *
+ * @param token - Bot token
+ * @param chatId - Chat to send to
+ * @param text - Message text
+ * @param parseMode - Parse mode ('HTML', 'Markdown', or undefined for plain text)
  */
-async function sendTelegramMessage(token: string, chatId: number, text: string): Promise<number> {
+async function sendTelegramMessage(
+  token: string,
+  chatId: number,
+  text: string,
+  parseMode: 'HTML' | 'Markdown' | undefined = 'Markdown'
+): Promise<number> {
   const chunks = splitMessage(text);
   let lastMessageId = 0;
 
   for (const chunk of chunks) {
-    const payload = { chat_id: chatId, text: chunk, parse_mode: 'Markdown' };
+    // Build payload with optional parse_mode
+    const payload: Record<string, unknown> = { chat_id: chatId, text: chunk };
+    if (parseMode) {
+      payload.parse_mode = parseMode;
+    }
     logger.debug('[TRANSPORT] Sending message', payload);
 
-    // Try with Markdown first
+    // Try with parse mode first (if specified)
     let response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
 
-    // Fallback to plain text if Markdown parsing fails (400 error)
-    if (response.status === 400) {
+    // Fallback to plain text if parsing fails (400 error)
+    if (response.status === 400 && parseMode) {
       // Consume the error response body to prevent connection pool exhaustion
       await response.text();
 
-      const withoutMarkdown = {
+      const withoutParseMode = {
         chat_id: chatId,
         text: chunk,
       };
       logger.warn(
-        '[TRANSPORT] Markdown parse failed, retrying without parse_mode',
-        withoutMarkdown
+        `[TRANSPORT] ${parseMode} parse failed, retrying without parse_mode`,
+        withoutParseMode
       );
 
       response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(withoutMarkdown),
+        body: JSON.stringify(withoutParseMode),
       });
     }
 
@@ -145,13 +160,20 @@ async function sendTelegramMessage(token: string, chatId: number, text: string):
 /**
  * Edit an existing message via Telegram Bot API
  *
- * Falls back to plain text if Markdown parsing fails.
+ * Falls back to plain text if parsing fails.
+ *
+ * @param token - Bot token
+ * @param chatId - Chat containing the message
+ * @param messageId - Message to edit
+ * @param text - New message text
+ * @param parseMode - Parse mode ('HTML', 'Markdown', or undefined for plain text)
  */
 async function editTelegramMessage(
   token: string,
   chatId: number,
   messageId: number,
-  text: string
+  text: string,
+  parseMode: 'HTML' | 'Markdown' | undefined = 'Markdown'
 ): Promise<void> {
   // Truncate if too long for edit
   const truncatedText =
@@ -159,24 +181,27 @@ async function editTelegramMessage(
       ? `${text.slice(0, MAX_MESSAGE_LENGTH - 20)}...\n\n[truncated]`
       : text;
 
-  const payload = {
+  // Build payload with optional parse_mode
+  const payload: Record<string, unknown> = {
     chat_id: chatId,
     message_id: messageId,
     text: truncatedText,
-    parse_mode: 'Markdown',
   };
+  if (parseMode) {
+    payload.parse_mode = parseMode;
+  }
 
   logger.debug('[TRANSPORT] Editing message', payload);
 
-  // Try with Markdown first
+  // Try with parse mode first (if specified)
   let response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
 
-  // Fallback to plain text if Markdown parsing fails
-  if (response.status === 400) {
+  // Fallback to plain text if parsing fails
+  if (response.status === 400 && parseMode) {
     // Consume the error response body to prevent connection pool exhaustion
     await response.text();
 
@@ -186,7 +211,7 @@ async function editTelegramMessage(
       text: truncatedText,
     };
     logger.warn(
-      '[TRANSPORT] Markdown parse failed in edit, retrying without parse_mode',
+      `[TRANSPORT] ${parseMode} parse failed in edit, retrying without parse_mode`,
       withoutParseMode
     );
 
@@ -238,6 +263,11 @@ async function sendTypingIndicator(token: string, chatId: number): Promise<void>
 /**
  * Telegram transport implementation
  *
+ * Integrates debug footer for admin users via context chain pattern:
+ * - CloudflareAgent populates ctx.debugContext after routing
+ * - Transport calls prepareMessageWithDebug() to format footer
+ * - Admin users see expandable debug info, others see plain response
+ *
  * @example
  * ```typescript
  * const TelegramAgent = createCloudflareChatAgent({
@@ -249,11 +279,15 @@ async function sendTypingIndicator(token: string, chatId: number): Promise<void>
  */
 export const telegramTransport: Transport<TelegramContext> = {
   send: async (ctx, text) => {
-    return sendTelegramMessage(ctx.token, ctx.chatId, text);
+    // Apply debug footer for admin users (context chain pattern)
+    const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
+    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode);
   },
 
   edit: async (ctx, ref, text) => {
-    await editTelegramMessage(ctx.token, ctx.chatId, ref as number, text);
+    // Apply debug footer for admin users (context chain pattern)
+    const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
+    await editTelegramMessage(ctx.token, ctx.chatId, ref as number, finalText, parseMode);
   },
 
   typing: async (ctx) => {

@@ -62,6 +62,17 @@ export interface AgentContext {
 }
 
 /**
+ * Debug information from agent execution
+ * Used for admin debugging in Telegram messages
+ */
+export interface AgentDebugInfo {
+  /** Tools used by this agent during execution */
+  tools?: string[];
+  /** Sub-agents delegated to (for orchestrator pattern) */
+  subAgents?: string[];
+}
+
+/**
  * Result from agent execution
  */
 export interface AgentResult {
@@ -79,6 +90,8 @@ export interface AgentResult {
   tokensUsed: number | undefined;
   /** Next action (for HITL) */
   nextAction: 'await_confirmation' | 'continue' | 'complete' | undefined;
+  /** Debug information for admin users */
+  debug?: AgentDebugInfo;
 }
 
 /**

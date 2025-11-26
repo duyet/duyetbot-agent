@@ -9,7 +9,7 @@
  * duyetbot-agents worker via script_name in wrangler.toml.
  */
 
-import type { MCPServerConnection, RouterAgentEnv } from '@duyetbot/chat-agent';
+import type { RouterAgentEnv } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
@@ -25,29 +25,6 @@ import { getPlatformTools } from '@duyetbot/tools';
 import { isAdminUser } from './debug-footer.js';
 import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
-
-/**
- * GitHub MCP server configuration
- */
-const _githubMcpServer: MCPServerConnection = {
-  name: 'github-mcp',
-  url: 'https://api.githubcopilot.com/mcp/sse',
-  getAuthHeader: (env) => {
-    const token = env.GITHUB_TOKEN as string | undefined;
-    return token ? `Bearer ${token}` : undefined;
-  },
-};
-
-/**
- * Duyet MCP server configuration
- * Provides tools for: get_about_duyet, get_cv, get_blog_posts, get_github_activity
- *
- * Note: Temporarily disabled to investigate gateway timeouts
- */
-// const duyetMcpServer: MCPServerConnection = {
-//   name: 'duyet-mcp',
-//   url: 'https://mcp.duyet.net/sse',
-// };
 
 /**
  * Base environment without self-reference
@@ -74,9 +51,8 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     welcomeMessage: getTelegramWelcomeMessage(),
     helpMessage: getTelegramHelpMessage(),
     transport: telegramTransport,
-    // Note: GitHub MCP server disabled - causes connection pool exhaustion from hanging SSE
-    // TODO: Re-enable when GitHub Copilot MCP is stable or add proper AbortController support
-    // Note: duyet-mcp temporarily disabled to investigate gateway timeouts
+    // MCP servers disabled - SSE connections cause connection pool exhaustion
+    // TODO: Re-enable when MCP client supports AbortController timeouts
     mcpServers: [],
     tools: getPlatformTools('telegram'),
     // Reduce history to minimize token usage and subrequests

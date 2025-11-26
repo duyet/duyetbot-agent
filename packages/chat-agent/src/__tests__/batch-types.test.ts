@@ -7,6 +7,7 @@
  * - shouldProcessImmediately: Batch limit checks
  * - isDuplicateMessage: Request deduplication
  * - createInitialBatchState: State initialization
+ * - isBatchStuckByHeartbeat: Stuck batch detection via heartbeat
  */
 
 import { describe, expect, it } from 'vitest';
@@ -14,12 +15,15 @@ import {
   type BatchConfig,
   type BatchState,
   DEFAULT_BATCH_CONFIG,
+  DEFAULT_HEARTBEAT_CONFIG,
   DEFAULT_RETRY_CONFIG,
+  type HeartbeatConfig,
   type PendingMessage,
   type RetryConfig,
   calculateRetryDelay,
   combineBatchMessages,
   createInitialBatchState,
+  isBatchStuckByHeartbeat,
   isDuplicateMessage,
   shouldProcessImmediately,
 } from '../batch-types.js';
@@ -329,6 +333,164 @@ describe('batch-types', () => {
         64000, // retry 5: 64s (max)
         64000, // retry 6: 64s (capped)
       ]);
+    });
+  });
+
+  describe('DEFAULT_HEARTBEAT_CONFIG', () => {
+    it('has 30000ms max heartbeat age', () => {
+      expect(DEFAULT_HEARTBEAT_CONFIG.maxHeartbeatAgeMs).toBe(30000);
+    });
+
+    it('has 5000ms heartbeat interval (matches ThinkingRotator)', () => {
+      expect(DEFAULT_HEARTBEAT_CONFIG.heartbeatIntervalMs).toBe(5000);
+    });
+  });
+
+  describe('isBatchStuckByHeartbeat', () => {
+    const now = Date.now();
+
+    const createProcessingState = (overrides: Partial<BatchState> = {}): BatchState => ({
+      status: 'processing',
+      pendingMessages: [{ text: 'hello', timestamp: now, requestId: 'req1' }],
+      batchId: 'batch_123',
+      retryCount: 0,
+      lastMessageAt: now,
+      batchStartedAt: now,
+      lastHeartbeat: now,
+      ...overrides,
+    });
+
+    it('returns not stuck when status is not processing', () => {
+      const idleState: BatchState = {
+        status: 'idle',
+        pendingMessages: [],
+        batchId: null,
+        retryCount: 0,
+        lastMessageAt: 0,
+        batchStartedAt: 0,
+      };
+      expect(isBatchStuckByHeartbeat(idleState)).toEqual({ isStuck: false });
+
+      const collectingState: BatchState = {
+        ...createProcessingState(),
+        status: 'collecting',
+      };
+      expect(isBatchStuckByHeartbeat(collectingState)).toEqual({
+        isStuck: false,
+      });
+
+      const completedState: BatchState = {
+        ...createProcessingState(),
+        status: 'completed',
+      };
+      expect(isBatchStuckByHeartbeat(completedState)).toEqual({
+        isStuck: false,
+      });
+
+      const failedState: BatchState = {
+        ...createProcessingState(),
+        status: 'failed',
+      };
+      expect(isBatchStuckByHeartbeat(failedState)).toEqual({ isStuck: false });
+    });
+
+    it('returns not stuck when heartbeat is fresh', () => {
+      const state = createProcessingState({
+        lastHeartbeat: Date.now(), // Just now
+      });
+      const result = isBatchStuckByHeartbeat(state);
+      expect(result.isStuck).toBe(false);
+    });
+
+    it('returns not stuck when heartbeat is within threshold', () => {
+      const state = createProcessingState({
+        lastHeartbeat: Date.now() - 25000, // 25s ago, threshold is 30s
+      });
+      const result = isBatchStuckByHeartbeat(state);
+      expect(result.isStuck).toBe(false);
+    });
+
+    it('returns stuck when heartbeat exceeds threshold', () => {
+      const state = createProcessingState({
+        lastHeartbeat: Date.now() - 35000, // 35s ago, threshold is 30s
+      });
+      const result = isBatchStuckByHeartbeat(state);
+      expect(result.isStuck).toBe(true);
+      expect(result.reason).toContain('No heartbeat for');
+      expect(result.reason).toContain('35s');
+    });
+
+    it('falls back to batchStartedAt when lastHeartbeat is undefined', () => {
+      // Fresh start - not stuck
+      const freshState = createProcessingState({
+        lastHeartbeat: undefined,
+        batchStartedAt: Date.now(),
+      });
+      expect(isBatchStuckByHeartbeat(freshState).isStuck).toBe(false);
+
+      // Old start without heartbeat - stuck
+      const stuckState = createProcessingState({
+        lastHeartbeat: undefined,
+        batchStartedAt: Date.now() - 40000, // 40s ago
+      });
+      const result = isBatchStuckByHeartbeat(stuckState);
+      expect(result.isStuck).toBe(true);
+      expect(result.reason).toContain('No heartbeat for');
+    });
+
+    it('returns not stuck when both timestamps are 0', () => {
+      const state = createProcessingState({
+        lastHeartbeat: undefined,
+        batchStartedAt: 0,
+      });
+      const result = isBatchStuckByHeartbeat(state);
+      expect(result.isStuck).toBe(false);
+    });
+
+    it('uses custom config for threshold', () => {
+      const customConfig: HeartbeatConfig = {
+        maxHeartbeatAgeMs: 10000, // 10s threshold
+        heartbeatIntervalMs: 2000,
+      };
+
+      // 15s ago - would be fine with default (30s) but stuck with custom (10s)
+      const state = createProcessingState({
+        lastHeartbeat: Date.now() - 15000,
+      });
+
+      // With default config - not stuck
+      expect(isBatchStuckByHeartbeat(state).isStuck).toBe(false);
+
+      // With custom config - stuck
+      const result = isBatchStuckByHeartbeat(state, customConfig);
+      expect(result.isStuck).toBe(true);
+      expect(result.reason).toContain('threshold: 10s');
+    });
+
+    it('includes correct timing in reason message', () => {
+      const state = createProcessingState({
+        lastHeartbeat: Date.now() - 45000, // 45s ago
+      });
+      const result = isBatchStuckByHeartbeat(state);
+      expect(result.isStuck).toBe(true);
+      expect(result.reason).toBe('No heartbeat for 45s (threshold: 30s)');
+    });
+
+    it('handles edge case at exact threshold', () => {
+      const state = createProcessingState({
+        lastHeartbeat: Date.now() - 30000, // Exactly at threshold
+      });
+      // At exactly 30s, should NOT be stuck (> not >=)
+      const result = isBatchStuckByHeartbeat(state);
+      expect(result.isStuck).toBe(false);
+    });
+
+    it('handles edge case just past threshold', () => {
+      const state = createProcessingState({
+        lastHeartbeat: Date.now() - 30001, // Just past threshold
+      });
+      const result = isBatchStuckByHeartbeat(state);
+      expect(result.isStuck).toBe(true);
     });
   });
 
