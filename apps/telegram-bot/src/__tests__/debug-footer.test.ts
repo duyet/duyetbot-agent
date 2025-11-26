@@ -3,12 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import {
-  escapeHtml,
-  formatDebugFooter,
-  isAdminUser,
-  prepareMessageWithDebug,
-} from '../debug-footer.js';
+import { escapeHtml, formatDebugFooter, prepareMessageWithDebug } from '../debug-footer.js';
 import type { TelegramContext } from '../transport.js';
 
 /**
@@ -21,71 +16,16 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
     userId: 789,
     text: 'test message',
     startTime: Date.now(),
+    isAdmin: false,
     ...overrides,
   };
 }
 
 describe('debug-footer', () => {
-  describe('isAdminUser', () => {
-    it('returns false when adminUsername is not set', () => {
-      const ctx = createMockContext({ username: 'testuser' });
-      expect(isAdminUser(ctx)).toBe(false);
-    });
-
-    it('returns false when username does not match adminUsername', () => {
-      const ctx = createMockContext({
-        username: 'testuser',
-        adminUsername: 'admin',
-      });
-      expect(isAdminUser(ctx)).toBe(false);
-    });
-
-    it('returns true when username matches adminUsername', () => {
-      const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
-      });
-      expect(isAdminUser(ctx)).toBe(true);
-    });
-
-    it('returns false when username is undefined', () => {
-      const ctx = createMockContext({
-        username: undefined,
-        adminUsername: 'admin',
-      });
-      expect(isAdminUser(ctx)).toBe(false);
-    });
-
-    it('returns true when username has @ prefix and adminUsername does not', () => {
-      const ctx = createMockContext({
-        username: '@admin',
-        adminUsername: 'admin',
-      });
-      expect(isAdminUser(ctx)).toBe(true);
-    });
-
-    it('returns true when adminUsername has @ prefix and username does not', () => {
-      const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: '@admin',
-      });
-      expect(isAdminUser(ctx)).toBe(true);
-    });
-
-    it('returns true when both have @ prefix', () => {
-      const ctx = createMockContext({
-        username: '@admin',
-        adminUsername: '@admin',
-      });
-      expect(isAdminUser(ctx)).toBe(true);
-    });
-  });
-
   describe('formatDebugFooter', () => {
     it('returns null for non-admin users', () => {
       const ctx = createMockContext({
-        username: 'testuser',
-        adminUsername: 'admin',
+        isAdmin: false,
         debugContext: {
           routingFlow: [{ agent: 'simple-agent', durationMs: 100 }],
           totalDurationMs: 100,
@@ -96,16 +36,14 @@ describe('debug-footer', () => {
 
     it('returns null when debugContext is missing', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
       });
       expect(formatDebugFooter(ctx)).toBeNull();
     });
 
     it('returns null when routingFlow is empty', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
         debugContext: {
           routingFlow: [],
         },
@@ -115,8 +53,7 @@ describe('debug-footer', () => {
 
     it('formats simple routing flow correctly', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
         debugContext: {
           routingFlow: [{ agent: 'simple-agent', durationMs: 1230 }],
           totalDurationMs: 1230,
@@ -131,8 +68,7 @@ describe('debug-footer', () => {
 
     it('formats routing flow with tools', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
         debugContext: {
           routingFlow: [
             {
@@ -151,8 +87,7 @@ describe('debug-footer', () => {
 
     it('formats multi-step routing flow', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
         debugContext: {
           routingFlow: [
             { agent: 'router', durationMs: 100 },
@@ -173,8 +108,7 @@ describe('debug-footer', () => {
 
     it('includes classification when available', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
         debugContext: {
           routingFlow: [{ agent: 'simple-agent', durationMs: 500 }],
           totalDurationMs: 500,
@@ -221,8 +155,7 @@ describe('debug-footer', () => {
   describe('prepareMessageWithDebug', () => {
     it('returns Markdown mode for non-admin users', () => {
       const ctx = createMockContext({
-        username: 'testuser',
-        adminUsername: 'admin',
+        isAdmin: false,
       });
       const result = prepareMessageWithDebug('Hello', ctx);
       expect(result.text).toBe('Hello');
@@ -231,8 +164,7 @@ describe('debug-footer', () => {
 
     it('returns HTML mode with debug footer for admin users', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
         debugContext: {
           routingFlow: [{ agent: 'simple-agent', durationMs: 500 }],
           totalDurationMs: 500,
@@ -246,8 +178,7 @@ describe('debug-footer', () => {
 
     it('escapes HTML in message when adding debug footer', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
         debugContext: {
           routingFlow: [{ agent: 'simple-agent', durationMs: 500 }],
           totalDurationMs: 500,
@@ -260,8 +191,7 @@ describe('debug-footer', () => {
 
     it('returns Markdown mode for admin without debug context', () => {
       const ctx = createMockContext({
-        username: 'admin',
-        adminUsername: 'admin',
+        isAdmin: true,
       });
       const result = prepareMessageWithDebug('Hello', ctx);
       expect(result.text).toBe('Hello');

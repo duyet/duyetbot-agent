@@ -28,6 +28,7 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
     userId: 789,
     text: 'test message',
     startTime: Date.now(),
+    isAdmin: false,
     ...overrides,
   };
 }
@@ -363,6 +364,7 @@ describe('transport', () => {
         text: 'Hello',
         startTime: 1700000000000,
         adminUsername: 'admin',
+        isAdmin: false,
       });
     });
 
@@ -379,6 +381,106 @@ describe('transport', () => {
       expect(ctx.adminUsername).toBeUndefined();
       expect(ctx.requestId).toBeUndefined();
       expect(ctx.username).toBeUndefined();
+      expect(ctx.isAdmin).toBe(false);
+    });
+  });
+
+  describe('createTelegramContext admin detection', () => {
+    it('sets isAdmin to false when adminUsername not provided', () => {
+      const webhookCtx = {
+        userId: 12345,
+        chatId: 67890,
+        text: 'Hello',
+        username: 'testuser',
+        startTime: 1700000000000,
+      };
+
+      const ctx = createTelegramContext('bot-token', webhookCtx);
+
+      expect(ctx.isAdmin).toBe(false);
+    });
+
+    it('sets isAdmin to false when username does not match adminUsername', () => {
+      const webhookCtx = {
+        userId: 12345,
+        chatId: 67890,
+        text: 'Hello',
+        username: 'testuser',
+        startTime: 1700000000000,
+      };
+
+      const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
+
+      expect(ctx.isAdmin).toBe(false);
+    });
+
+    it('sets isAdmin to true when username matches adminUsername', () => {
+      const webhookCtx = {
+        userId: 12345,
+        chatId: 67890,
+        text: 'Hello',
+        username: 'admin',
+        startTime: 1700000000000,
+      };
+
+      const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
+
+      expect(ctx.isAdmin).toBe(true);
+    });
+
+    it('handles @ prefix normalization in username', () => {
+      const webhookCtx = {
+        userId: 12345,
+        chatId: 67890,
+        text: 'Hello',
+        username: '@admin',
+        startTime: 1700000000000,
+      };
+
+      const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
+
+      expect(ctx.isAdmin).toBe(true);
+    });
+
+    it('handles @ prefix normalization in adminUsername', () => {
+      const webhookCtx = {
+        userId: 12345,
+        chatId: 67890,
+        text: 'Hello',
+        username: 'admin',
+        startTime: 1700000000000,
+      };
+
+      const ctx = createTelegramContext('bot-token', webhookCtx, '@admin');
+
+      expect(ctx.isAdmin).toBe(true);
+    });
+
+    it('handles @ prefix in both username and adminUsername', () => {
+      const webhookCtx = {
+        userId: 12345,
+        chatId: 67890,
+        text: 'Hello',
+        username: '@admin',
+        startTime: 1700000000000,
+      };
+
+      const ctx = createTelegramContext('bot-token', webhookCtx, '@admin');
+
+      expect(ctx.isAdmin).toBe(true);
+    });
+
+    it('sets isAdmin to false when username is undefined', () => {
+      const webhookCtx = {
+        userId: 12345,
+        chatId: 67890,
+        text: 'Hello',
+        startTime: 1700000000000,
+      };
+
+      const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
+
+      expect(ctx.isAdmin).toBe(false);
     });
   });
 });

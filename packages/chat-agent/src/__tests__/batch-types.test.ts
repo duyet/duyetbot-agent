@@ -337,8 +337,8 @@ describe('batch-types', () => {
   });
 
   describe('DEFAULT_HEARTBEAT_CONFIG', () => {
-    it('has 30000ms max heartbeat age', () => {
-      expect(DEFAULT_HEARTBEAT_CONFIG.maxHeartbeatAgeMs).toBe(30000);
+    it('has 20000ms max heartbeat age', () => {
+      expect(DEFAULT_HEARTBEAT_CONFIG.maxHeartbeatAgeMs).toBe(20000);
     });
 
     it('has 5000ms heartbeat interval (matches ThinkingRotator)', () => {
@@ -404,7 +404,7 @@ describe('batch-types', () => {
 
     it('returns not stuck when heartbeat is within threshold', () => {
       const state = createProcessingState({
-        lastHeartbeat: Date.now() - 25000, // 25s ago, threshold is 30s
+        lastHeartbeat: Date.now() - 15000, // 15s ago, threshold is 20s
       });
       const result = isBatchStuckByHeartbeat(state);
       expect(result.isStuck).toBe(false);
@@ -412,12 +412,12 @@ describe('batch-types', () => {
 
     it('returns stuck when heartbeat exceeds threshold', () => {
       const state = createProcessingState({
-        lastHeartbeat: Date.now() - 35000, // 35s ago, threshold is 30s
+        lastHeartbeat: Date.now() - 25000, // 25s ago, threshold is 20s
       });
       const result = isBatchStuckByHeartbeat(state);
       expect(result.isStuck).toBe(true);
       expect(result.reason).toContain('No heartbeat for');
-      expect(result.reason).toContain('35s');
+      expect(result.reason).toContain('25s');
     });
 
     it('falls back to batchStartedAt when lastHeartbeat is undefined', () => {
@@ -453,12 +453,12 @@ describe('batch-types', () => {
         heartbeatIntervalMs: 2000,
       };
 
-      // 15s ago - would be fine with default (30s) but stuck with custom (10s)
+      // 15s ago - would be fine with default (20s) but stuck with custom (10s)
       const state = createProcessingState({
         lastHeartbeat: Date.now() - 15000,
       });
 
-      // With default config - not stuck
+      // With default config - not stuck (15s < 20s threshold)
       expect(isBatchStuckByHeartbeat(state).isStuck).toBe(false);
 
       // With custom config - stuck
@@ -469,25 +469,25 @@ describe('batch-types', () => {
 
     it('includes correct timing in reason message', () => {
       const state = createProcessingState({
-        lastHeartbeat: Date.now() - 45000, // 45s ago
+        lastHeartbeat: Date.now() - 35000, // 35s ago
       });
       const result = isBatchStuckByHeartbeat(state);
       expect(result.isStuck).toBe(true);
-      expect(result.reason).toBe('No heartbeat for 45s (threshold: 30s)');
+      expect(result.reason).toBe('No heartbeat for 35s (threshold: 20s)');
     });
 
     it('handles edge case at exact threshold', () => {
       const state = createProcessingState({
-        lastHeartbeat: Date.now() - 30000, // Exactly at threshold
+        lastHeartbeat: Date.now() - 20000, // Exactly at threshold
       });
-      // At exactly 30s, should NOT be stuck (> not >=)
+      // At exactly 20s, should NOT be stuck (> not >=)
       const result = isBatchStuckByHeartbeat(state);
       expect(result.isStuck).toBe(false);
     });
 
     it('handles edge case just past threshold', () => {
       const state = createProcessingState({
-        lastHeartbeat: Date.now() - 30001, // Just past threshold
+        lastHeartbeat: Date.now() - 20001, // Just past threshold
       });
       const result = isBatchStuckByHeartbeat(state);
       expect(result.isStuck).toBe(true);

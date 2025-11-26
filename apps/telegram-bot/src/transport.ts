@@ -78,6 +78,8 @@ export interface TelegramContext {
   requestId?: string;
   /** Debug context for admin users (routing flow, timing, classification) */
   debugContext?: DebugContext;
+  /** Whether current user is an admin (computed from username + adminUsername) */
+  isAdmin: boolean;
 }
 
 /**
@@ -307,6 +309,24 @@ export const telegramTransport: Transport<TelegramContext> = {
 };
 
 /**
+ * Normalize username by removing leading @ if present
+ */
+function normalizeUsername(username: string): string {
+  return username.startsWith('@') ? username.slice(1) : username;
+}
+
+/**
+ * Compute admin status from username comparison
+ * Handles both '@username' and 'username' formats
+ */
+function computeIsAdmin(username?: string, adminUsername?: string): boolean {
+  if (!username || !adminUsername) {
+    return false;
+  }
+  return normalizeUsername(username) === normalizeUsername(adminUsername);
+}
+
+/**
  * Create TelegramContext from webhook context
  *
  * @param token - Bot token
@@ -326,6 +346,8 @@ export function createTelegramContext(
   adminUsername?: string,
   requestId?: string
 ): TelegramContext {
+  const isAdmin = computeIsAdmin(webhookCtx.username, adminUsername);
+
   return {
     token,
     chatId: webhookCtx.chatId,
@@ -335,5 +357,6 @@ export function createTelegramContext(
     text: webhookCtx.text,
     startTime: webhookCtx.startTime,
     adminUsername,
+    isAdmin,
   };
 }

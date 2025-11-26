@@ -9,24 +9,6 @@ import type { DebugContext } from '@duyetbot/chat-agent';
 import type { TelegramContext } from './transport.js';
 
 /**
- * Normalize username by removing leading @ if present
- */
-function normalizeUsername(username: string): string {
-  return username.startsWith('@') ? username.slice(1) : username;
-}
-
-/**
- * Check if the current user is an admin
- * Handles both '@username' and 'username' formats
- */
-export function isAdminUser(ctx: TelegramContext): boolean {
-  if (!ctx.adminUsername || !ctx.username) {
-    return false;
-  }
-  return normalizeUsername(ctx.username) === normalizeUsername(ctx.adminUsername);
-}
-
-/**
  * Format debug context as an expandable blockquote footer
  *
  * Uses Telegram's HTML <blockquote expandable> for collapsible display.
@@ -40,7 +22,7 @@ export function isAdminUser(ctx: TelegramContext): boolean {
  */
 export function formatDebugFooter(ctx: TelegramContext): string | null {
   // Only show for admin users
-  if (!isAdminUser(ctx)) {
+  if (!ctx.isAdmin) {
     return null;
   }
 
