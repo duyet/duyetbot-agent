@@ -2,10 +2,10 @@ import type { MiddlewareHandler } from 'hono';
 import type { LoggerOptions } from '../types.js';
 
 /**
- * Generate a unique request ID
+ * Generate a unique request ID using cryptographically secure random
  */
 function generateRequestId(): string {
-  return Math.random().toString(36).substring(2, 15);
+  return crypto.randomUUID().slice(0, 8);
 }
 
 /**
