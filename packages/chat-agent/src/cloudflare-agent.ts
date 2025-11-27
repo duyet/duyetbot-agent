@@ -1276,13 +1276,25 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
 
       // Determine if we need to schedule alarm
-      // Schedule if: (1) no active batch AND first message, OR (2) just recovered from stuck
+      // Schedule if: (1) no active batch AND first message, OR (2) just recovered from stuck,
+      // OR (3) orphaned pending batch (alarm was lost due to deployment/hibernation/SDK issue)
       const isFirstMessage = pendingBatch.pendingMessages.length === 1;
       const hasNoActiveProcessing = !this.state.activeBatch;
       const shouldScheduleNormal = hasNoActiveProcessing && isFirstMessage;
       const shouldScheduleAfterRecovery =
         recoveredFromStuck && pendingBatch.pendingMessages.length > 0;
-      const shouldSchedule = shouldScheduleNormal || shouldScheduleAfterRecovery;
+
+      // FIX: Also schedule if we have pending messages but no active batch and not first message
+      // This handles the edge case where a previous alarm was lost (e.g., due to deployment,
+      // DO hibernation, or SDK issue). Without this, messages accumulate forever.
+      const hasOrphanedPendingBatch =
+        hasNoActiveProcessing &&
+        !isFirstMessage &&
+        pendingBatch.pendingMessages.length > 0 &&
+        pendingBatch.status === 'collecting';
+
+      const shouldSchedule =
+        shouldScheduleNormal || shouldScheduleAfterRecovery || hasOrphanedPendingBatch;
 
       // Update state with new pendingBatch
       this.setState({
@@ -1297,6 +1309,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         pendingCount: pendingBatch.pendingMessages.length,
         hasActiveBatch: !!this.state.activeBatch,
         recoveredFromStuck,
+        hasOrphanedPendingBatch,
         willScheduleAlarm: shouldSchedule,
       });
 
@@ -1304,7 +1317,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       if (shouldSchedule) {
         const reason = shouldScheduleAfterRecovery
           ? 'recovered_from_stuck'
-          : 'first_pending_message';
+          : hasOrphanedPendingBatch
+            ? 'orphaned_pending_batch'
+            : 'first_pending_message';
         logger.info(`[CloudflareAgent][BATCH] Scheduling alarm (${reason})`);
 
         try {

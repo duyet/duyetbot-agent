@@ -5,6 +5,7 @@
  * Determines query type, category, complexity, and whether human approval is needed.
  */
 
+import { logger } from '@duyetbot/hono-middleware';
 import { getRouterPrompt } from '@duyetbot/prompts';
 import type { LLMProvider } from '../types.js';
 import {
@@ -44,6 +45,14 @@ export interface ClassifierConfig {
  * Imported from centralized @duyetbot/prompts package
  */
 const CLASSIFICATION_SYSTEM_PROMPT = getRouterPrompt();
+
+// Log classification system prompt at module load time
+logger.debug('[RouterAgent/Classifier] System prompt loaded', {
+  promptLength: CLASSIFICATION_SYSTEM_PROMPT.length,
+  promptPreview:
+    CLASSIFICATION_SYSTEM_PROMPT.slice(0, 200) +
+    (CLASSIFICATION_SYSTEM_PROMPT.length > 200 ? '...' : ''),
+});
 
 /**
  * Format the classification prompt

@@ -105,6 +105,7 @@ export const GitHubWorker: WorkerClass<SharedEnv> = createGitHubWorker<SharedEnv
  */
 export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> = createDuyetInfoAgent<SharedEnv>({
   createProvider: (env) => createProvider(env),
+  debug: true, // Enable detailed logging for observability
 });
 
 /**

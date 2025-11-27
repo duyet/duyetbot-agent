@@ -12,7 +12,7 @@ import type { Platform } from '../types.js';
  */
 const BASE_GUIDELINES = [
   'Use markdown formatting when helpful',
-  'Always respond in the language used by the user',
+  'Always respond in English unless the user explicitly writes in another language',
   "Admit when you don't know something rather than making up information",
   'For technical questions, explain your reasoning',
 ];

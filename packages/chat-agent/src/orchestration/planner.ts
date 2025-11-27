@@ -8,6 +8,7 @@
  * https://developers.cloudflare.com/agents/patterns/orchestrator-workers/
  */
 
+import { logger } from '@duyetbot/hono-middleware';
 import { AgentMixin } from '../agents/base-agent.js';
 import type { ComplexityLevel, ExecutionPlan, PlanStep } from '../routing/schemas.js';
 import { ExecutionPlanSchema } from '../routing/schemas.js';
@@ -85,6 +86,13 @@ Return a JSON object matching this schema:
   "estimatedComplexity": "low|medium|high",
   "estimatedDurationSeconds": optional_number
 }`;
+
+// Log planning system prompt at module load time
+logger.debug('[OrchestratorAgent/Planner] System prompt loaded', {
+  promptLength: PLANNING_SYSTEM_PROMPT.length,
+  promptPreview:
+    PLANNING_SYSTEM_PROMPT.slice(0, 200) + (PLANNING_SYSTEM_PROMPT.length > 200 ? '...' : ''),
+});
 
 /**
  * Create an execution plan from a task description
