@@ -227,7 +227,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           logger.info('[ROUTER_DEBUG] Routing decision', logEntry);
         }
 
-        // Update state with routing history
+        // Update state with routing history (truncate fields to limit storage)
         this.setState({
           ...this.state,
           sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
@@ -235,8 +235,11 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           routingHistory: [
             ...this.state.routingHistory.slice(-(maxHistory - 1)),
             {
-              query: query.slice(0, 200), // Truncate for storage
-              classification,
+              query: query.slice(0, 200),
+              classification: {
+                ...classification,
+                reasoning: classification.reasoning?.slice(0, 100),
+              },
               routedTo: target,
               timestamp: Date.now(),
               durationMs,

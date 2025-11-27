@@ -359,7 +359,19 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
      * Execute an MCP tool call with timeout and caching
      */
     async executeMcpTool(toolCall: ToolCall): Promise<string> {
-      const args = JSON.parse(toolCall.arguments);
+      let args: Record<string, unknown>;
+      try {
+        args = JSON.parse(toolCall.arguments);
+      } catch {
+        const errorMsg = `Invalid JSON arguments for ${toolCall.name}`;
+        logger.error('[DuyetInfoAgent] JSON parse error', {
+          tool: toolCall.name,
+          arguments: toolCall.arguments.slice(0, 200),
+        });
+        this.toolStats.toolErrors++;
+        this.toolStats.lastToolError = errorMsg;
+        return `Error: ${errorMsg}`;
+      }
       const cacheKey = this.getCacheKey(toolCall.name, args);
       const isCacheable = isCacheableTool(toolCall.name);
 
@@ -420,17 +432,29 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         // Cache successful results for cacheable tools
         if (isCacheable) {
           const currentCache = this.state.cachedToolResults ?? {};
-          // Limit cache size to 20 entries (simple LRU: just clear if too big)
-          const cacheEntries = Object.keys(currentCache);
-          const newCache =
-            cacheEntries.length >= 20
-              ? {
-                  [cacheKey]: { result: formattedResult, cachedAt: Date.now() },
-                }
-              : {
-                  ...currentCache,
-                  [cacheKey]: { result: formattedResult, cachedAt: Date.now() },
-                };
+          const newCache = { ...currentCache };
+          const cacheEntries = Object.keys(newCache);
+
+          // LRU eviction: remove oldest entry if at capacity
+          if (cacheEntries.length >= 20 && cacheEntries.length > 0) {
+            const oldestKey = cacheEntries.reduce((oldest, key) => {
+              const currentEntry = newCache[key];
+              const oldestEntry = newCache[oldest];
+              if (!currentEntry || !oldestEntry) return oldest;
+              return currentEntry.cachedAt < oldestEntry.cachedAt ? key : oldest;
+            });
+            delete newCache[oldestKey];
+            if (debug) {
+              logger.info('[DuyetInfoAgent] LRU eviction', {
+                evicted: oldestKey,
+              });
+            }
+          }
+
+          newCache[cacheKey] = {
+            result: formattedResult,
+            cachedAt: Date.now(),
+          };
 
           this.setState({
             ...this.state,
