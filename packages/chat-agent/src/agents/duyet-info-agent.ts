@@ -440,7 +440,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
             const oldestKey = cacheEntries.reduce((oldest, key) => {
               const currentEntry = newCache[key];
               const oldestEntry = newCache[oldest];
-              if (!currentEntry || !oldestEntry) return oldest;
+              if (!currentEntry || !oldestEntry) {
+                return oldest;
+              }
               return currentEntry.cachedAt < oldestEntry.cachedAt ? key : oldest;
             });
             delete newCache[oldestKey];

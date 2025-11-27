@@ -10,8 +10,9 @@ export * from './agent.js';
 export * from './message.js';
 // Provider types
 export * from './provider.js';
-
 // Session types
 export * from './session.js';
 // Tool types
 export * from './tool.js';
+// Mention parser utilities
+export * from './mention-parser.js';
