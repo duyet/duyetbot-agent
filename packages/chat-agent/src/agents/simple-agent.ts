@@ -7,10 +7,14 @@
  * This is a lightweight agent for quick responses.
  */
 
-import { logger } from '@duyetbot/hono-middleware';
-import { Agent, type Connection } from 'agents';
-import type { LLMProvider, Message } from '../types.js';
-import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+import { logger } from "@duyetbot/hono-middleware";
+import { Agent, type Connection } from "agents";
+import type { LLMProvider, Message } from "../types.js";
+import {
+  type AgentContext,
+  AgentMixin,
+  type AgentResult,
+} from "./base-agent.js";
 
 /**
  * Simple agent state
@@ -63,7 +67,10 @@ export interface SimpleAgentMethods {
 /**
  * Type for SimpleAgent class
  */
-export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<TEnv, SimpleAgentState> & {
+export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<
+  TEnv,
+  SimpleAgentState
+> & {
   new (
     ...args: ConstructorParameters<typeof Agent<TEnv, SimpleAgentState>>
   ): Agent<TEnv, SimpleAgentState> & SimpleAgentMethods;
@@ -81,14 +88,25 @@ export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<TEnv, S
  * ```
  */
 export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
-  config: SimpleAgentConfig<TEnv>
+  config: SimpleAgentConfig<TEnv>,
 ): SimpleAgentClass<TEnv> {
   const maxHistory = config.maxHistory ?? 20;
   const debug = config.debug ?? false;
 
+  // Log system prompt at agent creation time
+  logger.debug("[SimpleAgent] System prompt loaded", {
+    promptLength: config.systemPrompt.length,
+    promptPreview:
+      config.systemPrompt.slice(0, 200) +
+      (config.systemPrompt.length > 200 ? "..." : ""),
+  });
+  if (debug) {
+    logger.debug(`[SimpleAgent] Full system prompt:\n${config.systemPrompt}`);
+  }
+
   const AgentClass = class SimpleAgent extends Agent<TEnv, SimpleAgentState> {
     override initialState: SimpleAgentState = {
-      sessionId: '',
+      sessionId: "",
       messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
@@ -97,9 +115,12 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(state: SimpleAgentState, source: 'server' | Connection): void {
+    override onStateUpdate(
+      state: SimpleAgentState,
+      source: "server" | Connection,
+    ): void {
       if (debug) {
-        logger.info('[SimpleAgent] State updated', {
+        logger.info("[SimpleAgent] State updated", {
           source,
           messageCount: state.messages.length,
         });
@@ -111,9 +132,9 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
      */
     async execute(query: string, context: AgentContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
+      const traceId = context.traceId ?? AgentMixin.generateId("trace");
 
-      AgentMixin.log('SimpleAgent', 'Executing query', {
+      AgentMixin.log("SimpleAgent", "Executing query", {
         traceId,
         queryLength: query.length,
       });
@@ -124,14 +145,14 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
         const provider = config.createProvider(env);
 
         // Add user message to history
-        const userMessage: Message = { role: 'user', content: query };
+        const userMessage: Message = { role: "user", content: query };
         const updatedMessages = [...this.state.messages, userMessage];
 
         // Build messages for LLM
         const llmMessages = [
-          { role: 'system' as const, content: config.systemPrompt },
+          { role: "system" as const, content: config.systemPrompt },
           ...updatedMessages.map((m) => ({
-            role: m.role as 'user' | 'assistant' | 'system',
+            role: m.role as "user" | "assistant" | "system",
             content: m.content,
           })),
         ];
@@ -139,26 +160,27 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
         // Call LLM
         const response = await provider.chat(llmMessages);
         const assistantMessage: Message = {
-          role: 'assistant',
+          role: "assistant",
           content: response.content,
         };
 
         // Update state with trimmed history
         const newMessages = AgentMixin.trimHistory(
           [...updatedMessages, assistantMessage],
-          maxHistory
+          maxHistory,
         );
 
         this.setState({
           ...this.state,
-          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
+          sessionId:
+            this.state.sessionId || context.chatId?.toString() || traceId,
           messages: newMessages,
           updatedAt: Date.now(),
         });
 
         const durationMs = Date.now() - startTime;
 
-        AgentMixin.log('SimpleAgent', 'Query complete', {
+        AgentMixin.log("SimpleAgent", "Query complete", {
           traceId,
           durationMs,
           responseLength: response.content.length,
@@ -167,7 +189,7 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
         return AgentMixin.createResult(true, response.content, durationMs);
       } catch (error) {
         const durationMs = Date.now() - startTime;
-        AgentMixin.logError('SimpleAgent', 'Query failed', error, {
+        AgentMixin.logError("SimpleAgent", "Query failed", error, {
           traceId,
           durationMs,
         });

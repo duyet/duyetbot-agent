@@ -13,7 +13,12 @@ import { getDuyetInfoPrompt } from '@duyetbot/prompts';
 import { Agent, type Connection } from 'agents';
 import type { MCPServerConnection } from '../cloudflare-agent.js';
 import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
-import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+import {
+  type AgentContext,
+  type AgentDebugInfo,
+  AgentMixin,
+  type AgentResult,
+} from './base-agent.js';
 
 /**
  * Duyet MCP server connection details
@@ -63,6 +68,50 @@ function duyetToolFilter(toolName: string): boolean {
 }
 
 /**
+ * Tools that benefit from result caching (blog data changes infrequently)
+ */
+const CACHEABLE_TOOL_PATTERNS = [
+  /get_latest/i,
+  /get_recent/i,
+  /list_posts/i,
+  /get_blog/i,
+  /get_posts/i,
+  /feed/i,
+];
+
+function isCacheableTool(toolName: string): boolean {
+  return CACHEABLE_TOOL_PATTERNS.some((pattern) => pattern.test(toolName));
+}
+
+/**
+ * Fallback responses for when MCP tools timeout or fail
+ */
+const FALLBACK_RESPONSES = {
+  blog: `I'm having trouble fetching the latest blog posts right now. You can visit blog.duyet.net directly for the most recent content.`,
+  info: `I'm unable to retrieve that information at the moment. Please visit duyet.net for details.`,
+  default: `I'm experiencing some technical difficulties. Please try again in a moment.`,
+} as const;
+
+function getFallbackResponse(query: string): string {
+  const lower = query.toLowerCase();
+  if (/blog|post|article|latest|recent/.test(lower)) {
+    return FALLBACK_RESPONSES.blog;
+  }
+  if (/cv|resume|contact|skill|experience|about/.test(lower)) {
+    return FALLBACK_RESPONSES.info;
+  }
+  return FALLBACK_RESPONSES.default;
+}
+
+/**
+ * Cached tool result entry
+ */
+interface CachedToolResult {
+  result: string;
+  cachedAt: number;
+}
+
+/**
  * Duyet Info Agent state (stateless - no conversation history)
  */
 export interface DuyetInfoAgentState {
@@ -80,6 +129,8 @@ export interface DuyetInfoAgentState {
   queriesExecuted: number;
   /** Last execution timestamp */
   lastExecutedAt: number | undefined;
+  /** Cached tool execution results (for blog data) */
+  cachedToolResults: Record<string, CachedToolResult> | undefined;
 }
 
 /**
@@ -102,6 +153,10 @@ export interface DuyetInfoAgentConfig<TEnv extends DuyetInfoAgentEnv> {
   maxTools?: number;
   /** Connection timeout in ms (default: 10000) */
   connectionTimeoutMs?: number;
+  /** Tool execution timeout in ms (default: 12000) */
+  toolTimeoutMs?: number;
+  /** Result cache TTL in ms (default: 180000 = 3 min) */
+  resultCacheTtlMs?: number;
   /** Maximum tool call iterations (default: 3) */
   maxToolIterations?: number;
   /** Enable detailed logging */
@@ -146,6 +201,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 ): DuyetInfoAgentClass<TEnv> {
   const debug = config.debug ?? false;
   const connectionTimeoutMs = config.connectionTimeoutMs ?? 10000;
+  const toolTimeoutMs = config.toolTimeoutMs ?? 12000; // 12s per-tool timeout
+  const resultCacheTtlMs = config.resultCacheTtlMs ?? 180000; // 3 min cache
   const maxToolIterations = config.maxToolIterations ?? 3;
   const maxTools = config.maxTools ?? 10;
 
@@ -158,6 +215,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
       toolsCachedAt: undefined,
       queriesExecuted: 0,
       lastExecutedAt: undefined,
+      cachedToolResults: undefined,
     };
 
     private _mcpInitialized = false;
@@ -263,37 +321,202 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
     }
 
     /**
-     * Execute an MCP tool call
+     * Get cache key for a tool call
+     */
+    private getCacheKey(toolName: string, args: Record<string, unknown>): string {
+      return `${toolName}:${JSON.stringify(args)}`;
+    }
+
+    /**
+     * Tool execution result with stats for debugging
+     */
+    private toolStats = {
+      cacheHits: 0,
+      cacheMisses: 0,
+      toolTimeouts: 0,
+      timedOutTools: [] as string[],
+      toolsUsed: [] as string[],
+      toolErrors: 0,
+      lastToolError: undefined as string | undefined,
+    };
+
+    /**
+     * Reset tool stats for a new execution
+     */
+    private resetToolStats(): void {
+      this.toolStats = {
+        cacheHits: 0,
+        cacheMisses: 0,
+        toolTimeouts: 0,
+        timedOutTools: [],
+        toolsUsed: [],
+        toolErrors: 0,
+        lastToolError: undefined,
+      };
+    }
+
+    /**
+     * Execute an MCP tool call with timeout and caching
      */
     async executeMcpTool(toolCall: ToolCall): Promise<string> {
-      try {
-        const args = JSON.parse(toolCall.arguments);
+      const args = JSON.parse(toolCall.arguments);
+      const cacheKey = this.getCacheKey(toolCall.name, args);
+      const isCacheable = isCacheableTool(toolCall.name);
 
-        if (debug) {
-          logger.info('[DuyetInfoAgent] Executing MCP tool', {
-            tool: toolCall.name,
-            args,
-          });
+      // Track tool usage
+      this.toolStats.toolsUsed.push(toolCall.name);
+
+      // Check cache for cacheable tools
+      if (isCacheable && this.state.cachedToolResults) {
+        const cached = this.state.cachedToolResults[cacheKey];
+        if (cached && Date.now() - cached.cachedAt < resultCacheTtlMs) {
+          this.toolStats.cacheHits++;
+          if (debug) {
+            logger.info('[DuyetInfoAgent] Cache hit', {
+              tool: toolCall.name,
+              cacheAge: Date.now() - cached.cachedAt,
+            });
+          }
+          return cached.result;
         }
+      }
 
-        const result = await this.mcp.callTool({
+      // Cache miss (or not cacheable)
+      if (isCacheable) {
+        this.toolStats.cacheMisses++;
+      }
+
+      if (debug) {
+        logger.info('[DuyetInfoAgent] Executing MCP tool', {
+          tool: toolCall.name,
+          args,
+          isCacheable,
+          timeoutMs: toolTimeoutMs,
+        });
+      }
+
+      try {
+        // Create timeout promise
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`Tool ${toolCall.name} timed out after ${toolTimeoutMs}ms`)),
+            toolTimeoutMs
+          );
+        });
+
+        // Execute with timeout using Promise.race
+        const resultPromise = this.mcp.callTool({
           serverId: DUYET_MCP_SERVER.name,
           name: toolCall.name,
           arguments: args,
         });
 
+        const result = await Promise.race([resultPromise, timeoutPromise]);
+
         // Format result as string
-        if (typeof result === 'string') {
-          return result;
+        const formattedResult =
+          typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+
+        // Cache successful results for cacheable tools
+        if (isCacheable) {
+          const currentCache = this.state.cachedToolResults ?? {};
+          // Limit cache size to 20 entries (simple LRU: just clear if too big)
+          const cacheEntries = Object.keys(currentCache);
+          const newCache =
+            cacheEntries.length >= 20
+              ? {
+                  [cacheKey]: { result: formattedResult, cachedAt: Date.now() },
+                }
+              : {
+                  ...currentCache,
+                  [cacheKey]: { result: formattedResult, cachedAt: Date.now() },
+                };
+
+          this.setState({
+            ...this.state,
+            cachedToolResults: newCache,
+          });
+
+          if (debug) {
+            logger.info('[DuyetInfoAgent] Cached tool result', {
+              tool: toolCall.name,
+              cacheSize: Object.keys(newCache).length,
+            });
+          }
         }
-        return JSON.stringify(result, null, 2);
+
+        return formattedResult;
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        const isTimeout = errorMsg.includes('timed out');
+
+        // Track all errors
+        this.toolStats.toolErrors++;
+        this.toolStats.lastToolError = `${toolCall.name}: ${errorMsg.slice(0, 100)}`;
+
+        if (isTimeout) {
+          this.toolStats.toolTimeouts++;
+          this.toolStats.timedOutTools.push(toolCall.name);
+          logger.warn('[DuyetInfoAgent] Tool timed out', {
+            tool: toolCall.name,
+            timeoutMs: toolTimeoutMs,
+          });
+          return `Tool ${toolCall.name} took too long to respond. Please try a simpler query or check the source directly.`;
+        }
+
         logger.error('[DuyetInfoAgent] MCP tool execution failed', {
           tool: toolCall.name,
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
         });
-        return `Error executing tool ${toolCall.name}: ${error instanceof Error ? error.message : String(error)}`;
+        return `Error executing tool ${toolCall.name}: ${errorMsg}`;
       }
+    }
+
+    /**
+     * Build debug info from current tool stats
+     * Builds object conditionally to satisfy exactOptionalPropertyTypes
+     */
+    private buildDebugInfo(fallback = false, originalError?: string): AgentDebugInfo {
+      // Build metadata object conditionally (exactOptionalPropertyTypes)
+      const metadata: AgentDebugInfo['metadata'] = {};
+
+      if (fallback) {
+        metadata.fallback = fallback;
+      }
+      if (originalError) {
+        metadata.originalError = originalError;
+      }
+      if (this.toolStats.cacheHits > 0) {
+        metadata.cacheHits = this.toolStats.cacheHits;
+      }
+      if (this.toolStats.cacheMisses > 0) {
+        metadata.cacheMisses = this.toolStats.cacheMisses;
+      }
+      if (this.toolStats.toolTimeouts > 0) {
+        metadata.toolTimeouts = this.toolStats.toolTimeouts;
+      }
+      if (this.toolStats.timedOutTools.length > 0) {
+        metadata.timedOutTools = this.toolStats.timedOutTools;
+      }
+      if (this.toolStats.toolErrors > 0) {
+        metadata.toolErrors = this.toolStats.toolErrors;
+      }
+      if (this.toolStats.lastToolError) {
+        metadata.lastToolError = this.toolStats.lastToolError;
+      }
+
+      const debugInfo: AgentDebugInfo = {};
+
+      if (this.toolStats.toolsUsed.length > 0) {
+        debugInfo.tools = this.toolStats.toolsUsed;
+      }
+
+      // Only include metadata if it has any properties
+      if (Object.keys(metadata).length > 0) {
+        debugInfo.metadata = metadata;
+      }
+
+      return debugInfo;
     }
 
     /**
@@ -302,6 +525,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
     async execute(query: string, context: AgentContext): Promise<AgentResult> {
       const startTime = Date.now();
       const traceId = context.traceId ?? AgentMixin.generateId('trace');
+
+      // Reset tool stats for this execution
+      this.resetToolStats();
 
       AgentMixin.log('DuyetInfoAgent', 'Executing query', {
         traceId,
@@ -379,18 +605,50 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           durationMs,
           toolIterations: iterations,
           responseLength: response.content.length,
+          toolStats: this.toolStats,
         });
 
-        return AgentMixin.createResult(true, response.content, durationMs);
+        // Include debug info with tool stats
+        return AgentMixin.createResult(true, response.content, durationMs, {
+          debug: this.buildDebugInfo(),
+        });
       } catch (error) {
         const durationMs = Date.now() - startTime;
+        const errorMessage = error instanceof Error ? error.message : String(error);
 
+        // Check if it's a timeout or MCP-related error - return fallback instead of error
+        const isRecoverableError =
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('MCP') ||
+          errorMessage.includes('Gateway') ||
+          errorMessage.includes('408');
+
+        if (isRecoverableError) {
+          const fallbackMessage = getFallbackResponse(query);
+
+          logger.warn('[DuyetInfoAgent] Returning fallback due to error', {
+            traceId,
+            durationMs,
+            error: errorMessage,
+            fallback: true,
+            toolStats: this.toolStats,
+          });
+
+          // Return fallback as success with debug info including fallback status
+          return AgentMixin.createResult(true, fallbackMessage, durationMs, {
+            debug: this.buildDebugInfo(true, errorMessage),
+          });
+        }
+
+        // For other errors, still return as error with debug info
         AgentMixin.logError('DuyetInfoAgent', 'Query failed', error, {
           traceId,
           durationMs,
         });
 
-        return AgentMixin.createErrorResult(error, durationMs);
+        const errorResult = AgentMixin.createErrorResult(error, durationMs);
+        errorResult.debug = this.buildDebugInfo(false, errorMessage);
+        return errorResult;
       }
     }
 

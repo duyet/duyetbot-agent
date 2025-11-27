@@ -638,6 +638,10 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             complexity: classification.complexity,
           };
         }
+        // Add metadata from agent debug info (fallback, cache, timeout)
+        if (result.debug?.metadata) {
+          debugContext.metadata = result.debug.metadata;
+        }
 
         // Send response directly to platform
         // Cast env to PlatformEnv - platform tokens come from responseTarget or env

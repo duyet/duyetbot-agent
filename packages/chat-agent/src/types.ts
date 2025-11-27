@@ -113,6 +113,27 @@ export interface AgentState {
 }
 
 /**
+ * Debug metadata for agent execution
+ */
+export interface DebugMetadata {
+  /** Whether response is a fallback due to error */
+  fallback?: boolean;
+  /** Original error message if fallback */
+  originalError?: string;
+  /** Cache statistics */
+  cacheHits?: number;
+  cacheMisses?: number;
+  /** Tool timeout count */
+  toolTimeouts?: number;
+  /** Tools that timed out */
+  timedOutTools?: string[];
+  /** Tool error count */
+  toolErrors?: number;
+  /** Last tool error message (truncated) */
+  lastToolError?: string;
+}
+
+/**
  * Debug context for routing/orchestration tracing
  * Used by admin users to see agent flow and timing
  */
@@ -137,4 +158,6 @@ export interface DebugContext {
     /** Complexity level (low, medium, high) */
     complexity: string;
   };
+  /** Additional debug metadata (fallback, cache, timeout) */
+  metadata?: DebugMetadata;
 }

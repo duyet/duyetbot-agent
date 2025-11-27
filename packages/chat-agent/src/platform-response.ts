@@ -80,8 +80,9 @@ function escapeHtml(text: string): string {
  * Format debug context as expandable blockquote footer
  *
  * Example output:
- * 🔍 router → simple-agent (search, calculator) 2.34s
- * simple/general/low
+ * 🔍 router → duyet-info-agent (get_latest_posts) 2.34s
+ * simple/duyet/low
+ * [fallback] cache:1/0 timeout:1 (get_latest_posts)
  */
 function formatDebugFooter(debugContext: DebugContext): string {
   const flow = debugContext.routingFlow;
@@ -102,7 +103,44 @@ function formatDebugFooter(debugContext: DebugContext): string {
     ? `\n${debugContext.classification.type}/${debugContext.classification.category}/${debugContext.classification.complexity}`
     : '';
 
-  return `\n\n<blockquote expandable>🔍 ${flowStr}${duration}${classification}</blockquote>`;
+  // Format metadata line (fallback, cache, timeout, errors)
+  let metadataLine = '';
+  if (debugContext.metadata) {
+    const parts: string[] = [];
+    const m = debugContext.metadata;
+
+    // Fallback indicator
+    if (m.fallback) {
+      parts.push('[fallback]');
+    }
+
+    // Cache stats (hits/misses)
+    if (m.cacheHits !== undefined || m.cacheMisses !== undefined) {
+      parts.push(`cache:${m.cacheHits ?? 0}/${m.cacheMisses ?? 0}`);
+    }
+
+    // Timeout info
+    if (m.toolTimeouts && m.toolTimeouts > 0) {
+      const timeoutTools = m.timedOutTools?.length ? ` (${m.timedOutTools.join(', ')})` : '';
+      parts.push(`timeout:${m.toolTimeouts}${timeoutTools}`);
+    }
+
+    // Tool error info
+    if (m.toolErrors && m.toolErrors > 0) {
+      parts.push(`err:${m.toolErrors}`);
+    }
+
+    if (parts.length > 0) {
+      metadataLine = `\n${parts.join(' ')}`;
+    }
+
+    // Show last tool error on separate line if present
+    if (m.lastToolError) {
+      metadataLine += `\n⚠️ ${escapeHtml(m.lastToolError)}`;
+    }
+  }
+
+  return `\n\n<blockquote expandable>🔍 ${flowStr}${duration}${classification}${metadataLine}</blockquote>`;
 }
 
 /**
