@@ -90,8 +90,23 @@ function parseClassificationResponse(response: string): QueryClassification {
     throw new Error('No JSON found in classification response');
   }
 
-  const parsed = JSON.parse(jsonMatch[0]);
-  return QueryClassificationSchema.parse(parsed);
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    return QueryClassificationSchema.parse(parsed);
+  } catch (error) {
+    // Return safe fallback on parse failure
+    logger.error('[Classifier] Failed to parse classification JSON', {
+      error: error instanceof Error ? error.message : String(error),
+      response: response.slice(0, 300),
+    });
+    return {
+      type: 'simple',
+      category: 'general',
+      complexity: 'low',
+      requiresHumanApproval: false,
+      reasoning: 'Classification parsing failed, using fallback',
+    };
+  }
 }
 
 /**

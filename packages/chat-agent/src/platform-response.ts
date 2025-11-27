@@ -73,7 +73,8 @@ function escapeHtml(text: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
 /**
@@ -211,8 +212,13 @@ async function sendTelegramResponse(
     throw new Error('No Telegram bot token available');
   }
 
-  // Truncate text to Telegram's message limit
-  const truncatedText = text.slice(0, 4096);
+  // Truncate text to Telegram's message limit with indicator
+  const TELEGRAM_LIMIT = 4096;
+  const TRUNCATION_SUFFIX = '\n\n[...truncated]';
+  const truncatedText =
+    text.length > TELEGRAM_LIMIT
+      ? text.slice(0, TELEGRAM_LIMIT - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX
+      : text;
 
   const url = `https://api.telegram.org/bot${token}/editMessageText`;
 
