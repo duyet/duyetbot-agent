@@ -9,55 +9,15 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { extractTask, hasMention } from '@duyetbot/types/mention-parser';
 import type { MiddlewareHandler } from 'hono';
 import type { Env, MentionVariables, WebhookContext } from './types.js';
 
-/**
- * Check if text contains a bot mention
- *
- * Looks for @botname pattern in the text (case-insensitive).
- * The pattern matches the mention at word boundary to avoid
- * false positives (e.g., @duyetbot123 won't match @duyetbot).
- *
- * @param text - Text to search for mention
- * @param botUsername - Bot username without @ prefix
- * @returns true if bot is mentioned, false otherwise
- *
- * @example
- * ```typescript
- * hasBotMention('@duyetbot please help', 'duyetbot') // true
- * hasBotMention('hey @DUYETBOT', 'duyetbot') // true (case-insensitive)
- * hasBotMention('hello world', 'duyetbot') // false
- * hasBotMention('@duyetbot123 test', 'duyetbot') // false (word boundary)
- * ```
- */
-export function hasBotMention(text: string, botUsername: string): boolean {
-  const mentionPattern = new RegExp(`@${botUsername}\\b`, 'i');
-  return mentionPattern.test(text);
-}
-
-/**
- * Extract task text after the bot mention
- *
- * Removes the @botname mention from the text and returns
- * the remaining content trimmed. Handles multiple mentions
- * by removing only the first occurrence.
- *
- * @param text - Text containing the mention
- * @param botUsername - Bot username without @ prefix
- * @returns Task text without the mention, trimmed
- *
- * @example
- * ```typescript
- * extractTask('@duyetbot please review', 'duyetbot') // 'please review'
- * extractTask('hey @duyetbot help', 'duyetbot') // 'hey help'
- * extractTask('@duyetbot', 'duyetbot') // ''
- * ```
- */
-export function extractTask(text: string, botUsername: string): string {
-  const mentionPattern = new RegExp(`@${botUsername}\\s*`, 'i');
-  return text.replace(mentionPattern, '').trim();
-}
+// Re-export for backward compatibility
+export {
+  extractTask,
+  hasMention as hasBotMention,
+} from '@duyetbot/types/mention-parser';
 
 /**
  * Get the text content from webhook context
@@ -150,7 +110,7 @@ export function createGitHubMentionMiddleware(): MiddlewareHandler<{
     const botUsername = c.env.BOT_USERNAME || 'duyetbot';
 
     // Check for bot mention
-    if (!hasBotMention(text, botUsername)) {
+    if (!hasMention(text, botUsername)) {
       logger.debug('[MENTION] No bot mention found', {
         requestId: webhookContext.requestId,
         repository: `${webhookContext.owner}/${webhookContext.repo}`,

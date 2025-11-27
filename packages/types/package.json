@@ -29,6 +29,10 @@
     "./message": {
       "types": "./dist/message.d.ts",
       "import": "./dist/message.js"
+    },
+    "./mention-parser": {
+      "types": "./dist/mention-parser.d.ts",
+      "import": "./dist/mention-parser.js"
     }
   },
   "files": ["dist"],
