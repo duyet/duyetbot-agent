@@ -22,6 +22,7 @@ import {
   type RouterAgentClass,
   type RouterAgentEnv,
   type SimpleAgentClass,
+  StateDO as StateDOClass,
   type WorkerClass,
   createCodeWorker,
   createDuyetInfoAgent,
@@ -107,6 +108,17 @@ export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> = createDuyetInfoAge
 });
 
 /**
+ * StateDO for centralized observability and watchdog recovery
+ *
+ * Tracks:
+ * - Active sessions across all chat agents
+ * - Execution traces for debugging
+ * - Stuck batch detection and recovery
+ * - Aggregated metrics
+ */
+export const StateDO = StateDOClass;
+
+/**
  * Worker fetch handler (minimal - DOs handle all logic)
  */
 export default {
@@ -125,6 +137,7 @@ export default {
           'ResearchWorker',
           'GitHubWorker',
           'DuyetInfoAgent',
+          'StateDO',
         ],
       }),
       {

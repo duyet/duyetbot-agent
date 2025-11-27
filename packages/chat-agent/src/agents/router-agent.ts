@@ -82,6 +82,9 @@ export interface RouterAgentEnv {
   ResearchWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
   GitHubWorker?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
   DuyetInfoAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
+
+  /** State DO for centralized observability and watchdog recovery */
+  StateDO?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
 }
 
 /**
@@ -554,8 +557,8 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         updatedAt: Date.now(),
       });
 
-      // Schedule alarm to process (fires in 100ms - next tick)
-      await this.schedule(0.1, 'onExecutionAlarm', { executionId });
+      // Schedule alarm to process (fires in 1s - reliable with second-precision timestamps)
+      await this.schedule(1, 'onExecutionAlarm', { executionId });
 
       AgentMixin.log('RouterAgent', 'Scheduled fire-and-forget execution', {
         executionId,

@@ -44,7 +44,8 @@ const createMockProvider = () => ({
 
 // Minimal mock for testing batch state logic without DO runtime
 interface MockAgentState {
-  batch?: BatchState;
+  pendingBatch?: BatchState;
+  activeBatch?: BatchState;
   messages: Array<{ role: string; content: string }>;
   userId?: string | number;
   chatId?: string | number;
@@ -70,7 +71,7 @@ describe('batch-processing', () => {
     const now = Date.now();
 
     // Initialize batch state if not present
-    const batch = state.batch ?? createInitialBatchState();
+    const batch = state.pendingBatch ?? createInitialBatchState();
 
     // Check for duplicate request
     const isDuplicate = batch.pendingMessages.some((m) => m.requestId === requestId);
@@ -95,7 +96,7 @@ describe('batch-processing', () => {
       batch.batchId = crypto.randomUUID();
     }
 
-    state.batch = batch;
+    state.pendingBatch = batch;
     state.updatedAt = now;
 
     // Check if this is the FIRST message in a new batch
@@ -160,9 +161,9 @@ describe('batch-processing', () => {
 
       expect(result.queued).toBe(true);
       expect(result.batchId).toBeDefined();
-      expect(state.batch?.status).toBe('collecting');
-      expect(state.batch?.pendingMessages).toHaveLength(1);
-      expect(state.batch?.pendingMessages[0].text).toBe('hello');
+      expect(state.pendingBatch?.status).toBe('collecting');
+      expect(state.pendingBatch?.pendingMessages).toHaveLength(1);
+      expect(state.pendingBatch?.pendingMessages[0].text).toBe('hello');
     });
 
     it('queues multiple messages in same batch', async () => {
@@ -180,9 +181,9 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.batch?.pendingMessages).toHaveLength(2);
-      expect(state.batch?.pendingMessages[0].text).toBe('first');
-      expect(state.batch?.pendingMessages[1].text).toBe('second');
+      expect(state.pendingBatch?.pendingMessages).toHaveLength(2);
+      expect(state.pendingBatch?.pendingMessages[0].text).toBe('first');
+      expect(state.pendingBatch?.pendingMessages[1].text).toBe('second');
     });
 
     it('rejects duplicate requestId', async () => {
@@ -201,7 +202,7 @@ describe('batch-processing', () => {
       });
 
       expect(result.queued).toBe(false);
-      expect(state.batch?.pendingMessages).toHaveLength(1);
+      expect(state.pendingBatch?.pendingMessages).toHaveLength(1);
     });
 
     it('schedules alarm with immediate delay for first message', async () => {
@@ -284,8 +285,8 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.batch?.pendingMessages[0].userId).toBe(888);
-      expect(state.batch?.pendingMessages[0].chatId).toBe(999);
+      expect(state.pendingBatch?.pendingMessages[0].userId).toBe(888);
+      expect(state.pendingBatch?.pendingMessages[0].chatId).toBe(999);
     });
 
     it('generates requestId if not provided', async () => {
@@ -295,8 +296,8 @@ describe('batch-processing', () => {
         text: 'hello',
       });
 
-      expect(state.batch?.pendingMessages[0].requestId).toBeDefined();
-      expect(state.batch?.pendingMessages[0].requestId.length).toBeGreaterThan(0);
+      expect(state.pendingBatch?.pendingMessages[0].requestId).toBeDefined();
+      expect(state.pendingBatch?.pendingMessages[0].requestId.length).toBeGreaterThan(0);
     });
   });
 
@@ -307,7 +308,7 @@ describe('batch-processing', () => {
     });
 
     it('transitions idle -> collecting on first message', async () => {
-      expect(state.batch).toBeUndefined();
+      expect(state.pendingBatch).toBeUndefined();
 
       await queueMessage({
         chatId: 123,
@@ -316,7 +317,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.batch?.status).toBe('collecting');
+      expect(state.pendingBatch?.status).toBe('collecting');
     });
 
     it('stays in collecting state for additional messages', async () => {
@@ -334,7 +335,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.batch?.status).toBe('collecting');
+      expect(state.pendingBatch?.status).toBe('collecting');
     });
 
     it('sets batchStartedAt on first message only', async () => {
@@ -347,7 +348,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      const firstBatchStartedAt = state.batch?.batchStartedAt;
+      const firstBatchStartedAt = state.pendingBatch?.batchStartedAt;
       expect(firstBatchStartedAt).toBeGreaterThanOrEqual(beforeQueue);
 
       // Wait a bit and add another message
@@ -361,7 +362,7 @@ describe('batch-processing', () => {
       });
 
       // batchStartedAt should not change
-      expect(state.batch?.batchStartedAt).toBe(firstBatchStartedAt);
+      expect(state.pendingBatch?.batchStartedAt).toBe(firstBatchStartedAt);
     });
 
     it('updates lastMessageAt on each message', async () => {
@@ -372,7 +373,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      const firstLastMessageAt = state.batch?.lastMessageAt;
+      const firstLastMessageAt = state.pendingBatch?.lastMessageAt;
 
       await new Promise((r) => setTimeout(r, 10));
 
@@ -383,7 +384,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.batch?.lastMessageAt).toBeGreaterThan(firstLastMessageAt!);
+      expect(state.pendingBatch?.lastMessageAt).toBeGreaterThan(firstLastMessageAt!);
     });
   });
 
@@ -399,7 +400,7 @@ describe('batch-processing', () => {
         });
       }
 
-      expect(state.batch?.pendingMessages).toHaveLength(10);
+      expect(state.pendingBatch?.pendingMessages).toHaveLength(10);
 
       // Check that immediate processing was triggered
       const lastAlarm = scheduledAlarms[scheduledAlarms.length - 1];
@@ -443,7 +444,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      const messages = state.batch?.pendingMessages ?? [];
+      const messages = state.pendingBatch?.pendingMessages ?? [];
       const combined = messages.map((m) => m.text).join('\n');
 
       expect(combined).toBe('hello\nworld');
@@ -465,7 +466,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      const messages = state.batch?.pendingMessages ?? [];
+      const messages = state.pendingBatch?.pendingMessages ?? [];
       const combined = messages.map((m) => m.text).join('\n');
 
       expect(combined).toBe('hel\nhello');
@@ -486,7 +487,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      const messages = state.batch?.pendingMessages ?? [];
+      const messages = state.pendingBatch?.pendingMessages ?? [];
       const combined = messages.map((m) => m.text).join('\n');
 
       expect(combined).toBe('line1\nline2\nline3');
@@ -554,7 +555,7 @@ describe('batch-processing', () => {
       });
 
       // Reset state to simulate new batch
-      state.batch = undefined;
+      state.pendingBatch = undefined;
 
       const result2 = await queueMessage({
         chatId: 123,
@@ -609,7 +610,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.batch?.pendingMessages[0].text).toBe('hello world');
+      expect(state.pendingBatch?.pendingMessages[0].text).toBe('hello world');
     });
 
     it('extracts userId from parsed context', async () => {
@@ -620,7 +621,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.batch?.pendingMessages[0].userId).toBe(999);
+      expect(state.pendingBatch?.pendingMessages[0].userId).toBe(999);
     });
 
     it('extracts chatId from parsed context', async () => {
@@ -631,7 +632,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.batch?.pendingMessages[0].chatId).toBe(777);
+      expect(state.pendingBatch?.pendingMessages[0].chatId).toBe(777);
     });
   });
 
@@ -666,9 +667,9 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.batch?.pendingMessages).toHaveLength(2);
-      expect(state.batch?.pendingMessages[0].text).toBe('/clear');
-      expect(state.batch?.pendingMessages[1].text).toBe('hello');
+      expect(state.pendingBatch?.pendingMessages).toHaveLength(2);
+      expect(state.pendingBatch?.pendingMessages[0].text).toBe('/clear');
+      expect(state.pendingBatch?.pendingMessages[1].text).toBe('hello');
     });
 
     it('creates batch with /clear as first message', async () => {
@@ -679,9 +680,9 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.batch?.status).toBe('collecting');
-      expect(state.batch?.pendingMessages).toHaveLength(1);
-      expect(state.batch?.pendingMessages[0].text).toBe('/clear');
+      expect(state.pendingBatch?.status).toBe('collecting');
+      expect(state.pendingBatch?.pendingMessages).toHaveLength(1);
+      expect(state.pendingBatch?.pendingMessages[0].text).toBe('/clear');
     });
 
     it('handles /clear with newline-combined text', async () => {
