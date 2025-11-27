@@ -111,10 +111,7 @@ app.post(
     logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
       requestId,
       agentId,
-      userId: ctx.userId,
-      chatId: ctx.chatId,
-      text: ctx.text?.substring(0, 100),
-      isCommand: ctx.text?.startsWith('/'),
+      ctx,
     });
 
     // Queue message for batch processing with alarm-based execution
@@ -126,6 +123,7 @@ app.post(
       logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
         requestId,
         agentId,
+        ctx,
         durationMs: Date.now() - startTime,
       });
 
@@ -138,12 +136,14 @@ app.post(
         agentId,
         queued,
         batchId,
+        ctx,
         durationMs: Date.now() - startTime,
       });
     } catch (error) {
       logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
         requestId,
         agentId,
+        ctx,
         error: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         durationMs: Date.now() - startTime,

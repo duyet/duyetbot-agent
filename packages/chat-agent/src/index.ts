@@ -279,3 +279,35 @@ export {
   type WorkerMethods,
   type WorkerType,
 } from './workers/index.js';
+
+// =============================================================================
+// State Management DO (Observability & Watchdog)
+// =============================================================================
+
+// State DO
+export { StateDO, type StateDOEnv } from './agents/state-do.js';
+
+// State types
+export {
+  type AggregatedMetrics,
+  type AgentMetrics,
+  type CompleteBatchParams,
+  createInitialStateDOState,
+  createSessionState,
+  DEFAULT_STUCK_THRESHOLD_MS,
+  type ExecutionTrace,
+  type HeartbeatParams,
+  type LogTraceParams,
+  type MarkDelegatedParams,
+  MAX_TRACES,
+  type Platform,
+  type RecoveryResult,
+  type RegisterBatchParams,
+  type ResponseTarget,
+  type SessionState,
+  type StateDOMethods,
+  type StateDOState,
+  type TrackedBatchStatus,
+  type TraceStatus,
+  WATCHDOG_INTERVAL_SECONDS,
+} from './state-types.js';

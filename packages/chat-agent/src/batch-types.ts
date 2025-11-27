@@ -286,32 +286,3 @@ export function isDuplicateInBothBatches(
 
   return false;
 }
-
-/**
- * Migrate legacy single-batch state to two-batch architecture
- * This provides backward compatibility for existing Durable Object state
- *
- * Migration strategy:
- * - If batch is processing → make it activeBatch
- * - Otherwise → make it pendingBatch
- *
- * @param batch - Legacy single-batch state
- * @returns Object with activeBatch and pendingBatch
- */
-export function migrateLegacyBatchState(batch: BatchState): {
-  activeBatch?: BatchState;
-  pendingBatch?: BatchState;
-} {
-  // If batch is currently processing, it becomes activeBatch
-  if (batch.status === 'processing') {
-    return {
-      activeBatch: batch,
-      pendingBatch: createInitialBatchState(),
-    };
-  }
-
-  // Otherwise, it becomes pendingBatch
-  return {
-    pendingBatch: batch,
-  };
-}

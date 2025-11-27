@@ -66,7 +66,17 @@ class_name = "GitHubWorker"
 name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
 
+# State Management DO for observability and watchdog recovery
+[[durable_objects.bindings]]
+name = "StateDO"
+class_name = "StateDO"
+
 # Migrations for SQLite state persistence
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["RouterAgent", "SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker", "DuyetInfoAgent"]
+
+# Migration for StateDO (new in v2)
+[[migrations]]
+tag = "v2"
+new_sqlite_classes = ["StateDO"]

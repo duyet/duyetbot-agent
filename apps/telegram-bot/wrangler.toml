@@ -81,6 +81,12 @@ name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
 script_name = "duyetbot-agents"
 
+# State Management DO for observability and watchdog recovery
+[[durable_objects.bindings]]
+name = "StateDO"
+class_name = "StateDO"
+script_name = "duyetbot-agents"
+
 # Migration for local TelegramAgent only
 # Shared DOs are now in duyetbot-agents (referenced via script_name)
 [[migrations]]
