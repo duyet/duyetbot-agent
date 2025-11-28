@@ -53,12 +53,12 @@ export async function handleStatusCommand(ctx: TelegramContext): Promise<string>
  *
  * @param command - The command string (e.g., "/debug")
  * @param ctx - Telegram context with admin information
- * @returns Response string or null if command not recognized
+ * @returns Response string or undefined if command not recognized
  */
 export async function handleAdminCommand(
   command: string,
   ctx: TelegramContext
-): Promise<string | null> {
+): Promise<string | undefined> {
   logger.info('[ADMIN_CMD] Processing admin command', {
     command,
     userId: ctx.userId,
@@ -71,6 +71,6 @@ export async function handleAdminCommand(
     case '/status':
       return handleStatusCommand(ctx);
     default:
-      return null;
+      return undefined;
   }
 }

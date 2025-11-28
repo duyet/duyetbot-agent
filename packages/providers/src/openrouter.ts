@@ -129,7 +129,7 @@ export class OpenRouterProvider implements LLMProvider {
           'Content-Type': 'application/json',
           Authorization: `Bearer ${this.config.apiKey}`,
           'HTTP-Referer': 'https://github.com/duyet/duyetbot-agent',
-          'X-Title': 'duyetbot-agent',
+          'X-Title': 'duyetbot',
         },
         body: JSON.stringify(requestBody),
         signal: AbortSignal.timeout(this.config.timeout ?? DEFAULT_TIMEOUT),

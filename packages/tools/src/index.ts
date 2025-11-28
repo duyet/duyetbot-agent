@@ -4,9 +4,11 @@
  * Built-in tools for agent operations:
  * - bash: Execute shell commands
  * - git: Git operations
- * - research: Web research
+ * - research: Web research (DuckDuckGo)
  * - plan: Task planning
  * - sleep: Delay execution
+ * - xai_web_search: Real-time web search (xAI Grok)
+ * - xai_x_search: X/Twitter search (xAI Grok)
  */
 
 import type { Tool } from '@duyetbot/types';
@@ -25,6 +27,7 @@ export * from './registry.js';
 export * from './research.js';
 export * from './scratchpad.js';
 export * from './sleep.js';
+export * from './xai/index.js';
 
 /**
  * Agent platform types
