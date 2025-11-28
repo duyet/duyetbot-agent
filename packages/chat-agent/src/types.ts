@@ -160,4 +160,17 @@ export interface DebugContext {
   };
   /** Additional debug metadata (fallback, cache, timeout) */
   metadata?: DebugMetadata;
+  /** Execution path trace for step-by-step debugging */
+  executionPath?: string[];
 }
+
+// Re-export step progress types for convenience
+export type {
+  StepType,
+  StepEvent,
+  StepProgressConfig,
+} from './step-progress.js';
+export {
+  StepProgressTracker,
+  createStepProgressTracker,
+} from './step-progress.js';

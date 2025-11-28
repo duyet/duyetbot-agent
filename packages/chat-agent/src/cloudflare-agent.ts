@@ -34,6 +34,7 @@ import type {
   RegisterBatchParams,
   ResponseTarget as StateResponseTarget,
 } from './state-types.js';
+import { StepProgressTracker } from './step-progress.js';
 import type { Transport, TransportHooks } from './transport.js';
 import type { LLMProvider, Message, OpenAITool } from './types.js';
 
@@ -439,8 +440,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Chat with the LLM directly, with optional MCP tool support
+     * @param userMessage - The user's message
+     * @param stepTracker - Optional step progress tracker for real-time UI updates
      */
-    async chat(userMessage: string): Promise<string> {
+    async chat(userMessage: string, stepTracker?: StepProgressTracker): Promise<string> {
       // Trim history if it exceeds maxHistory (handles bloated state from older versions)
       if (this.state.messages.length > maxHistory) {
         logger.info(
@@ -453,6 +456,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           updatedAt: Date.now(),
         });
       }
+
+      // Emit thinking step
+      await stepTracker?.addStep({ type: 'thinking' });
 
       // Initialize MCP connections if configured
       await this.initMcp();
@@ -526,6 +532,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         // Execute each tool call (built-in or MCP)
         for (const toolCall of response.toolCalls) {
+          // Emit tool start step
+          await stepTracker?.addStep({
+            type: 'tool_start',
+            toolName: toolCall.name,
+          });
+
           try {
             const toolArgs = JSON.parse(toolCall.arguments);
             let resultText: string;
@@ -569,6 +581,13 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 .join('\n');
             }
 
+            // Emit tool complete step
+            await stepTracker?.addStep({
+              type: 'tool_complete',
+              toolName: toolCall.name,
+              result: resultText,
+            });
+
             // Use 'user' role with tool context for compatibility
             toolConversation.push({
               role: 'user' as const,
@@ -576,10 +595,19 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             });
           } catch (error) {
             logger.error(`[CloudflareAgent][TOOL] Tool call failed: ${error}`);
+
+            // Emit tool error step
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            await stepTracker?.addStep({
+              type: 'tool_error',
+              toolName: toolCall.name,
+              error: errorMessage,
+            });
+
             // Use 'user' role with error context for compatibility
             toolConversation.push({
               role: 'user' as const,
-              content: `[Tool Error for ${toolCall.name}]: ${error instanceof Error ? error.message : String(error)}`,
+              content: `[Tool Error for ${toolCall.name}]: ${errorMessage}`,
             });
           }
         }
@@ -588,9 +616,19 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Combine: system prompt + embedded history with user message + tool turns
         const toolMessages = [...llmMessages, ...toolConversation];
 
+        // Emit LLM iteration step (show iteration progress for multi-turn conversations)
+        await stepTracker?.addStep({
+          type: 'llm_iteration',
+          iteration: iterations,
+          maxIterations: maxToolIterations,
+        });
+
         // Continue conversation with tool results
         response = await llmProvider.chat(toolMessages, hasTools ? tools : undefined);
       }
+
+      // Emit preparing step before finalizing
+      await stepTracker?.addStep({ type: 'preparing' });
 
       const assistantContent = response.content;
 
@@ -1038,6 +1076,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       // Track message reference for error handling
       let messageRef: string | number | undefined;
+      let stepTracker: StepProgressTracker | undefined;
+      // Legacy rotator for batch processing (not yet migrated)
       let rotator: ReturnType<typeof createThinkingRotator> | undefined;
 
       try {
@@ -1078,36 +1118,23 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             await transport.typing(ctx);
           }
 
-          // Create thinking message rotator
-          rotator = createThinkingRotator({
-            messages: config.thinkingMessages ?? getDefaultThinkingMessages(),
-            interval: config.thinkingRotationInterval ?? 5000,
-          });
-
           // Send initial thinking message
-          messageRef = await transport.send(ctx, rotator.getCurrentMessage());
+          messageRef = await transport.send(ctx, '🔄 Thinking...');
 
-          // Start rotation if transport supports edit
+          // Create step progress tracker for real-time step visibility
           if (transport.edit) {
-            let consecutiveFailures = 0;
-            const MAX_ROTATOR_FAILURES = 3;
-
-            rotator.start(async (nextMessage) => {
-              try {
-                logger.info(`[CloudflareAgent][ROTATOR] Editing to: ${nextMessage}`);
-                await transport.edit!(ctx, messageRef!, nextMessage);
-                consecutiveFailures = 0; // Reset on success
-              } catch (err) {
-                consecutiveFailures++;
-                logger.error(
-                  `[CloudflareAgent][ROTATOR] Edit failed (${consecutiveFailures}/${MAX_ROTATOR_FAILURES}): ${err}`
-                );
-                if (consecutiveFailures >= MAX_ROTATOR_FAILURES) {
-                  logger.warn('[CloudflareAgent][ROTATOR] Too many failures, stopping rotator');
-                  rotator?.stop();
+            stepTracker = new StepProgressTracker(
+              async (message) => {
+                try {
+                  await transport.edit!(ctx, messageRef!, message);
+                } catch (err) {
+                  logger.error(`[CloudflareAgent][STEP] Edit failed: ${err}`);
                 }
+              },
+              {
+                rotationInterval: config.thinkingRotationInterval ?? 5000,
               }
-            });
+            );
           }
 
           // Process with LLM - must await to keep DO alive
@@ -1137,10 +1164,18 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               const routeResult = await this.routeQuery(chatMessage, agentContext);
 
               if (routeResult?.success && routeResult.content) {
+                // Emit routing step to show which agent handled the query
+                const routedTo =
+                  (routeResult.data as Record<string, unknown>)?.routedTo ?? 'unknown';
+                await stepTracker?.addStep({
+                  type: 'routing',
+                  agentName: String(routedTo),
+                });
+
                 // Routing succeeded - use the routed response
                 response = routeResult.content;
                 logger.info('[CloudflareAgent][HANDLE] RouterAgent returned response', {
-                  routedTo: (routeResult.data as Record<string, unknown>)?.routedTo ?? 'unknown',
+                  routedTo,
                   durationMs: routeResult.durationMs,
                 });
               } else {
@@ -1148,15 +1183,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 logger.info(
                   '[CloudflareAgent][HANDLE] Routing failed or unavailable, falling back to chat()'
                 );
-                response = await this.chat(chatMessage);
+                response = await this.chat(chatMessage, stepTracker);
               }
             } else {
               // Routing disabled - use direct chat
               logger.info('[CloudflareAgent][HANDLE] Routing disabled, using direct chat()');
-              response = await this.chat(chatMessage);
+              response = await this.chat(chatMessage, stepTracker);
             }
           } finally {
-            rotator.stop();
+            // Stop step tracker (stops any rotation timers)
+            stepTracker?.destroy();
           }
 
           // Edit thinking message with actual response
@@ -1182,10 +1218,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           await hooks.afterHandle(ctx, response);
         }
       } catch (error) {
-        // Stop rotator if still running
-        if (rotator) {
-          rotator.stop();
-        }
+        // Stop step tracker if still running
+        stepTracker?.destroy();
+        // Legacy rotator cleanup (for batch processing)
+        rotator?.stop();
 
         logger.error(`[CloudflareAgent][HANDLE] Error: ${error}`);
 

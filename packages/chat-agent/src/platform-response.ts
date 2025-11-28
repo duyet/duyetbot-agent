@@ -20,6 +20,7 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { escapeHtml, formatDebugFooter } from './debug-footer.js';
 import type { DebugContext } from './types.js';
 
 /**
@@ -66,85 +67,6 @@ function isAdminUser(target: ResponseTarget): boolean {
 }
 
 /**
- * Escape HTML entities in text for safe inclusion in HTML messages
- */
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
-}
-
-/**
- * Format debug context as expandable blockquote footer
- *
- * Example output:
- * 🔍 router → duyet-info-agent (get_latest_posts) 2.34s
- * simple/duyet/low
- * [fallback] cache:1/0 timeout:1 (get_latest_posts)
- */
-function formatDebugFooter(debugContext: DebugContext): string {
-  const flow = debugContext.routingFlow;
-
-  // Format: router → agent (tool1, tool2) → subagent
-  const flowStr = flow
-    .map((step) => {
-      const tools = step.tools?.length ? ` (${step.tools.join(', ')})` : '';
-      return `${step.agent}${tools}`;
-    })
-    .join(' → ');
-
-  const duration = debugContext.totalDurationMs
-    ? ` ${(debugContext.totalDurationMs / 1000).toFixed(2)}s`
-    : '';
-
-  const classification = debugContext.classification
-    ? `\n${debugContext.classification.type}/${debugContext.classification.category}/${debugContext.classification.complexity}`
-    : '';
-
-  // Format metadata line (fallback, cache, timeout, errors)
-  let metadataLine = '';
-  if (debugContext.metadata) {
-    const parts: string[] = [];
-    const m = debugContext.metadata;
-
-    // Fallback indicator
-    if (m.fallback) {
-      parts.push('[fallback]');
-    }
-
-    // Cache stats (hits/misses)
-    if (m.cacheHits !== undefined || m.cacheMisses !== undefined) {
-      parts.push(`cache:${m.cacheHits ?? 0}/${m.cacheMisses ?? 0}`);
-    }
-
-    // Timeout info
-    if (m.toolTimeouts && m.toolTimeouts > 0) {
-      const timeoutTools = m.timedOutTools?.length ? ` (${m.timedOutTools.join(', ')})` : '';
-      parts.push(`timeout:${m.toolTimeouts}${timeoutTools}`);
-    }
-
-    // Tool error info
-    if (m.toolErrors && m.toolErrors > 0) {
-      parts.push(`err:${m.toolErrors}`);
-    }
-
-    if (parts.length > 0) {
-      metadataLine = `\n${parts.join(' ')}`;
-    }
-
-    // Show last tool error on separate line if present
-    if (m.lastToolError) {
-      metadataLine += `\n⚠️ ${escapeHtml(m.lastToolError)}`;
-    }
-  }
-
-  return `\n\n<blockquote expandable>🔍 ${flowStr}${duration}${classification}${metadataLine}</blockquote>`;
-}
-
-/**
  * Send response directly to platform (bypassing transport layer)
  *
  * Used by RouterAgent alarm handler to deliver responses after fire-and-forget.
@@ -169,14 +91,17 @@ export async function sendPlatformResponse(
     let finalText = text;
     let parseMode: 'HTML' | 'Markdown' = 'Markdown';
 
-    if (isAdminUser(target) && debugContext?.routingFlow?.length) {
-      finalText = escapeHtml(text) + formatDebugFooter(debugContext);
-      parseMode = 'HTML';
+    if (isAdminUser(target) && debugContext) {
+      const debugFooter = formatDebugFooter(debugContext);
+      if (debugFooter) {
+        finalText = escapeHtml(text) + debugFooter;
+        parseMode = 'HTML';
 
-      logger.debug('[sendPlatformResponse] Debug footer applied', {
-        username: target.username,
-        flowLength: debugContext.routingFlow.length,
-      });
+        logger.debug('[sendPlatformResponse] Debug footer applied', {
+          username: target.username,
+          flowLength: debugContext.routingFlow.length,
+        });
+      }
     }
 
     await sendTelegramResponse(env, chatId, messageRef.messageId, finalText, botToken, parseMode);
