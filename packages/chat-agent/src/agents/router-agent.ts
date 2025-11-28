@@ -308,7 +308,8 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       const env = (this as unknown as { env: TEnv }).env;
 
       // Build enhanced context for target
-      const targetContext: AgentContext = {
+      // Forward conversation history from parent to enable stateless child agents
+      const targetContextBase: AgentContext = {
         ...context,
         data: {
           ...context.data,
@@ -316,6 +317,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           routedFrom: 'router-agent',
         },
       };
+
+      const targetContext: AgentContext =
+        context.conversationHistory !== undefined
+          ? {
+              ...targetContextBase,
+              conversationHistory: context.conversationHistory,
+            }
+          : targetContextBase;
 
       try {
         switch (target) {

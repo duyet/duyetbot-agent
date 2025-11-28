@@ -59,6 +59,12 @@ export interface AgentContext {
   parentAgentId?: string;
   /** Trace ID for distributed tracing */
   traceId?: string;
+  /**
+   * Conversation history from parent agent.
+   * Child agents should use this instead of maintaining their own messages[] state.
+   * This enables centralized state management where only the parent agent stores history.
+   */
+  conversationHistory?: Message[];
 }
 
 /**

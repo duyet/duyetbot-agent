@@ -5,6 +5,10 @@
  * Extends the standard agent pattern to intercept tool calls,
  * request user confirmation, and execute approved tools.
  *
+ * This agent is STATELESS for conversation history - history is passed via
+ * AgentContext.conversationHistory from the parent agent (CloudflareAgent).
+ * This enables centralized state management where only the parent stores history.
+ *
  * Based on Cloudflare's HITL pattern:
  * https://developers.cloudflare.com/agents/patterns/human-in-the-loop/
  */
@@ -39,11 +43,13 @@ import type { LLMProvider, Message } from '../types.js';
 import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
 
 /**
- * HITL Agent state (extends HITLState with conversation messages)
+ * HITL Agent state (extends HITLState)
+ *
+ * NOTE: This agent is intentionally stateless for conversation history.
+ * Conversation history is passed via AgentContext.conversationHistory from the parent agent.
+ * This enables centralized state management where only the parent (CloudflareAgent) stores history.
  */
 export interface HITLAgentState extends HITLState {
-  /** Conversation messages */
-  messages: Message[];
   /** LLM-generated tool calls awaiting confirmation */
   pendingToolCalls: Array<{
     toolName: string;
@@ -139,7 +145,6 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
   const AgentClass = class HITLAgent extends Agent<TEnv, HITLAgentState> {
     override initialState: HITLAgentState = {
       ...createInitialHITLState(''),
-      messages: [],
       pendingToolCalls: [],
     };
 
@@ -152,7 +157,6 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
           source,
           status: state.status,
           pendingConfirmations: state.pendingConfirmations.length,
-          messageCount: state.messages.length,
         });
       }
     }
@@ -206,6 +210,9 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
     /**
      * Process a new query through the LLM
+     *
+     * Uses conversation history from context.conversationHistory (passed by parent agent)
+     * instead of maintaining local state. This enables centralized state management.
      */
     private async processQuery(
       query: string,
@@ -218,9 +225,13 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
       try {
         const provider = config.createProvider(env);
 
+        // Use conversation history from context (passed by parent agent)
+        const conversationHistory = context.conversationHistory ?? [];
+
         // Add user message
         const userMessage: Message = { role: 'user', content: query };
-        const updatedMessages = [...this.state.messages, userMessage];
+        const trimmedHistory = AgentMixin.trimHistory(conversationHistory, maxHistory);
+        const updatedMessages = [...trimmedHistory, userMessage];
 
         // Build messages for LLM
         const llmMessages = [
@@ -255,19 +266,19 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
           content: response.content,
         };
 
-        const newMessages = AgentMixin.trimHistory(
-          [...updatedMessages, assistantMessage],
-          maxHistory
-        );
+        const newMessages = [userMessage, assistantMessage];
 
         this.setState({
           ...this.state,
           sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
-          messages: newMessages,
           lastActivityAt: Date.now(),
         });
 
+        // Return result with new messages for parent to save
         return AgentMixin.createResult(true, response.content, Date.now() - startTime, {
+          data: {
+            newMessages,
+          },
           nextAction: 'complete',
         });
       } catch (error) {
@@ -363,7 +374,6 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
         ...this.state,
         ...baseState,
         sessionId: this.state.sessionId || traceId,
-        messages,
         pendingToolCalls: toolCalls,
       });
 
@@ -375,7 +385,13 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
       const response = formatMultipleConfirmations(confirmations);
 
+      // Extract user and assistant messages to return for parent to save
+      const newMessages = messages.slice(-2);
+
       return AgentMixin.createResult(true, response, Date.now() - startTime, {
+        data: {
+          newMessages,
+        },
         nextAction: 'await_confirmation',
       });
     }
@@ -569,13 +585,11 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
     /**
      * Clear conversation history
+     * @deprecated This agent is stateless for messages. No-op.
      */
     clearHistory(): void {
-      this.setState({
-        ...createInitialHITLState(this.state.sessionId),
-        messages: [],
-        pendingToolCalls: [],
-      });
+      // No-op - history is managed by parent agent
+      logger.info('[HITLAgent] clearHistory called - no-op (stateless agent)');
     }
   };
 

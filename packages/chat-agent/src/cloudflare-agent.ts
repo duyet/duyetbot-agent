@@ -150,9 +150,9 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
   setMetadata(metadata: Record<string, unknown>): void;
   getMetadata(): Record<string, unknown> | undefined;
   /** @deprecated Use handleBuiltinCommand instead */
-  handleCommand(text: string): string;
+  handleCommand(text: string): Promise<string>;
   /** Handle built-in commands, returns null for unknown commands */
-  handleBuiltinCommand(text: string): string | null;
+  handleBuiltinCommand(text: string): Promise<string | null>;
   /** Transform slash command to natural language for LLM */
   transformSlashCommand(text: string): string;
   handle(ctx: TContext): Promise<void>;
@@ -708,7 +708,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Routes /start, /help, /clear to appropriate handlers
      * Returns null for unknown commands (should fall back to chat)
      */
-    handleBuiltinCommand(text: string): string | null {
+    async handleBuiltinCommand(text: string): Promise<string | null> {
       const command = (text.split(/[\s\n]/)[0] ?? '').toLowerCase();
 
       switch (command) {
@@ -717,13 +717,25 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         case '/help':
           return this.getHelp();
         case '/clear': {
+          // Log state BEFORE clear for debugging
+          logger.info('[CloudflareAgent][CLEAR] State BEFORE clear', {
+            messageCount: this.state.messages?.length ?? 0,
+            hasActiveBatch: !!this.state.activeBatch,
+            hasPendingBatch: !!this.state.pendingBatch,
+            hasMetadata: !!this.state.metadata,
+          });
+
           // Full DO state reset - clears messages, metadata, batch, and resets MCP
           this._mcpInitialized = false;
 
+          // Build fresh state without optional properties (exactOptionalPropertyTypes)
+          // By NOT including activeBatch, pendingBatch, metadata, processedRequestIds,
+          // we ensure they are fully cleared (not merged from old state)
           const freshState: CloudflareAgentState = {
-            messages: [],
+            messages: [], // Clear conversation history
             createdAt: Date.now(),
             updatedAt: Date.now(),
+            // Optional properties are intentionally OMITTED to clear them completely
           };
 
           // Preserve userId/chatId for session continuity
@@ -736,7 +748,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
           this.setState(freshState);
 
-          logger.info('[CloudflareAgent][CLEAR] State cleared', {
+          // Log state AFTER clear to verify
+          logger.info('[CloudflareAgent][CLEAR] State AFTER clear', {
+            messageCount: this.state.messages?.length ?? 0,
+            hasActiveBatch: !!this.state.activeBatch,
+            hasPendingBatch: !!this.state.pendingBatch,
+            hasMetadata: !!this.state.metadata,
             userId: freshState.userId,
             chatId: freshState.chatId,
             mcpReset: true,
@@ -782,9 +799,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * @deprecated Use handleBuiltinCommand instead
      * Kept for backward compatibility
      */
-    handleCommand(text: string): string {
+    async handleCommand(text: string): Promise<string> {
       return (
-        this.handleBuiltinCommand(text) ??
+        (await this.handleBuiltinCommand(text)) ??
         `Unknown command: ${text.split(' ')[0]}. Try /help for available commands.`
       );
     }
@@ -854,7 +871,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         const routerId = context.chatId?.toString() || context.userId?.toString() || 'default';
         const routerAgent = await getAgentByName(routerEnv.RouterAgent, routerId);
 
-        // Call the route method
+        // Call the route method, passing current conversation history
         const result = await (
           routerAgent as unknown as {
             route: (query: string, context: AgentContext) => Promise<AgentResult>;
@@ -862,12 +879,28 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         ).route(query, {
           ...context,
           platform: routerConfig.platform,
+          conversationHistory: this.state.messages,
         });
 
         if (routerConfig.debug) {
           logger.info('[CloudflareAgent][ROUTER] Route result', {
             success: result.success,
             durationMs: result.durationMs,
+          });
+        }
+
+        // If result contains new messages, save them to state
+        if (
+          result?.success &&
+          result.data &&
+          typeof result.data === 'object' &&
+          'newMessages' in result.data
+        ) {
+          const newMessages = (result.data as { newMessages: Message[] }).newMessages;
+          this.setState({
+            ...this.state,
+            messages: trimHistory([...this.state.messages, ...newMessages], maxHistory),
+            updatedAt: Date.now(),
           });
         }
 
@@ -1092,7 +1125,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Route: Built-in Command, Dynamic Command, or Chat
         if (input.text.startsWith('/')) {
           // Try built-in commands first (/start, /help, /clear)
-          const builtinResponse = this.handleBuiltinCommand(input.text);
+          const builtinResponse = await this.handleBuiltinCommand(input.text);
 
           if (builtinResponse !== null) {
             // Built-in command handled - send response directly
