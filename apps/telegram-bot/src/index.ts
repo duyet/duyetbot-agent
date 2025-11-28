@@ -93,7 +93,7 @@ app.post(
     // Check for admin commands
     if (ctx.text.startsWith('/')) {
       const response = await handleAdminCommand(ctx.text, ctx);
-      if (response) {
+      if (response !== undefined) {
         logger.info(`[${requestId}] [WEBHOOK] Admin command executed`, {
           requestId,
           command: ctx.text,
