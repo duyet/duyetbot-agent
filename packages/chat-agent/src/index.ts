@@ -39,6 +39,8 @@ export {
   type ToolExecution,
   type ToolStatus,
 } from './format.js';
+// Debug footer utilities
+export { escapeHtml, formatDebugFooter } from './debug-footer.js';
 // Utilities
 export { formatForLLM, getMessageText, trimHistory } from './history.js';
 export {
@@ -88,7 +90,16 @@ export type {
   Tool,
   ToolCall,
   ToolExecutor,
+  // Step progress types
+  StepEvent,
+  StepProgressConfig,
+  StepType,
 } from './types.js';
+// Step progress tracker
+export {
+  createStepProgressTracker,
+  StepProgressTracker,
+} from './step-progress.js';
 // Batch types (alarm-based processing)
 export {
   type BatchConfig,
