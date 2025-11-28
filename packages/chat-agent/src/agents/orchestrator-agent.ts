@@ -6,6 +6,10 @@
  * 2. Executing: Running steps in parallel where possible
  * 3. Aggregating: Combining results into unified response
  *
+ * This agent is STATELESS for conversation history - history is passed via
+ * AgentContext.conversationHistory from the parent agent (CloudflareAgent).
+ * This enables centralized state management where only the parent stores history.
+ *
  * Based on Cloudflare's Orchestrator-Workers pattern:
  * https://developers.cloudflare.com/agents/patterns/orchestrator-workers/
  */
@@ -26,12 +30,16 @@ import {
   validatePlanDependencies,
 } from '../orchestration/index.js';
 import type { ExecutionPlan, WorkerResult } from '../routing/schemas.js';
-import type { LLMProvider, Message } from '../types.js';
+import type { LLMProvider } from '../types.js';
 import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
 import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
 
 /**
  * Orchestrator agent state
+ *
+ * NOTE: This agent is intentionally stateless for conversation history.
+ * Conversation history is passed via AgentContext.conversationHistory from the parent agent.
+ * This enables centralized state management where only the parent (CloudflareAgent) stores history.
  */
 export interface OrchestratorAgentState {
   /** Session identifier */
@@ -48,8 +56,6 @@ export interface OrchestratorAgentState {
     totalDurationMs: number;
     timestamp: number;
   }>;
-  /** Conversation messages */
-  messages: Message[];
   /** Creation timestamp */
   createdAt: number;
   /** Last update timestamp */
@@ -150,7 +156,6 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
       sessionId: '',
       currentPlan: undefined,
       orchestrationHistory: [],
-      messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -259,8 +264,17 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
           failureCount: executionResult.failedSteps.length,
         });
 
+        // Return result with new messages for parent to save
         return AgentMixin.createResult(true, aggregationResult.response, durationMs, {
           data: {
+            // Return new messages so parent can append to its state
+            newMessages: [
+              { role: 'user' as const, content: query },
+              {
+                role: 'assistant' as const,
+                content: aggregationResult.response,
+              },
+            ],
             plan: {
               taskId: plan.taskId,
               summary: plan.summary,
@@ -493,8 +507,13 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 
     /**
      * Clear orchestration history
+     * @deprecated This agent is stateless for conversation messages. Only clears orchestration history.
      */
     clearHistory(): void {
+      // Conversation history is managed by parent agent
+      logger.info(
+        '[OrchestratorAgent] clearHistory called - clearing orchestration history only (conversation history is stateless)'
+      );
       this.setState({
         ...this.state,
         orchestrationHistory: [],
