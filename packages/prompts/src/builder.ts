@@ -26,7 +26,13 @@ import {
   policySection,
   toolsSection,
 } from './sections/index.js';
-import type { CustomSection, Platform, PromptConfig, ToolDefinition } from './types.js';
+import type {
+  CustomSection,
+  Platform,
+  PromptConfig,
+  TelegramParseMode,
+  ToolDefinition,
+} from './types.js';
 
 /**
  * Internal builder config with required fields
@@ -37,6 +43,7 @@ interface BuilderConfig {
   platform: Platform | undefined;
   tools: ToolDefinition[];
   capabilities: string[];
+  telegramParseMode: TelegramParseMode;
 }
 
 /**
@@ -54,6 +61,7 @@ export class PromptBuilder {
       platform: config.platform,
       tools: config.tools ?? [],
       capabilities: config.capabilities ?? [],
+      telegramParseMode: config.telegramParseMode ?? 'HTML',
     };
   }
 
@@ -123,7 +131,18 @@ export class PromptBuilder {
    * Formatting and communication style guidance
    */
   withGuidelines(): this {
-    this.sections.push(guidelinesSection(this.builderConfig.platform));
+    this.sections.push(
+      guidelinesSection(this.builderConfig.platform, this.builderConfig.telegramParseMode)
+    );
+    return this;
+  }
+
+  /**
+   * Set Telegram parse mode for response formatting
+   * @param mode - 'HTML' (default) or 'MarkdownV2'
+   */
+  withTelegramParseMode(mode: TelegramParseMode): this {
+    this.builderConfig.telegramParseMode = mode;
     return this;
   }
 

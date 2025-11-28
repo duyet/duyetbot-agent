@@ -54,13 +54,11 @@ export interface BaseWorkerState {
 
 /**
  * Environment bindings for workers
+ * Note: Actual env fields depend on the provider (OpenRouterProviderEnv, etc.)
+ * This interface is kept minimal - extend with provider-specific env in your app
  */
-export interface BaseWorkerEnv {
-  AI_GATEWAY_ACCOUNT_ID?: string;
-  AI_GATEWAY_ID?: string;
-  ANTHROPIC_API_KEY?: string;
-  OPENROUTER_API_KEY?: string;
-}
+// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extend with provider env
+export interface BaseWorkerEnv {}
 
 /**
  * Configuration for base worker

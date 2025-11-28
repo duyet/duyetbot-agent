@@ -20,6 +20,17 @@ export function escapeHtml(text: string): string {
 }
 
 /**
+ * Escape special characters for Telegram MarkdownV2 format
+ *
+ * MarkdownV2 requires escaping: _ * [ ] ( ) ~ ` > # + - = | { } . !
+ * @see https://core.telegram.org/bots/api#markdownv2-style
+ */
+export function escapeMarkdownV2(text: string): string {
+  // All special characters that need escaping in MarkdownV2
+  return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+}
+
+/**
  * Format duration in seconds with 2 decimal places
  */
 function formatStepDuration(durationMs?: number): string {
@@ -72,17 +83,20 @@ function formatClassification(classification?: DebugContext['classification']): 
 }
 
 /**
- * Format metadata - simplified to only show error messages
+ * Format metadata - simplified to only show error messages (HTML version)
  * Removed cache/timeout/err counts as they're redundant with error message
  */
-function formatMetadata(metadata?: DebugMetadata): string {
+function formatMetadata(
+  metadata?: DebugMetadata,
+  escapeFn: (text: string) => string = escapeHtml
+): string {
   if (!metadata) {
     return '';
   }
 
   // Only show error message on separate line if present
   if (metadata.lastToolError) {
-    return `\n⚠️ ${escapeHtml(metadata.lastToolError)}`;
+    return `\n⚠️ ${escapeFn(metadata.lastToolError)}`;
   }
 
   return '';
@@ -107,4 +121,32 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
   const metadata = formatMetadata(debugContext.metadata);
 
   return `\n\n<blockquote expandable>🔍 ${flow}${classification}${metadata}</blockquote>`;
+}
+
+/**
+ * Format debug context as expandable quote for MarkdownV2
+ *
+ * Uses MarkdownV2 expandable blockquote syntax: **>content||
+ * All special characters in content are escaped.
+ *
+ * @example Output:
+ * ```
+ * **>🔍 router \(0\.12s\) → duyet\-info\-agent \(duyet\_cv → response, 2\.34s\) \[simple/duyet/low\]||
+ * ```
+ */
+export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string | null {
+  if (!debugContext?.routingFlow?.length) {
+    return null;
+  }
+
+  const flow = formatRoutingFlow(debugContext.routingFlow);
+  const classification = formatClassification(debugContext.classification);
+  const metadata = formatMetadata(debugContext.metadata, escapeMarkdownV2);
+
+  // Escape the flow and classification for MarkdownV2
+  const escapedFlow = escapeMarkdownV2(flow);
+  const escapedClassification = escapeMarkdownV2(classification);
+
+  // MarkdownV2 expandable blockquote: **>content||
+  return `\n\n**>🔍 ${escapedFlow}${escapedClassification}${metadata}||`;
 }

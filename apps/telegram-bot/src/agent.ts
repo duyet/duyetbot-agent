@@ -33,6 +33,7 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   TELEGRAM_WEBHOOK_SECRET?: string;
   TELEGRAM_ALLOWED_USERS?: string;
   TELEGRAM_ADMIN?: string;
+  TELEGRAM_PARSE_MODE?: 'HTML' | 'MarkdownV2';
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
   ROUTER_DEBUG?: string;
@@ -46,7 +47,11 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
 export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
   createCloudflareChatAgent<BaseEnv, TelegramContext>({
     createProvider: (env) => createAIGatewayProvider(env),
-    systemPrompt: getTelegramPrompt(),
+    // Dynamic system prompt based on TELEGRAM_PARSE_MODE env var
+    systemPrompt: (env) =>
+      getTelegramPrompt({
+        telegramParseMode: env.TELEGRAM_PARSE_MODE ?? 'HTML',
+      }),
     welcomeMessage: getTelegramWelcomeMessage(),
     helpMessage: getTelegramHelpMessage(),
     transport: telegramTransport,

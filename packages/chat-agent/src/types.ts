@@ -68,10 +68,43 @@ export interface LLMResponse {
 }
 
 /**
+ * OpenRouter web search plugin configuration
+ * @deprecated Use ChatOptions.webSearch instead with :online model suffix
+ */
+export interface WebSearchPlugin {
+  id: 'web';
+  engine?: 'native' | 'exa';
+  max_results?: number;
+}
+
+/**
+ * Options for LLM chat requests
+ */
+export interface ChatOptions {
+  /**
+   * Enable web search by appending :online suffix to model name.
+   * This is the recommended approach as it works reliably through
+   * Cloudflare AI Gateway to OpenRouter.
+   *
+   * When enabled, xAI/OpenAI/Anthropic models use native search,
+   * other models use Exa-powered search.
+   *
+   * @see https://openrouter.ai/docs/guides/features/web-search
+   */
+  webSearch?: boolean;
+
+  /**
+   * OpenRouter plugins (e.g., web search)
+   * @deprecated Use webSearch: true instead - plugins may not pass through AI Gateway
+   */
+  plugins?: WebSearchPlugin[];
+}
+
+/**
  * LLM provider interface - implement this for different backends
  */
 export interface LLMProvider {
-  chat(messages: LLMMessage[], tools?: OpenAITool[]): Promise<LLMResponse>;
+  chat(messages: LLMMessage[], tools?: OpenAITool[], options?: ChatOptions): Promise<LLMResponse>;
 }
 
 /**

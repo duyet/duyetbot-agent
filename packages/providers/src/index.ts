@@ -1,17 +1,11 @@
 /**
  * LLM Provider Adapters
  *
- * Unified interface for multiple LLM providers:
- * - Claude (Anthropic)
- * - OpenAI
- * - OpenRouter
- * - OpenAI SDK via Cloudflare AI Gateway
+ * Unified interface for LLM providers via OpenRouter SDK.
+ * Routes through Cloudflare AI Gateway for caching, logging, and rate limiting.
  *
- * Provider format: <provider>:<model_id>
+ * @see https://openrouter.ai/docs
+ * @see https://developers.cloudflare.com/ai-gateway/
  */
 
-export * from './ai-gateway.js';
-export * from './claude.js';
-export * from './factory.js';
-export * from './openai-gateway.js';
 export * from './openrouter.js';

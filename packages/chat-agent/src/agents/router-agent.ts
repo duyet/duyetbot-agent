@@ -66,14 +66,12 @@ export interface RouterAgentState {
 
 /**
  * Environment bindings for router agent
+ *
+ * Note: Provider-specific fields (AI, AI_GATEWAY_NAME, AI_GATEWAY_API_KEY, OPENROUTER_API_KEY)
+ * should be provided by the concrete environment type (e.g., from OpenRouterProviderEnv).
+ * This interface only includes shared agent bindings.
  */
 export interface RouterAgentEnv {
-  /** LLM provider configuration */
-  AI_GATEWAY_ACCOUNT_ID?: string;
-  AI_GATEWAY_ID?: string;
-  ANTHROPIC_API_KEY?: string;
-  OPENROUTER_API_KEY?: string;
-
   /** Agent bindings - these are optional since not all may be deployed */
   SimpleAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;
   OrchestratorAgent?: AgentNamespace<Agent<RouterAgentEnv, unknown>>;

@@ -5,7 +5,7 @@
  * Platform-aware for optimal user experience.
  */
 
-import type { Platform } from '../types.js';
+import type { Platform, TelegramParseMode } from '../types.js';
 
 /**
  * Base guidelines shared across all platforms
@@ -20,8 +20,15 @@ const BASE_GUIDELINES = [
 ];
 
 /**
- * Platform-specific guidelines
+ * Shared Telegram guidelines (independent of parse mode)
  */
+const TELEGRAM_BASE_GUIDELINES = [
+  'Keep responses concise for mobile reading',
+  'Break long responses into paragraphs',
+  'Use bullet points (• or -) for lists',
+  'Use emojis sparingly for friendly tone',
+];
+
 /**
  * Telegram HTML formatting reference for LLM responses
  */
@@ -42,14 +49,43 @@ CRITICAL: Escape these characters in regular text (not inside tags):
 
 Do NOT use Markdown syntax (*bold*, _italic_, \`code\`) - use HTML tags only.`;
 
-const PLATFORM_GUIDELINES: Record<Platform, string[]> = {
-  telegram: [
-    'Keep responses concise for mobile reading',
-    'Break long responses into paragraphs',
-    'Use bullet points (• or -) for lists',
-    'Use emojis sparingly for friendly tone',
-    TELEGRAM_HTML_FORMAT,
-  ],
+/**
+ * Telegram MarkdownV2 formatting reference for LLM responses
+ */
+const TELEGRAM_MARKDOWNV2_FORMAT = `
+Format responses using Telegram MarkdownV2 syntax:
+- *bold* for emphasis
+- _italic_ for titles or terms
+- \`inline code\` for commands, variables, or short code
+- \`\`\`language
+code block
+\`\`\` for multi-line code with syntax highlighting
+- [link text](URL) for hyperlinks
+- >quoted text for blockquotes (must be at start of line)
+
+CRITICAL: Escape these special characters with backslash in regular text:
+_ * [ ] ( ) ~ \` > # + - = | { } . !
+
+Examples:
+- To write "test_variable", escape as "test\\_variable"
+- To write "2 + 2 = 4", escape as "2 \\+ 2 \\= 4"
+- To write "use *asterisk*", escape as "use \\*asterisk\\*"
+
+Do NOT use HTML tags (<b>, <i>, <code>) - use MarkdownV2 syntax only.`;
+
+/**
+ * Get Telegram format guidelines based on parse mode
+ */
+function getTelegramFormatGuidelines(parseMode: TelegramParseMode = 'HTML'): string[] {
+  const formatGuide =
+    parseMode === 'MarkdownV2' ? TELEGRAM_MARKDOWNV2_FORMAT : TELEGRAM_HTML_FORMAT;
+  return [...TELEGRAM_BASE_GUIDELINES, formatGuide];
+}
+
+/**
+ * Platform-specific guidelines (non-Telegram platforms)
+ */
+const PLATFORM_GUIDELINES: Record<Exclude<Platform, 'telegram'>, string[]> = {
   github: [
     'Use GitHub-flavored markdown',
     'Reference specific files and line numbers when relevant',
@@ -71,11 +107,17 @@ const PLATFORM_GUIDELINES: Record<Platform, string[]> = {
 /**
  * Generate the guidelines section
  * @param platform - Optional platform for platform-specific guidelines
+ * @param telegramParseMode - Parse mode for Telegram responses (default: 'HTML')
  */
-export function guidelinesSection(platform?: Platform): string {
+export function guidelinesSection(
+  platform?: Platform,
+  telegramParseMode: TelegramParseMode = 'HTML'
+): string {
   const guidelines = [...BASE_GUIDELINES];
 
-  if (platform && PLATFORM_GUIDELINES[platform]) {
+  if (platform === 'telegram') {
+    guidelines.push(...getTelegramFormatGuidelines(telegramParseMode));
+  } else if (platform && PLATFORM_GUIDELINES[platform]) {
     guidelines.push(...PLATFORM_GUIDELINES[platform]);
   }
 

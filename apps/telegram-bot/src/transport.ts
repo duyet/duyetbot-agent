@@ -80,6 +80,8 @@ export interface TelegramContext {
   debugContext?: DebugContext;
   /** Whether current user is an admin (computed from username + adminUsername) */
   isAdmin: boolean;
+  /** Parse mode for message formatting */
+  parseMode?: 'HTML' | 'MarkdownV2';
 }
 
 /**
@@ -97,7 +99,7 @@ async function sendTelegramMessage(
   token: string,
   chatId: number,
   text: string,
-  parseMode: 'HTML' | 'Markdown' | undefined = 'Markdown'
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML'
 ): Promise<number> {
   const chunks = splitMessage(text);
   let lastMessageId = 0;
@@ -175,7 +177,7 @@ async function editTelegramMessage(
   chatId: number,
   messageId: number,
   text: string,
-  parseMode: 'HTML' | 'Markdown' | undefined = 'Markdown'
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML'
 ): Promise<void> {
   // Truncate if too long for edit
   const truncatedText =
@@ -333,6 +335,7 @@ function computeIsAdmin(username?: string, adminUsername?: string): boolean {
  * @param webhookCtx - Webhook context from middleware
  * @param adminUsername - Admin username for detailed errors
  * @param requestId - Request ID for trace correlation
+ * @param parseMode - Parse mode for message formatting
  */
 export function createTelegramContext(
   token: string,
@@ -344,7 +347,8 @@ export function createTelegramContext(
     startTime: number;
   },
   adminUsername?: string,
-  requestId?: string
+  requestId?: string,
+  parseMode?: 'HTML' | 'MarkdownV2'
 ): TelegramContext {
   const isAdmin = computeIsAdmin(webhookCtx.username, adminUsername);
 
@@ -358,5 +362,6 @@ export function createTelegramContext(
     startTime: webhookCtx.startTime,
     adminUsername,
     isAdmin,
+    parseMode,
   };
 }

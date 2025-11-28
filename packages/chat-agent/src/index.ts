@@ -40,7 +40,12 @@ export {
   type ToolStatus,
 } from './format.js';
 // Debug footer utilities
-export { escapeHtml, formatDebugFooter } from './debug-footer.js';
+export {
+  escapeHtml,
+  escapeMarkdownV2,
+  formatDebugFooter,
+  formatDebugFooterMarkdownV2,
+} from './debug-footer.js';
 // Utilities
 export { formatForLLM, getMessageText, trimHistory } from './history.js';
 export {
@@ -80,6 +85,7 @@ export type {
 export type {
   AgentState,
   ChatAgentConfig,
+  ChatOptions,
   DebugContext,
   LLMMessage,
   LLMProvider,
@@ -90,6 +96,7 @@ export type {
   Tool,
   ToolCall,
   ToolExecutor,
+  WebSearchPlugin,
   // Step progress types
   StepEvent,
   StepProgressConfig,

@@ -13,7 +13,6 @@ fallthrough = true
 ENVIRONMENT = "production"
 MODEL = "x-ai/grok-4.1-fast:free"
 AI_GATEWAY_NAME = "duyetbot"
-AI_GATEWAY_PROVIDER = "openrouter"
 
 [ai]
 binding = "AI"

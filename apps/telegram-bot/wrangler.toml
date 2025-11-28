@@ -16,10 +16,9 @@ binding = "AI"
 ENVIRONMENT = "production"
 MODEL = "x-ai/grok-4.1-fast:free"
 AI_GATEWAY_NAME = "duyetbot"
-AI_GATEWAY_PROVIDER = "openrouter"
-AI_GATEWAY_SDK = "openai" # Provider SDK: 'cloudflare' (default) or 'openai' (uses OpenAI SDK with runTools)
 TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
 TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
+TELEGRAM_PARSE_MODE = "HTML" # Response format: 'HTML' (default) or 'MarkdownV2'
 
 [observability]
 enabled = true

@@ -1,85 +1,52 @@
 /**
  * LLM Provider for GitHub Bot
  *
- * Supports two provider modes:
- * - 'cloudflare' (default): Uses native Cloudflare AI binding
- * - 'openai': Uses OpenAI SDK with AI Gateway OpenRouter endpoint
- *
- * Set AI_GATEWAY_SDK='openai' to use OpenAI SDK mode.
+ * Uses OpenRouter SDK via Cloudflare AI Gateway.
+ * Supports xAI Grok native tools (web_search, x_search).
  */
 
 import type { LLMProvider } from '@duyetbot/chat-agent';
 import {
-  type AIGatewayEnv,
-  type AIGatewayProviderOptions,
-  type CloudflareAIBinding,
-  type OpenAIGatewayProviderOptions,
-  createAIGatewayProvider as createCloudflareProvider,
-  createOpenAIGatewayProvider,
+  type OpenRouterProviderEnv,
+  type OpenRouterProviderOptions,
+  createOpenRouterProvider,
 } from '@duyetbot/providers';
 import { logger } from './logger.js';
 
 /**
- * Environment for provider selection
+ * Environment for GitHub bot provider
+ * Extends OpenRouterProviderEnv for type safety
  */
-export interface ProviderEnv extends AIGatewayEnv {
-  /** Provider SDK mode: 'cloudflare' (default) | 'openai' */
-  AI_GATEWAY_SDK?: 'cloudflare' | 'openai';
-  /** Cloudflare account ID (required for OpenAI SDK mode) */
-  AI_GATEWAY_ACCOUNT_ID?: string;
-  /** OpenRouter API key (required for OpenAI SDK mode) */
-  OPENROUTER_API_KEY?: string;
-}
+export type ProviderEnv = OpenRouterProviderEnv;
 
 /**
- * Create an LLM provider using Cloudflare AI Gateway
- *
- * Provider selection:
- * - AI_GATEWAY_SDK='cloudflare' or unset: Use native Cloudflare AI binding
- * - AI_GATEWAY_SDK='openai': Use OpenAI SDK with runTools() support
+ * Create an LLM provider for GitHub bot
  *
  * @example
  * ```typescript
- * const provider = createOpenRouterProvider(env);
+ * const provider = createProvider(env);
  * const response = await provider.chat([
  *   { role: 'user', content: 'Hello!' }
  * ]);
  * ```
  */
-export function createOpenRouterProvider(
+export function createProvider(
   env: ProviderEnv,
-  options?: Partial<AIGatewayProviderOptions & OpenAIGatewayProviderOptions>
+  options?: Partial<OpenRouterProviderOptions>
 ): LLMProvider {
-  // Use OpenAI SDK mode if explicitly requested
-  if (env.AI_GATEWAY_SDK === 'openai') {
-    if (!env.OPENROUTER_API_KEY) {
-      throw new Error('OpenAI SDK mode requires OPENROUTER_API_KEY');
-    }
+  logger.info('GitHub bot creating provider', {
+    gateway: env.AI_GATEWAY_NAME,
+    model: env.MODEL || 'x-ai/grok-4.1-fast',
+  });
 
-    logger.info('GitHub bot using OpenAI SDK provider', {
-      gateway: env.AI_GATEWAY_NAME,
-      model: env.MODEL,
-    });
-
-    return createOpenAIGatewayProvider(
-      {
-        AI: env.AI as CloudflareAIBinding,
-        AI_GATEWAY_NAME: env.AI_GATEWAY_NAME,
-        OPENROUTER_API_KEY: env.OPENROUTER_API_KEY,
-        ...(env.MODEL && { MODEL: env.MODEL }),
-      },
-      {
-        maxTokens: 2048,
-        logger,
-        ...options,
-      }
-    );
-  }
-
-  // Default: Cloudflare native mode
-  return createCloudflareProvider(env, {
+  return createOpenRouterProvider(env as OpenRouterProviderEnv, {
     maxTokens: 2048,
+    requestTimeout: 60000,
+    enableWebSearch: true, // Enable native web search for xAI models
     logger,
     ...options,
   });
 }
+
+// Re-export for backwards compatibility
+export { createProvider as createOpenRouterProvider };
