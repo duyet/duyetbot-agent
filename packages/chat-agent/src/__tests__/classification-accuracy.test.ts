@@ -188,12 +188,12 @@ describe('Classification Accuracy Test Suite', () => {
     });
   });
 
-  describe('Research Queries → research-worker', () => {
+  describe('Research Queries → lead-researcher-agent (medium/high) or research-worker (low)', () => {
     it('classifies best practices research', () => {
       testRouting(
         'what are best practices for React hooks?',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent' // Medium complexity research now uses lead-researcher-agent
       );
     });
 
@@ -201,7 +201,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'compare Redis vs Memcached',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
 
@@ -209,7 +209,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'summarize the latest Next.js features',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
 
@@ -217,7 +217,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'find documentation for TypeScript decorators',
         { category: 'research', complexity: 'low' },
-        'research-worker'
+        'research-worker' // Low complexity research goes to research-worker
       );
     });
 
@@ -225,7 +225,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'how do microservices handle authentication?',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
 
@@ -233,7 +233,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'what are common database optimization patterns?',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
 
@@ -241,7 +241,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'what are OWASP top 10 vulnerabilities?',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
 
@@ -249,7 +249,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'compare Webpack vs Vite for bundling',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
 
@@ -265,7 +265,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'what are emerging trends in frontend development?',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
   });
@@ -517,11 +517,11 @@ describe('Classification Accuracy Test Suite', () => {
     });
 
     it('handles research with code context', () => {
-      // Should route to research-worker
+      // Should route to lead-researcher-agent (medium complexity research)
       testRouting(
         'research best practices for implementing JWT authentication',
         { category: 'research', complexity: 'medium' },
-        'research-worker'
+        'lead-researcher-agent'
       );
     });
 

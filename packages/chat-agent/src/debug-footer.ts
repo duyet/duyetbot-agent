@@ -20,103 +20,72 @@ export function escapeHtml(text: string): string {
 }
 
 /**
- * Format routing flow as: router → agent (tool1, tool2) → subagent
+ * Format duration in seconds with 2 decimal places
+ */
+function formatStepDuration(durationMs?: number): string {
+  if (!durationMs) {
+    return '';
+  }
+  return `${(durationMs / 1000).toFixed(2)}s`;
+}
+
+/**
+ * Format routing flow as: router (0.12s) → agent (tool1 → tool2 → response, 1.23s)
+ *
+ * Each step shows:
+ * - Agent name
+ * - Tool chain (if any tools were called)
+ * - Duration
+ * - Error indicator if failed
  */
 function formatRoutingFlow(routingFlow: DebugContext['routingFlow']): string {
   return routingFlow
     .map((step) => {
-      const tools = step.tools?.length ? ` (${step.tools.join(', ')})` : '';
-      return `${step.agent}${tools}`;
+      const duration = formatStepDuration(step.durationMs);
+
+      // Error case: agent (error, 1.23s)
+      if (step.error) {
+        const inner = duration ? `error, ${duration}` : 'error';
+        return `${step.agent} (${inner})`;
+      }
+
+      // Build tool chain: tool1 → tool2 → response
+      const chain = step.toolChain?.length ? `${step.toolChain.join(' → ')} → response` : '';
+
+      // Combine chain and duration
+      const parts = [chain, duration].filter(Boolean);
+      const inner = parts.join(', ');
+
+      return inner ? `${step.agent} (${inner})` : step.agent;
     })
     .join(' → ');
 }
 
 /**
- * Format duration in seconds with 2 decimal places
- */
-function formatDuration(durationMs?: number): string {
-  if (!durationMs) {
-    return '';
-  }
-  return ` ${(durationMs / 1000).toFixed(2)}s`;
-}
-
-/**
- * Format classification as: type/category/complexity
+ * Format classification as inline: [type/category/complexity]
  */
 function formatClassification(classification?: DebugContext['classification']): string {
   if (!classification) {
     return '';
   }
-  return `\n${classification.type}/${classification.category}/${classification.complexity}`;
+  return ` [${classification.type}/${classification.category}/${classification.complexity}]`;
 }
 
 /**
- * Format metadata indicators (fallback, cache, timeout, errors)
+ * Format metadata - simplified to only show error messages
+ * Removed cache/timeout/err counts as they're redundant with error message
  */
 function formatMetadata(metadata?: DebugMetadata): string {
   if (!metadata) {
     return '';
   }
 
-  const parts: string[] = [];
-
-  if (metadata.fallback) {
-    parts.push('[fallback]');
-  }
-
-  if (metadata.cacheHits !== undefined || metadata.cacheMisses !== undefined) {
-    parts.push(`cache:${metadata.cacheHits ?? 0}/${metadata.cacheMisses ?? 0}`);
-  }
-
-  if (metadata.toolTimeouts && metadata.toolTimeouts > 0) {
-    const tools = metadata.timedOutTools?.length ? ` (${metadata.timedOutTools.join(', ')})` : '';
-    parts.push(`timeout:${metadata.toolTimeouts}${tools}`);
-  }
-
-  if (metadata.toolErrors && metadata.toolErrors > 0) {
-    parts.push(`err:${metadata.toolErrors}`);
-  }
-
-  let result = parts.length > 0 ? `\n${parts.join(' ')}` : '';
-
-  // Error message on separate line
+  // Only show error message on separate line if present
   if (metadata.lastToolError) {
-    result += `\n⚠️ ${escapeHtml(metadata.lastToolError)}`;
+    return `\n⚠️ ${escapeHtml(metadata.lastToolError)}`;
   }
 
-  return result;
-}
-
-/**
- * Format execution path for step-by-step tracing
- * @example: "thinking → routing:simple-agent → tool:duyet_cv → preparing"
- */
-function formatExecutionPath(executionPath?: string[]): string {
-  if (!executionPath || executionPath.length === 0) {
-    return '';
-  }
-
-  // Simplify path for display (remove redundant prefixes and collapse)
-  const simplified = executionPath.map((step) => {
-    if (step.startsWith('tool:')) {
-      const parts = step.split(':');
-      // tool:name:start/complete/error -> just name
-      return parts[1] || step;
-    }
-    if (step.startsWith('routing:')) {
-      return step.split(':')[1] || step;
-    }
-    if (step.startsWith('llm:')) {
-      return step; // Keep as-is: llm:2/5
-    }
-    return step;
-  });
-
-  // Remove consecutive duplicates and filter out intermediate states
-  const deduped = simplified.filter((step, i, arr) => i === 0 || step !== arr[i - 1]);
-
-  return `\n📋 ${deduped.join(' → ')}`;
+  return '';
 }
 
 /**
@@ -124,10 +93,7 @@ function formatExecutionPath(executionPath?: string[]): string {
  *
  * @example Output:
  * ```
- * 🔍 router → duyet-info-agent (get_latest_posts) 2.34s
- * simple/duyet/low
- * 📋 thinking → simple-agent → duyet_cv → preparing
- * [fallback] cache:1/0 timeout:1 (get_latest_posts) err:1
+ * 🔍 router (0.12s) → duyet-info-agent (duyet_cv → get_posts → response, 2.34s) [simple/duyet/low]
  * ⚠️ get_latest_posts: Connection timeout after 12000ms
  * ```
  */
@@ -137,10 +103,8 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
   }
 
   const flow = formatRoutingFlow(debugContext.routingFlow);
-  const duration = formatDuration(debugContext.totalDurationMs);
   const classification = formatClassification(debugContext.classification);
-  const executionPath = formatExecutionPath(debugContext.executionPath);
   const metadata = formatMetadata(debugContext.metadata);
 
-  return `\n\n<blockquote expandable>🔍 ${flow}${duration}${classification}${executionPath}${metadata}</blockquote>`;
+  return `\n\n<blockquote expandable>🔍 ${flow}${classification}${metadata}</blockquote>`;
 }

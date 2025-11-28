@@ -162,13 +162,25 @@ describe('determineRouteTarget', () => {
     expect(determineRouteTarget(classification)).toBe('code-worker');
   });
 
-  it('routes research queries to research-worker', () => {
+  it('routes medium complexity research queries to lead-researcher-agent', () => {
     const classification: QueryClassification = {
       type: 'complex',
       category: 'research',
       complexity: 'medium',
       requiresHumanApproval: false,
       reasoning: 'Research task',
+    };
+    // Medium/high complexity research now goes to lead-researcher-agent (multi-agent research system)
+    expect(determineRouteTarget(classification)).toBe('lead-researcher-agent');
+  });
+
+  it('routes low complexity research queries to research-worker', () => {
+    const classification: QueryClassification = {
+      type: 'complex', // Must be complex to reach category routing (simple+low goes to simple-agent)
+      category: 'research',
+      complexity: 'low',
+      requiresHumanApproval: false,
+      reasoning: 'Simple research task',
     };
     expect(determineRouteTarget(classification)).toBe('research-worker');
   });

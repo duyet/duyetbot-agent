@@ -1,10 +1,27 @@
 /**
  * Tests for debug footer functionality
+ *
+ * Note: We import TelegramContext type inline to avoid pulling in
+ * cloudflare: protocol dependencies from the transport module.
  */
 
+import type { DebugContext } from '@duyetbot/chat-agent';
 import { describe, expect, it } from 'vitest';
 import { escapeHtml, formatDebugFooter, prepareMessageWithDebug } from '../debug-footer.js';
-import type { TelegramContext } from '../transport.js';
+
+/**
+ * Minimal TelegramContext type for testing
+ * (avoids importing from transport.ts which may have cloudflare deps)
+ */
+interface TelegramContext {
+  token: string;
+  chatId: number;
+  userId: number;
+  text: string;
+  startTime: number;
+  isAdmin: boolean;
+  debugContext?: DebugContext;
+}
 
 /**
  * Create a mock TelegramContext for testing
@@ -22,7 +39,7 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
 }
 
 describe('debug-footer', () => {
-  describe('formatDebugFooter', () => {
+  describe('formatDebugFooter - Admin check wrapper', () => {
     it('returns null for non-admin users', () => {
       const ctx = createMockContext({
         isAdmin: false,
@@ -51,7 +68,7 @@ describe('debug-footer', () => {
       expect(formatDebugFooter(ctx)).toBeNull();
     });
 
-    it('formats simple routing flow correctly', () => {
+    it('delegates to shared implementation for admin users', () => {
       const ctx = createMockContext({
         isAdmin: true,
         debugContext: {
@@ -66,61 +83,42 @@ describe('debug-footer', () => {
       expect(footer).toContain('</blockquote>');
     });
 
-    it('formats routing flow with tools', () => {
+    it('includes error messages from debug context', () => {
       const ctx = createMockContext({
         isAdmin: true,
         debugContext: {
           routingFlow: [
             {
-              agent: 'orchestrator',
-              tools: ['web_search', 'code_exec'],
-              durationMs: 2500,
+              agent: 'duyet-info-agent',
+              toolChain: ['get_latest_posts'],
+              durationMs: 2340,
             },
           ],
-          totalDurationMs: 2500,
-        },
-      });
-      const footer = formatDebugFooter(ctx);
-      expect(footer).toContain('orchestrator (web_search, code_exec)');
-      expect(footer).toContain('2.50s');
-    });
-
-    it('formats multi-step routing flow', () => {
-      const ctx = createMockContext({
-        isAdmin: true,
-        debugContext: {
-          routingFlow: [
-            { agent: 'router', durationMs: 100 },
-            { agent: 'orchestrator', tools: ['plan'], durationMs: 500 },
-            {
-              agent: 'code-worker',
-              tools: ['lint', 'format'],
-              durationMs: 1000,
-            },
-          ],
-          totalDurationMs: 1600,
-        },
-      });
-      const footer = formatDebugFooter(ctx);
-      expect(footer).toContain('router → orchestrator (plan) → code-worker (lint, format)');
-      expect(footer).toContain('1.60s');
-    });
-
-    it('includes classification when available', () => {
-      const ctx = createMockContext({
-        isAdmin: true,
-        debugContext: {
-          routingFlow: [{ agent: 'simple-agent', durationMs: 500 }],
-          totalDurationMs: 500,
-          classification: {
-            type: 'simple',
-            category: 'general',
-            complexity: 'low',
+          metadata: {
+            lastToolError: 'get_latest_posts: timeout',
           },
         },
       });
       const footer = formatDebugFooter(ctx);
-      expect(footer).toContain('simple/general/low');
+      expect(footer).toContain('duyet-info-agent');
+      expect(footer).toContain('⚠️ get_latest_posts: timeout');
+    });
+
+    it('escapes HTML in error messages', () => {
+      const ctx = createMockContext({
+        isAdmin: true,
+        debugContext: {
+          routingFlow: [{ agent: 'test-agent' }],
+          metadata: {
+            toolErrors: 1,
+            lastToolError: 'tool: <timeout> & retry',
+          },
+        },
+      });
+      const footer = formatDebugFooter(ctx);
+      expect(footer).toContain('&lt;timeout&gt;');
+      expect(footer).toContain('&amp;');
+      expect(footer).not.toContain('<timeout>');
     });
   });
 
@@ -141,6 +139,10 @@ describe('debug-footer', () => {
       expect(escapeHtml('say "hello"')).toBe('say &quot;hello&quot;');
     });
 
+    it('escapes single quotes', () => {
+      expect(escapeHtml("it's")).toBe('it&#39;s');
+    });
+
     it('escapes multiple special characters', () => {
       expect(escapeHtml('<script>alert("xss")</script>')).toBe(
         '&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;'
@@ -153,13 +155,13 @@ describe('debug-footer', () => {
   });
 
   describe('prepareMessageWithDebug', () => {
-    it('returns Markdown mode for non-admin users', () => {
+    it('returns HTML mode with escaped text for non-admin users', () => {
       const ctx = createMockContext({
         isAdmin: false,
       });
       const result = prepareMessageWithDebug('Hello', ctx);
       expect(result.text).toBe('Hello');
-      expect(result.parseMode).toBe('Markdown');
+      expect(result.parseMode).toBe('HTML');
     });
 
     it('returns HTML mode with debug footer for admin users', () => {
@@ -189,13 +191,22 @@ describe('debug-footer', () => {
       expect(result.parseMode).toBe('HTML');
     });
 
-    it('returns Markdown mode for admin without debug context', () => {
+    it('returns HTML mode with escaped text for admin without debug context', () => {
       const ctx = createMockContext({
         isAdmin: true,
       });
       const result = prepareMessageWithDebug('Hello', ctx);
       expect(result.text).toBe('Hello');
-      expect(result.parseMode).toBe('Markdown');
+      expect(result.parseMode).toBe('HTML');
+    });
+
+    it('escapes HTML special chars even for non-admin users', () => {
+      const ctx = createMockContext({
+        isAdmin: false,
+      });
+      const result = prepareMessageWithDebug('Use <code> & "quotes"', ctx);
+      expect(result.text).toBe('Use &lt;code&gt; &amp; &quot;quotes&quot;');
+      expect(result.parseMode).toBe('HTML');
     });
   });
 });

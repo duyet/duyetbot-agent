@@ -136,7 +136,7 @@ describe('transport', () => {
   });
 
   describe('telegramTransport.send', () => {
-    it('sends message with Markdown parse mode', async () => {
+    it('sends message with HTML parse mode and escaped text', async () => {
       const ctx = createMockContext();
       mockFetch.mockResolvedValueOnce(createMockResponse(42));
 
@@ -152,7 +152,7 @@ describe('transport', () => {
           body: JSON.stringify({
             chat_id: 123456,
             text: 'Hello *world*',
-            parse_mode: 'Markdown',
+            parse_mode: 'HTML',
           }),
         })
       );
@@ -202,7 +202,7 @@ describe('transport', () => {
   });
 
   describe('telegramTransport.edit', () => {
-    it('edits message with Markdown parse mode', async () => {
+    it('edits message with HTML parse mode', async () => {
       const ctx = createMockContext();
       mockFetch.mockResolvedValueOnce(createMockResponse(0, true));
 
@@ -216,7 +216,7 @@ describe('transport', () => {
             chat_id: 123456,
             message_id: 42,
             text: 'Updated *text*',
-            parse_mode: 'Markdown',
+            parse_mode: 'HTML',
           }),
         })
       );

@@ -41,6 +41,22 @@ export const ComplexityLevel = z.enum([
 export type ComplexityLevel = z.infer<typeof ComplexityLevel>;
 
 /**
+ * Effort estimation for resource allocation
+ * Based on Anthropic's multi-agent research system patterns
+ */
+export const EffortEstimateSchema = z.object({
+  /** Recommended effort level */
+  level: z.enum(['minimal', 'standard', 'thorough', 'exhaustive']),
+  /** Recommended number of subagents (1-10) */
+  recommendedSubagents: z.number().min(1).max(10),
+  /** Maximum tool calls across all subagents (3-100) */
+  maxToolCalls: z.number().min(3).max(100),
+  /** Expected duration category */
+  expectedDuration: z.enum(['fast', 'medium', 'long']),
+});
+export type EffortEstimate = z.infer<typeof EffortEstimateSchema>;
+
+/**
  * Full query classification schema
  */
 export const QueryClassificationSchema = z.object({
@@ -60,6 +76,8 @@ export const QueryClassificationSchema = z.object({
   suggestedTools: z.array(z.string()).optional(),
   /** Estimated token cost (rough) */
   estimatedTokens: z.number().optional(),
+  /** Effort estimation for multi-agent research */
+  effortEstimate: EffortEstimateSchema.optional(),
 });
 export type QueryClassification = z.infer<typeof QueryClassificationSchema>;
 
@@ -69,6 +87,7 @@ export type QueryClassification = z.infer<typeof QueryClassificationSchema>;
 export const RouteTarget = z.enum([
   'simple-agent', // Direct LLM response
   'orchestrator-agent', // Complex task orchestration
+  'lead-researcher-agent', // Multi-agent research orchestration
   'hitl-agent', // Human-in-the-loop workflow
   'code-worker', // Code-specific tasks
   'research-worker', // Research tasks

@@ -183,7 +183,8 @@ describe('DuyetInfoAgent', () => {
       expect(target).toBe('duyet-info-agent');
     });
 
-    it('should route high complexity duyet queries to orchestrator', () => {
+    it('should route high complexity duyet queries to duyet-info-agent', () => {
+      // Duyet category has priority over complexity routing
       const target = determineRouteTarget({
         type: 'complex',
         category: 'duyet',
@@ -191,7 +192,7 @@ describe('DuyetInfoAgent', () => {
         requiresHumanApproval: false,
         reasoning: 'Complex duyet query',
       });
-      expect(target).toBe('orchestrator-agent');
+      expect(target).toBe('duyet-info-agent');
     });
   });
 });
