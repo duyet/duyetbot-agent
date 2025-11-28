@@ -1089,12 +1089,23 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
           // Start rotation if transport supports edit
           if (transport.edit) {
+            let consecutiveFailures = 0;
+            const MAX_ROTATOR_FAILURES = 3;
+
             rotator.start(async (nextMessage) => {
               try {
                 logger.info(`[CloudflareAgent][ROTATOR] Editing to: ${nextMessage}`);
                 await transport.edit!(ctx, messageRef!, nextMessage);
+                consecutiveFailures = 0; // Reset on success
               } catch (err) {
-                logger.error(`[CloudflareAgent][ROTATOR] Edit failed: ${err}`);
+                consecutiveFailures++;
+                logger.error(
+                  `[CloudflareAgent][ROTATOR] Edit failed (${consecutiveFailures}/${MAX_ROTATOR_FAILURES}): ${err}`
+                );
+                if (consecutiveFailures >= MAX_ROTATOR_FAILURES) {
+                  logger.warn('[CloudflareAgent][ROTATOR] Too many failures, stopping rotator');
+                  rotator?.stop();
+                }
               }
             });
           }
