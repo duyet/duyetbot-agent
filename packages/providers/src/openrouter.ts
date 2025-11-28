@@ -38,10 +38,8 @@ export interface OpenRouterProviderEnv {
   AI: CloudflareAIBinding;
   /** Gateway name configured in Cloudflare dashboard */
   AI_GATEWAY_NAME: string;
-  /** AI Gateway API key for authenticated gateway mode */
+  /** AI Gateway API key for BYOK authentication */
   AI_GATEWAY_API_KEY: string;
-  /** OpenRouter API key (optional, falls back to AI_GATEWAY_API_KEY) */
-  OPENROUTER_API_KEY?: string;
   /** Model to use (e.g., 'x-ai/grok-4.1-fast', 'anthropic/claude-3.5-sonnet') */
   MODEL?: string;
 }
@@ -245,9 +243,6 @@ export function createOpenRouterProvider(
           gateway: env.AI_GATEWAY_NAME,
         });
 
-        // Use OPENROUTER_API_KEY if set, otherwise fall back to AI_GATEWAY_API_KEY
-        const apiKey = env.OPENROUTER_API_KEY || env.AI_GATEWAY_API_KEY;
-
         // Build request body
         const body = {
           model,
@@ -267,13 +262,13 @@ export function createOpenRouterProvider(
         const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
 
         try {
+          // Using BYOK (Bring Your Own Keys) - API key is configured in Cloudflare dashboard
+          // Only cf-aig-authorization header is needed, no Authorization header
+          // @see https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/
           const response = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              Authorization: `Bearer ${apiKey}`,
-              // Add Cloudflare AI Gateway authentication header
-              // @see https://developers.cloudflare.com/ai-gateway/configuration/authentication/
               'cf-aig-authorization': `Bearer ${env.AI_GATEWAY_API_KEY}`,
             },
             body: JSON.stringify(body),
