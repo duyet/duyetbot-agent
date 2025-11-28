@@ -7,6 +7,7 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { getRouterPrompt } from '@duyetbot/prompts';
+import { estimateEffortLevel } from '../config/effort-config.js';
 import type { LLMProvider } from '../types.js';
 import {
   type QueryClassification,
@@ -132,6 +133,7 @@ export async function classifyQuery(
 
 /**
  * Determine route target from classification
+ * Updated to support lead-researcher-agent for complex research tasks
  */
 export function determineRouteTarget(classification: QueryClassification): RouteTarget {
   // Tool confirmation always goes to HITL agent
@@ -139,19 +141,28 @@ export function determineRouteTarget(classification: QueryClassification): Route
     return 'hitl-agent';
   }
 
-  // High complexity goes to orchestrator
-  if (classification.complexity === 'high') {
-    return 'orchestrator-agent';
-  }
-
   // Operations requiring approval go to HITL
   if (classification.requiresHumanApproval) {
     return 'hitl-agent';
   }
 
-  // Route duyet queries to DuyetInfoAgent (before simple-agent fallback)
+  // Route duyet queries to DuyetInfoAgent (before other routing)
   if (classification.category === 'duyet') {
     return 'duyet-info-agent';
+  }
+
+  // High/medium complexity research queries go to lead-researcher-agent
+  // This enables multi-agent parallel research (Anthropic pattern)
+  if (
+    classification.category === 'research' &&
+    (classification.complexity === 'high' || classification.complexity === 'medium')
+  ) {
+    return 'lead-researcher-agent';
+  }
+
+  // High complexity non-research goes to orchestrator
+  if (classification.complexity === 'high') {
+    return 'orchestrator-agent';
   }
 
   // Simple queries with low complexity go to simple agent
@@ -164,6 +175,7 @@ export function determineRouteTarget(classification: QueryClassification): Route
     case 'code':
       return 'code-worker';
     case 'research':
+      // Low complexity research still goes to research worker
       return 'research-worker';
     case 'github':
       return 'github-worker';
@@ -171,6 +183,26 @@ export function determineRouteTarget(classification: QueryClassification): Route
       // General queries go to simple agent
       return 'simple-agent';
   }
+}
+
+/**
+ * Add effort estimation to a classification
+ * Called after LLM classification to add resource planning
+ */
+export function addEffortEstimation(
+  classification: QueryClassification,
+  queryLength: number
+): QueryClassification {
+  const effortEstimate = estimateEffortLevel(
+    classification.complexity,
+    classification.category,
+    queryLength
+  );
+
+  return {
+    ...classification,
+    effortEstimate,
+  };
 }
 
 /**
@@ -245,6 +277,7 @@ export function quickClassify(query: string): QueryClassification | null {
 
 /**
  * Hybrid classifier: tries quick patterns first, falls back to LLM
+ * Now includes effort estimation for resource planning
  */
 export async function hybridClassify(
   query: string,
@@ -254,11 +287,15 @@ export async function hybridClassify(
   // Try quick classification first
   const quick = quickClassify(query);
   if (quick) {
-    return quick;
+    // Add effort estimation even for quick classifications
+    return addEffortEstimation(quick, query.length);
   }
 
   // Fall back to LLM classification
-  return classifyQuery(query, config, context);
+  const classification = await classifyQuery(query, config, context);
+
+  // Add effort estimation for resource planning
+  return addEffortEstimation(classification, query.length);
 }
 
 /**

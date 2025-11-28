@@ -11,21 +11,44 @@ import type { Platform } from '../types.js';
  * Base guidelines shared across all platforms
  */
 const BASE_GUIDELINES = [
-  'Use markdown formatting when helpful',
-  'Always respond in English unless the user explicitly writes in another language',
-  "Admit when you don't know something rather than making up information",
+  'Always respond in English only, regardless of the language the user writes in',
+  'Be direct and concise - give the answer first, then explain only if needed',
+  'For simple requests like translations, just provide the result without extra commentary or emojis',
+  "NEVER make up information - if you don't have accurate data, say so or use tools",
+  'For current events, news, or time-sensitive info: ALWAYS use search tools first',
   'For technical questions, explain your reasoning',
 ];
 
 /**
  * Platform-specific guidelines
  */
+/**
+ * Telegram HTML formatting reference for LLM responses
+ */
+const TELEGRAM_HTML_FORMAT = `
+Format responses using Telegram HTML tags:
+- <b>bold</b> for emphasis
+- <i>italic</i> for titles or terms
+- <code>inline code</code> for commands, variables, or short code
+- <pre>code block</pre> for multi-line code
+- <pre><code class="language-python">code</code></pre> for syntax-highlighted code blocks
+- <a href="URL">link text</a> for hyperlinks
+- <blockquote>quoted text</blockquote> for quotes
+
+CRITICAL: Escape these characters in regular text (not inside tags):
+- < becomes &lt;
+- > becomes &gt;
+- & becomes &amp;
+
+Do NOT use Markdown syntax (*bold*, _italic_, \`code\`) - use HTML tags only.`;
+
 const PLATFORM_GUIDELINES: Record<Platform, string[]> = {
   telegram: [
     'Keep responses concise for mobile reading',
     'Break long responses into paragraphs',
-    'Use bullet points for lists',
+    'Use bullet points (• or -) for lists',
     'Use emojis sparingly for friendly tone',
+    TELEGRAM_HTML_FORMAT,
   ],
   github: [
     'Use GitHub-flavored markdown',

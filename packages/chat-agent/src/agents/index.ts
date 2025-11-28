@@ -66,3 +66,41 @@ export {
   type DuyetInfoAgentMethods,
   type DuyetInfoAgentState,
 } from './duyet-info-agent.js';
+// Multi-agent research system
+export {
+  // Lead Researcher Agent
+  createLeadResearcherAgent,
+  type LeadResearcherAgentClass,
+  type LeadResearcherAgentInstance,
+  type LeadResearcherConfig,
+  type LeadResearcherEnv,
+  type LeadResearcherMethods,
+  // Subagents
+  createCodeSubagent,
+  createGeneralSubagent,
+  createGitHubSubagent,
+  createResearchSubagent,
+  createSubagent,
+  type SubagentClass,
+  type SubagentConfig,
+  type SubagentEnv,
+  type SubagentMethods,
+  type SubagentState,
+  // Types
+  type Citation,
+  type DelegationContext,
+  type LeadResearcherState,
+  type OutputFormat,
+  type ResearchPlan,
+  type ResearchResult,
+  type SubagentResult,
+  type SubagentTask,
+  type SubagentType,
+  // Templates
+  buildDelegationPrompt,
+  buildSubagentPrompt,
+  formatDependencyContext,
+  getDefaultBoundaries,
+  getDefaultToolGuidance,
+  getSubagentSystemPrompt,
+} from './research/index.js';

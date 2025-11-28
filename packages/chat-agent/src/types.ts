@@ -142,10 +142,14 @@ export interface DebugContext {
   routingFlow: Array<{
     /** Agent name (e.g., 'router', 'simple-agent', 'orchestrator') */
     agent: string;
-    /** Tools used by this agent (if any) */
+    /** Tools used by this agent (if any) - kept for backwards compat */
     tools?: string[];
+    /** Ordered tool execution chain (e.g., ['duyet_cv', 'get_posts']) */
+    toolChain?: string[];
     /** Execution duration for this step in milliseconds */
     durationMs?: number;
+    /** Error message if this agent failed */
+    error?: string;
   }>;
   /** Total execution duration in milliseconds */
   totalDurationMs?: number;
