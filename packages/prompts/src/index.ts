@@ -31,6 +31,7 @@ export type {
   ToolDefinition,
   CustomSection,
   SectionRenderer,
+  TelegramParseMode,
 } from './types.js';
 
 // Builder

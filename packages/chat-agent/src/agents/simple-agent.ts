@@ -11,7 +11,7 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type Connection } from 'agents';
-import type { LLMProvider, Message } from '../types.js';
+import type { ChatOptions, LLMProvider, Message } from '../types.js';
 import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
 
 /**
@@ -34,12 +34,22 @@ export interface SimpleAgentState {
 
 /**
  * Environment bindings for simple agent
+ * Note: Actual env fields depend on the provider (OpenRouterProviderEnv, etc.)
+ * This interface is kept minimal - extend with provider-specific env in your app
  */
-export interface SimpleAgentEnv {
-  AI_GATEWAY_ACCOUNT_ID?: string;
-  AI_GATEWAY_ID?: string;
-  ANTHROPIC_API_KEY?: string;
-  OPENROUTER_API_KEY?: string;
+// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extend with provider env
+export interface SimpleAgentEnv {}
+
+/**
+ * Web search configuration for SimpleAgent
+ */
+export interface WebSearchConfig {
+  /** Enable web search */
+  enabled: boolean;
+  /** Maximum number of search results (default: 5, max: 10) */
+  maxResults?: number;
+  /** Search engine: 'native' uses model's built-in search, 'exa' uses Exa API */
+  engine?: 'native' | 'exa';
 }
 
 /**
@@ -54,6 +64,17 @@ export interface SimpleAgentConfig<TEnv extends SimpleAgentEnv> {
   maxHistory?: number;
   /** Enable detailed logging */
   debug?: boolean;
+  /**
+   * Enable native web search via OpenRouter plugins.
+   * When enabled, the model can access real-time web information.
+   *
+   * @example
+   * ```typescript
+   * webSearch: true  // Enable with defaults
+   * webSearch: { enabled: true, maxResults: 3 }  // Custom config
+   * ```
+   */
+  webSearch?: boolean | WebSearchConfig;
 }
 
 /**
@@ -158,8 +179,28 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
           { role: 'user' as const, content: query },
         ];
 
+        // Build chat options with web search if enabled
+        // Uses :online model suffix for reliable passthrough via AI Gateway
+        let chatOptions: ChatOptions | undefined;
+        if (config.webSearch) {
+          const webConfig =
+            typeof config.webSearch === 'boolean'
+              ? { enabled: config.webSearch }
+              : config.webSearch;
+
+          if (webConfig.enabled) {
+            chatOptions = { webSearch: true };
+
+            if (debug) {
+              logger.debug('[SimpleAgent] Web search enabled via :online suffix', {
+                traceId,
+              });
+            }
+          }
+        }
+
         // Call LLM
-        const response = await provider.chat(llmMessages);
+        const response = await provider.chat(llmMessages, undefined, chatOptions);
 
         // Update state with query count (not messages - those are managed by parent)
         this.setState({

@@ -9,7 +9,7 @@
 - 🤖 **GitHub Integration**: Respond to @duyetbot mentions, manage issues/PRs, automated reviews
 - 💬 **Telegram Bot**: Chat interface for quick queries and notifications
 - 🧠 **Persistent Memory**: MCP-based memory server on Cloudflare Workers (D1 + KV)
-- 🛠️ **Multi-LLM Support**: Claude, OpenAI, OpenRouter, Z.AI (via base URL override)
+- 🛠️ **LLM Provider**: OpenRouter SDK via Cloudflare AI Gateway (grok-4.1-fast + xAI native tools)
 - 📦 **Monorepo**: Separated packages for core, tools, server, CLI, MCP, bots
 - 🤖 **Multi-Agent Routing**: 8 specialized Durable Objects for different task types
 - ⚡ **Batch Processing**: Intelligent message batching with alarm-based execution
@@ -377,7 +377,7 @@ Recovery:
 | Package | Purpose | Key Exports | Tests |
 |---------|---------|-------------|-------|
 | **@duyetbot/types** | Shared types & schemas | Agent, Tool, LLMMessage, Provider | 8 |
-| **@duyetbot/providers** | LLM provider adapters | Claude, OpenRouter, factory | 12 |
+| **@duyetbot/providers** | OpenRouter SDK provider via AI Gateway | createOpenRouterProvider | 0 |
 | **@duyetbot/tools** | Built-in tool implementations | bash, git, github, research, plan | 24 |
 | **@duyetbot/prompts** | System prompts & templates | Telegram, GitHub, router prompts | 18 |
 | **@duyetbot/hono-middleware** | Shared HTTP utilities | logger, auth, health routes | 6 |
@@ -541,26 +541,27 @@ bun run deploy:shared      # duyetbot-shared-agents
 
 ### Configuration
 
-1. **Telegram Bot Token**: Set in Cloudflare Secrets
-   ```bash
-   cd apps/telegram-bot
-   bunx wrangler secret put TELEGRAM_BOT_TOKEN
-   ```
+**Required Secrets** (all apps via `scripts/config.ts`):
 
-2. **GitHub Token**: Set in Cloudflare Secrets
-   ```bash
-   cd apps/github-bot
-   bunx wrangler secret put GITHUB_TOKEN
-   ```
+| Secret | Required | Purpose |
+|--------|----------|---------|
+| `AI_GATEWAY_API_KEY` | ✓ | Cloudflare AI Gateway authentication |
+| `OPENROUTER_API_KEY` | ✓ | OpenRouter API access |
+| `TELEGRAM_BOT_TOKEN` | ✓ (telegram) | Telegram Bot API |
+| `GITHUB_TOKEN` | ✓ (github) | GitHub API access |
 
-3. **Webhook Secrets**: Set in Cloudflare Secrets
-   ```bash
-   cd apps/telegram-bot
-   bunx wrangler secret put WEBHOOK_SECRET
+```bash
+# Set all secrets for an app
+bun scripts/config.ts telegram    # Telegram bot + webhook
+bun scripts/config.ts github      # GitHub bot
+bun scripts/config.ts agents      # Shared agents
 
-   cd apps/github-bot
-   bunx wrangler secret put GITHUB_WEBHOOK_SECRET
-   ```
+# Or manually per secret
+cd apps/telegram-bot
+bunx wrangler secret put AI_GATEWAY_API_KEY
+bunx wrangler secret put OPENROUTER_API_KEY
+bunx wrangler secret put TELEGRAM_BOT_TOKEN
+```
 
 ### Monitoring
 
@@ -695,6 +696,7 @@ Status: PLANNED (Phase 9+)
 
 | Date | Changes | Contributor |
 |------|---------|-------------|
+| 2025-11-29 | Provider refactoring: unified OpenRouter SDK with AI Gateway auth | Claude Code |
 | 2024-11-27 | Complete rewrite: document current Cloudflare implementation | Claude Code |
 | (Previous entries in git history) | | |
 

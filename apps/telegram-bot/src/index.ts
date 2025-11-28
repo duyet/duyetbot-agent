@@ -65,7 +65,8 @@ app.post(
           env.TELEGRAM_BOT_TOKEN,
           webhookCtx,
           env.TELEGRAM_ADMIN,
-          requestId
+          requestId,
+          env.TELEGRAM_PARSE_MODE
         );
         await telegramTransport.send(ctx, 'Sorry, you are not authorized.');
       }
@@ -87,7 +88,8 @@ app.post(
       env.TELEGRAM_BOT_TOKEN,
       webhookCtx,
       env.TELEGRAM_ADMIN,
-      requestId
+      requestId,
+      env.TELEGRAM_PARSE_MODE
     );
 
     // Check for admin commands

@@ -16,9 +16,12 @@
  */
 
 import {
+  type CodeWorkerEnv,
   type DuyetInfoAgentClass,
+  type GitHubWorkerEnv,
   type HITLAgentClass,
   type OrchestratorAgentClass,
+  type ResearchWorkerEnv,
   type RouterAgentClass,
   type RouterAgentEnv,
   type SimpleAgentClass,
@@ -38,8 +41,14 @@ import { type ProviderEnv, createProvider } from './provider.js';
 
 /**
  * Environment for shared agents
+ * Extends all agent/worker env interfaces for type compatibility
  */
-interface SharedEnv extends ProviderEnv, RouterAgentEnv {}
+interface SharedEnv
+  extends ProviderEnv,
+    RouterAgentEnv,
+    CodeWorkerEnv,
+    ResearchWorkerEnv,
+    GitHubWorkerEnv {}
 
 /**
  * RouterAgent for query classification
@@ -51,11 +60,15 @@ export const RouterAgent: RouterAgentClass<SharedEnv> = createRouterAgent<Shared
 
 /**
  * SimpleAgent for quick responses without tools
+ *
+ * Web search is enabled via OpenRouter's native plugin, allowing the model
+ * to access real-time web information when needed.
  */
 export const SimpleAgent: SimpleAgentClass<SharedEnv> = createSimpleAgent<SharedEnv>({
   createProvider: (env) => createProvider(env),
   systemPrompt: getSimpleAgentPrompt(),
   maxHistory: 20,
+  webSearch: true,
 });
 
 /**

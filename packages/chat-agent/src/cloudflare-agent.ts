@@ -95,8 +95,8 @@ export interface RouterConfig {
 export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   /** Function to create LLM provider from env */
   createProvider: (env: TEnv) => LLMProvider;
-  /** System prompt for the agent */
-  systemPrompt: string;
+  /** System prompt - static string or function that receives env for dynamic configuration */
+  systemPrompt: string | ((env: TEnv) => string);
   /** Welcome message for /start command */
   welcomeMessage?: string;
   /** Help message for /help command */
@@ -494,11 +494,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const tools = deduplicatedTools;
       const hasTools = tools.length > 0;
 
+      // Resolve systemPrompt (supports both string and function forms)
+      const env = (this as unknown as { env: TEnv }).env;
+      const resolvedSystemPrompt =
+        typeof config.systemPrompt === 'function' ? config.systemPrompt(env) : config.systemPrompt;
+
       // Build messages with history embedded in user message (XML format)
       // This embeds conversation history directly in the prompt for AI Gateway compatibility
       const llmMessages = formatWithEmbeddedHistory(
         this.state.messages,
-        config.systemPrompt,
+        resolvedSystemPrompt,
         userMessage
       );
 

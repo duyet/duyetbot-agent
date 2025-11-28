@@ -60,6 +60,25 @@ export interface ProviderConfig {
 }
 
 /**
+ * OpenRouter web search plugin configuration
+ *
+ * Enables native web search through OpenRouter's plugin system.
+ * When enabled, the model can access real-time web information.
+ *
+ * @see https://openrouter.ai/docs/features/web-search
+ */
+export interface WebSearchPlugin {
+  /** Plugin identifier - must be 'web' */
+  id: 'web';
+  /** Search engine: 'native' uses model provider's built-in search, 'exa' uses Exa API */
+  engine?: 'native' | 'exa';
+  /** Maximum number of search results (default: 5, max: 10) */
+  max_results?: number;
+  /** Custom prompt to attach search results (optional) */
+  search_prompt?: string;
+}
+
+/**
  * Options for querying an LLM
  */
 export interface QueryOptions {
@@ -68,6 +87,8 @@ export interface QueryOptions {
   maxTokens?: number;
   stopSequences?: string[];
   stream?: boolean;
+  /** OpenRouter plugins (e.g., web search) */
+  plugins?: WebSearchPlugin[];
   metadata?: Record<string, unknown>;
 }
 
