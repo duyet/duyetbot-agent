@@ -1,284 +1,352 @@
 /**
- * OpenRouter Provider
+ * OpenRouter Provider (Raw Fetch)
  *
- * Unified API for multiple LLM providers through OpenRouter
- * Supports Claude, GPT, Gemini, Llama, and more
+ * Unified LLM provider using raw fetch via Cloudflare AI Gateway.
+ * Avoids OpenRouter SDK's strict Zod validation which can fail when
+ * AI Gateway transforms response fields.
+ *
+ * Supports web search via OpenRouter plugins (native for xAI models).
+ *
+ * @see https://openrouter.ai/docs/api-reference/overview
+ * @see https://openrouter.ai/docs/guides/features/web-search.md
+ * @see https://developers.cloudflare.com/ai-gateway/
+ * @see https://developers.cloudflare.com/ai-gateway/configuration/authentication/
  */
 
 import type {
+  ChatOptions,
   LLMMessage,
   LLMProvider,
   LLMResponse,
-  ProviderConfig,
-  QueryOptions,
-  StopReason,
-  TokenUsage,
-} from '@duyetbot/types';
-import { LLMProviderError } from '@duyetbot/types';
-
-// Default configuration
-const DEFAULT_TEMPERATURE = 0.7;
-const DEFAULT_MAX_TOKENS = 4096;
-const DEFAULT_TIMEOUT = 60000; // 60 seconds
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+  OpenAITool,
+} from '@duyetbot/chat-agent';
 
 /**
- * OpenRouter API response chunk (SSE format)
+ * Cloudflare AI binding interface for AI Gateway URL generation
  */
-interface OpenRouterChunk {
-  id: string;
-  choices: Array<{
-    delta: {
-      content?: string;
-      role?: string;
-    };
-    finish_reason?: string | null;
-    index: number;
-  }>;
-  created: number;
-  model: string;
-  object: string;
+export interface CloudflareAIBinding {
+  gateway: (gatewayId: string) => {
+    getUrl: (provider: string) => Promise<string>;
+  };
 }
 
 /**
- * OpenRouter provider implementation
+ * Environment bindings required for OpenRouter provider
  */
-export class OpenRouterProvider implements LLMProvider {
-  name = 'openrouter';
-  private config?: ProviderConfig;
+export interface OpenRouterProviderEnv {
+  /** Cloudflare AI binding for gateway URL construction */
+  AI: CloudflareAIBinding;
+  /** Gateway name configured in Cloudflare dashboard */
+  AI_GATEWAY_NAME: string;
+  /** AI Gateway API key for authenticated gateway mode */
+  AI_GATEWAY_API_KEY: string;
+  /** OpenRouter API key (optional, falls back to AI_GATEWAY_API_KEY) */
+  OPENROUTER_API_KEY?: string;
+  /** Model to use (e.g., 'x-ai/grok-4.1-fast', 'anthropic/claude-3.5-sonnet') */
+  MODEL?: string;
+}
 
-  /**
-   * Configure the provider
-   */
-  configure(config: ProviderConfig): void {
-    this.config = {
-      ...config,
-      temperature: config.temperature ?? DEFAULT_TEMPERATURE,
-      maxTokens: config.maxTokens ?? DEFAULT_MAX_TOKENS,
-      timeout: config.timeout ?? DEFAULT_TIMEOUT,
+/**
+ * OpenRouter web search plugin configuration
+ * @see https://openrouter.ai/docs/guides/features/web-search.md
+ */
+export interface WebSearchPlugin {
+  id: 'web';
+  /** Search engine: 'native' uses provider's built-in (xAI, OpenAI, Anthropic), 'exa' uses Exa */
+  engine?: 'native' | 'exa';
+  /** Maximum search results (default: 5) */
+  max_results?: number;
+  /** Custom prompt for search results */
+  search_prompt?: string;
+}
+
+/**
+ * Configuration options for OpenRouter provider
+ */
+export interface OpenRouterProviderOptions {
+  /** Default model if not specified in env (default: 'x-ai/grok-4.1-fast') */
+  defaultModel?: string;
+  /** Maximum tokens for response (default: 1024) */
+  maxTokens?: number;
+  /** Request timeout in milliseconds (default: 60000) */
+  requestTimeout?: number;
+  /** Enable web search by default (default: false) */
+  enableWebSearch?: boolean;
+  /** Web search plugin configuration */
+  webSearchConfig?: Omit<WebSearchPlugin, 'id'>;
+  /** Custom logger (defaults to console) */
+  logger?: {
+    info: (message: string, data?: Record<string, unknown>) => void;
+    error: (message: string, data?: Record<string, unknown>) => void;
+    debug?: (message: string, data?: Record<string, unknown>) => void;
+  };
+}
+
+/**
+ * OpenRouter chat message format
+ */
+interface OpenRouterMessage {
+  role: 'user' | 'assistant' | 'system' | 'tool';
+  content: string;
+  tool_call_id?: string;
+  name?: string;
+}
+
+/**
+ * OpenRouter chat response format (relaxed for AI Gateway compatibility)
+ */
+interface OpenRouterChatResponse {
+  id?: string;
+  object?: string;
+  created?: number;
+  model?: string;
+  choices?: Array<{
+    index?: number;
+    finish_reason?: string | null;
+    message?: {
+      role?: string;
+      content?: string | null;
+      annotations?: Array<{
+        type: 'url_citation';
+        url_citation: {
+          url: string;
+          title: string;
+          content?: string;
+          start_index: number;
+          end_index: number;
+        };
+      }>;
+      tool_calls?: Array<{
+        id: string;
+        type: string;
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
     };
-  }
+  }>;
+  provider?: string;
+  error?: {
+    message: string;
+    type?: string;
+    code?: string | number;
+  };
+}
 
-  /**
-   * Get current configuration
-   */
-  getConfig(): ProviderConfig | undefined {
-    return this.config;
-  }
+/**
+ * Convert LLMMessage to OpenRouter message format
+ */
+function toOpenRouterMessage(msg: LLMMessage): OpenRouterMessage {
+  return {
+    role: msg.role,
+    content: msg.content,
+    ...(msg.tool_call_id && { tool_call_id: msg.tool_call_id }),
+    ...(msg.name && { name: msg.name }),
+  };
+}
 
-  /**
-   * Validate configuration
-   */
-  validateConfig(config: ProviderConfig): boolean {
-    if (!config.apiKey || config.apiKey.length === 0) {
-      return false;
+/**
+ * Create an LLM provider using raw fetch via Cloudflare AI Gateway
+ *
+ * This implementation uses raw fetch instead of the OpenRouter SDK to avoid
+ * strict Zod schema validation that can fail when AI Gateway transforms
+ * response fields (e.g., missing `object: "chat.completion"`).
+ *
+ * Web search is enabled via the OpenRouter plugins parameter. For xAI models,
+ * native web search is used automatically (which uses xAI's built-in web_search).
+ *
+ * @see https://openrouter.ai/docs/guides/features/web-search.md
+ *
+ * @example
+ * ```typescript
+ * import { createOpenRouterProvider } from '@duyetbot/providers';
+ *
+ * const provider = createOpenRouterProvider(env, {
+ *   maxTokens: 512,
+ *   enableWebSearch: true,  // Enable web search by default
+ * });
+ *
+ * // Or enable per-request
+ * const response = await provider.chat(
+ *   [{ role: 'user', content: 'What is trending on X today?' }],
+ *   undefined,
+ *   { webSearch: true }
+ * );
+ * ```
+ */
+export function createOpenRouterProvider(
+  env: OpenRouterProviderEnv,
+  options: OpenRouterProviderOptions = {}
+): LLMProvider {
+  const {
+    defaultModel = 'x-ai/grok-4.1-fast',
+    maxTokens = 1024,
+    requestTimeout = 60000,
+    enableWebSearch = false,
+    webSearchConfig,
+    logger = console,
+  } = options;
+
+  const model = env.MODEL || defaultModel;
+
+  // Lazy-initialized gateway URL - resolves on first use
+  let gatewayUrlPromise: Promise<string> | null = null;
+
+  const getGatewayUrl = async (): Promise<string> => {
+    if (!gatewayUrlPromise) {
+      gatewayUrlPromise = env.AI.gateway(env.AI_GATEWAY_NAME).getUrl('openrouter');
     }
+    return gatewayUrlPromise;
+  };
 
-    if (!config.model || config.model.length === 0) {
-      return false;
-    }
+  return {
+    async chat(
+      messages: LLMMessage[],
+      tools?: OpenAITool[],
+      chatOptions?: ChatOptions
+    ): Promise<LLMResponse> {
+      const openRouterMessages = messages.map(toOpenRouterMessage);
 
-    return true;
-  }
+      // Determine if web search should be enabled for this request
+      const shouldEnableWebSearch =
+        chatOptions?.webSearch !== undefined ? chatOptions.webSearch : enableWebSearch;
 
-  /**
-   * Query OpenRouter with streaming responses
-   */
-  async *query(
-    messages: LLMMessage[],
-    options?: QueryOptions
-  ): AsyncGenerator<LLMResponse, void, unknown> {
-    if (!this.config) {
-      throw new LLMProviderError(
-        'Provider not configured. Call configure() first.',
-        'openrouter',
-        'NOT_CONFIGURED'
-      );
-    }
+      // Build plugins array for web search
+      // For xAI models, uses native search (xAI's built-in web_search)
+      // @see https://openrouter.ai/docs/guides/features/web-search.md
+      const plugins: WebSearchPlugin[] = shouldEnableWebSearch
+        ? [
+            {
+              id: 'web',
+              engine: 'native', // Use native for xAI (web_search), OpenAI, Anthropic, Perplexity
+              ...webSearchConfig,
+            },
+          ]
+        : [];
 
-    if (messages.length === 0) {
-      throw new LLMProviderError('Messages array cannot be empty', 'openrouter', 'INVALID_INPUT');
-    }
-
-    try {
-      // Convert messages to OpenRouter format (OpenAI-compatible)
-      const openrouterMessages = messages.map((msg) => ({
-        role: msg.role,
-        content: msg.content,
-      }));
-
-      // Merge options with config
-      const model = options?.model || this.config.model;
-      const temperature = options?.temperature ?? this.config.temperature ?? DEFAULT_TEMPERATURE;
-      const maxTokens = options?.maxTokens ?? this.config.maxTokens ?? DEFAULT_MAX_TOKENS;
-
-      // Build request body
-      const requestBody = {
+      logger.info('OpenRouter chat request', {
         model,
-        messages: openrouterMessages,
-        temperature,
-        max_tokens: maxTokens,
-        stream: true,
-        ...(options?.stopSequences && { stop: options.stopSequences }),
-      };
-
-      // Make streaming request
-      const response = await fetch(OPENROUTER_API_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.config.apiKey}`,
-          'HTTP-Referer': 'https://github.com/duyet/duyetbot-agent',
-          'X-Title': 'duyetbot',
-        },
-        body: JSON.stringify(requestBody),
-        signal: AbortSignal.timeout(this.config.timeout ?? DEFAULT_TIMEOUT),
+        messageCount: messages.length,
+        hasTools: !!tools?.length,
+        webSearch: shouldEnableWebSearch,
+        plugins: plugins.length > 0 ? plugins : undefined,
       });
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new LLMProviderError(
-          `OpenRouter API error: ${errorText}`,
-          'openrouter',
-          'API_ERROR',
-          response.status
-        );
-      }
-
-      if (!response.body) {
-        throw new LLMProviderError('No response body from OpenRouter', 'openrouter', 'API_ERROR');
-      }
-
-      // Parse SSE stream
-      let accumulatedContent = '';
-      const inputTokens = 0;
-      let outputTokens = 0;
-      let stopReason: StopReason | undefined;
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      const startTime = Date.now();
 
       try {
-        while (true) {
-          const { done, value } = await reader.read();
+        // Get AI Gateway URL for OpenRouter
+        const gatewayUrl = await getGatewayUrl();
+        const url = `${gatewayUrl}/chat/completions`;
 
-          if (done) {
-            break;
-          }
+        logger.debug?.('OpenRouter request URL', {
+          url,
+          gateway: env.AI_GATEWAY_NAME,
+        });
 
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+        // Use OPENROUTER_API_KEY if set, otherwise fall back to AI_GATEWAY_API_KEY
+        const apiKey = env.OPENROUTER_API_KEY || env.AI_GATEWAY_API_KEY;
 
-          for (const line of lines) {
-            if (!line.trim() || line.trim() === 'data: [DONE]') {
-              continue;
-            }
+        // Build request body
+        const body = {
+          model,
+          messages: openRouterMessages,
+          max_tokens: maxTokens,
+          // Add plugins for web search
+          ...(plugins.length > 0 && { plugins }),
+          // Pass standard function tools
+          ...(tools?.length && {
+            tools,
+            tool_choice: 'auto',
+          }),
+        };
 
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6)) as OpenRouterChunk;
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), requestTimeout);
 
-                for (const choice of data.choices) {
-                  if (choice.delta.content) {
-                    const content = choice.delta.content;
-                    accumulatedContent += content;
-                    outputTokens += 1; // Approximate
+        try {
+          const response = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+              // Add Cloudflare AI Gateway authentication header
+              // @see https://developers.cloudflare.com/ai-gateway/configuration/authentication/
+              'cf-aig-authorization': `Bearer ${env.AI_GATEWAY_API_KEY}`,
+            },
+            body: JSON.stringify(body),
+            signal: controller.signal,
+          });
 
-                    const usage: TokenUsage = {
-                      inputTokens,
-                      outputTokens,
-                      totalTokens: inputTokens + outputTokens,
-                    };
+          clearTimeout(timeoutId);
 
-                    yield {
-                      content,
-                      model,
-                      provider: this.name,
-                      usage,
-                      metadata: {
-                        accumulated: accumulatedContent,
-                        streaming: true,
-                      },
-                    };
-                  }
-
-                  if (choice.finish_reason) {
-                    stopReason = this.mapFinishReason(choice.finish_reason);
-                  }
-                }
-              } catch (parseError) {
-                // Skip malformed chunks
-                console.warn('Failed to parse SSE chunk:', parseError);
+          if (!response.ok) {
+            const errorText = await response.text();
+            let errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+            try {
+              const errorJson = JSON.parse(errorText) as {
+                error?: { message?: string };
+              };
+              if (errorJson.error?.message) {
+                errorMessage = errorJson.error.message;
+              }
+            } catch {
+              // Use raw text if not JSON
+              if (errorText) {
+                errorMessage = errorText;
               }
             }
+            throw new Error(errorMessage);
           }
+
+          const data = (await response.json()) as OpenRouterChatResponse;
+
+          // Check for API-level error in response body
+          if (data.error) {
+            throw new Error(data.error.message || 'Unknown API error');
+          }
+
+          const choice = data.choices?.[0]?.message;
+
+          // Extract tool calls if present (filter to function type only)
+          const toolCalls = choice?.tool_calls
+            ?.filter((tc) => tc.type === 'function')
+            .map((tc) => ({
+              id: tc.id,
+              name: tc.function.name,
+              arguments: tc.function.arguments,
+            }));
+
+          // Extract web search citations if present
+          const citations = choice?.annotations?.filter((a) => a.type === 'url_citation');
+
+          logger.info('OpenRouter chat completed', {
+            model,
+            provider: data.provider,
+            durationMs: Date.now() - startTime,
+            hasContent: !!choice?.content,
+            toolCallCount: toolCalls?.length || 0,
+            citationCount: citations?.length || 0,
+          });
+
+          return {
+            content: choice?.content || '',
+            ...(toolCalls?.length && { toolCalls }),
+          };
+        } finally {
+          clearTimeout(timeoutId);
         }
-
-        // Yield final response
-        const usage: TokenUsage = {
-          inputTokens,
-          outputTokens,
-          totalTokens: inputTokens + outputTokens,
-        };
-
-        const finalResponse: LLMResponse = {
-          content: '',
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        logger.error('OpenRouter chat error', {
           model,
-          provider: this.name,
-          usage,
-          metadata: {
-            final: true,
-            fullContent: accumulatedContent,
-          },
-        };
-
-        if (stopReason) {
-          finalResponse.stopReason = stopReason;
-        }
-
-        yield finalResponse;
-      } finally {
-        reader.releaseLock();
+          error: errorMessage,
+          durationMs: Date.now() - startTime,
+        });
+        throw new Error(`OpenRouter error: ${errorMessage}`);
       }
-    } catch (error) {
-      if (error instanceof LLMProviderError) {
-        throw error;
-      }
-
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new LLMProviderError('Request timeout', 'openrouter', 'TIMEOUT', undefined, error);
-      }
-
-      throw new LLMProviderError(
-        error instanceof Error ? error.message : 'Unknown error',
-        'openrouter',
-        'UNKNOWN_ERROR',
-        undefined,
-        error instanceof Error ? error : undefined
-      );
-    }
-  }
-
-  /**
-   * Map OpenRouter finish reason to our format
-   */
-  private mapFinishReason(reason: string): StopReason {
-    switch (reason) {
-      case 'stop':
-        return 'end_turn';
-      case 'length':
-        return 'max_tokens';
-      case 'content_filter':
-        return 'stop_sequence';
-      default:
-        return 'end_turn';
-    }
-  }
+    },
+  };
 }
-
-/**
- * Create and export singleton instance
- */
-export const openRouterProvider = new OpenRouterProvider();
