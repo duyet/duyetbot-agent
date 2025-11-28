@@ -21,6 +21,10 @@
     "./factory": {
       "types": "./dist/factory.d.ts",
       "import": "./dist/factory.js"
+    },
+    "./openai-gateway": {
+      "types": "./dist/openai-gateway.d.ts",
+      "import": "./dist/openai-gateway.js"
     }
   },
   "files": ["dist"],
@@ -38,6 +42,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.69.0",
     "@duyetbot/types": "workspace:*",
+    "openai": "^6.9.1",
     "zod": "^3.23.8"
   },
   "devDependencies": {

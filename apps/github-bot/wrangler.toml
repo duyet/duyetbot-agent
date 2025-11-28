@@ -11,9 +11,11 @@ binding = "AI"
 
 [vars]
 ENVIRONMENT = "production"
-MODEL = "x-ai/grok-4.1-fast"
+MODEL = "x-ai/grok-4.1-fast:free"
 AI_GATEWAY_NAME = "duyetbot"
 AI_GATEWAY_PROVIDER = "openrouter"
+# Provider SDK: 'cloudflare' (default) or 'openai' (uses OpenAI SDK with runTools)
+# AI_GATEWAY_SDK = "openai"
 BOT_USERNAME="duyetbot"
 
 # Configure loaders for different file types
