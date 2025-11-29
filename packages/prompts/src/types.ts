@@ -16,6 +16,16 @@ export type Platform = 'telegram' | 'github' | 'api' | 'cli';
 export type TelegramParseMode = 'HTML' | 'MarkdownV2';
 
 /**
+ * Output format for response formatting (platform-neutral abstraction)
+ * Maps to specific formatting instructions without coupling to platform names
+ */
+export type OutputFormat =
+  | 'telegram-html' // Telegram HTML formatting
+  | 'telegram-markdown' // Telegram MarkdownV2 formatting
+  | 'github-markdown' // GitHub-flavored Markdown
+  | 'plain'; // Plain text, no special formatting
+
+/**
  * Tool definition for prompt tool sections
  */
 export interface ToolDefinition {
@@ -41,6 +51,8 @@ export interface PromptConfig {
   capabilities?: string[];
   /** Telegram parse mode for response formatting (default: 'HTML') */
   telegramParseMode?: TelegramParseMode;
+  /** Output format for response formatting (platform-neutral) */
+  outputFormat?: OutputFormat;
 }
 
 /**

@@ -9,7 +9,7 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
-import { getDuyetInfoPrompt } from '@duyetbot/prompts';
+import { getDuyetInfoPrompt, platformToOutputFormat } from '@duyetbot/prompts';
 import { Agent, type Connection } from 'agents';
 import type { MCPServerConnection } from '../cloudflare-agent.js';
 import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
@@ -29,10 +29,13 @@ const DUYET_MCP_SERVER: MCPServerConnection = {
 };
 
 /**
- * System prompt for the Duyet Info Agent
- * Imported from centralized @duyetbot/prompts package
+ * Get system prompt for the Duyet Info Agent at runtime
+ * Generates platform-aware prompt based on context using OutputFormat
  */
-const DUYET_INFO_SYSTEM_PROMPT = getDuyetInfoPrompt();
+function getSystemPrompt(platform?: string): string {
+  const outputFormat = platformToOutputFormat(platform);
+  return getDuyetInfoPrompt({ outputFormat });
+}
 
 /**
  * Combined tool filter for blog and info related tools
@@ -582,8 +585,10 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         const tools = this._mcpInitialized ? this.getMcpTools() : [];
 
         // Build messages (stateless - single query)
+        // Generate platform-aware system prompt at runtime
+        const systemPrompt = getSystemPrompt(context.platform);
         const messages: LLMMessage[] = [
-          { role: 'system', content: DUYET_INFO_SYSTEM_PROMPT },
+          { role: 'system', content: systemPrompt },
           { role: 'user', content: query },
         ];
 
