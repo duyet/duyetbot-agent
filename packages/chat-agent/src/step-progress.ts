@@ -5,6 +5,9 @@
  * Steps accumulate (completed steps stay visible) while the current active
  * step shows a rotating loading message.
  *
+ * Also tracks debug context for progressive footer display during loading.
+ * The debug context accumulates routing flow, workers, and timing information.
+ *
  * @example
  * ```typescript
  * const tracker = new StepProgressTracker(async (msg) => {
@@ -27,6 +30,8 @@
  * tracker.destroy();
  * ```
  */
+
+import type { DebugContext, ExecutionStatus, WorkerDebugInfo } from './types.js';
 
 /**
  * Types of steps in the agent execution flow
@@ -118,6 +123,7 @@ export interface StepProgressConfig {
  * - Rotates loading messages for active steps
  * - Provides detailed previews of tool results
  * - Tracks execution path for debug footer
+ * - Tracks debug context for progressive footer during loading
  */
 export class StepProgressTracker {
   private completedSteps: string[] = [];
@@ -128,6 +134,20 @@ export class StepProgressTracker {
   private executionPath: string[] = [];
   private config: Required<StepProgressConfig>;
   private isDestroyed = false;
+
+  /**
+   * Debug context for progressive footer display
+   * Accumulates routing flow, timing, and worker information
+   */
+  private debugContext: DebugContext = {
+    routingFlow: [],
+  };
+
+  /** Router start time for measuring classification duration */
+  private routerStartTime: number | undefined;
+
+  /** Current target agent start time */
+  private targetAgentStartTime: number | undefined;
 
   /**
    * Create a new step progress tracker
@@ -142,6 +162,131 @@ export class StepProgressTracker {
       maxResultPreview: config.maxResultPreview ?? 50,
       rotatingSuffixes: config.rotatingSuffixes ?? ROTATING_SUFFIXES,
     };
+  }
+
+  // ============================================================================
+  // Debug Context Methods
+  // ============================================================================
+
+  /**
+   * Mark router as started (begins timing for routerDurationMs)
+   */
+  startRouter(): void {
+    this.routerStartTime = Date.now();
+    // Add router to routing flow with 'running' status
+    this.debugContext.routingFlow.push({
+      agent: 'router-agent',
+      status: 'running' as ExecutionStatus,
+    });
+  }
+
+  /**
+   * Mark router as complete and record the target agent
+   *
+   * @param targetAgent - The agent routed to (e.g., 'simple-agent', 'orchestrator-agent')
+   * @param classification - Optional classification result
+   */
+  completeRouter(targetAgent: string, classification?: DebugContext['classification']): void {
+    // Calculate router duration
+    if (this.routerStartTime) {
+      this.debugContext.routerDurationMs = Date.now() - this.routerStartTime;
+    }
+
+    // Update router status to completed
+    const routerStep = this.debugContext.routingFlow.find((s) => s.agent === 'router-agent');
+    if (routerStep) {
+      routerStep.status = 'completed' as ExecutionStatus;
+      if (this.debugContext.routerDurationMs) {
+        routerStep.durationMs = this.debugContext.routerDurationMs;
+      }
+    }
+
+    // Add target agent with 'running' status
+    this.debugContext.routingFlow.push({
+      agent: targetAgent,
+      status: 'running' as ExecutionStatus,
+    });
+
+    // Store classification if provided
+    if (classification) {
+      this.debugContext.classification = classification;
+    }
+
+    // Start timing target agent
+    this.targetAgentStartTime = Date.now();
+  }
+
+  /**
+   * Add or update a worker in the debug context
+   *
+   * @param workerName - Worker name (e.g., 'research-worker')
+   * @param status - Execution status
+   * @param durationMs - Optional duration if completed
+   */
+  updateWorker(workerName: string, status: ExecutionStatus, durationMs?: number): void {
+    if (!this.debugContext.workers) {
+      this.debugContext.workers = [];
+    }
+
+    // Find existing worker or add new one
+    const existingIndex = this.debugContext.workers.findIndex((w) => w.name === workerName);
+
+    // Build worker info with explicit type to handle exactOptionalPropertyTypes
+    const workerInfo: WorkerDebugInfo = {
+      name: workerName,
+      status,
+    };
+    if (durationMs !== undefined) {
+      workerInfo.durationMs = durationMs;
+    }
+
+    if (existingIndex >= 0) {
+      this.debugContext.workers[existingIndex] = workerInfo;
+    } else {
+      this.debugContext.workers.push(workerInfo);
+    }
+  }
+
+  /**
+   * Mark target agent as complete
+   *
+   * @param durationMs - Optional explicit duration (uses calculated time if not provided)
+   */
+  completeTargetAgent(durationMs?: number): void {
+    const targetStep = this.debugContext.routingFlow.find(
+      (s) => s.agent !== 'router-agent' && s.status === 'running'
+    );
+
+    if (targetStep) {
+      targetStep.status = 'completed' as ExecutionStatus;
+      const duration =
+        durationMs ??
+        (this.targetAgentStartTime ? Date.now() - this.targetAgentStartTime : undefined);
+      if (duration !== undefined) {
+        targetStep.durationMs = duration;
+      }
+    }
+
+    // Calculate total duration
+    if (this.routerStartTime) {
+      this.debugContext.totalDurationMs = Date.now() - this.routerStartTime;
+    }
+  }
+
+  /**
+   * Get the current debug context for progressive footer display
+   */
+  getDebugContext(): DebugContext {
+    return { ...this.debugContext };
+  }
+
+  /**
+   * Set the full debug context (useful when receiving from routed agent)
+   *
+   * @param context - The debug context to set
+   */
+  setDebugContext(context: DebugContext): void {
+    this.debugContext = { ...context };
   }
 
   /**

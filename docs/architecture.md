@@ -274,26 +274,29 @@ agent.queueMessage(ctx).catch(() => {});
 
 ┌─ Route Determination Algorithm ───────────────────────────┐
 │                                                           │
+│  IMPORTANT: Router only dispatches to AGENTS.             │
+│  Workers are dispatched by OrchestratorAgent.             │
+│                                                           │
 │  if (type === 'tool_confirmation')                        │
 │    → return 'hitl-agent'                                  │
-│                                                           │
-│  if (complexity === 'high')                               │
-│    → return 'orchestrator-agent'                          │
 │                                                           │
 │  if (requiresHumanApproval === true)                      │
 │    → return 'hitl-agent'                                  │
 │                                                           │
-│  if (category === 'code')                                 │
-│    → return 'code-worker'                                 │
-│                                                           │
-│  if (category === 'research')                             │
-│    → return 'research-worker'                             │
-│                                                           │
-│  if (category === 'github')                               │
-│    → return 'github-worker'                               │
-│                                                           │
 │  if (category === 'duyet')                                │
 │    → return 'duyet-info-agent'                            │
+│                                                           │
+│  if (category === 'research' && complexity >= 'medium')   │
+│    → return 'lead-researcher-agent'                       │
+│                                                           │
+│  if (complexity === 'high')                               │
+│    → return 'orchestrator-agent'                          │
+│                                                           │
+│  if (type === 'simple' && complexity === 'low')           │
+│    → return 'simple-agent'                                │
+│                                                           │
+│  if (category === 'code' || 'research' || 'github')       │
+│    → return 'orchestrator-agent'  // dispatches workers   │
 │                                                           │
 │  default:                                                 │
 │    → return 'simple-agent'                                │
@@ -301,17 +304,41 @@ agent.queueMessage(ctx).catch(() => {});
 └───────────────────────────────────────────────────────────┘
 ```
 
+### Agent vs Worker Distinction
+
+**IMPORTANT**: Router only dispatches to **Agents**, never directly to Workers.
+
+| Type | Purpose | Called By | Interface |
+|------|---------|-----------|-----------|
+| **Agents** | Stateful coordinators with conversation history | RouterAgent | `execute(query, context): AgentResult` |
+| **Workers** | Stateless executors for single tasks | OrchestratorAgent only | `execute(WorkerInput): WorkerResult` |
+
+**Agents** (called by Router):
+- SimpleAgent, OrchestratorAgent, HITLAgent, LeadResearcherAgent, DuyetInfoAgent
+
+**Workers** (called by Orchestrator):
+- CodeWorker, ResearchWorker, GitHubWorker
+
+Workers implement the [Orchestrator-Workers pattern](https://developers.cloudflare.com/agents/patterns/).
+They expect a `PlanStep` and return `WorkerResult`, not `AgentResult`.
+
 ### Agent Responsibilities
 
 | Agent | Trigger | Logic | Example |
 |-------|---------|-------|---------|
 | **SimpleAgent** | pattern:greeting OR type:simple+complexity:low | Direct LLM call | "Hi!" "How's the weather?" |
 | **HITLAgent** | tool_confirmation OR requiresApproval | State machine: pending→approved→execute | "Delete all logs?" → confirm |
-| **OrchestratorAgent** | complexity:high | 1. Plan, 2. Parallel execute, 3. Aggregate | "Review PR and summarize" |
-| **CodeWorker** | category:code | Code analysis/review/generation | "Fix this bug" "Review security" |
-| **ResearchWorker** | category:research | Web search + synthesis | "Latest AI news" "Compare frameworks" |
-| **GitHubWorker** | category:github | GitHub API operations | "Merge if CI passes" "Add labels" |
-| **DuyetInfoAgent** | category:duyet | MCP connection to duyet-mcp | "Tell me about yourself" "Blog posts" |
+| **OrchestratorAgent** | complexity:high OR domain tasks | 1. Plan, 2. Dispatch workers, 3. Aggregate | "Review PR and summarize" |
+| **LeadResearcherAgent** | category:research + complexity>=medium | Multi-agent parallel research | "Compare AI frameworks" |
+| **DuyetInfoAgent** | category:duyet | MCP connection to duyet-mcp | "Tell me about yourself" |
+
+### Worker Responsibilities (OrchestratorAgent only)
+
+| Worker | Task Type | Logic | Example |
+|--------|-----------|-------|---------|
+| **CodeWorker** | workerType:code | Code analysis/review/generation | "Fix this bug" |
+| **ResearchWorker** | workerType:research | Web search + synthesis | "Latest AI news" |
+| **GitHubWorker** | workerType:github | GitHub API operations | "Merge if CI passes" |
 
 ---
 

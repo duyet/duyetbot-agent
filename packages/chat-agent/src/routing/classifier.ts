@@ -170,15 +170,19 @@ export function determineRouteTarget(classification: QueryClassification): Route
     return 'simple-agent';
   }
 
-  // Route by category to specialized workers/agents
+  // Complex domain-specific queries go to orchestrator
+  // which internally dispatches to the appropriate worker.
+  // Workers are never called directly by router.
   switch (classification.category) {
     case 'code':
-      return 'code-worker';
+      // Code tasks go to orchestrator → CodeWorker
+      return 'orchestrator-agent';
     case 'research':
-      // Low complexity research still goes to research worker
-      return 'research-worker';
+      // Low complexity research goes to orchestrator → ResearchWorker
+      return 'orchestrator-agent';
     case 'github':
-      return 'github-worker';
+      // GitHub tasks go to orchestrator → GitHubWorker
+      return 'orchestrator-agent';
     default:
       // General queries go to simple agent
       return 'simple-agent';

@@ -8,14 +8,10 @@
  * - Code diff analysis
  */
 
-import type { AgentContext } from "../agents/base-agent.js";
-import type { PlanStep } from "../routing/schemas.js";
-import type { LLMProvider } from "../types.js";
-import {
-  type BaseWorkerEnv,
-  type WorkerClass,
-  createBaseWorker,
-} from "./base-worker.js";
+import type { AgentContext } from '../agents/base-agent.js';
+import type { PlanStep } from '../routing/schemas.js';
+import type { LLMProvider } from '../types.js';
+import { type BaseWorkerEnv, type WorkerClass, createBaseWorker } from './base-worker.js';
 
 // Re-export PlanStep for use in buildPrompt/parseResponse functions
 export type { PlanStep };
@@ -24,13 +20,13 @@ export type { PlanStep };
  * GitHub task types that this worker handles
  */
 export type GitHubTaskType =
-  | "pr_review"
-  | "pr_create"
-  | "issue_triage"
-  | "issue_create"
-  | "diff_analyze"
-  | "repo_analyze"
-  | "comment";
+  | 'pr_review'
+  | 'pr_create'
+  | 'issue_triage'
+  | 'issue_create'
+  | 'diff_analyze'
+  | 'repo_analyze'
+  | 'comment';
 
 /**
  * Extended environment for GitHub worker
@@ -93,44 +89,40 @@ export function detectGitHubTaskType(task: string): GitHubTaskType {
   const taskLower = task.toLowerCase();
 
   if (
-    taskLower.includes("review pr") ||
-    taskLower.includes("pr review") ||
-    taskLower.includes("pull request review")
+    taskLower.includes('review pr') ||
+    taskLower.includes('pr review') ||
+    taskLower.includes('pull request review')
   ) {
-    return "pr_review";
+    return 'pr_review';
   }
   if (
-    taskLower.includes("create pr") ||
-    taskLower.includes("draft pr") ||
-    taskLower.includes("open pr")
+    taskLower.includes('create pr') ||
+    taskLower.includes('draft pr') ||
+    taskLower.includes('open pr')
   ) {
-    return "pr_create";
+    return 'pr_create';
   }
-  if (taskLower.includes("triage") || taskLower.includes("categorize issue")) {
-    return "issue_triage";
+  if (taskLower.includes('triage') || taskLower.includes('categorize issue')) {
+    return 'issue_triage';
   }
   if (
-    taskLower.includes("create issue") ||
-    taskLower.includes("open issue") ||
-    taskLower.includes("report bug")
+    taskLower.includes('create issue') ||
+    taskLower.includes('open issue') ||
+    taskLower.includes('report bug')
   ) {
-    return "issue_create";
+    return 'issue_create';
   }
-  if (
-    taskLower.includes("diff") ||
-    taskLower.includes("changes") ||
-    taskLower.includes("commit")
-  ) {
-    return "diff_analyze";
+  if (taskLower.includes('diff') || taskLower.includes('changes') || taskLower.includes('commit')) {
+    return 'diff_analyze';
   }
-  if (taskLower.includes("repo") || taskLower.includes("repository")) {
-    return "repo_analyze";
+  if (taskLower.includes('repo') || taskLower.includes('repository')) {
+    return 'repo_analyze';
   }
-  if (taskLower.includes("comment") || taskLower.includes("respond")) {
-    return "comment";
+  if (taskLower.includes('comment') || taskLower.includes('respond')) {
+    return 'comment';
   }
 
-  return "diff_analyze"; // Default to diff analysis
+  return 'diff_analyze'; // Default to diff analysis
 }
 
 /**
@@ -318,7 +310,7 @@ function buildGitHubPrompt(
   step: PlanStep,
   dependencyContext: string,
   defaultOwner?: string,
-  defaultRepo?: string,
+  defaultRepo?: string
 ): string {
   const taskType = detectGitHubTaskType(step.task);
   const taskInstructions = getGitHubInstructions(taskType);
@@ -332,16 +324,16 @@ function buildGitHubPrompt(
   parts.push(`## GitHub Task Type: ${taskType.toUpperCase()}`);
   parts.push(`## Task\n${step.task}`);
   parts.push(taskInstructions);
-  parts.push("\n## Additional Instructions");
+  parts.push('\n## Additional Instructions');
   parts.push(`- ${step.description}`);
-  parts.push("- Use GitHub-flavored markdown");
-  parts.push("- Be constructive and specific");
+  parts.push('- Use GitHub-flavored markdown');
+  parts.push('- Be constructive and specific');
 
   if (defaultOwner && defaultRepo) {
     parts.push(`- Default repository: ${defaultOwner}/${defaultRepo}`);
   }
 
-  return parts.join("\n");
+  return parts.join('\n');
 }
 
 /**
@@ -349,17 +341,17 @@ function buildGitHubPrompt(
  */
 function parseGitHubResponse(content: string, expectedOutput: string): unknown {
   // For action output, try to extract structured GitHub actions
-  if (expectedOutput === "action") {
+  if (expectedOutput === 'action') {
     // Try to detect review verdict
-    if (content.includes("Approve") || content.includes("Request Changes")) {
-      const verdict = content.includes("Request Changes")
-        ? "request_changes"
-        : content.includes("Approve")
-          ? "approve"
-          : "comment";
+    if (content.includes('Approve') || content.includes('Request Changes')) {
+      const verdict = content.includes('Request Changes')
+        ? 'request_changes'
+        : content.includes('Approve')
+          ? 'approve'
+          : 'comment';
 
       return {
-        type: "pr_review",
+        type: 'pr_review',
         verdict,
         content,
       };
@@ -370,25 +362,24 @@ function parseGitHubResponse(content: string, expectedOutput: string): unknown {
     if (labelMatch?.[1]) {
       const labels = labelMatch[1].split(/[,;]/).map((l: string) => l.trim());
       return {
-        type: "issue_triage",
+        type: 'issue_triage',
         labels,
         content,
       };
     }
 
-    return { action: "completed", result: content };
+    return { action: 'completed', result: content };
   }
 
   // For data output, try to extract structured findings
-  if (expectedOutput === "data") {
+  if (expectedOutput === 'data') {
     // Try to extract critical/suggestion/nitpick sections
-    const hasCritical = content.includes("Critical") || content.includes("🔴");
-    const hasSuggestions =
-      content.includes("Suggestion") || content.includes("🟡");
+    const hasCritical = content.includes('Critical') || content.includes('🔴');
+    const hasSuggestions = content.includes('Suggestion') || content.includes('🟡');
 
     if (hasCritical || hasSuggestions) {
       return {
-        type: "review_findings",
+        type: 'review_findings',
         hasCritical,
         hasSuggestions,
         content,
@@ -407,7 +398,7 @@ function parseGitHubResponse(content: string, expectedOutput: string): unknown {
   }
 
   // For code output, extract code blocks
-  if (expectedOutput === "code") {
+  if (expectedOutput === 'code') {
     const codeMatch = content.match(/```[\w]*\n?([\s\S]*?)```/);
     return codeMatch?.[1] ? codeMatch[1].trim() : content;
   }
@@ -428,19 +419,14 @@ function parseGitHubResponse(content: string, expectedOutput: string): unknown {
  * ```
  */
 export function createGitHubWorker<TEnv extends GitHubWorkerEnv>(
-  config: GitHubWorkerConfig<TEnv>,
+  config: GitHubWorkerConfig<TEnv>
 ): WorkerClass<TEnv> {
   const baseConfig: Parameters<typeof createBaseWorker<TEnv>>[0] = {
     createProvider: config.createProvider,
-    workerType: "github",
+    workerType: 'github',
     systemPrompt: GITHUB_WORKER_SYSTEM_PROMPT,
     buildPrompt: (step, dependencyContext) =>
-      buildGitHubPrompt(
-        step,
-        dependencyContext,
-        config.defaultOwner,
-        config.defaultRepo,
-      ),
+      buildGitHubPrompt(step, dependencyContext, config.defaultOwner, config.defaultRepo),
     parseResponse: parseGitHubResponse,
   };
   if (config.debug !== undefined) {

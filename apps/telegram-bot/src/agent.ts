@@ -9,24 +9,21 @@
  * duyetbot-agents worker via script_name in wrangler.toml.
  */
 
-import type {
-  RouterAgentEnv,
-  TelegramPlatformConfig,
-} from "@duyetbot/chat-agent";
+import type { RouterAgentEnv, TelegramPlatformConfig } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
   createCloudflareChatAgent,
-} from "@duyetbot/chat-agent";
-import { logger } from "@duyetbot/hono-middleware";
+} from '@duyetbot/chat-agent';
+import { logger } from '@duyetbot/hono-middleware';
 import {
   getTelegramHelpMessage,
   getTelegramPrompt,
   getTelegramWelcomeMessage,
-} from "@duyetbot/prompts";
-import { getPlatformTools } from "@duyetbot/tools";
-import { type ProviderEnv, createAIGatewayProvider } from "./provider.js";
-import { type TelegramContext, telegramTransport } from "./transport.js";
+} from '@duyetbot/prompts';
+import { getPlatformTools } from '@duyetbot/tools';
+import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
+import { type TelegramContext, telegramTransport } from './transport.js';
 
 /**
  * Base environment without self-reference
@@ -39,7 +36,7 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   TELEGRAM_WEBHOOK_SECRET?: string;
   TELEGRAM_ALLOWED_USERS?: string;
   TELEGRAM_ADMIN?: string;
-  TELEGRAM_PARSE_MODE?: "HTML" | "MarkdownV2";
+  TELEGRAM_PARSE_MODE?: 'HTML' | 'MarkdownV2';
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
   ROUTER_DEBUG?: string;
@@ -57,9 +54,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     systemPrompt: (env) =>
       getTelegramPrompt({
         outputFormat:
-          env.TELEGRAM_PARSE_MODE === "MarkdownV2"
-            ? "telegram-markdown"
-            : "telegram-html",
+          env.TELEGRAM_PARSE_MODE === 'MarkdownV2' ? 'telegram-markdown' : 'telegram-html',
       }),
     welcomeMessage: getTelegramWelcomeMessage(),
     helpMessage: getTelegramHelpMessage(),
@@ -67,7 +62,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // MCP servers disabled - SSE connections cause connection pool exhaustion
     // TODO: Re-enable when MCP client supports AbortController timeouts
     mcpServers: [],
-    tools: getPlatformTools("telegram"),
+    tools: getPlatformTools('telegram'),
     // Reduce history to minimize token usage and subrequests
     // Cloudflare Workers limit: 50 subrequests per invocation
     maxHistory: 20,
@@ -79,12 +74,12 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // Priority: built-in tools first, then MCP tools
     maxTools: 5,
     router: {
-      platform: "telegram",
+      platform: 'telegram',
       debug: false,
     },
     // Extract platform config for shared DOs (includes AI Gateway credentials)
     extractPlatformConfig: (env): TelegramPlatformConfig => ({
-      platform: "telegram",
+      platform: 'telegram',
       // Common config - only include defined values
       ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
       ...(env.MODEL && { model: env.MODEL }),
@@ -102,7 +97,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     hooks: {
       onError: async (ctx, error, messageRef) => {
         // Log the error for monitoring
-        logger.error("[AGENT] Error in handle()", {
+        logger.error('[AGENT] Error in handle()', {
           userId: ctx.userId,
           chatId: ctx.chatId,
           error: error.message,

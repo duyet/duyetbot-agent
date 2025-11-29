@@ -21,6 +21,7 @@ import {
   type GitHubWorkerEnv,
   type HITLAgentClass,
   type OrchestratorAgentClass,
+  type OrchestratorAgentEnv,
   type ResearchWorkerEnv,
   type RouterAgentClass,
   type RouterAgentEnv,
@@ -35,9 +36,9 @@ import {
   createResearchWorker,
   createRouterAgent,
   createSimpleAgent,
-} from "@duyetbot/chat-agent";
-import { getSimpleAgentPrompt } from "@duyetbot/prompts";
-import { type ProviderEnv, createProvider } from "./provider.js";
+} from '@duyetbot/chat-agent';
+import { getSimpleAgentPrompt } from '@duyetbot/prompts';
+import { type ProviderEnv, createProvider } from './provider.js';
 
 /**
  * Environment for shared agents
@@ -46,6 +47,7 @@ import { type ProviderEnv, createProvider } from "./provider.js";
 interface SharedEnv
   extends ProviderEnv,
     RouterAgentEnv,
+    OrchestratorAgentEnv,
     CodeWorkerEnv,
     ResearchWorkerEnv,
     GitHubWorkerEnv {}
@@ -56,12 +58,10 @@ interface SharedEnv
  * Note: createProvider receives context from parent workers (telegram-bot, github-bot)
  * which contains platformConfig with AI Gateway credentials.
  */
-export const RouterAgent: RouterAgentClass<SharedEnv> =
-  createRouterAgent<SharedEnv>({
-    createProvider: (env, context) =>
-      createProvider(env, undefined, context?.platformConfig),
-    debug: false,
-  });
+export const RouterAgent: RouterAgentClass<SharedEnv> = createRouterAgent<SharedEnv>({
+  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  debug: false,
+});
 
 /**
  * SimpleAgent for quick responses without tools
@@ -69,23 +69,20 @@ export const RouterAgent: RouterAgentClass<SharedEnv> =
  * Web search is enabled via OpenRouter's native plugin, allowing the model
  * to access real-time web information when needed.
  */
-export const SimpleAgent: SimpleAgentClass<SharedEnv> =
-  createSimpleAgent<SharedEnv>({
-    createProvider: (env, context) =>
-      createProvider(env, undefined, context?.platformConfig),
-    systemPrompt: getSimpleAgentPrompt(),
-    maxHistory: 20,
-    webSearch: true,
-  });
+export const SimpleAgent: SimpleAgentClass<SharedEnv> = createSimpleAgent<SharedEnv>({
+  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  systemPrompt: getSimpleAgentPrompt(),
+  maxHistory: 20,
+  webSearch: true,
+});
 
 /**
  * HITLAgent for human-in-the-loop confirmations
  */
 export const HITLAgent: HITLAgentClass<SharedEnv> = createHITLAgent<SharedEnv>({
-  createProvider: (env, context) =>
-    createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
   systemPrompt: getSimpleAgentPrompt(),
-  confirmationThreshold: "high",
+  confirmationThreshold: 'high',
 });
 
 /**
@@ -93,8 +90,7 @@ export const HITLAgent: HITLAgentClass<SharedEnv> = createHITLAgent<SharedEnv>({
  */
 export const OrchestratorAgent: OrchestratorAgentClass<SharedEnv> =
   createOrchestratorAgent<SharedEnv>({
-    createProvider: (env, context) =>
-      createProvider(env, undefined, context?.platformConfig),
+    createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
     maxSteps: 10,
     maxParallel: 3,
     continueOnError: true,
@@ -104,38 +100,31 @@ export const OrchestratorAgent: OrchestratorAgentClass<SharedEnv> =
  * CodeWorker for code analysis and generation
  */
 export const CodeWorker: WorkerClass<SharedEnv> = createCodeWorker<SharedEnv>({
-  createProvider: (env, context) =>
-    createProvider(env, undefined, context?.platformConfig),
-  defaultLanguage: "typescript",
+  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  defaultLanguage: 'typescript',
 });
 
 /**
  * ResearchWorker for web research and documentation
  */
-export const ResearchWorker: WorkerClass<SharedEnv> =
-  createResearchWorker<SharedEnv>({
-    createProvider: (env, context) =>
-      createProvider(env, undefined, context?.platformConfig),
-  });
+export const ResearchWorker: WorkerClass<SharedEnv> = createResearchWorker<SharedEnv>({
+  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+});
 
 /**
  * GitHubWorker for GitHub operations
  */
-export const GitHubWorker: WorkerClass<SharedEnv> =
-  createGitHubWorker<SharedEnv>({
-    createProvider: (env, context) =>
-      createProvider(env, undefined, context?.platformConfig),
-  });
+export const GitHubWorker: WorkerClass<SharedEnv> = createGitHubWorker<SharedEnv>({
+  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+});
 
 /**
  * DuyetInfoAgent for Duyet's blog and personal info queries
  */
-export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> =
-  createDuyetInfoAgent<SharedEnv>({
-    createProvider: (env, context) =>
-      createProvider(env, undefined, context?.platformConfig),
-    debug: true, // Enable detailed logging for observability
-  });
+export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> = createDuyetInfoAgent<SharedEnv>({
+  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  debug: true, // Enable detailed logging for observability
+});
 
 /**
  * StateDO for centralized observability and watchdog recovery
@@ -155,13 +144,13 @@ export default {
   async fetch(): Promise<Response> {
     return new Response(
       JSON.stringify({
-        name: "duyetbot-agents",
-        status: "ok",
-        description: "Shared Durable Objects for duyetbot",
+        name: 'duyetbot-agents',
+        status: 'ok',
+        description: 'Shared Durable Objects for duyetbot',
       }),
       {
-        headers: { "Content-Type": "application/json" },
-      },
+        headers: { 'Content-Type': 'application/json' },
+      }
     );
   },
 };

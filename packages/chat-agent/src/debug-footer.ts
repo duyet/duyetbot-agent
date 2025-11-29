@@ -3,9 +3,17 @@
  *
  * Shared implementation for formatting debug context as a collapsible footer
  * for admin users. Used by both direct responses and fire-and-forget paths.
+ *
+ * Format:
+ * - Simple: 🔍 router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * - Orchestrator:
+ *   🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
+ *      ├─ research-worker (2.5s)
+ *      └─ code-worker (1.2s)
+ * - Progressive: Shows (running) for active agents/workers
  */
 
-import type { DebugContext, DebugMetadata } from './types.js';
+import type { DebugContext, DebugMetadata, ExecutionStatus, WorkerDebugInfo } from './types.js';
 
 /**
  * Escape HTML entities in text for safe inclusion in HTML messages
@@ -31,45 +39,27 @@ export function escapeMarkdownV2(text: string): string {
 }
 
 /**
- * Format duration in seconds with 2 decimal places
+ * Format agent/worker with timing or status
+ * Examples: "simple-agent (3.77s)", "router-agent (running)", "code-worker (error)"
  */
-function formatStepDuration(durationMs?: number): string {
-  if (!durationMs) {
-    return '';
+function formatAgentTiming(name: string, durationMs?: number, status?: ExecutionStatus): string {
+  if (status === 'running') {
+    return `${name} (running)`;
   }
-  return `${(durationMs / 1000).toFixed(2)}s`;
+  if (status === 'error') {
+    return durationMs ? `${name} (error, ${formatDuration(durationMs)})` : `${name} (error)`;
+  }
+  if (durationMs) {
+    return `${name} (${formatDuration(durationMs)})`;
+  }
+  return name;
 }
 
 /**
- * Format routing flow as: router (0.12s) → agent (tool1 → tool2 → response, 1.23s)
- *
- * Each step shows:
- * - Agent name
- * - Tool chain (if any tools were called)
- * - Duration
- * - Error indicator if failed
+ * Format duration in seconds with 2 decimal places
  */
-function formatRoutingFlow(routingFlow: DebugContext['routingFlow']): string {
-  return routingFlow
-    .map((step) => {
-      const duration = formatStepDuration(step.durationMs);
-
-      // Error case: agent (error, 1.23s)
-      if (step.error) {
-        const inner = duration ? `error, ${duration}` : 'error';
-        return `${step.agent} (${inner})`;
-      }
-
-      // Build tool chain: tool1 → tool2 → response
-      const chain = step.toolChain?.length ? `${step.toolChain.join(' → ')} → response` : '';
-
-      // Combine chain and duration
-      const parts = [chain, duration].filter(Boolean);
-      const inner = parts.join(', ');
-
-      return inner ? `${step.agent} (${inner})` : step.agent;
-    })
-    .join(' → ');
+function formatDuration(durationMs: number): string {
+  return `${(durationMs / 1000).toFixed(2)}s`;
 }
 
 /**
@@ -79,7 +69,67 @@ function formatClassification(classification?: DebugContext['classification']): 
   if (!classification) {
     return '';
   }
-  return ` [${classification.type}/${classification.category}/${classification.complexity}]`;
+  return `[${classification.type}/${classification.category}/${classification.complexity}]`;
+}
+
+/**
+ * Format workers as nested list with tree characters
+ * Example:
+ *    ├─ research-worker (2.5s)
+ *    └─ code-worker (1.2s)
+ */
+function formatWorkers(workers?: WorkerDebugInfo[]): string {
+  if (!workers?.length) {
+    return '';
+  }
+
+  return workers
+    .map((worker, index, arr) => {
+      const isLast = index === arr.length - 1;
+      const prefix = isLast ? '└─' : '├─';
+      const timing = formatAgentTiming(worker.name, worker.durationMs, worker.status);
+      return `\n   ${prefix} ${timing}`;
+    })
+    .join('');
+}
+
+/**
+ * Format routing flow in new format:
+ * router-agent (0.4s) → [classification] → target-agent (3.77s)
+ *
+ * New format places classification between router and target agent
+ * for clearer flow visualization.
+ */
+function formatRoutingFlow(debugContext: DebugContext): string {
+  const { routingFlow, routerDurationMs, classification } = debugContext;
+
+  // Find router and target agent steps
+  const routerStep = routingFlow.find((s) => s.agent === 'router' || s.agent === 'router-agent');
+  const targetStep = routingFlow.find((s) => s.agent !== 'router' && s.agent !== 'router-agent');
+
+  // Build router part with timing
+  const routerDuration = routerDurationMs ?? routerStep?.durationMs;
+  const routerPart = formatAgentTiming('router-agent', routerDuration, routerStep?.status);
+
+  // Build classification part (inline between router and target)
+  const classificationPart = formatClassification(classification);
+
+  // Build target agent part with timing and status
+  let targetPart = '';
+  if (targetStep) {
+    targetPart = formatAgentTiming(targetStep.agent, targetStep.durationMs, targetStep.status);
+  }
+
+  // Combine: router (time) → [classification] → target (time)
+  const parts = [routerPart];
+  if (classificationPart) {
+    parts.push(classificationPart);
+  }
+  if (targetPart) {
+    parts.push(targetPart);
+  }
+
+  return parts.join(' → ');
 }
 
 /**
@@ -105,10 +155,16 @@ function formatMetadata(
 /**
  * Format debug context as expandable blockquote footer
  *
- * @example Output:
+ * @example Output (simple agent):
  * ```
- * 🔍 router (0.12s) → duyet-info-agent (duyet_cv → get_posts → response, 2.34s) [simple/duyet/low]
- * ⚠️ get_latest_posts: Connection timeout after 12000ms
+ * 🔍 router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * ```
+ *
+ * @example Output (orchestrator with workers):
+ * ```
+ * 🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
+ *    ├─ research-worker (2.5s)
+ *    └─ code-worker (1.2s)
  * ```
  */
 export function formatDebugFooter(debugContext?: DebugContext): string | null {
@@ -116,11 +172,29 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
     return null;
   }
 
-  const flow = formatRoutingFlow(debugContext.routingFlow);
-  const classification = formatClassification(debugContext.classification);
+  const flow = formatRoutingFlow(debugContext);
+  const workers = formatWorkers(debugContext.workers);
   const metadata = formatMetadata(debugContext.metadata);
 
-  return `\n\n<blockquote expandable>🔍 ${flow}${classification}${metadata}</blockquote>`;
+  return `\n\n<blockquote expandable>🔍 ${flow}${workers}${metadata}</blockquote>`;
+}
+
+/**
+ * Format workers for MarkdownV2 with escaped tree characters
+ */
+function formatWorkersMarkdownV2(workers?: WorkerDebugInfo[]): string {
+  if (!workers?.length) {
+    return '';
+  }
+
+  return workers
+    .map((worker, index, arr) => {
+      const isLast = index === arr.length - 1;
+      const prefix = isLast ? '└─' : '├─';
+      const timing = formatAgentTiming(worker.name, worker.durationMs, worker.status);
+      return `\n   ${prefix} ${escapeMarkdownV2(timing)}`;
+    })
+    .join('');
 }
 
 /**
@@ -129,9 +203,9 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
  * Uses MarkdownV2 expandable blockquote syntax: **>content||
  * All special characters in content are escaped.
  *
- * @example Output:
+ * @example Output (simple agent):
  * ```
- * **>🔍 router \(0\.12s\) → duyet\-info\-agent \(duyet\_cv → response, 2\.34s\) \[simple/duyet/low\]||
+ * **>🔍 router\-agent \(0\.4s\) → \[simple/general/low\] → simple\-agent \(3\.77s\)||
  * ```
  */
 export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string | null {
@@ -139,14 +213,37 @@ export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string
     return null;
   }
 
-  const flow = formatRoutingFlow(debugContext.routingFlow);
-  const classification = formatClassification(debugContext.classification);
+  const flow = formatRoutingFlow(debugContext);
+  const workers = formatWorkersMarkdownV2(debugContext.workers);
   const metadata = formatMetadata(debugContext.metadata, escapeMarkdownV2);
 
-  // Escape the flow and classification for MarkdownV2
+  // Escape the flow for MarkdownV2
   const escapedFlow = escapeMarkdownV2(flow);
-  const escapedClassification = escapeMarkdownV2(classification);
 
   // MarkdownV2 expandable blockquote: **>content||
-  return `\n\n**>🔍 ${escapedFlow}${escapedClassification}${metadata}||`;
+  return `\n\n**>🔍 ${escapedFlow}${workers}${metadata}||`;
+}
+
+/**
+ * Format progressive debug footer for loading states (no blockquote wrapper)
+ *
+ * Used during loading to show debug info below the rotating loading message.
+ * This version doesn't include the blockquote wrapper since it's meant for
+ * transient display during execution.
+ *
+ * @example Output:
+ * ```
+ * 🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (running)
+ *    ├─ research-worker (running)
+ * ```
+ */
+export function formatProgressiveDebugFooter(debugContext?: DebugContext): string | null {
+  if (!debugContext?.routingFlow?.length) {
+    return null;
+  }
+
+  const flow = formatRoutingFlow(debugContext);
+  const workers = formatWorkers(debugContext.workers);
+
+  return `🔍 ${flow}${workers}`;
 }
