@@ -179,3 +179,6 @@ jobs:
 
       - name: Run E2E tests
         run: bun run --filter @duyetbot/e2e-tests test
+
+      - name: Run Telegram Bot E2E tests
+        run: bun run --filter @duyetbot/telegram-bot test:e2e
