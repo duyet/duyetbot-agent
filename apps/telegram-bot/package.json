@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "config": "bun ../../scripts/config.ts telegram",
     "test": "bun run test:unit && bun run test:e2e",
     "test:unit": "vitest run --passWithNoTests",
     "test:e2e": "vitest run -c vitest.config.e2e.ts",

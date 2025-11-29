@@ -546,7 +546,6 @@ bun run deploy:shared      # duyetbot-shared-agents
 | Secret | Required | Purpose |
 |--------|----------|---------|
 | `AI_GATEWAY_API_KEY` | ✓ | Cloudflare AI Gateway authentication |
-| `OPENROUTER_API_KEY` | ✓ | OpenRouter API access |
 | `TELEGRAM_BOT_TOKEN` | ✓ (telegram) | Telegram Bot API |
 | `GITHUB_TOKEN` | ✓ (github) | GitHub API access |
 
@@ -555,12 +554,6 @@ bun run deploy:shared      # duyetbot-shared-agents
 bun scripts/config.ts telegram    # Telegram bot + webhook
 bun scripts/config.ts github      # GitHub bot
 bun scripts/config.ts agents      # Shared agents
-
-# Or manually per secret
-cd apps/telegram-bot
-bunx wrangler secret put AI_GATEWAY_API_KEY
-bunx wrangler secret put OPENROUTER_API_KEY
-bunx wrangler secret put TELEGRAM_BOT_TOKEN
 ```
 
 ### Monitoring

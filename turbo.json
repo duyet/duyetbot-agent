@@ -54,6 +54,21 @@
     "@duyetbot/github-bot#deploy": {
       "dependsOn": ["@duyetbot/shared-agents#deploy"],
       "cache": false
+    },
+    "config": {
+      "cache": false
+    },
+    "@duyetbot/shared-agents#config": {
+      "dependsOn": ["@duyetbot/shared-agents#deploy"],
+      "cache": false
+    },
+    "@duyetbot/telegram-bot#config": {
+      "dependsOn": ["@duyetbot/shared-agents#config"],
+      "cache": false
+    },
+    "@duyetbot/github-bot#config": {
+      "dependsOn": ["@duyetbot/shared-agents#config"],
+      "cache": false
     }
   }
 }

@@ -33,7 +33,6 @@ const APPS: Record<string, AppConfig> = {
     workerName: 'duyetbot-telegram',
     secrets: [
       { name: 'AI_GATEWAY_API_KEY', required: true },
-      { name: 'OPENROUTER_API_KEY', required: false }, // Falls back to AI_GATEWAY_API_KEY
       { name: 'TELEGRAM_BOT_TOKEN', required: true },
       { name: 'TELEGRAM_WEBHOOK_SECRET', required: false },
       { name: 'TELEGRAM_ALLOWED_USERS', required: false },
@@ -48,7 +47,6 @@ const APPS: Record<string, AppConfig> = {
     workerName: 'duyetbot-github',
     secrets: [
       { name: 'AI_GATEWAY_API_KEY', required: true },
-      { name: 'OPENROUTER_API_KEY', required: true },
       { name: 'GITHUB_TOKEN', required: true },
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
@@ -70,7 +68,13 @@ const APPS: Record<string, AppConfig> = {
     workerName: 'duyetbot-agents',
     secrets: [
       { name: 'AI_GATEWAY_API_KEY', required: true },
-      { name: 'OPENROUTER_API_KEY', required: true },
+      { name: 'TELEGRAM_BOT_TOKEN', required: true },
+      { name: 'TELEGRAM_WEBHOOK_SECRET', required: false },
+      { name: 'TELEGRAM_ALLOWED_USERS', required: false },
+      { name: 'GITHUB_TOKEN', required: true },
+      { name: 'GITHUB_WEBHOOK_SECRET', required: false },
+      { name: 'MEMORY_MCP_URL', required: false },
+      { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
   },
 };
