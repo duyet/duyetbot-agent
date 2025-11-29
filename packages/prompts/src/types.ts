@@ -11,13 +11,20 @@
 export type Platform = 'telegram' | 'github' | 'api' | 'cli';
 
 /**
- * Telegram parse mode for message formatting
- */
-export type TelegramParseMode = 'HTML' | 'MarkdownV2';
-
-/**
  * Output format for response formatting (platform-neutral abstraction)
- * Maps to specific formatting instructions without coupling to platform names
+ *
+ * This is the primary way to specify formatting for prompts.
+ * Maps to specific formatting instructions without coupling to platform names.
+ *
+ * @example
+ * ```typescript
+ * // Use in prompt functions
+ * getTelegramPrompt({ outputFormat: 'telegram-html' });
+ * getDuyetInfoPrompt({ outputFormat: 'github-markdown' });
+ *
+ * // Or with the builder
+ * createPrompt().withOutputFormat('telegram-html').build();
+ * ```
  */
 export type OutputFormat =
   | 'telegram-html' // Telegram HTML formatting
@@ -49,8 +56,6 @@ export interface PromptConfig {
   tools?: ToolDefinition[];
   /** Capabilities to list in the prompt */
   capabilities?: string[];
-  /** Telegram parse mode for response formatting (default: 'HTML') */
-  telegramParseMode?: TelegramParseMode;
   /** Output format for response formatting (platform-neutral) */
   outputFormat?: OutputFormat;
 }

@@ -25,19 +25,15 @@ const DUYET_INFO_CAPABILITIES = [
 /**
  * Get the system prompt for DuyetInfoAgent
  *
- * Supports platform-neutral `outputFormat` (preferred) or legacy `platform` config.
+ * Uses platform-neutral `outputFormat` for format specification.
  *
  * @param config - Optional configuration overrides
- * @param config.outputFormat - Platform-neutral format: 'telegram-html', 'github-markdown', etc.
- * @param config.platform - Legacy platform config (use outputFormat instead)
+ * @param config.outputFormat - Format: 'telegram-html', 'telegram-markdown', 'github-markdown', 'plain'
  *
  * @example
  * ```typescript
- * // Preferred: use outputFormat for shared agents
  * getDuyetInfoPrompt({ outputFormat: 'telegram-html' });
- *
- * // Legacy: platform-based config still supported
- * getDuyetInfoPrompt({ platform: 'telegram', telegramParseMode: 'HTML' });
+ * getDuyetInfoPrompt({ outputFormat: 'github-markdown' });
  * ```
  */
 export function getDuyetInfoPrompt(config?: Partial<PromptConfig>): string {
@@ -67,15 +63,9 @@ Always use tools when available rather than relying on potentially outdated know
 `
     );
 
-  // Prefer outputFormat (platform-neutral), fall back to platform config
+  // Apply output format if specified
   if (config?.outputFormat) {
     builder.withOutputFormat(config.outputFormat);
-  } else if (config?.platform === 'telegram') {
-    builder.withTelegramParseMode(config.telegramParseMode ?? 'HTML').forTelegram();
-  } else if (config?.platform === 'github') {
-    builder.forGitHub();
-  } else if (config?.platform) {
-    builder.forPlatform(config.platform);
   }
 
   return builder.withGuidelines().build();

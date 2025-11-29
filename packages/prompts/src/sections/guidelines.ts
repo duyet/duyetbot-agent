@@ -2,10 +2,10 @@
  * Guidelines Section
  *
  * Response formatting and communication style guidance.
- * Platform-aware for optimal user experience.
+ * Uses OutputFormat for platform-neutral format specification.
  */
 
-import type { Platform, TelegramParseMode } from '../types.js';
+import type { OutputFormat } from '../types.js';
 
 /**
  * Base guidelines shared across all platforms
@@ -74,18 +74,9 @@ Examples:
 Do NOT use HTML tags (<b>, <i>, <code>) - use MarkdownV2 syntax only.`;
 
 /**
- * Get Telegram format guidelines based on parse mode
+ * Platform-specific guidelines for non-output-format platforms
  */
-function getTelegramFormatGuidelines(parseMode: TelegramParseMode = 'HTML'): string[] {
-  const formatGuide =
-    parseMode === 'MarkdownV2' ? TELEGRAM_MARKDOWNV2_FORMAT : TELEGRAM_HTML_FORMAT;
-  return [...TELEGRAM_BASE_GUIDELINES, formatGuide];
-}
-
-/**
- * Platform-specific guidelines (non-Telegram platforms)
- */
-const PLATFORM_GUIDELINES: Record<Exclude<Platform, 'telegram'>, string[]> = {
+const PLATFORM_GUIDELINES = {
   github: [
     'Use GitHub-flavored markdown',
     'Reference specific files and line numbers when relevant',
@@ -105,20 +96,39 @@ const PLATFORM_GUIDELINES: Record<Exclude<Platform, 'telegram'>, string[]> = {
 };
 
 /**
- * Generate the guidelines section
- * @param platform - Optional platform for platform-specific guidelines
- * @param telegramParseMode - Parse mode for Telegram responses (default: 'HTML')
+ * Get format-specific guidelines based on OutputFormat
+ *
+ * Maps the platform-neutral OutputFormat to appropriate formatting instructions.
+ *
+ * @param outputFormat - The output format for response formatting
+ * @returns Array of format-specific guidelines
  */
-export function guidelinesSection(
-  platform?: Platform,
-  telegramParseMode: TelegramParseMode = 'HTML'
-): string {
+function getFormatGuidelines(outputFormat: OutputFormat): string[] {
+  switch (outputFormat) {
+    case 'telegram-html':
+      return [...TELEGRAM_BASE_GUIDELINES, TELEGRAM_HTML_FORMAT];
+    case 'telegram-markdown':
+      return [...TELEGRAM_BASE_GUIDELINES, TELEGRAM_MARKDOWNV2_FORMAT];
+    case 'github-markdown':
+      return PLATFORM_GUIDELINES.github;
+    default:
+      // 'plain' or any other format - base guidelines only
+      return [];
+  }
+}
+
+/**
+ * Generate the guidelines section
+ *
+ * Uses OutputFormat for platform-neutral format specification.
+ *
+ * @param outputFormat - Optional output format for format-specific guidelines
+ */
+export function guidelinesSection(outputFormat?: OutputFormat): string {
   const guidelines = [...BASE_GUIDELINES];
 
-  if (platform === 'telegram') {
-    guidelines.push(...getTelegramFormatGuidelines(telegramParseMode));
-  } else if (platform && PLATFORM_GUIDELINES[platform]) {
-    guidelines.push(...PLATFORM_GUIDELINES[platform]);
+  if (outputFormat) {
+    guidelines.push(...getFormatGuidelines(outputFormat));
   }
 
   return `<response_guidelines>
