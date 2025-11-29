@@ -80,8 +80,8 @@ describe("debug-footer", () => {
         isAdmin: true,
         debugContext: {
           routingFlow: [
-            { agent: "router-agent", durationMs: 100 },
-            { agent: "simple-agent", durationMs: 1130 },
+            { agent: 'router-agent', durationMs: 100 },
+            { agent: 'simple-agent', durationMs: 1130 },
           ],
           totalDurationMs: 1230,
         },
