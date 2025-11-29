@@ -43,7 +43,7 @@
   "catalog": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
-    "agents": "^0.2.23",
+    "agents": "^0.2.24",
     "hono": "^4.10.6",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",

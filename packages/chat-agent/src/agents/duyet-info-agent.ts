@@ -233,6 +233,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
     /**
      * Initialize MCP connection
+     * Uses the new addMcpServer() API (agents SDK v0.2.24+) which handles
+     * registration, connection, and discovery in one call
      */
     async initMcp(): Promise<void> {
       if (this._mcpInitialized) {
@@ -246,8 +248,16 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           });
         }
 
+        // Use the new addMcpServer() API which combines registerServer() + connectToServer()
+        // This is the recommended approach for agents SDK v0.2.24+
+        const addPromise = this.addMcpServer(
+          DUYET_MCP_SERVER.name,
+          DUYET_MCP_SERVER.url,
+          '', // callbackHost - empty string for non-OAuth servers
+          '' // agentsPrefix - empty string uses default
+        );
+
         // Add timeout to prevent hanging connections
-        const connectPromise = this.mcp.connect(DUYET_MCP_SERVER.url, {});
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(
             () => reject(new Error(`MCP connection timeout after ${connectionTimeoutMs}ms`)),
@@ -255,10 +265,12 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           );
         });
 
-        await Promise.race([connectPromise, timeoutPromise]);
+        const result = await Promise.race([addPromise, timeoutPromise]);
 
         if (debug) {
-          logger.info('[DuyetInfoAgent] MCP connected successfully');
+          logger.info('[DuyetInfoAgent] MCP connected successfully', {
+            id: result.id,
+          });
         }
 
         this._mcpInitialized = true;
