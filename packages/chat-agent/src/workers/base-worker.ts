@@ -8,17 +8,17 @@
  * executing specific task types (code, research, github) and returning results.
  */
 
-import { logger } from '@duyetbot/hono-middleware';
-import { Agent, type Connection } from 'agents';
-import { type AgentContext, AgentMixin } from '../agents/base-agent.js';
-import type { PlanStep, WorkerResult } from '../routing/schemas.js';
-import type { LLMProvider } from '../types.js';
+import { logger } from "@duyetbot/hono-middleware";
+import { Agent, type Connection } from "agents";
+import { type AgentContext, AgentMixin } from "../agents/base-agent.js";
+import type { PlanStep, WorkerResult } from "../routing/schemas.js";
+import type { LLMProvider } from "../types.js";
 import {
   type WorkerType,
   formatDependencyContext,
   isSuccessfulResult,
   summarizeResults,
-} from './worker-utils.js';
+} from "./worker-utils.js";
 
 // Re-export utilities from worker-utils for convenience
 export { formatDependencyContext, isSuccessfulResult, summarizeResults };
@@ -64,8 +64,8 @@ export interface BaseWorkerEnv {}
  * Configuration for base worker
  */
 export interface BaseWorkerConfig<TEnv extends BaseWorkerEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create LLM provider from env, optionally with context for credentials */
+  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** Worker type for identification */
   workerType: WorkerType;
   /** System prompt for the worker's domain */
@@ -91,7 +91,10 @@ export interface WorkerMethods {
 /**
  * Type for Worker class
  */
-export type WorkerClass<TEnv extends BaseWorkerEnv> = typeof Agent<TEnv, BaseWorkerState> & {
+export type WorkerClass<TEnv extends BaseWorkerEnv> = typeof Agent<
+  TEnv,
+  BaseWorkerState
+> & {
   new (
     ...args: ConstructorParameters<typeof Agent<TEnv, BaseWorkerState>>
   ): Agent<TEnv, BaseWorkerState> & WorkerMethods;
@@ -109,26 +112,31 @@ function defaultBuildPrompt(step: PlanStep, dependencyContext: string): string {
 
   parts.push(`## Task\n${step.task}`);
   parts.push(`\n## Expected Output Type: ${step.expectedOutput}`);
-  parts.push('\n## Instructions');
+  parts.push("\n## Instructions");
   parts.push(`- ${step.description}`);
-  parts.push('- Provide a clear, structured response');
-  parts.push('- If you need to output code, wrap it in appropriate code blocks');
+  parts.push("- Provide a clear, structured response");
+  parts.push(
+    "- If you need to output code, wrap it in appropriate code blocks",
+  );
 
-  return parts.join('\n');
+  return parts.join("\n");
 }
 
 /**
  * Default response parser
  */
-function defaultParseResponse(content: string, expectedOutput: string): unknown {
+function defaultParseResponse(
+  content: string,
+  expectedOutput: string,
+): unknown {
   switch (expectedOutput) {
-    case 'code': {
+    case "code": {
       // Extract code blocks if present
       const codeMatch = content.match(/```[\w]*\n?([\s\S]*?)```/);
       return codeMatch?.[1] ? codeMatch[1].trim() : content;
     }
 
-    case 'data': {
+    case "data": {
       // Try to parse as JSON
       try {
         const jsonMatch = content.match(/```json\n?([\s\S]*?)```/);
@@ -142,9 +150,9 @@ function defaultParseResponse(content: string, expectedOutput: string): unknown 
       }
     }
 
-    case 'action':
+    case "action":
       // Return structured action data
-      return { action: 'completed', result: content };
+      return { action: "completed", result: content };
     default:
       return content;
   }
@@ -165,7 +173,7 @@ function defaultParseResponse(content: string, expectedOutput: string): unknown 
  * ```
  */
 export function createBaseWorker<TEnv extends BaseWorkerEnv>(
-  config: BaseWorkerConfig<TEnv>
+  config: BaseWorkerConfig<TEnv>,
 ): WorkerClass<TEnv> {
   const debug = config.debug ?? false;
   const buildPrompt = config.buildPrompt ?? defaultBuildPrompt;
@@ -173,7 +181,7 @@ export function createBaseWorker<TEnv extends BaseWorkerEnv>(
 
   const WorkerClass = class BaseWorker extends Agent<TEnv, BaseWorkerState> {
     override initialState: BaseWorkerState = {
-      workerId: '',
+      workerId: "",
       tasksExecuted: 0,
       lastExecutedAt: undefined,
       createdAt: Date.now(),
@@ -182,7 +190,10 @@ export function createBaseWorker<TEnv extends BaseWorkerEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(state: BaseWorkerState, source: 'server' | Connection): void {
+    override onStateUpdate(
+      state: BaseWorkerState,
+      source: "server" | Connection,
+    ): void {
       if (debug) {
         logger.info(`[${config.workerType}-worker] State updated`, {
           source,
@@ -198,28 +209,28 @@ export function createBaseWorker<TEnv extends BaseWorkerEnv>(
       const startTime = Date.now();
       const { step, dependencyResults, traceId } = input;
 
-      AgentMixin.log(`${config.workerType}-worker`, 'Executing step', {
+      AgentMixin.log(`${config.workerType}-worker`, "Executing step", {
         traceId,
         stepId: step.id,
         task: step.task.slice(0, 100),
       });
 
       try {
-        // Get LLM provider
+        // Get LLM provider (pass context for AI Gateway credentials)
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env);
+        const provider = config.createProvider(env, input.context);
 
         // Build context from dependencies
         const dependencyContext = formatDependencyContext(dependencyResults);
 
         // Build messages for LLM
         const messages: Array<{
-          role: 'system' | 'user' | 'assistant';
+          role: "system" | "user" | "assistant";
           content: string;
         }> = [
-          { role: 'system', content: config.systemPrompt },
+          { role: "system", content: config.systemPrompt },
           {
-            role: 'user',
+            role: "user",
             content: buildPrompt(step, dependencyContext),
           },
         ];
@@ -236,7 +247,7 @@ export function createBaseWorker<TEnv extends BaseWorkerEnv>(
           lastExecutedAt: Date.now(),
         });
 
-        AgentMixin.log(`${config.workerType}-worker`, 'Step completed', {
+        AgentMixin.log(`${config.workerType}-worker`, "Step completed", {
           traceId,
           stepId: step.id,
           durationMs,
@@ -254,11 +265,16 @@ export function createBaseWorker<TEnv extends BaseWorkerEnv>(
       } catch (error) {
         const durationMs = Date.now() - startTime;
 
-        AgentMixin.logError(`${config.workerType}-worker`, 'Step failed', error, {
-          traceId,
-          stepId: step.id,
-          durationMs,
-        });
+        AgentMixin.logError(
+          `${config.workerType}-worker`,
+          "Step failed",
+          error,
+          {
+            traceId,
+            stepId: step.id,
+            durationMs,
+          },
+        );
 
         return {
           stepId: step.id,

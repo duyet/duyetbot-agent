@@ -7,9 +7,17 @@
  * This is the entry point for all queries in the new routing architecture.
  */
 
-import { logger } from '@duyetbot/hono-middleware';
-import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
-import { type ResponseTarget, sendPlatformResponse } from '../platform-response.js';
+import { logger } from "@duyetbot/hono-middleware";
+import {
+  Agent,
+  type AgentNamespace,
+  type Connection,
+  getAgentByName,
+} from "agents";
+import {
+  type ResponseTarget,
+  sendPlatformResponse,
+} from "../platform-response.js";
 import {
   type ClassificationContext,
   type ClassifierConfig,
@@ -17,12 +25,16 @@ import {
   type RouteTarget,
   determineRouteTarget,
   hybridClassify,
-} from '../routing/index.js';
-import type { DebugContext, LLMProvider, Message } from '../types.js';
-import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+} from "../routing/index.js";
+import type { DebugContext, LLMProvider, Message } from "../types.js";
+import {
+  type AgentContext,
+  AgentMixin,
+  type AgentResult,
+} from "./base-agent.js";
 
 // Re-export ResponseTarget for consumers
-export type { ResponseTarget } from '../platform-response.js';
+export type { ResponseTarget } from "../platform-response.js";
 
 /**
  * Pending execution for fire-and-forget pattern
@@ -89,8 +101,8 @@ export interface RouterAgentEnv {
  * Configuration for router agent
  */
 export interface RouterAgentConfig<TEnv extends RouterAgentEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create LLM provider from env and optional context */
+  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** Maximum routing history to keep */
   maxHistory?: number;
   /** Custom classification prompt override */
@@ -109,7 +121,7 @@ export interface RouterAgentMethods {
     byTarget: Record<string, number>;
     avgDurationMs: number;
   };
-  getRoutingHistory(limit?: number): RouterAgentState['routingHistory'];
+  getRoutingHistory(limit?: number): RouterAgentState["routingHistory"];
   getLastClassification(): QueryClassification | undefined;
   clearHistory(): void;
 }
@@ -117,7 +129,10 @@ export interface RouterAgentMethods {
 /**
  * Type for RouterAgent class
  */
-export type RouterAgentClass<TEnv extends RouterAgentEnv> = typeof Agent<TEnv, RouterAgentState> & {
+export type RouterAgentClass<TEnv extends RouterAgentEnv> = typeof Agent<
+  TEnv,
+  RouterAgentState
+> & {
   new (
     ...args: ConstructorParameters<typeof Agent<TEnv, RouterAgentState>>
   ): Agent<TEnv, RouterAgentState> & RouterAgentMethods;
@@ -134,14 +149,14 @@ export type RouterAgentClass<TEnv extends RouterAgentEnv> = typeof Agent<TEnv, R
  * ```
  */
 export function createRouterAgent<TEnv extends RouterAgentEnv>(
-  config: RouterAgentConfig<TEnv>
+  config: RouterAgentConfig<TEnv>,
 ): RouterAgentClass<TEnv> {
   const maxHistory = config.maxHistory ?? 50;
   const debug = config.debug ?? false;
 
   const AgentClass = class RouterAgent extends Agent<TEnv, RouterAgentState> {
     override initialState: RouterAgentState = {
-      sessionId: '',
+      sessionId: "",
       lastClassification: undefined,
       routingHistory: [],
       createdAt: Date.now(),
@@ -151,9 +166,12 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(_state: RouterAgentState, source: 'server' | Connection): void {
+    override onStateUpdate(
+      _state: RouterAgentState,
+      source: "server" | Connection,
+    ): void {
       if (debug) {
-        logger.info('[RouterAgent] State updated', { source });
+        logger.info("[RouterAgent] State updated", { source });
       }
     }
 
@@ -162,23 +180,23 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      */
     async route(query: string, context: AgentContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
+      const traceId = context.traceId ?? AgentMixin.generateId("trace");
 
-      AgentMixin.log('RouterAgent', 'Routing query', {
+      AgentMixin.log("RouterAgent", "Routing query", {
         traceId,
         queryLength: query.length,
         platform: context.platform,
       });
 
       try {
-        // Get LLM provider
+        // Get LLM provider (pass context for platformConfig credentials)
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env);
+        const provider = config.createProvider(env, context);
 
         // Build classification context
-        const validPlatforms = ['telegram', 'github', 'api', 'cli'] as const;
+        const validPlatforms = ["telegram", "github", "api", "cli"] as const;
         const platform = validPlatforms.includes(
-          context.platform as (typeof validPlatforms)[number]
+          context.platform as (typeof validPlatforms)[number],
         )
           ? (context.platform as (typeof validPlatforms)[number])
           : undefined;
@@ -186,7 +204,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         const classificationContext: ClassificationContext = {
           platform,
           recentMessages: this.state.routingHistory.slice(-3).map((h) => ({
-            role: 'user',
+            role: "user",
             content: h.query,
           })),
         };
@@ -196,7 +214,11 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         if (config.customClassificationPrompt) {
           classifierConfig.customPrompt = config.customClassificationPrompt;
         }
-        const classification = await hybridClassify(query, classifierConfig, classificationContext);
+        const classification = await hybridClassify(
+          query,
+          classifierConfig,
+          classificationContext,
+        );
 
         // Determine route target
         const target = determineRouteTarget(classification);
@@ -222,13 +244,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             platform: context.platform,
           };
 
-          logger.info('[ROUTER_DEBUG] Routing decision', logEntry);
+          logger.info("[ROUTER_DEBUG] Routing decision", logEntry);
         }
 
         // Update state with routing history (truncate fields to limit storage)
         this.setState({
           ...this.state,
-          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
+          sessionId:
+            this.state.sessionId || context.chatId?.toString() || traceId,
           lastClassification: classification,
           routingHistory: [
             ...this.state.routingHistory.slice(-(maxHistory - 1)),
@@ -246,7 +269,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           updatedAt: Date.now(),
         });
 
-        AgentMixin.log('RouterAgent', 'Classification complete', {
+        AgentMixin.log("RouterAgent", "Classification complete", {
           traceId,
           type: classification.type,
           category: classification.category,
@@ -256,11 +279,16 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         });
 
         // Route to target agent
-        const result = await this.dispatchToTarget(target, query, context, classification);
+        const result = await this.dispatchToTarget(
+          target,
+          query,
+          context,
+          classification,
+        );
 
         // Log successful routing outcome
         if (debug) {
-          logger.info('[ROUTER_DEBUG] Routing outcome', {
+          logger.info("[ROUTER_DEBUG] Routing outcome", {
             traceId,
             target,
             success: result.success,
@@ -275,7 +303,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
         // Enhanced error logging
         if (debug) {
-          logger.error('[ROUTER_DEBUG] Routing error', {
+          logger.error("[ROUTER_DEBUG] Routing error", {
             traceId,
             query: query.slice(0, 100),
             error: error instanceof Error ? error.message : String(error),
@@ -284,7 +312,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           });
         }
 
-        AgentMixin.logError('RouterAgent', 'Routing failed', error, {
+        AgentMixin.logError("RouterAgent", "Routing failed", error, {
           traceId,
           durationMs,
         });
@@ -300,7 +328,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       target: RouteTarget,
       query: string,
       context: AgentContext,
-      classification: QueryClassification
+      classification: QueryClassification,
     ): Promise<AgentResult> {
       const startTime = Date.now();
       const env = (this as unknown as { env: TEnv }).env;
@@ -312,7 +340,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         data: {
           ...context.data,
           classification,
-          routedFrom: 'router-agent',
+          routedFrom: "router-agent",
         },
       };
 
@@ -326,14 +354,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
       try {
         switch (target) {
-          case 'simple-agent': {
+          case "simple-agent": {
             if (!env.SimpleAgent) {
               // Fallback: handle simple queries directly
               return this.handleSimpleQuery(query, targetContext);
             }
             const agent = await getAgentByName(
               env.SimpleAgent,
-              targetContext.chatId?.toString() || 'default'
+              targetContext.chatId?.toString() || "default",
             );
             return (
               agent as unknown as {
@@ -342,34 +370,37 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             ).execute(query, targetContext);
           }
 
-          case 'orchestrator-agent': {
+          case "orchestrator-agent": {
             if (!env.OrchestratorAgent) {
               return AgentMixin.createErrorResult(
-                new Error('OrchestratorAgent not available'),
-                Date.now() - startTime
+                new Error("OrchestratorAgent not available"),
+                Date.now() - startTime,
               );
             }
             const agent = await getAgentByName(
               env.OrchestratorAgent,
-              targetContext.chatId?.toString() || 'default'
+              targetContext.chatId?.toString() || "default",
             );
             return (
               agent as unknown as {
-                orchestrate: (q: string, c: AgentContext) => Promise<AgentResult>;
+                orchestrate: (
+                  q: string,
+                  c: AgentContext,
+                ) => Promise<AgentResult>;
               }
             ).orchestrate(query, targetContext);
           }
 
-          case 'hitl-agent': {
+          case "hitl-agent": {
             if (!env.HITLAgent) {
               return AgentMixin.createErrorResult(
-                new Error('HITLAgent not available'),
-                Date.now() - startTime
+                new Error("HITLAgent not available"),
+                Date.now() - startTime,
               );
             }
             const agent = await getAgentByName(
               env.HITLAgent,
-              targetContext.chatId?.toString() || 'default'
+              targetContext.chatId?.toString() || "default",
             );
             return (
               agent as unknown as {
@@ -378,12 +409,15 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             ).handle(query, targetContext);
           }
 
-          case 'code-worker': {
+          case "code-worker": {
             if (!env.CodeWorker) {
               // Fallback to simple handling
               return this.handleSimpleQuery(query, targetContext);
             }
-            const agent = await getAgentByName(env.CodeWorker, AgentMixin.generateId('worker'));
+            const agent = await getAgentByName(
+              env.CodeWorker,
+              AgentMixin.generateId("worker"),
+            );
             return (
               agent as unknown as {
                 execute: (q: string, c: AgentContext) => Promise<AgentResult>;
@@ -391,11 +425,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             ).execute(query, targetContext);
           }
 
-          case 'research-worker': {
+          case "research-worker": {
             if (!env.ResearchWorker) {
               return this.handleSimpleQuery(query, targetContext);
             }
-            const agent = await getAgentByName(env.ResearchWorker, AgentMixin.generateId('worker'));
+            const agent = await getAgentByName(
+              env.ResearchWorker,
+              AgentMixin.generateId("worker"),
+            );
             return (
               agent as unknown as {
                 execute: (q: string, c: AgentContext) => Promise<AgentResult>;
@@ -403,11 +440,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             ).execute(query, targetContext);
           }
 
-          case 'github-worker': {
+          case "github-worker": {
             if (!env.GitHubWorker) {
               return this.handleSimpleQuery(query, targetContext);
             }
-            const agent = await getAgentByName(env.GitHubWorker, AgentMixin.generateId('worker'));
+            const agent = await getAgentByName(
+              env.GitHubWorker,
+              AgentMixin.generateId("worker"),
+            );
             return (
               agent as unknown as {
                 execute: (q: string, c: AgentContext) => Promise<AgentResult>;
@@ -415,13 +455,13 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             ).execute(query, targetContext);
           }
 
-          case 'duyet-info-agent': {
+          case "duyet-info-agent": {
             if (!env.DuyetInfoAgent) {
               return this.handleSimpleQuery(query, targetContext);
             }
             const agent = await getAgentByName(
               env.DuyetInfoAgent,
-              targetContext.chatId?.toString() || 'default'
+              targetContext.chatId?.toString() || "default",
             );
             return (
               agent as unknown as {
@@ -432,14 +472,18 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
           default: {
             // Fallback for unknown targets
-            AgentMixin.log('RouterAgent', 'Unknown target, using simple handler', {
-              target,
-            });
+            AgentMixin.log(
+              "RouterAgent",
+              "Unknown target, using simple handler",
+              {
+                target,
+              },
+            );
             return this.handleSimpleQuery(query, targetContext);
           }
         }
       } catch (error) {
-        AgentMixin.logError('RouterAgent', 'Dispatch failed', error, {
+        AgentMixin.logError("RouterAgent", "Dispatch failed", error, {
           target,
         });
         return AgentMixin.createErrorResult(error, Date.now() - startTime);
@@ -449,28 +493,36 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
     /**
      * Handle simple queries directly (fallback when SimpleAgent not available)
      */
-    private async handleSimpleQuery(query: string, _context: AgentContext): Promise<AgentResult> {
+    private async handleSimpleQuery(
+      query: string,
+      context: AgentContext,
+    ): Promise<AgentResult> {
       const startTime = Date.now();
       const env = (this as unknown as { env: TEnv }).env;
 
       try {
-        const provider = config.createProvider(env);
+        const provider = config.createProvider(env, context);
         const messages: Message[] = [
           {
-            role: 'system',
-            content: 'You are a helpful assistant. Respond concisely and accurately.',
+            role: "system",
+            content:
+              "You are a helpful assistant. Respond concisely and accurately.",
           },
-          { role: 'user', content: query },
+          { role: "user", content: query },
         ];
 
         const response = await provider.chat(
           messages.map((m) => ({
-            role: m.role as 'system' | 'user' | 'assistant',
+            role: m.role as "system" | "user" | "assistant",
             content: m.content,
-          }))
+          })),
         );
 
-        return AgentMixin.createResult(true, response.content, Date.now() - startTime);
+        return AgentMixin.createResult(
+          true,
+          response.content,
+          Date.now() - startTime,
+        );
       } catch (error) {
         return AgentMixin.createErrorResult(error, Date.now() - startTime);
       }
@@ -492,7 +544,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       }
 
       const avgDurationMs =
-        history.length > 0 ? history.reduce((sum, h) => sum + h.durationMs, 0) / history.length : 0;
+        history.length > 0
+          ? history.reduce((sum, h) => sum + h.durationMs, 0) / history.length
+          : 0;
 
       return {
         totalRouted: history.length,
@@ -504,7 +558,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
     /**
      * Get routing history with optional limit
      */
-    getRoutingHistory(limit?: number): RouterAgentState['routingHistory'] {
+    getRoutingHistory(limit?: number): RouterAgentState["routingHistory"] {
       const history = this.state.routingHistory;
       if (limit && limit > 0) {
         return history.slice(-limit);
@@ -546,9 +600,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
     async scheduleExecution(
       query: string,
       context: AgentContext,
-      responseTarget: ResponseTarget
+      responseTarget: ResponseTarget,
     ): Promise<{ scheduled: boolean; executionId: string }> {
-      const executionId = AgentMixin.generateId('exec');
+      const executionId = AgentMixin.generateId("exec");
 
       // Store execution context in state
       const pendingExecutions = this.state.pendingExecutions || [];
@@ -568,9 +622,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       });
 
       // Schedule alarm to process (fires in 1s - reliable with second-precision timestamps)
-      await this.schedule(1, 'onExecutionAlarm', { executionId });
+      await this.schedule(1, "onExecutionAlarm", { executionId });
 
-      AgentMixin.log('RouterAgent', 'Scheduled fire-and-forget execution', {
+      AgentMixin.log("RouterAgent", "Scheduled fire-and-forget execution", {
         executionId,
         queryLength: query.length,
         chatId: responseTarget.chatId,
@@ -591,11 +645,11 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      */
     async onExecutionAlarm(data: { executionId: string }): Promise<void> {
       const execution = this.state.pendingExecutions?.find(
-        (e) => e.executionId === data.executionId
+        (e) => e.executionId === data.executionId,
       );
 
       if (!execution) {
-        logger.warn('[RouterAgent] Execution not found', {
+        logger.warn("[RouterAgent] Execution not found", {
           executionId: data.executionId,
         });
         return;
@@ -604,7 +658,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       const startTime = Date.now();
 
       try {
-        AgentMixin.log('RouterAgent', 'Processing fire-and-forget execution', {
+        AgentMixin.log("RouterAgent", "Processing fire-and-forget execution", {
           executionId: data.executionId,
           queryLength: execution.query.length,
         });
@@ -614,13 +668,15 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
         // Get the latest classification from state (populated by route())
         const classification = this.state.lastClassification;
-        const target = classification ? determineRouteTarget(classification) : 'router';
+        const target = classification
+          ? determineRouteTarget(classification)
+          : "router";
 
         // Build debug context for admin users
         const totalDurationMs = Date.now() - startTime;
 
         // Build target agent step - only include tools if defined to satisfy exactOptionalPropertyTypes
-        const targetAgentStep: DebugContext['routingFlow'][0] = {
+        const targetAgentStep: DebugContext["routingFlow"][0] = {
           agent: target,
           durationMs: result.durationMs,
         };
@@ -631,7 +687,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         // Build debug context - only include classification if present (exactOptionalPropertyTypes)
         const debugContext: DebugContext = {
           routingFlow: [
-            { agent: 'router' },
+            { agent: "router" },
             targetAgentStep,
             // Include sub-agents if orchestrator delegated
             ...(result.debug?.subAgents || []).map((subAgent) => ({
@@ -655,7 +711,8 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
         // Send response directly to platform
         // Cast env to PlatformEnv - platform tokens come from responseTarget or env
-        const envWithTokens = (this as unknown as { env: TEnv }).env as unknown as {
+        const envWithTokens = (this as unknown as { env: TEnv })
+          .env as unknown as {
           TELEGRAM_BOT_TOKEN?: string;
           GITHUB_TOKEN?: string;
         };
@@ -663,23 +720,24 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         const responseText =
           result.success && result.content
             ? result.content
-            : `❌ Error: ${result.error || 'Unknown error'}`;
+            : `❌ Error: ${result.error || "Unknown error"}`;
         await sendPlatformResponse(
           envWithTokens,
           execution.responseTarget,
           responseText,
-          debugContext
+          debugContext,
         );
 
-        AgentMixin.log('RouterAgent', 'Fire-and-forget execution completed', {
+        AgentMixin.log("RouterAgent", "Fire-and-forget execution completed", {
           executionId: data.executionId,
           success: result.success,
           durationMs: totalDurationMs,
         });
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : String(error);
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
 
-        logger.error('[RouterAgent] Execution alarm failed', {
+        logger.error("[RouterAgent] Execution alarm failed", {
           executionId: data.executionId,
           error: errorMessage,
           durationMs: Date.now() - startTime,
@@ -687,31 +745,37 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
         // Try to send error message to user
         try {
-          const envForError = (this as unknown as { env: TEnv }).env as unknown as {
+          const envForError = (this as unknown as { env: TEnv })
+            .env as unknown as {
             TELEGRAM_BOT_TOKEN?: string;
             GITHUB_TOKEN?: string;
           };
           await sendPlatformResponse(
             envForError,
             execution.responseTarget,
-            '❌ Sorry, an error occurred processing your request.'
+            "❌ Sorry, an error occurred processing your request.",
           );
         } catch (sendError) {
-          logger.error('[RouterAgent] Failed to send error message', {
+          logger.error("[RouterAgent] Failed to send error message", {
             executionId: data.executionId,
-            error: sendError instanceof Error ? sendError.message : String(sendError),
+            error:
+              sendError instanceof Error
+                ? sendError.message
+                : String(sendError),
           });
         }
       } finally {
         // Clean up - remove from pending
         // Filter out the completed execution, keeping undefined if no executions remain
         const remainingExecutions = this.state.pendingExecutions?.filter(
-          (e) => e.executionId !== data.executionId
+          (e) => e.executionId !== data.executionId,
         );
         this.setState({
           ...this.state,
           pendingExecutions:
-            remainingExecutions && remainingExecutions.length > 0 ? remainingExecutions : undefined,
+            remainingExecutions && remainingExecutions.length > 0
+              ? remainingExecutions
+              : undefined,
           updatedAt: Date.now(),
         });
       }

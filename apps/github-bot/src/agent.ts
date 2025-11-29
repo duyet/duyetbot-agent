@@ -16,20 +16,20 @@ import {
   type MCPServerConnection,
   type RouterAgentEnv,
   createCloudflareChatAgent,
-} from '@duyetbot/chat-agent';
-import { getGitHubBotPrompt } from '@duyetbot/prompts';
-import { getPlatformTools } from '@duyetbot/tools';
-import { Octokit } from '@octokit/rest';
-import { logger } from './logger.js';
-import { type ProviderEnv, createOpenRouterProvider } from './provider.js';
-import { type GitHubContext, githubTransport } from './transport.js';
+} from "@duyetbot/chat-agent";
+import { getGitHubBotPrompt } from "@duyetbot/prompts";
+import { getPlatformTools } from "@duyetbot/tools";
+import { Octokit } from "@octokit/rest";
+import { logger } from "./logger.js";
+import { type ProviderEnv, createOpenRouterProvider } from "./provider.js";
+import { type GitHubContext, githubTransport } from "./transport.js";
 
 /**
  * GitHub MCP server configuration
  */
 const githubMcpServer: MCPServerConnection = {
-  name: 'github-mcp',
-  url: 'https://api.githubcopilot.com/mcp/sse',
+  name: "github-mcp",
+  url: "https://api.githubcopilot.com/mcp/sse",
   getAuthHeader: (env) => {
     const token = env.GITHUB_TOKEN as string | undefined;
     return token ? `Bearer ${token}` : undefined;
@@ -60,22 +60,26 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
     createProvider: (env) => createOpenRouterProvider(env),
     systemPrompt: getGitHubBotPrompt(),
     welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
-    helpMessage: 'Mention me with @duyetbot followed by your question or request.',
+    helpMessage:
+      "Mention me with @duyetbot followed by your question or request.",
     maxHistory: 10,
     transport: githubTransport,
     mcpServers: [githubMcpServer],
-    tools: getPlatformTools('github'),
+    tools: getPlatformTools("github"),
     router: {
-      platform: 'github',
+      platform: "github",
       debug: false,
     },
-    // Extract platform config for shared DOs (non-secret env vars only)
+    // Extract platform config for shared DOs (includes AI Gateway credentials)
     extractPlatformConfig: (env): GitHubPlatformConfig => ({
-      platform: 'github',
+      platform: "github",
       // Common config - only include defined values
       ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
       ...(env.MODEL && { model: env.MODEL }),
       ...(env.AI_GATEWAY_NAME && { aiGatewayName: env.AI_GATEWAY_NAME }),
+      ...(env.AI_GATEWAY_API_KEY && {
+        aiGatewayApiKey: env.AI_GATEWAY_API_KEY,
+      }),
       // GitHub-specific
       ...(env.BOT_USERNAME && { botUsername: env.BOT_USERNAME }),
     }),
@@ -96,10 +100,10 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
               owner: ctx.owner,
               repo: ctx.repo,
               comment_id: ctx.commentId,
-              content: 'eyes',
+              content: "eyes",
             });
           } catch (error) {
-            logger.warn('[AGENT] Failed to add reaction', {
+            logger.warn("[AGENT] Failed to add reaction", {
               owner: ctx.owner,
               repo: ctx.repo,
               commentId: ctx.commentId,
@@ -109,7 +113,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
         }
       },
       onError: async (ctx, error) => {
-        logger.error('[AGENT] Error in handle()', {
+        logger.error("[AGENT] Error in handle()", {
           owner: ctx.owner,
           repo: ctx.repo,
           issueNumber: ctx.issueNumber,
@@ -122,7 +126,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
           owner: ctx.owner,
           repo: ctx.repo,
           issue_number: ctx.issueNumber,
-          body: 'Sorry, I encountered an error processing your request. Please try again.',
+          body: "Sorry, I encountered an error processing your request. Please try again.",
         });
       },
     },

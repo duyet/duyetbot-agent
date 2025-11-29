@@ -8,22 +8,27 @@
  * - Documentation generation
  */
 
-import type { PlanStep } from '../routing/schemas.js';
-import type { LLMProvider } from '../types.js';
-import { type BaseWorkerEnv, type WorkerClass, createBaseWorker } from './base-worker.js';
+import type { AgentContext } from "../agents/base-agent.js";
+import type { PlanStep } from "../routing/schemas.js";
+import type { LLMProvider } from "../types.js";
+import {
+  type BaseWorkerEnv,
+  type WorkerClass,
+  createBaseWorker,
+} from "./base-worker.js";
 
 /**
  * Code task types that this worker handles
  */
 export type CodeTaskType =
-  | 'review'
-  | 'generate'
-  | 'refactor'
-  | 'analyze'
-  | 'document'
-  | 'fix'
-  | 'test'
-  | 'explain';
+  | "review"
+  | "generate"
+  | "refactor"
+  | "analyze"
+  | "document"
+  | "fix"
+  | "test"
+  | "explain";
 
 /**
  * Extended environment for code worker
@@ -37,8 +42,8 @@ export interface CodeWorkerEnv extends BaseWorkerEnv {
  * Configuration for code worker
  */
 export interface CodeWorkerConfig<TEnv extends CodeWorkerEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create LLM provider from env, optionally with context for credentials */
+  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** Default programming language */
   defaultLanguage?: string;
   /** Enable detailed logging */
@@ -79,40 +84,44 @@ const CODE_WORKER_SYSTEM_PROMPT = `You are an expert software engineer specializ
 export function detectCodeTaskType(task: string): CodeTaskType {
   const taskLower = task.toLowerCase();
 
-  if (taskLower.includes('review') || taskLower.includes('check')) {
-    return 'review';
+  if (taskLower.includes("review") || taskLower.includes("check")) {
+    return "review";
   }
   if (
-    taskLower.includes('generate') ||
-    taskLower.includes('create') ||
-    taskLower.includes('write')
+    taskLower.includes("generate") ||
+    taskLower.includes("create") ||
+    taskLower.includes("write")
   ) {
-    return 'generate';
+    return "generate";
   }
   if (
-    taskLower.includes('refactor') ||
-    taskLower.includes('improve') ||
-    taskLower.includes('clean')
+    taskLower.includes("refactor") ||
+    taskLower.includes("improve") ||
+    taskLower.includes("clean")
   ) {
-    return 'refactor';
+    return "refactor";
   }
-  if (taskLower.includes('analyze') || taskLower.includes('understand')) {
-    return 'analyze';
+  if (taskLower.includes("analyze") || taskLower.includes("understand")) {
+    return "analyze";
   }
-  if (taskLower.includes('document') || taskLower.includes('comment')) {
-    return 'document';
+  if (taskLower.includes("document") || taskLower.includes("comment")) {
+    return "document";
   }
-  if (taskLower.includes('fix') || taskLower.includes('bug') || taskLower.includes('error')) {
-    return 'fix';
+  if (
+    taskLower.includes("fix") ||
+    taskLower.includes("bug") ||
+    taskLower.includes("error")
+  ) {
+    return "fix";
   }
-  if (taskLower.includes('test')) {
-    return 'test';
+  if (taskLower.includes("test")) {
+    return "test";
   }
-  if (taskLower.includes('explain')) {
-    return 'explain';
+  if (taskLower.includes("explain")) {
+    return "explain";
   }
 
-  return 'analyze'; // Default to analysis
+  return "analyze"; // Default to analysis
 }
 
 /**
@@ -207,7 +216,7 @@ Format findings as:
 function buildCodePrompt(
   step: PlanStep,
   dependencyContext: string,
-  defaultLanguage?: string
+  defaultLanguage?: string,
 ): string {
   const taskType = detectCodeTaskType(step.task);
   const taskInstructions = getTaskInstructions(taskType);
@@ -221,14 +230,14 @@ function buildCodePrompt(
   parts.push(`## Task Type: ${taskType.toUpperCase()}`);
   parts.push(`## Task\n${step.task}`);
   parts.push(taskInstructions);
-  parts.push('\n## Additional Instructions');
+  parts.push("\n## Additional Instructions");
   parts.push(`- ${step.description}`);
 
   if (defaultLanguage) {
     parts.push(`- Default language: ${defaultLanguage}`);
   }
 
-  return parts.join('\n');
+  return parts.join("\n");
 }
 
 /**
@@ -236,14 +245,14 @@ function buildCodePrompt(
  */
 function parseCodeResponse(content: string, expectedOutput: string): unknown {
   // For code output, try to extract structured data
-  if (expectedOutput === 'code') {
+  if (expectedOutput === "code") {
     const codeBlocks: Array<{ language: string; code: string }> = [];
     const codePattern = /```(\w*)\n([\s\S]*?)```/g;
     let match: RegExpExecArray | null = codePattern.exec(content);
 
     while (match !== null) {
-      const language = match[1] ?? 'text';
-      const code = match[2] ?? '';
+      const language = match[1] ?? "text";
+      const code = match[2] ?? "";
       codeBlocks.push({
         language,
         code: code.trim(),
@@ -261,18 +270,21 @@ function parseCodeResponse(content: string, expectedOutput: string): unknown {
   }
 
   // For reviews, try to extract structured findings
-  if (expectedOutput === 'data' && (content.includes('Critical') || content.includes('Major'))) {
+  if (
+    expectedOutput === "data" &&
+    (content.includes("Critical") || content.includes("Major"))
+  ) {
     return {
       rawReview: content,
       hasFindings: true,
-      hasCritical: content.toLowerCase().includes('critical'),
-      hasMajor: content.toLowerCase().includes('major'),
+      hasCritical: content.toLowerCase().includes("critical"),
+      hasMajor: content.toLowerCase().includes("major"),
     };
   }
 
   // Default parsing
   switch (expectedOutput) {
-    case 'data': {
+    case "data": {
       try {
         const jsonMatch = content.match(/```json\n?([\s\S]*?)```/);
         if (jsonMatch?.[1]) {
@@ -283,8 +295,8 @@ function parseCodeResponse(content: string, expectedOutput: string): unknown {
         return content;
       }
     }
-    case 'action':
-      return { action: 'completed', result: content };
+    case "action":
+      return { action: "completed", result: content };
     default:
       return content;
   }
@@ -302,11 +314,11 @@ function parseCodeResponse(content: string, expectedOutput: string): unknown {
  * ```
  */
 export function createCodeWorker<TEnv extends CodeWorkerEnv>(
-  config: CodeWorkerConfig<TEnv>
+  config: CodeWorkerConfig<TEnv>,
 ): WorkerClass<TEnv> {
   const baseConfig: Parameters<typeof createBaseWorker<TEnv>>[0] = {
     createProvider: config.createProvider,
-    workerType: 'code',
+    workerType: "code",
     systemPrompt: CODE_WORKER_SYSTEM_PROMPT,
     buildPrompt: (step, dependencyContext) =>
       buildCodePrompt(step, dependencyContext, config.defaultLanguage),
