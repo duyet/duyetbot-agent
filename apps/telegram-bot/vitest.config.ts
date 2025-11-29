@@ -8,5 +8,10 @@ export default defineConfig({
     // Exclude E2E tests - they require Workers runtime
     exclude: ['src/__tests__/e2e/**/*'],
     testTimeout: 10000,
+    coverage: {
+      enabled: true,
+      provider: 'v8',
+      reporter: ['text', 'json', 'html', 'lcov'],
+    },
   },
 });

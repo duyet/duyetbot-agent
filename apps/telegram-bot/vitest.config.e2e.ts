@@ -7,6 +7,11 @@ export default defineWorkersConfig({
     // Exclude the test worker from tests (it's a helper, not a test)
     exclude: ['src/__tests__/e2e/test-worker.ts'],
     testTimeout: 30000,
+    // Disable coverage for E2E tests - vitest-pool-workers doesn't support node:inspector
+    // See: https://developers.cloudflare.com/workers/testing/vitest-integration/known-issues/
+    coverage: {
+      enabled: false,
+    },
     poolOptions: {
       workers: {
         // Use test-specific config with minimal worker
