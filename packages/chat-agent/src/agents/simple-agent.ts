@@ -9,10 +9,14 @@
  * This enables centralized state management where only the parent stores history.
  */
 
-import { logger } from '@duyetbot/hono-middleware';
-import { Agent, type Connection } from 'agents';
-import type { ChatOptions, LLMProvider, Message } from '../types.js';
-import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+import { logger } from "@duyetbot/hono-middleware";
+import { Agent, type Connection } from "agents";
+import type { ChatOptions, LLMProvider, Message } from "../types.js";
+import {
+  type AgentContext,
+  AgentMixin,
+  type AgentResult,
+} from "./base-agent.js";
 
 /**
  * Simple agent state
@@ -49,15 +53,15 @@ export interface WebSearchConfig {
   /** Maximum number of search results (default: 5, max: 10) */
   maxResults?: number;
   /** Search engine: 'native' uses model's built-in search, 'exa' uses Exa API */
-  engine?: 'native' | 'exa';
+  engine?: "native" | "exa";
 }
 
 /**
  * Configuration for simple agent
  */
 export interface SimpleAgentConfig<TEnv extends SimpleAgentEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create LLM provider from env and optional context */
+  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** System prompt for the agent */
   systemPrompt: string;
   /** Maximum messages in history */
@@ -90,7 +94,10 @@ export interface SimpleAgentMethods {
 /**
  * Type for SimpleAgent class
  */
-export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<TEnv, SimpleAgentState> & {
+export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<
+  TEnv,
+  SimpleAgentState
+> & {
   new (
     ...args: ConstructorParameters<typeof Agent<TEnv, SimpleAgentState>>
   ): Agent<TEnv, SimpleAgentState> & SimpleAgentMethods;
@@ -108,16 +115,17 @@ export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<TEnv, S
  * ```
  */
 export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
-  config: SimpleAgentConfig<TEnv>
+  config: SimpleAgentConfig<TEnv>,
 ): SimpleAgentClass<TEnv> {
   const maxHistory = config.maxHistory ?? 20;
   const debug = config.debug ?? false;
 
   // Log system prompt at agent creation time
-  logger.debug('[SimpleAgent] System prompt loaded', {
+  logger.debug("[SimpleAgent] System prompt loaded", {
     promptLength: config.systemPrompt.length,
     promptPreview:
-      config.systemPrompt.slice(0, 200) + (config.systemPrompt.length > 200 ? '...' : ''),
+      config.systemPrompt.slice(0, 200) +
+      (config.systemPrompt.length > 200 ? "..." : ""),
   });
   if (debug) {
     logger.debug(`[SimpleAgent] Full system prompt:\n${config.systemPrompt}`);
@@ -125,7 +133,7 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
 
   const AgentClass = class SimpleAgent extends Agent<TEnv, SimpleAgentState> {
     override initialState: SimpleAgentState = {
-      sessionId: '',
+      sessionId: "",
       createdAt: Date.now(),
       updatedAt: Date.now(),
       queriesExecuted: 0,
@@ -134,9 +142,12 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(state: SimpleAgentState, source: 'server' | Connection): void {
+    override onStateUpdate(
+      state: SimpleAgentState,
+      source: "server" | Connection,
+    ): void {
       if (debug) {
-        logger.info('[SimpleAgent] State updated', {
+        logger.info("[SimpleAgent] State updated", {
           source,
           queriesExecuted: state.queriesExecuted,
         });
@@ -151,32 +162,35 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
      */
     async execute(query: string, context: AgentContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
+      const traceId = context.traceId ?? AgentMixin.generateId("trace");
 
       // Use conversation history from context (passed by parent agent)
       const conversationHistory = context.conversationHistory ?? [];
 
-      AgentMixin.log('SimpleAgent', 'Executing query', {
+      AgentMixin.log("SimpleAgent", "Executing query", {
         traceId,
         queryLength: query.length,
         historyLength: conversationHistory.length,
       });
 
       try {
-        // Get LLM provider
+        // Get LLM provider (pass context for platformConfig credentials)
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env);
+        const provider = config.createProvider(env, context);
 
         // Build messages for LLM using history from context
         // Trim to maxHistory to prevent context overflow
-        const trimmedHistory = AgentMixin.trimHistory(conversationHistory, maxHistory);
+        const trimmedHistory = AgentMixin.trimHistory(
+          conversationHistory,
+          maxHistory,
+        );
         const llmMessages = [
-          { role: 'system' as const, content: config.systemPrompt },
+          { role: "system" as const, content: config.systemPrompt },
           ...trimmedHistory.map((m) => ({
-            role: m.role as 'user' | 'assistant' | 'system',
+            role: m.role as "user" | "assistant" | "system",
             content: m.content,
           })),
-          { role: 'user' as const, content: query },
+          { role: "user" as const, content: query },
         ];
 
         // Build chat options with web search if enabled
@@ -184,7 +198,7 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
         let chatOptions: ChatOptions | undefined;
         if (config.webSearch) {
           const webConfig =
-            typeof config.webSearch === 'boolean'
+            typeof config.webSearch === "boolean"
               ? { enabled: config.webSearch }
               : config.webSearch;
 
@@ -192,27 +206,35 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
             chatOptions = { webSearch: true };
 
             if (debug) {
-              logger.debug('[SimpleAgent] Web search enabled via :online suffix', {
-                traceId,
-              });
+              logger.debug(
+                "[SimpleAgent] Web search enabled via :online suffix",
+                {
+                  traceId,
+                },
+              );
             }
           }
         }
 
         // Call LLM
-        const response = await provider.chat(llmMessages, undefined, chatOptions);
+        const response = await provider.chat(
+          llmMessages,
+          undefined,
+          chatOptions,
+        );
 
         // Update state with query count (not messages - those are managed by parent)
         this.setState({
           ...this.state,
-          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
+          sessionId:
+            this.state.sessionId || context.chatId?.toString() || traceId,
           queriesExecuted: this.state.queriesExecuted + 1,
           updatedAt: Date.now(),
         });
 
         const durationMs = Date.now() - startTime;
 
-        AgentMixin.log('SimpleAgent', 'Query complete', {
+        AgentMixin.log("SimpleAgent", "Query complete", {
           traceId,
           durationMs,
           responseLength: response.content.length,
@@ -223,14 +245,14 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
           data: {
             // Return new messages so parent can append to its state
             newMessages: [
-              { role: 'user' as const, content: query },
-              { role: 'assistant' as const, content: response.content },
+              { role: "user" as const, content: query },
+              { role: "assistant" as const, content: response.content },
             ],
           },
         });
       } catch (error) {
         const durationMs = Date.now() - startTime;
-        AgentMixin.logError('SimpleAgent', 'Query failed', error, {
+        AgentMixin.logError("SimpleAgent", "Query failed", error, {
           traceId,
           durationMs,
         });
@@ -252,7 +274,9 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
      */
     clearHistory(): void {
       // No-op - history is managed by parent agent
-      logger.info('[SimpleAgent] clearHistory called - no-op (stateless agent)');
+      logger.info(
+        "[SimpleAgent] clearHistory called - no-op (stateless agent)",
+      );
     }
 
     /**

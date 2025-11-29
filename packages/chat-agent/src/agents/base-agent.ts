@@ -5,9 +5,9 @@
  * Provides common functionality for Durable Object agents.
  */
 
-import { logger } from '@duyetbot/hono-middleware';
-import type { Agent } from 'agents';
-import type { LLMProvider, Message } from '../types.js';
+import { logger } from "@duyetbot/hono-middleware";
+import type { Agent } from "agents";
+import type { LLMProvider, Message } from "../types.js";
 
 /**
  * Base state interface for all agents
@@ -52,20 +52,22 @@ export interface BaseAgentConfig<TEnv> {
  */
 export interface CommonPlatformConfig {
   /** Environment (production, development) */
-  environment?: 'production' | 'development' | string | undefined;
+  environment?: "production" | "development" | string | undefined;
   /** LLM model identifier */
   model?: string | undefined;
   /** Cloudflare AI Gateway name */
   aiGatewayName?: string | undefined;
+  /** AI Gateway API key for BYOK authentication (passed from parent worker) */
+  aiGatewayApiKey?: string | undefined;
 }
 
 /**
  * Telegram-specific configuration
  */
 export interface TelegramPlatformConfig extends CommonPlatformConfig {
-  platform: 'telegram';
+  platform: "telegram";
   /** Response format: 'HTML' (default) or 'MarkdownV2' */
-  parseMode?: 'HTML' | 'MarkdownV2' | undefined;
+  parseMode?: "HTML" | "MarkdownV2" | undefined;
   /** Admin username for verbose error messages */
   adminUsername?: string | undefined;
   /** Comma-separated user IDs (empty = allow all) */
@@ -76,7 +78,7 @@ export interface TelegramPlatformConfig extends CommonPlatformConfig {
  * GitHub-specific configuration
  */
 export interface GitHubPlatformConfig extends CommonPlatformConfig {
-  platform: 'github';
+  platform: "github";
   /** Bot username for @mentions */
   botUsername?: string | undefined;
 }
@@ -85,7 +87,7 @@ export interface GitHubPlatformConfig extends CommonPlatformConfig {
  * Generic platform configuration for CLI, API, etc.
  */
 export interface GenericPlatformConfig extends CommonPlatformConfig {
-  platform: 'cli' | 'api' | string;
+  platform: "cli" | "api" | string;
 }
 
 /**
@@ -100,7 +102,10 @@ export interface GenericPlatformConfig extends CommonPlatformConfig {
  * }
  * ```
  */
-export type PlatformConfig = TelegramPlatformConfig | GitHubPlatformConfig | GenericPlatformConfig;
+export type PlatformConfig =
+  | TelegramPlatformConfig
+  | GitHubPlatformConfig
+  | GenericPlatformConfig;
 
 // ============================================================================
 // Agent Context
@@ -186,7 +191,7 @@ export interface AgentResult {
   /** Token usage */
   tokensUsed: number | undefined;
   /** Next action (for HITL) */
-  nextAction: 'await_confirmation' | 'continue' | 'complete' | undefined;
+  nextAction: "await_confirmation" | "continue" | "complete" | undefined;
   /** Debug information for admin users */
   debug?: AgentDebugInfo;
 }
@@ -218,16 +223,18 @@ export const AgentMixin = {
       return messages;
     }
     // Keep system messages and trim from the beginning
-    const systemMessages = messages.filter((m) => m.role === 'system');
-    const nonSystemMessages = messages.filter((m) => m.role !== 'system');
-    const trimmed = nonSystemMessages.slice(-(maxHistory - systemMessages.length));
+    const systemMessages = messages.filter((m) => m.role === "system");
+    const nonSystemMessages = messages.filter((m) => m.role !== "system");
+    const trimmed = nonSystemMessages.slice(
+      -(maxHistory - systemMessages.length),
+    );
     return [...systemMessages, ...trimmed];
   },
 
   /**
    * Generate a unique ID
    */
-  generateId(prefix = 'id'): string {
+  generateId(prefix = "id"): string {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
   },
 
@@ -245,7 +252,7 @@ export const AgentMixin = {
     agentName: string,
     action: string,
     error: unknown,
-    data?: Record<string, unknown>
+    data?: Record<string, unknown>,
   ): void {
     logger.error(`[${agentName}] ${action}`, {
       ...data,
@@ -256,7 +263,9 @@ export const AgentMixin = {
   /**
    * Measure execution time
    */
-  async timed<T>(fn: () => Promise<T>): Promise<{ result: T; durationMs: number }> {
+  async timed<T>(
+    fn: () => Promise<T>,
+  ): Promise<{ result: T; durationMs: number }> {
     const start = Date.now();
     const result = await fn();
     return { result, durationMs: Date.now() - start };
@@ -269,7 +278,7 @@ export const AgentMixin = {
     success: boolean,
     content: string | undefined,
     durationMs: number,
-    extra?: Partial<AgentResult>
+    extra?: Partial<AgentResult>,
   ): AgentResult {
     return {
       success,
@@ -302,8 +311,15 @@ export const AgentMixin = {
 /**
  * Type guard to check if an object is an Agent
  */
-export function isAgent<TEnv, TState>(obj: unknown): obj is Agent<TEnv, TState> {
-  return typeof obj === 'object' && obj !== null && 'state' in obj && 'setState' in obj;
+export function isAgent<TEnv, TState>(
+  obj: unknown,
+): obj is Agent<TEnv, TState> {
+  return (
+    typeof obj === "object" &&
+    obj !== null &&
+    "state" in obj &&
+    "setState" in obj
+  );
 }
 
 /**
@@ -314,7 +330,7 @@ export async function getTypedAgent<TAgent extends Agent<unknown, unknown>>(
     idFromName: (name: string) => unknown;
     get: (id: unknown) => TAgent;
   },
-  name: string
+  name: string,
 ): Promise<TAgent> {
   const id = namespace.idFromName(name);
   return namespace.get(id);
