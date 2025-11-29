@@ -35,11 +35,6 @@ export function createProvider(
   env: ProviderEnv,
   options?: Partial<OpenRouterProviderOptions>
 ): LLMProvider {
-  logger.info('Shared agents creating provider', {
-    gateway: env.AI_GATEWAY_NAME,
-    model: env.MODEL || 'x-ai/grok-4.1-fast',
-  });
-
   return createOpenRouterProvider(env as OpenRouterProviderEnv, {
     maxTokens: 1024,
     requestTimeout: 30000,
