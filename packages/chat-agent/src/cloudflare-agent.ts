@@ -1192,6 +1192,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             stepTracker = new StepProgressTracker(
               async (message) => {
                 try {
+                  // Update context with progressive debug info for footer display
+                  // This enables the transport to show debug footer during loading
+                  const ctxWithDebug = ctx as unknown as {
+                    debugContext?: unknown;
+                  };
+                  if (stepTracker) {
+                    ctxWithDebug.debugContext = stepTracker.getDebugContext();
+                  }
                   await transport.edit!(ctx, messageRef!, message);
                 } catch (err) {
                   logger.error(`[CloudflareAgent][STEP] Edit failed: ${err}`);

@@ -45,6 +45,7 @@ export {
   escapeMarkdownV2,
   formatDebugFooter,
   formatDebugFooterMarkdownV2,
+  formatProgressiveDebugFooter,
 } from './debug-footer.js';
 // Utilities
 export { formatForLLM, getMessageText, trimHistory } from './history.js';

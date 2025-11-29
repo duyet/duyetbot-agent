@@ -40,20 +40,22 @@ Tier 1 (Cloudflare Workers)          Tier 2 (Container/Fly.io)
 
 ### Multi-Agent Routing (Tier 1)
 
-Each bot deploys 8 Durable Objects implementing [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
+Each bot deploys Durable Objects implementing [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
 
 ```
 User Message → CloudflareChatAgent → RouterAgent (classifier)
                                           │
-              ┌───────────────────────────┼───────────────────────────┐
-              ↓                           ↓                           ↓
-        SimpleAgent              OrchestratorAgent              HITLAgent
-        (quick Q&A)              (task decomposition)           (approval)
+              ┌───────────────────────────┼──────────────────────┐
+              ↓                           ↓                      ↓
+        SimpleAgent              OrchestratorAgent         DuyetInfoAgent
+        (quick Q&A)              (task decomposition)      (personal info)
                                           │
                     ┌─────────────────────┼─────────────────────┐
                     ↓                     ↓                     ↓
               CodeWorker          ResearchWorker          GitHubWorker
 ```
+
+**Note**: Router dispatches to **Agents** only. Workers are dispatched by OrchestratorAgent.
 
 ### Transport Layer Pattern
 

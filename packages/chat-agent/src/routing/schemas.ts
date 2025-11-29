@@ -83,15 +83,18 @@ export type QueryClassification = z.infer<typeof QueryClassificationSchema>;
 
 /**
  * Route target types
+ *
+ * IMPORTANT: Router only dispatches to AGENTS, never directly to workers.
+ * Workers (CodeWorker, ResearchWorker, GitHubWorker) are dispatched by
+ * OrchestratorAgent as part of its ExecutionPlan.
+ *
+ * @see https://developers.cloudflare.com/agents/patterns/
  */
 export const RouteTarget = z.enum([
   'simple-agent', // Direct LLM response
-  'orchestrator-agent', // Complex task orchestration
+  'orchestrator-agent', // Complex task orchestration (dispatches workers internally)
   'lead-researcher-agent', // Multi-agent research orchestration
   'hitl-agent', // Human-in-the-loop workflow
-  'code-worker', // Code-specific tasks
-  'research-worker', // Research tasks
-  'github-worker', // GitHub operations
   'duyet-info-agent', // Duyet's blog and personal info
 ]);
 export type RouteTarget = z.infer<typeof RouteTarget>;

@@ -24,13 +24,13 @@
  * ```
  */
 
-import type { CommonPlatformConfig, LLMProvider } from "@duyetbot/chat-agent";
-import { logger } from "@duyetbot/hono-middleware";
+import type { CommonPlatformConfig, LLMProvider } from '@duyetbot/chat-agent';
+import { logger } from '@duyetbot/hono-middleware';
 import {
   type OpenRouterProviderEnv,
   type OpenRouterProviderOptions,
   createOpenRouterProvider,
-} from "@duyetbot/providers";
+} from '@duyetbot/providers';
 
 /**
  * Environment for shared agents provider
@@ -59,15 +59,14 @@ export type ProviderEnv = OpenRouterProviderEnv;
 export function createProvider(
   env: ProviderEnv,
   options?: Partial<OpenRouterProviderOptions>,
-  platformConfig?: CommonPlatformConfig,
+  platformConfig?: CommonPlatformConfig
 ): LLMProvider {
   // Merge platformConfig credentials with env
   // platformConfig takes precedence (comes from parent worker)
   const effectiveEnv: OpenRouterProviderEnv = {
     AI: env.AI,
     AI_GATEWAY_NAME: platformConfig?.aiGatewayName ?? env.AI_GATEWAY_NAME,
-    AI_GATEWAY_API_KEY:
-      platformConfig?.aiGatewayApiKey ?? env.AI_GATEWAY_API_KEY,
+    AI_GATEWAY_API_KEY: platformConfig?.aiGatewayApiKey ?? env.AI_GATEWAY_API_KEY,
     MODEL: platformConfig?.model ?? env.MODEL,
   };
 

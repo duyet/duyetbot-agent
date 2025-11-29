@@ -8,26 +8,22 @@
  * - Technical research and comparison
  */
 
-import { getResearchWorkerPrompt } from "@duyetbot/prompts";
-import type { AgentContext } from "../agents/base-agent.js";
-import type { PlanStep } from "../routing/schemas.js";
-import type { LLMProvider } from "../types.js";
-import {
-  type BaseWorkerEnv,
-  type WorkerClass,
-  createBaseWorker,
-} from "./base-worker.js";
+import { getResearchWorkerPrompt } from '@duyetbot/prompts';
+import type { AgentContext } from '../agents/base-agent.js';
+import type { PlanStep } from '../routing/schemas.js';
+import type { LLMProvider } from '../types.js';
+import { type BaseWorkerEnv, type WorkerClass, createBaseWorker } from './base-worker.js';
 
 /**
  * Research task types that this worker handles
  */
 export type ResearchTaskType =
-  | "search"
-  | "summarize"
-  | "compare"
-  | "explain"
-  | "lookup"
-  | "analyze";
+  | 'search'
+  | 'summarize'
+  | 'compare'
+  | 'explain'
+  | 'lookup'
+  | 'analyze';
 
 /**
  * Extended environment for research worker
@@ -63,31 +59,27 @@ const RESEARCH_WORKER_SYSTEM_PROMPT = getResearchWorkerPrompt();
 export function detectResearchTaskType(task: string): ResearchTaskType {
   const taskLower = task.toLowerCase();
 
-  if (taskLower.includes("search") || taskLower.includes("find")) {
-    return "search";
+  if (taskLower.includes('search') || taskLower.includes('find')) {
+    return 'search';
   }
-  if (taskLower.includes("summarize") || taskLower.includes("summary")) {
-    return "summarize";
+  if (taskLower.includes('summarize') || taskLower.includes('summary')) {
+    return 'summarize';
   }
-  if (
-    taskLower.includes("compare") ||
-    taskLower.includes("versus") ||
-    taskLower.includes("vs")
-  ) {
-    return "compare";
+  if (taskLower.includes('compare') || taskLower.includes('versus') || taskLower.includes('vs')) {
+    return 'compare';
   }
-  if (taskLower.includes("explain") || taskLower.includes("what is")) {
-    return "explain";
+  if (taskLower.includes('explain') || taskLower.includes('what is')) {
+    return 'explain';
   }
   if (
-    taskLower.includes("lookup") ||
-    taskLower.includes("documentation") ||
-    taskLower.includes("docs")
+    taskLower.includes('lookup') ||
+    taskLower.includes('documentation') ||
+    taskLower.includes('docs')
   ) {
-    return "lookup";
+    return 'lookup';
   }
 
-  return "analyze"; // Default to general analysis
+  return 'analyze'; // Default to general analysis
 }
 
 /**
@@ -160,10 +152,7 @@ function getResearchInstructions(taskType: ResearchTaskType): string {
 /**
  * Build research-specific prompt
  */
-function buildResearchPrompt(
-  step: PlanStep,
-  dependencyContext: string,
-): string {
+function buildResearchPrompt(step: PlanStep, dependencyContext: string): string {
   const taskType = detectResearchTaskType(step.task);
   const taskInstructions = getResearchInstructions(taskType);
 
@@ -176,27 +165,24 @@ function buildResearchPrompt(
   parts.push(`## Research Type: ${taskType.toUpperCase()}`);
   parts.push(`## Task\n${step.task}`);
   parts.push(taskInstructions);
-  parts.push("\n## Additional Instructions");
+  parts.push('\n## Additional Instructions');
   parts.push(`- ${step.description}`);
-  parts.push("- Focus on accuracy and relevance");
-  parts.push("- Cite sources where possible");
+  parts.push('- Focus on accuracy and relevance');
+  parts.push('- Cite sources where possible');
 
-  return parts.join("\n");
+  return parts.join('\n');
 }
 
 /**
  * Parse research-specific response
  */
-function parseResearchResponse(
-  content: string,
-  expectedOutput: string,
-): unknown {
+function parseResearchResponse(content: string, expectedOutput: string): unknown {
   // For data output, try to extract structured findings
-  if (expectedOutput === "data") {
+  if (expectedOutput === 'data') {
     // Try to detect if content has a comparison table
-    if (content.includes("|") && content.includes("---")) {
+    if (content.includes('|') && content.includes('---')) {
       return {
-        type: "comparison",
+        type: 'comparison',
         content,
         hasTable: true,
       };
@@ -206,9 +192,9 @@ function parseResearchResponse(
     const bulletPoints = content.match(/^[•\-*]\s+.+$/gm);
     if (bulletPoints && bulletPoints.length > 0) {
       return {
-        type: "findings",
+        type: 'findings',
         content,
-        keyPoints: bulletPoints.map((b: string) => b.replace(/^[•\-*]\s+/, "")),
+        keyPoints: bulletPoints.map((b: string) => b.replace(/^[•\-*]\s+/, '')),
       };
     }
 
@@ -225,12 +211,12 @@ function parseResearchResponse(
 
   // Default handling
   switch (expectedOutput) {
-    case "code": {
+    case 'code': {
       const codeMatch = content.match(/```[\w]*\n?([\s\S]*?)```/);
       return codeMatch?.[1] ? codeMatch[1].trim() : content;
     }
-    case "action":
-      return { action: "completed", result: content };
+    case 'action':
+      return { action: 'completed', result: content };
     default:
       return content;
   }
@@ -248,11 +234,11 @@ function parseResearchResponse(
  * ```
  */
 export function createResearchWorker<TEnv extends ResearchWorkerEnv>(
-  config: ResearchWorkerConfig<TEnv>,
+  config: ResearchWorkerConfig<TEnv>
 ): WorkerClass<TEnv> {
   const baseConfig: Parameters<typeof createBaseWorker<TEnv>>[0] = {
     createProvider: config.createProvider,
-    workerType: "research",
+    workerType: 'research',
     systemPrompt: RESEARCH_WORKER_SYSTEM_PROMPT,
     buildPrompt: buildResearchPrompt,
     parseResponse: parseResearchResponse,

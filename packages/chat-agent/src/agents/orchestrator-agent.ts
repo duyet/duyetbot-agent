@@ -14,13 +14,8 @@
  * https://developers.cloudflare.com/agents/patterns/orchestrator-workers/
  */
 
-import { logger } from "@duyetbot/hono-middleware";
-import {
-  Agent,
-  type AgentNamespace,
-  type Connection,
-  getAgentByName,
-} from "agents";
+import { logger } from '@duyetbot/hono-middleware';
+import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import {
   type AggregationResult,
   type AggregatorConfig,
@@ -33,15 +28,16 @@ import {
   executePlan,
   quickAggregate,
   validatePlanDependencies,
-} from "../orchestration/index.js";
-import type { ExecutionPlan, WorkerResult } from "../routing/schemas.js";
-import type { LLMProvider } from "../types.js";
-import type { WorkerInput, WorkerType } from "../workers/base-worker.js";
+} from '../orchestration/index.js';
+import type { ExecutionPlan, WorkerResult } from '../routing/schemas.js';
+import type { LLMProvider } from '../types.js';
+import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
 import {
   type AgentContext,
+  type AgentDebugInfo,
   AgentMixin,
   type AgentResult,
-} from "./base-agent.js";
+} from './base-agent.js';
 
 /**
  * Orchestrator agent state
@@ -128,12 +124,14 @@ export interface OrchestratorAgentMethods {
 /**
  * Type for OrchestratorAgent class
  */
-export type OrchestratorAgentClass<TEnv extends OrchestratorAgentEnv> =
-  typeof Agent<TEnv, OrchestratorAgentState> & {
-    new (
-      ...args: ConstructorParameters<typeof Agent<TEnv, OrchestratorAgentState>>
-    ): Agent<TEnv, OrchestratorAgentState> & OrchestratorAgentMethods;
-  };
+export type OrchestratorAgentClass<TEnv extends OrchestratorAgentEnv> = typeof Agent<
+  TEnv,
+  OrchestratorAgentState
+> & {
+  new (
+    ...args: ConstructorParameters<typeof Agent<TEnv, OrchestratorAgentState>>
+  ): Agent<TEnv, OrchestratorAgentState> & OrchestratorAgentMethods;
+};
 
 /**
  * Create an Orchestrator Agent class
@@ -148,7 +146,7 @@ export type OrchestratorAgentClass<TEnv extends OrchestratorAgentEnv> =
  * ```
  */
 export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
-  config: OrchestratorAgentConfig<TEnv>,
+  config: OrchestratorAgentConfig<TEnv>
 ): OrchestratorAgentClass<TEnv> {
   const maxSteps = config.maxSteps ?? 10;
   const maxParallel = config.maxParallel ?? 3;
@@ -158,12 +156,9 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
   const maxHistory = config.maxHistory ?? 50;
   const debug = config.debug ?? false;
 
-  const AgentClass = class OrchestratorAgent extends Agent<
-    TEnv,
-    OrchestratorAgentState
-  > {
+  const AgentClass = class OrchestratorAgent extends Agent<TEnv, OrchestratorAgentState> {
     override initialState: OrchestratorAgentState = {
-      sessionId: "",
+      sessionId: '',
       currentPlan: undefined,
       orchestrationHistory: [],
       createdAt: Date.now(),
@@ -173,12 +168,9 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(
-      state: OrchestratorAgentState,
-      source: "server" | Connection,
-    ): void {
+    override onStateUpdate(state: OrchestratorAgentState, source: 'server' | Connection): void {
       if (debug) {
-        logger.info("[OrchestratorAgent] State updated", {
+        logger.info('[OrchestratorAgent] State updated', {
           source,
           hasPlan: !!state.currentPlan,
           historyCount: state.orchestrationHistory.length,
@@ -189,14 +181,11 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
     /**
      * Main orchestration entry point
      */
-    async orchestrate(
-      query: string,
-      context: AgentContext,
-    ): Promise<AgentResult> {
+    async orchestrate(query: string, context: AgentContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId("trace");
+      const traceId = context.traceId ?? AgentMixin.generateId('trace');
 
-      AgentMixin.log("OrchestratorAgent", "Starting orchestration", {
+      AgentMixin.log('OrchestratorAgent', 'Starting orchestration', {
         traceId,
         queryLength: query.length,
       });
@@ -222,14 +211,10 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
         // Validate plan
         const validation = validatePlanDependencies(plan);
         if (!validation.valid) {
-          AgentMixin.logError(
-            "OrchestratorAgent",
-            "Invalid plan",
-            validation.errors,
-          );
+          AgentMixin.logError('OrchestratorAgent', 'Invalid plan', validation.errors);
           return AgentMixin.createErrorResult(
-            new Error(`Invalid plan: ${validation.errors.join(", ")}`),
-            Date.now() - startTime,
+            new Error(`Invalid plan: ${validation.errors.join(', ')}`),
+            Date.now() - startTime
           );
         }
 
@@ -237,12 +222,11 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
         this.setState({
           ...this.state,
           currentPlan: plan,
-          sessionId:
-            this.state.sessionId || context.chatId?.toString() || traceId,
+          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
           updatedAt: Date.now(),
         });
 
-        AgentMixin.log("OrchestratorAgent", "Plan created", {
+        AgentMixin.log('OrchestratorAgent', 'Plan created', {
           traceId,
           taskId: plan.taskId,
           stepCount: plan.steps.length,
@@ -259,11 +243,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
           debug,
         };
 
-        const executionResult = await executePlan(
-          plan,
-          { ...context, traceId },
-          executorConfig,
-        );
+        const executionResult = await executePlan(plan, { ...context, traceId }, executorConfig);
 
         // Step 3: Aggregate results
         let aggregationResult: AggregationResult;
@@ -272,11 +252,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
             provider,
             debug,
           };
-          aggregationResult = await aggregateResults(
-            plan,
-            executionResult,
-            aggregatorConfig,
-          );
+          aggregationResult = await aggregateResults(plan, executionResult, aggregatorConfig);
         } else {
           aggregationResult = quickAggregate(plan, executionResult);
         }
@@ -286,7 +262,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
         // Update history
         this.updateHistory(plan, executionResult, durationMs);
 
-        AgentMixin.log("OrchestratorAgent", "Orchestration completed", {
+        AgentMixin.log('OrchestratorAgent', 'Orchestration completed', {
           traceId,
           taskId: plan.taskId,
           durationMs,
@@ -294,47 +270,68 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
           failureCount: executionResult.failedSteps.length,
         });
 
-        // Return result with new messages for parent to save
-        return AgentMixin.createResult(
-          true,
-          aggregationResult.response,
-          durationMs,
-          {
-            data: {
-              // Return new messages so parent can append to its state
-              newMessages: [
-                { role: "user" as const, content: query },
-                {
-                  role: "assistant" as const,
-                  content: aggregationResult.response,
-                },
-              ],
-              plan: {
-                taskId: plan.taskId,
-                summary: plan.summary,
-                stepCount: plan.steps.length,
+        // Build worker debug info from execution results
+        // Maps stepId -> workerType and includes timing
+        const workerDebugInfo: AgentDebugInfo['workers'] = plan.steps
+          .filter((step) => executionResult.results.has(step.id))
+          .map((step) => {
+            const result = executionResult.results.get(step.id);
+            // Build worker info object, only including durationMs if defined
+            // to satisfy exactOptionalPropertyTypes
+            const workerInfo: {
+              name: string;
+              durationMs?: number;
+              status: 'completed' | 'error';
+            } = {
+              name: `${step.workerType}-worker`,
+              status: result?.success ? 'completed' : 'error',
+            };
+            if (result?.durationMs !== undefined) {
+              workerInfo.durationMs = result.durationMs;
+            }
+            return workerInfo;
+          });
+
+        // Build result extras with optional debug property
+        // Use spread to avoid assigning undefined with exactOptionalPropertyTypes
+        const resultExtras: Partial<AgentResult> = {
+          data: {
+            // Return new messages so parent can append to its state
+            newMessages: [
+              { role: 'user' as const, content: query },
+              {
+                role: 'assistant' as const,
+                content: aggregationResult.response,
               },
-              execution: {
-                successCount: executionResult.successfulSteps.length,
-                failureCount: executionResult.failedSteps.length,
-                skippedCount: executionResult.skippedSteps.length,
-              },
-              errors: aggregationResult.errors,
+            ],
+            plan: {
+              taskId: plan.taskId,
+              summary: plan.summary,
+              stepCount: plan.steps.length,
             },
-            nextAction: executionResult.allSucceeded ? "complete" : "continue",
+            execution: {
+              successCount: executionResult.successfulSteps.length,
+              failureCount: executionResult.failedSteps.length,
+              skippedCount: executionResult.skippedSteps.length,
+            },
+            errors: aggregationResult.errors,
           },
-        );
+          nextAction: executionResult.allSucceeded ? 'complete' : 'continue',
+        };
+
+        // Only add debug info if there are workers
+        if (workerDebugInfo && workerDebugInfo.length > 0) {
+          resultExtras.debug = { workers: workerDebugInfo };
+        }
+
+        // Return result with new messages for parent to save
+        return AgentMixin.createResult(true, aggregationResult.response, durationMs, resultExtras);
       } catch (error) {
         const durationMs = Date.now() - startTime;
-        AgentMixin.logError(
-          "OrchestratorAgent",
-          "Orchestration failed",
-          error,
-          {
-            traceId,
-            durationMs,
-          },
-        );
+        AgentMixin.logError('OrchestratorAgent', 'Orchestration failed', error, {
+          traceId,
+          durationMs,
+        });
         return AgentMixin.createErrorResult(error, durationMs);
       }
     }
@@ -342,21 +339,17 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
     /**
      * Get available worker types based on environment bindings
      */
-    private getAvailableWorkers(
-      env: TEnv,
-    ): Array<"code" | "research" | "github" | "general"> {
-      const available: Array<"code" | "research" | "github" | "general"> = [
-        "general",
-      ];
+    private getAvailableWorkers(env: TEnv): Array<'code' | 'research' | 'github' | 'general'> {
+      const available: Array<'code' | 'research' | 'github' | 'general'> = ['general'];
 
       if (env.CodeWorker) {
-        available.push("code");
+        available.push('code');
       }
       if (env.ResearchWorker) {
-        available.push("research");
+        available.push('research');
       }
       if (env.GitHubWorker) {
-        available.push("github");
+        available.push('github');
       }
 
       return available;
@@ -366,10 +359,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
      * Create a dispatcher for executing steps
      */
     private createDispatcher(env: TEnv, traceId: string): WorkerDispatcher {
-      return async (
-        workerType: WorkerType,
-        input: WorkerInput,
-      ): Promise<WorkerResult> => {
+      return async (workerType: WorkerType, input: WorkerInput): Promise<WorkerResult> => {
         const startTime = Date.now();
 
         try {
@@ -409,25 +399,17 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
      */
     private getWorkerNamespace(
       env: TEnv,
-      workerType: WorkerType,
+      workerType: WorkerType
     ): AgentNamespace<Agent<TEnv, unknown>> | undefined {
       switch (workerType) {
-        case "code":
-          return env.CodeWorker as
-            | AgentNamespace<Agent<TEnv, unknown>>
-            | undefined;
-        case "research":
-          return env.ResearchWorker as
-            | AgentNamespace<Agent<TEnv, unknown>>
-            | undefined;
-        case "github":
-          return env.GitHubWorker as
-            | AgentNamespace<Agent<TEnv, unknown>>
-            | undefined;
-        case "general":
-          return env.GeneralWorker as
-            | AgentNamespace<Agent<TEnv, unknown>>
-            | undefined;
+        case 'code':
+          return env.CodeWorker as AgentNamespace<Agent<TEnv, unknown>> | undefined;
+        case 'research':
+          return env.ResearchWorker as AgentNamespace<Agent<TEnv, unknown>> | undefined;
+        case 'github':
+          return env.GitHubWorker as AgentNamespace<Agent<TEnv, unknown>> | undefined;
+        case 'general':
+          return env.GeneralWorker as AgentNamespace<Agent<TEnv, unknown>> | undefined;
         default:
           return undefined;
       }
@@ -439,7 +421,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
     private async executeInline(
       workerType: WorkerType,
       input: WorkerInput,
-      env: TEnv,
+      env: TEnv
     ): Promise<WorkerResult> {
       const startTime = Date.now();
       const { step, dependencyResults } = input;
@@ -448,30 +430,28 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
         const provider = config.createProvider(env);
 
         // Build context from dependencies
-        let contextStr = "";
+        let contextStr = '';
         if (dependencyResults.size > 0) {
-          const parts: string[] = ["## Previous Step Results"];
+          const parts: string[] = ['## Previous Step Results'];
           for (const [stepId, result] of dependencyResults) {
             if (result.success) {
               const dataStr =
-                typeof result.data === "string"
-                  ? result.data
-                  : JSON.stringify(result.data);
+                typeof result.data === 'string' ? result.data : JSON.stringify(result.data);
               parts.push(`### ${stepId}\n${dataStr.slice(0, 500)}`);
             }
           }
-          contextStr = parts.join("\n\n");
+          contextStr = parts.join('\n\n');
         }
 
         // Simple LLM-based execution
         const messages = [
           {
-            role: "system" as const,
+            role: 'system' as const,
             content: `You are a ${workerType} specialist. Complete the assigned task efficiently.`,
           },
           {
-            role: "user" as const,
-            content: `${contextStr ? `${contextStr}\n\n` : ""}## Task\n${step.task}\n\n## Instructions\n${step.description}`,
+            role: 'user' as const,
+            content: `${contextStr ? `${contextStr}\n\n` : ''}## Task\n${step.task}\n\n## Instructions\n${step.description}`,
           },
         ];
 
@@ -499,7 +479,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
     private updateHistory(
       plan: ExecutionPlan,
       executionResult: ExecutionResult,
-      durationMs: number,
+      durationMs: number
     ): void {
       const historyEntry = {
         taskId: plan.taskId,
@@ -550,18 +530,9 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
       }
 
       const totalSteps = history.reduce((sum, h) => sum + h.stepCount, 0);
-      const totalDuration = history.reduce(
-        (sum, h) => sum + h.totalDurationMs,
-        0,
-      );
-      const totalSuccesses = history.reduce(
-        (sum, h) => sum + h.successCount,
-        0,
-      );
-      const totalAttempted = history.reduce(
-        (sum, h) => sum + h.successCount + h.failureCount,
-        0,
-      );
+      const totalDuration = history.reduce((sum, h) => sum + h.totalDurationMs, 0);
+      const totalSuccesses = history.reduce((sum, h) => sum + h.successCount, 0);
+      const totalAttempted = history.reduce((sum, h) => sum + h.successCount + h.failureCount, 0);
 
       return {
         totalOrchestrated: history.length,
@@ -578,7 +549,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
     clearHistory(): void {
       // Conversation history is managed by parent agent
       logger.info(
-        "[OrchestratorAgent] clearHistory called - clearing orchestration history only (conversation history is stateless)",
+        '[OrchestratorAgent] clearHistory called - clearing orchestration history only (conversation history is stateless)'
       );
       this.setState({
         ...this.state,
@@ -595,5 +566,6 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 /**
  * Type for orchestrator agent instance
  */
-export type OrchestratorAgentInstance<TEnv extends OrchestratorAgentEnv> =
-  InstanceType<ReturnType<typeof createOrchestratorAgent<TEnv>>>;
+export type OrchestratorAgentInstance<TEnv extends OrchestratorAgentEnv> = InstanceType<
+  ReturnType<typeof createOrchestratorAgent<TEnv>>
+>;

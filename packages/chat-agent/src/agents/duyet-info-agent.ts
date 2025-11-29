@@ -8,29 +8,24 @@
  * providing direct routing for Duyet-specific queries.
  */
 
-import { logger } from "@duyetbot/hono-middleware";
-import { getDuyetInfoPrompt, platformToOutputFormat } from "@duyetbot/prompts";
-import { Agent, type Connection } from "agents";
-import type { MCPServerConnection } from "../cloudflare-agent.js";
-import type {
-  LLMMessage,
-  LLMProvider,
-  OpenAITool,
-  ToolCall,
-} from "../types.js";
+import { logger } from '@duyetbot/hono-middleware';
+import { getDuyetInfoPrompt, platformToOutputFormat } from '@duyetbot/prompts';
+import { Agent, type Connection } from 'agents';
+import type { MCPServerConnection } from '../cloudflare-agent.js';
+import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
 import {
   type AgentContext,
   type AgentDebugInfo,
   AgentMixin,
   type AgentResult,
-} from "./base-agent.js";
+} from './base-agent.js';
 
 /**
  * Duyet MCP server connection details
  */
 const DUYET_MCP_SERVER: MCPServerConnection = {
-  name: "duyet-mcp",
-  url: "https://mcp.duyet.net/sse",
+  name: 'duyet-mcp',
+  url: 'https://mcp.duyet.net/sse',
 };
 
 /**
@@ -203,7 +198,7 @@ export type DuyetInfoAgentClass<TEnv extends DuyetInfoAgentEnv> = typeof Agent<
  * ```
  */
 export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
-  config: DuyetInfoAgentConfig<TEnv>,
+  config: DuyetInfoAgentConfig<TEnv>
 ): DuyetInfoAgentClass<TEnv> {
   const debug = config.debug ?? false;
   const connectionTimeoutMs = config.connectionTimeoutMs ?? 10000;
@@ -212,12 +207,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
   const maxToolIterations = config.maxToolIterations ?? 3;
   const maxTools = config.maxTools ?? 10;
 
-  const AgentClass = class DuyetInfoAgent extends Agent<
-    TEnv,
-    DuyetInfoAgentState
-  > {
+  const AgentClass = class DuyetInfoAgent extends Agent<TEnv, DuyetInfoAgentState> {
     override initialState: DuyetInfoAgentState = {
-      agentId: "",
+      agentId: '',
       createdAt: Date.now(),
       updatedAt: Date.now(),
       cachedTools: undefined,
@@ -232,12 +224,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(
-      state: DuyetInfoAgentState,
-      source: "server" | Connection,
-    ): void {
+    override onStateUpdate(state: DuyetInfoAgentState, source: 'server' | Connection): void {
       if (debug) {
-        logger.info("[DuyetInfoAgent] State updated", {
+        logger.info('[DuyetInfoAgent] State updated', {
           source,
           queriesExecuted: state.queriesExecuted,
           hasCachedTools: !!state.cachedTools,
@@ -257,7 +246,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
       try {
         if (debug) {
-          logger.info("[DuyetInfoAgent] Connecting to MCP server", {
+          logger.info('[DuyetInfoAgent] Connecting to MCP server', {
             url: DUYET_MCP_SERVER.url,
           });
         }
@@ -267,34 +256,29 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         const addPromise = this.addMcpServer(
           DUYET_MCP_SERVER.name,
           DUYET_MCP_SERVER.url,
-          "", // callbackHost - empty string for non-OAuth servers
-          "", // agentsPrefix - empty string uses default
+          '', // callbackHost - empty string for non-OAuth servers
+          '' // agentsPrefix - empty string uses default
         );
 
         // Add timeout to prevent hanging connections
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(
-            () =>
-              reject(
-                new Error(
-                  `MCP connection timeout after ${connectionTimeoutMs}ms`,
-                ),
-              ),
-            connectionTimeoutMs,
+            () => reject(new Error(`MCP connection timeout after ${connectionTimeoutMs}ms`)),
+            connectionTimeoutMs
           );
         });
 
         const result = await Promise.race([addPromise, timeoutPromise]);
 
         if (debug) {
-          logger.info("[DuyetInfoAgent] MCP connected successfully", {
+          logger.info('[DuyetInfoAgent] MCP connected successfully', {
             id: result.id,
           });
         }
 
         this._mcpInitialized = true;
       } catch (error) {
-        logger.error("[DuyetInfoAgent] MCP connection failed", {
+        logger.error('[DuyetInfoAgent] MCP connection failed', {
           error: error instanceof Error ? error.message : String(error),
         });
         // Don't throw - we'll fall back to LLM-only execution
@@ -316,16 +300,14 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
       }
 
       const mcpTools = this.mcp.listTools();
-      const filteredTools = mcpTools.filter((tool) =>
-        duyetToolFilter(tool.name),
-      );
+      const filteredTools = mcpTools.filter((tool) => duyetToolFilter(tool.name));
 
       // Convert to OpenAI format
       let openAITools = filteredTools.map((tool) => ({
-        type: "function" as const,
+        type: 'function' as const,
         function: {
           name: tool.name,
-          description: tool.description || "",
+          description: tool.description || '',
           parameters: tool.inputSchema as Record<string, unknown>,
         },
       }));
@@ -354,10 +336,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
     /**
      * Get cache key for a tool call
      */
-    private getCacheKey(
-      toolName: string,
-      args: Record<string, unknown>,
-    ): string {
+    private getCacheKey(toolName: string, args: Record<string, unknown>): string {
       return `${toolName}:${JSON.stringify(args)}`;
     }
 
@@ -398,7 +377,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         args = JSON.parse(toolCall.arguments);
       } catch {
         const errorMsg = `Invalid JSON arguments for ${toolCall.name}`;
-        logger.error("[DuyetInfoAgent] JSON parse error", {
+        logger.error('[DuyetInfoAgent] JSON parse error', {
           tool: toolCall.name,
           arguments: toolCall.arguments.slice(0, 200),
         });
@@ -418,7 +397,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         if (cached && Date.now() - cached.cachedAt < resultCacheTtlMs) {
           this.toolStats.cacheHits++;
           if (debug) {
-            logger.info("[DuyetInfoAgent] Cache hit", {
+            logger.info('[DuyetInfoAgent] Cache hit', {
               tool: toolCall.name,
               cacheAge: Date.now() - cached.cachedAt,
             });
@@ -433,7 +412,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
       }
 
       if (debug) {
-        logger.info("[DuyetInfoAgent] Executing MCP tool", {
+        logger.info('[DuyetInfoAgent] Executing MCP tool', {
           tool: toolCall.name,
           args,
           isCacheable,
@@ -445,13 +424,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         // Create timeout promise
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(
-            () =>
-              reject(
-                new Error(
-                  `Tool ${toolCall.name} timed out after ${toolTimeoutMs}ms`,
-                ),
-              ),
-            toolTimeoutMs,
+            () => reject(new Error(`Tool ${toolCall.name} timed out after ${toolTimeoutMs}ms`)),
+            toolTimeoutMs
           );
         });
 
@@ -466,7 +440,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
         // Format result as string
         const formattedResult =
-          typeof result === "string" ? result : JSON.stringify(result, null, 2);
+          typeof result === 'string' ? result : JSON.stringify(result, null, 2);
 
         // Cache successful results for cacheable tools
         if (isCacheable) {
@@ -482,13 +456,11 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
               if (!currentEntry || !oldestEntry) {
                 return oldest;
               }
-              return currentEntry.cachedAt < oldestEntry.cachedAt
-                ? key
-                : oldest;
+              return currentEntry.cachedAt < oldestEntry.cachedAt ? key : oldest;
             });
             delete newCache[oldestKey];
             if (debug) {
-              logger.info("[DuyetInfoAgent] LRU eviction", {
+              logger.info('[DuyetInfoAgent] LRU eviction', {
                 evicted: oldestKey,
               });
             }
@@ -505,7 +477,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           });
 
           if (debug) {
-            logger.info("[DuyetInfoAgent] Cached tool result", {
+            logger.info('[DuyetInfoAgent] Cached tool result', {
               tool: toolCall.name,
               cacheSize: Object.keys(newCache).length,
             });
@@ -515,7 +487,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         return formattedResult;
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        const isTimeout = errorMsg.includes("timed out");
+        const isTimeout = errorMsg.includes('timed out');
 
         // Track all errors
         this.toolStats.toolErrors++;
@@ -524,14 +496,14 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         if (isTimeout) {
           this.toolStats.toolTimeouts++;
           this.toolStats.timedOutTools.push(toolCall.name);
-          logger.warn("[DuyetInfoAgent] Tool timed out", {
+          logger.warn('[DuyetInfoAgent] Tool timed out', {
             tool: toolCall.name,
             timeoutMs: toolTimeoutMs,
           });
           return `Tool ${toolCall.name} took too long to respond. Please try a simpler query or check the source directly.`;
         }
 
-        logger.error("[DuyetInfoAgent] MCP tool execution failed", {
+        logger.error('[DuyetInfoAgent] MCP tool execution failed', {
           tool: toolCall.name,
           error: errorMsg,
         });
@@ -543,12 +515,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
      * Build debug info from current tool stats
      * Builds object conditionally to satisfy exactOptionalPropertyTypes
      */
-    private buildDebugInfo(
-      fallback = false,
-      originalError?: string,
-    ): AgentDebugInfo {
+    private buildDebugInfo(fallback = false, originalError?: string): AgentDebugInfo {
       // Build metadata object conditionally (exactOptionalPropertyTypes)
-      const metadata: AgentDebugInfo["metadata"] = {};
+      const metadata: AgentDebugInfo['metadata'] = {};
 
       if (fallback) {
         metadata.fallback = fallback;
@@ -594,12 +563,12 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
      */
     async execute(query: string, context: AgentContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId("trace");
+      const traceId = context.traceId ?? AgentMixin.generateId('trace');
 
       // Reset tool stats for this execution
       this.resetToolStats();
 
-      AgentMixin.log("DuyetInfoAgent", "Executing query", {
+      AgentMixin.log('DuyetInfoAgent', 'Executing query', {
         traceId,
         queryLength: query.length,
       });
@@ -619,15 +588,12 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         // Generate platform-aware system prompt at runtime
         const systemPrompt = getSystemPrompt(context.platform);
         const messages: LLMMessage[] = [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: query },
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: query },
         ];
 
         // Execute with tool loop
-        let response = await provider.chat(
-          messages,
-          tools.length > 0 ? tools : undefined,
-        );
+        let response = await provider.chat(messages, tools.length > 0 ? tools : undefined);
         let iterations = 0;
 
         while (
@@ -645,15 +611,15 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
           // Add assistant message with tool calls
           messages.push({
-            role: "assistant",
-            content: response.content || "",
+            role: 'assistant',
+            content: response.content || '',
           });
 
           // Execute each tool call and add results
           for (const toolCall of response.toolCalls) {
             const result = await this.executeMcpTool(toolCall);
             messages.push({
-              role: "tool",
+              role: 'tool',
               tool_call_id: toolCall.id,
               name: toolCall.name,
               content: result,
@@ -675,7 +641,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           updatedAt: Date.now(),
         });
 
-        AgentMixin.log("DuyetInfoAgent", "Query complete", {
+        AgentMixin.log('DuyetInfoAgent', 'Query complete', {
           traceId,
           durationMs,
           toolIterations: iterations,
@@ -689,20 +655,19 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         });
       } catch (error) {
         const durationMs = Date.now() - startTime;
-        const errorMessage =
-          error instanceof Error ? error.message : String(error);
+        const errorMessage = error instanceof Error ? error.message : String(error);
 
         // Check if it's a timeout or MCP-related error - return fallback instead of error
         const isRecoverableError =
-          errorMessage.includes("timeout") ||
-          errorMessage.includes("MCP") ||
-          errorMessage.includes("Gateway") ||
-          errorMessage.includes("408");
+          errorMessage.includes('timeout') ||
+          errorMessage.includes('MCP') ||
+          errorMessage.includes('Gateway') ||
+          errorMessage.includes('408');
 
         if (isRecoverableError) {
           const fallbackMessage = getFallbackResponse(query);
 
-          logger.warn("[DuyetInfoAgent] Returning fallback due to error", {
+          logger.warn('[DuyetInfoAgent] Returning fallback due to error', {
             traceId,
             durationMs,
             error: errorMessage,
@@ -717,7 +682,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         }
 
         // For other errors, still return as error with debug info
-        AgentMixin.logError("DuyetInfoAgent", "Query failed", error, {
+        AgentMixin.logError('DuyetInfoAgent', 'Query failed', error, {
           traceId,
           durationMs,
         });
@@ -748,8 +713,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 /**
  * Type for DuyetInfoAgent instance
  */
-export type DuyetInfoAgentInstance<TEnv extends DuyetInfoAgentEnv> =
-  InstanceType<ReturnType<typeof createDuyetInfoAgent<TEnv>>>;
+export type DuyetInfoAgentInstance<TEnv extends DuyetInfoAgentEnv> = InstanceType<
+  ReturnType<typeof createDuyetInfoAgent<TEnv>>
+>;
 
 // Export the tool filter for testing
 export { duyetToolFilter };

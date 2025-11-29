@@ -151,7 +151,7 @@ describe('determineRouteTarget', () => {
     expect(determineRouteTarget(classification)).toBe('simple-agent');
   });
 
-  it('routes code queries to code-worker', () => {
+  it('routes code queries to orchestrator-agent (which dispatches to CodeWorker)', () => {
     const classification: QueryClassification = {
       type: 'complex',
       category: 'code',
@@ -159,7 +159,8 @@ describe('determineRouteTarget', () => {
       requiresHumanApproval: false,
       reasoning: 'Code analysis task',
     };
-    expect(determineRouteTarget(classification)).toBe('code-worker');
+    // Workers are dispatched by OrchestratorAgent, not directly by Router
+    expect(determineRouteTarget(classification)).toBe('orchestrator-agent');
   });
 
   it('routes medium complexity research queries to lead-researcher-agent', () => {
@@ -174,7 +175,7 @@ describe('determineRouteTarget', () => {
     expect(determineRouteTarget(classification)).toBe('lead-researcher-agent');
   });
 
-  it('routes low complexity research queries to research-worker', () => {
+  it('routes low complexity research queries to orchestrator-agent (which dispatches to ResearchWorker)', () => {
     const classification: QueryClassification = {
       type: 'complex', // Must be complex to reach category routing (simple+low goes to simple-agent)
       category: 'research',
@@ -182,10 +183,11 @@ describe('determineRouteTarget', () => {
       requiresHumanApproval: false,
       reasoning: 'Simple research task',
     };
-    expect(determineRouteTarget(classification)).toBe('research-worker');
+    // Workers are dispatched by OrchestratorAgent, not directly by Router
+    expect(determineRouteTarget(classification)).toBe('orchestrator-agent');
   });
 
-  it('routes github queries to github-worker', () => {
+  it('routes github queries to orchestrator-agent (which dispatches to GitHubWorker)', () => {
     const classification: QueryClassification = {
       type: 'complex',
       category: 'github',
@@ -193,7 +195,8 @@ describe('determineRouteTarget', () => {
       requiresHumanApproval: false,
       reasoning: 'GitHub operation',
     };
-    expect(determineRouteTarget(classification)).toBe('github-worker');
+    // Workers are dispatched by OrchestratorAgent, not directly by Router
+    expect(determineRouteTarget(classification)).toBe('orchestrator-agent');
   });
 
   it('routes general medium complexity to simple-agent', () => {

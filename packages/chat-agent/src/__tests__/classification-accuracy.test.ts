@@ -110,16 +110,21 @@ describe('Classification Accuracy Test Suite', () => {
     });
   });
 
-  describe('Code Queries → code-worker', () => {
+  describe('Code Queries → orchestrator-agent (dispatches to CodeWorker)', () => {
+    // Note: Router routes code tasks to orchestrator-agent, which internally dispatches to CodeWorker
     it('classifies code review request', () => {
-      testRouting('review this code', { category: 'code', complexity: 'medium' }, 'code-worker');
+      testRouting(
+        'review this code',
+        { category: 'code', complexity: 'medium' },
+        'orchestrator-agent'
+      );
     });
 
     it('classifies bug fix request', () => {
       testRouting(
         'fix the bug in auth.ts',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -127,7 +132,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'refactor the login function',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -135,7 +140,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'explain this TypeScript error',
         { category: 'code', complexity: 'low' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -143,7 +148,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'write a function to parse JSON',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -151,7 +156,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'debug the authentication flow',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -159,7 +164,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'optimize this database query',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -167,7 +172,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'write unit tests for UserService',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -175,7 +180,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'implement REST endpoint for user profile',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -183,17 +188,18 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'update React to latest version',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
   });
 
-  describe('Research Queries → lead-researcher-agent (medium/high) or research-worker (low)', () => {
+  describe('Research Queries → lead-researcher-agent (medium/high) or orchestrator-agent (low)', () => {
+    // Note: Low complexity research goes to orchestrator-agent which dispatches to ResearchWorker
     it('classifies best practices research', () => {
       testRouting(
         'what are best practices for React hooks?',
         { category: 'research', complexity: 'medium' },
-        'lead-researcher-agent' // Medium complexity research now uses lead-researcher-agent
+        'lead-researcher-agent' // Medium complexity research uses lead-researcher-agent
       );
     });
 
@@ -217,7 +223,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'find documentation for TypeScript decorators',
         { category: 'research', complexity: 'low' },
-        'research-worker' // Low complexity research goes to research-worker
+        'orchestrator-agent' // Low complexity research goes to orchestrator → ResearchWorker
       );
     });
 
@@ -257,7 +263,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'find tutorials for GraphQL basics',
         { category: 'research', complexity: 'low' },
-        'research-worker'
+        'orchestrator-agent' // Low complexity research goes to orchestrator → ResearchWorker
       );
     });
 
@@ -270,12 +276,13 @@ describe('Classification Accuracy Test Suite', () => {
     });
   });
 
-  describe('GitHub Queries → github-worker', () => {
+  describe('GitHub Queries → orchestrator-agent (dispatches to GitHubWorker)', () => {
+    // Note: Router routes GitHub tasks to orchestrator-agent which internally dispatches to GitHubWorker
     it('classifies PR creation', () => {
       testRouting(
         'create a PR for this feature',
         { category: 'github', complexity: 'medium' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -283,19 +290,23 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'check the CI status',
         { category: 'github', complexity: 'low' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
     it('classifies PR review', () => {
-      testRouting('review PR #123', { category: 'github', complexity: 'medium' }, 'github-worker');
+      testRouting(
+        'review PR #123',
+        { category: 'github', complexity: 'medium' },
+        'orchestrator-agent'
+      );
     });
 
     it('classifies issue creation', () => {
       testRouting(
         'create an issue for the bug',
         { category: 'github', complexity: 'low' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -303,7 +314,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'comment on issue #456',
         { category: 'github', complexity: 'low' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -311,7 +322,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'merge pull request #789',
         { category: 'github', complexity: 'medium' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -319,7 +330,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'delete the feature branch',
         { category: 'github', complexity: 'low' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -327,7 +338,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'create a new release v2.0.0',
         { category: 'github', complexity: 'medium' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -335,7 +346,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'add review comment about line 45',
         { category: 'github', complexity: 'low' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
 
@@ -343,7 +354,7 @@ describe('Classification Accuracy Test Suite', () => {
       testRouting(
         'what is the status of PR #100?',
         { category: 'github', complexity: 'low' },
-        'github-worker'
+        'orchestrator-agent'
       );
     });
   });
@@ -508,11 +519,11 @@ describe('Classification Accuracy Test Suite', () => {
     });
 
     it('handles code query with GitHub context', () => {
-      // Should route to code-worker, not github-worker
+      // Should route to orchestrator-agent (which dispatches to CodeWorker), not GitHub
       testRouting(
         'review the code in PR #123 for security issues',
         { category: 'code', complexity: 'medium' },
-        'code-worker'
+        'orchestrator-agent'
       );
     });
 

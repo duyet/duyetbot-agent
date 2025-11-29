@@ -55,7 +55,8 @@ describe('formatDebugFooter', () => {
     const footer = formatDebugFooter(ctx);
 
     expect(footer).toContain('🔍');
-    expect(footer).toContain('router → simple-agent');
+    // New format: router-agent → target-agent
+    expect(footer).toContain('router-agent → simple-agent');
     expect(footer).toContain('<blockquote expandable>');
   });
 
@@ -68,32 +69,39 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('router (0.12s)');
+    // New format: router-agent (time) → target-agent (time)
+    expect(footer).toContain('router-agent (0.12s)');
     expect(footer).toContain('simple-agent (0.45s)');
   });
 
-  it('formats routing flow with tool chain', () => {
+  it('formats routing flow with classification and timing', () => {
     const ctx: DebugContext = {
       routingFlow: [
         { agent: 'router', durationMs: 100 },
-        {
-          agent: 'duyet-info-agent',
-          toolChain: ['duyet_cv', 'get_posts'],
-          durationMs: 2500,
-        },
+        { agent: 'duyet-info-agent', durationMs: 2500 },
       ],
+      classification: {
+        type: 'simple',
+        category: 'duyet',
+        complexity: 'low',
+      },
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('duyet-info-agent (duyet_cv → get_posts → response, 2.50s)');
+    // New format: classification is inline between router and target
+    // router-agent (time) → [classification] → target-agent (time)
+    expect(footer).toContain('router-agent (0.10s)');
+    expect(footer).toContain('[simple/duyet/low]');
+    expect(footer).toContain('duyet-info-agent (2.50s)');
+    // Verify the order: router → classification → agent
+    expect(footer).toMatch(/router-agent \(0\.10s\) → \[simple\/duyet\/low\] → duyet-info-agent/);
   });
 
   it('formats routing flow with error state', () => {
     const ctx: DebugContext = {
       routingFlow: [
         { agent: 'router', durationMs: 100 },
-        { agent: 'duyet-info-agent', error: 'timeout', durationMs: 27920 },
-        { agent: 'simple-agent', durationMs: 500 },
+        { agent: 'duyet-info-agent', status: 'error', durationMs: 27920 },
       ],
     };
     const footer = formatDebugFooter(ctx);
@@ -101,9 +109,12 @@ describe('formatDebugFooter', () => {
     expect(footer).toContain('duyet-info-agent (error, 27.92s)');
   });
 
-  it('formats classification inline at end', () => {
+  it('formats classification inline between router and target', () => {
     const ctx: DebugContext = {
-      routingFlow: [{ agent: 'test-agent', durationMs: 100 }],
+      routingFlow: [
+        { agent: 'router-agent', durationMs: 80 },
+        { agent: 'test-agent', durationMs: 100 },
+      ],
       classification: {
         type: 'simple',
         category: 'duyet',
@@ -113,8 +124,10 @@ describe('formatDebugFooter', () => {
     const footer = formatDebugFooter(ctx);
 
     expect(footer).toContain('[simple/duyet/low]');
-    // Classification should be inline, not on new line
-    expect(footer).toMatch(/test-agent \(0\.10s\) \[simple\/duyet\/low\]/);
+    // Classification should be between router and target agent
+    expect(footer).toMatch(
+      /router-agent \(0\.08s\) → \[simple\/duyet\/low\] → test-agent \(0\.10s\)/
+    );
   });
 
   it('displays last tool error with HTML escaping', () => {
@@ -193,11 +206,7 @@ describe('formatDebugFooter', () => {
     const ctx: DebugContext = {
       routingFlow: [
         { agent: 'router', durationMs: 120 },
-        {
-          agent: 'duyet-info-agent',
-          toolChain: ['duyet_cv', 'get_posts'],
-          durationMs: 2350,
-        },
+        { agent: 'duyet-info-agent', durationMs: 2350 },
       ],
       classification: {
         type: 'simple',
@@ -207,9 +216,10 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('🔍 router (0.12s)');
-    expect(footer).toContain('duyet-info-agent (duyet_cv → get_posts → response, 2.35s)');
+    // New format: router-agent (time) → [classification] → target (time)
+    expect(footer).toContain('🔍 router-agent (0.12s)');
     expect(footer).toContain('[simple/duyet/low]');
+    expect(footer).toContain('duyet-info-agent (2.35s)');
     expect(footer).not.toContain('⚠️'); // No error
   });
 
@@ -219,10 +229,9 @@ describe('formatDebugFooter', () => {
         { agent: 'router', durationMs: 120 },
         {
           agent: 'duyet-info-agent',
-          error: 'MCP connection timeout',
+          status: 'error',
           durationMs: 27920,
         },
-        { agent: 'simple-agent', durationMs: 500 },
       ],
       classification: {
         type: 'simple',
@@ -236,10 +245,10 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('🔍 router (0.12s)');
-    expect(footer).toContain('duyet-info-agent (error, 27.92s)');
-    expect(footer).toContain('simple-agent (0.50s)');
+    // New format: router-agent (time) → [classification] → target (error, time)
+    expect(footer).toContain('🔍 router-agent (0.12s)');
     expect(footer).toContain('[simple/duyet/low]');
+    expect(footer).toContain('duyet-info-agent (error, 27.92s)');
     expect(footer).toContain('⚠️ duyet-info-agent: MCP connection timeout');
   });
 
@@ -257,7 +266,10 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('🔍 router (0.08s) → simple-agent (0.45s) [simple/general/low]');
+    // New format: classification is inline between router and target
+    expect(footer).toContain(
+      '🔍 router-agent (0.08s) → [simple/general/low] → simple-agent (0.45s)'
+    );
   });
 
   it('handles agent with no duration', () => {
@@ -266,16 +278,63 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('router → simple-agent');
+    // New format: router-agent is always expanded
+    expect(footer).toContain('router-agent → simple-agent');
     expect(footer).not.toContain('('); // No parentheses when no duration/tools
   });
 
   it('handles error state without duration', () => {
     const ctx: DebugContext = {
-      routingFlow: [{ agent: 'router' }, { agent: 'failing-agent', error: 'crash' }],
+      routingFlow: [{ agent: 'router' }, { agent: 'failing-agent', status: 'error' }],
     };
     const footer = formatDebugFooter(ctx);
 
     expect(footer).toContain('failing-agent (error)');
+  });
+
+  it('formats nested workers for orchestrator', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router-agent', durationMs: 400 },
+        { agent: 'orchestrator-agent', durationMs: 5200 },
+      ],
+      classification: {
+        type: 'complex',
+        category: 'research',
+        complexity: 'low',
+      },
+      workers: [
+        { name: 'research-worker', durationMs: 2500, status: 'completed' },
+        { name: 'code-worker', durationMs: 1200, status: 'completed' },
+      ],
+    };
+    const footer = formatDebugFooter(ctx);
+
+    // New format with nested workers
+    expect(footer).toContain('router-agent (0.40s)');
+    expect(footer).toContain('[complex/research/low]');
+    expect(footer).toContain('orchestrator-agent (5.20s)');
+    expect(footer).toContain('├─ research-worker (2.50s)');
+    expect(footer).toContain('└─ code-worker (1.20s)');
+  });
+
+  it('formats workers with running status', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router-agent', durationMs: 400, status: 'completed' },
+        { agent: 'orchestrator-agent', status: 'running' },
+      ],
+      classification: {
+        type: 'complex',
+        category: 'research',
+        complexity: 'low',
+      },
+      workers: [{ name: 'research-worker', status: 'running' }],
+    };
+    const footer = formatDebugFooter(ctx);
+
+    expect(footer).toContain('orchestrator-agent (running)');
+    // Single worker uses └─ (last/only item)
+    expect(footer).toContain('└─ research-worker (running)');
   });
 });

@@ -167,6 +167,23 @@ export interface DebugMetadata {
 }
 
 /**
+ * Execution status for progressive debug footer updates
+ */
+export type ExecutionStatus = 'running' | 'completed' | 'error';
+
+/**
+ * Worker execution info for orchestrator debug context
+ */
+export interface WorkerDebugInfo {
+  /** Worker name (e.g., 'code-worker', 'research-worker') */
+  name: string;
+  /** Execution duration in milliseconds */
+  durationMs?: number;
+  /** Current execution status */
+  status?: ExecutionStatus;
+}
+
+/**
  * Debug context for routing/orchestration tracing
  * Used by admin users to see agent flow and timing
  */
@@ -183,7 +200,11 @@ export interface DebugContext {
     durationMs?: number;
     /** Error message if this agent failed */
     error?: string;
+    /** Current execution status for progressive updates */
+    status?: ExecutionStatus;
   }>;
+  /** Router classification duration in milliseconds (separate from agent execution) */
+  routerDurationMs?: number;
   /** Total execution duration in milliseconds */
   totalDurationMs?: number;
   /** Query classification details */
@@ -195,6 +216,8 @@ export interface DebugContext {
     /** Complexity level (low, medium, high) */
     complexity: string;
   };
+  /** Worker execution details for orchestrator (displayed as nested list) */
+  workers?: WorkerDebugInfo[];
   /** Additional debug metadata (fallback, cache, timeout) */
   metadata?: DebugMetadata;
   /** Execution path trace for step-by-step debugging */
