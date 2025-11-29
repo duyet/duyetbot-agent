@@ -115,7 +115,7 @@ interface OpenRouterChatResponse {
         };
       }>;
       tool_calls?: Array<{
-        id: string;
+        id?: string; // May be undefined for native tools (e.g., xAI web_search)
         type: string;
         function: {
           name: string;
@@ -306,10 +306,11 @@ export function createOpenRouterProvider(
           const choice = data.choices?.[0]?.message;
 
           // Extract tool calls if present (filter to function type only)
+          // Generate fallback id for native tools that don't return one (e.g., xAI web_search)
           const toolCalls = choice?.tool_calls
             ?.filter((tc) => tc.type === 'function')
-            .map((tc) => ({
-              id: tc.id,
+            .map((tc, index) => ({
+              id: tc.id || `tool_call_${Date.now()}_${index}`,
               name: tc.function.name,
               arguments: tc.function.arguments,
             }));
