@@ -32,6 +32,7 @@ export type {
   CustomSection,
   SectionRenderer,
   TelegramParseMode,
+  OutputFormat,
 } from './types.js';
 
 // Builder
@@ -137,4 +138,35 @@ export function getSystemPrompt(platform: Platform, _context?: PromptContext): s
 }
 
 // Re-export Platform type for backward compatibility
-import type { Platform, PromptConfig } from './types.js';
+import type { OutputFormat, Platform, PromptConfig } from './types.js';
+
+/**
+ * Convert platform string to OutputFormat
+ *
+ * Helper function for agents to convert context.platform to outputFormat
+ * at runtime.
+ *
+ * @param platform - Platform string ('telegram', 'github', etc.)
+ * @param telegramParseMode - Parse mode for Telegram (default: 'HTML')
+ * @returns OutputFormat for use with prompt functions
+ *
+ * @example
+ * ```typescript
+ * // In agent's execute() method:
+ * const outputFormat = platformToOutputFormat(context.platform);
+ * const systemPrompt = getDuyetInfoPrompt({ outputFormat });
+ * ```
+ */
+export function platformToOutputFormat(
+  platform?: string,
+  telegramParseMode: 'HTML' | 'MarkdownV2' = 'HTML'
+): OutputFormat {
+  switch (platform) {
+    case 'telegram':
+      return telegramParseMode === 'MarkdownV2' ? 'telegram-markdown' : 'telegram-html';
+    case 'github':
+      return 'github-markdown';
+    default:
+      return 'plain';
+  }
+}

@@ -21,10 +21,15 @@ const ORCHESTRATOR_CAPABILITIES = [
 
 /**
  * Get the system prompt for OrchestratorAgent
+ *
+ * Supports platform-neutral `outputFormat` (preferred) or legacy `platform` config.
+ *
  * @param config - Optional configuration overrides
+ * @param config.outputFormat - Platform-neutral format: 'telegram-html', 'github-markdown', etc.
+ * @param config.platform - Legacy platform config (use outputFormat instead)
  */
 export function getOrchestratorPrompt(config?: Partial<PromptConfig>): string {
-  return createPrompt(config)
+  const builder = createPrompt(config)
     .withIdentity()
     .withPolicy()
     .withCapabilities(ORCHESTRATOR_CAPABILITIES)
@@ -56,9 +61,20 @@ When given a complex task:
 - Present information in a logical, organized manner
 - Cite which worker provided each piece of information
 `
-    )
-    .withGuidelines()
-    .build();
+    );
+
+  // Prefer outputFormat (platform-neutral), fall back to platform config
+  if (config?.outputFormat) {
+    builder.withOutputFormat(config.outputFormat);
+  } else if (config?.platform === 'telegram') {
+    builder.withTelegramParseMode(config.telegramParseMode ?? 'HTML').forTelegram();
+  } else if (config?.platform === 'github') {
+    builder.forGitHub();
+  } else if (config?.platform) {
+    builder.forPlatform(config.platform);
+  }
+
+  return builder.withGuidelines().build();
 }
 
 /**

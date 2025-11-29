@@ -28,6 +28,7 @@ import {
 } from './sections/index.js';
 import type {
   CustomSection,
+  OutputFormat,
   Platform,
   PromptConfig,
   TelegramParseMode,
@@ -44,6 +45,7 @@ interface BuilderConfig {
   tools: ToolDefinition[];
   capabilities: string[];
   telegramParseMode: TelegramParseMode;
+  outputFormat: OutputFormat | undefined;
 }
 
 /**
@@ -62,6 +64,7 @@ export class PromptBuilder {
       tools: config.tools ?? [],
       capabilities: config.capabilities ?? [],
       telegramParseMode: config.telegramParseMode ?? 'HTML',
+      outputFormat: config.outputFormat,
     };
   }
 
@@ -143,6 +146,47 @@ export class PromptBuilder {
    */
   withTelegramParseMode(mode: TelegramParseMode): this {
     this.builderConfig.telegramParseMode = mode;
+    return this;
+  }
+
+  /**
+   * Set output format for response formatting (platform-neutral)
+   *
+   * This is the preferred way to set formatting for shared agents that
+   * may be used across multiple platforms. Maps to platform-specific
+   * settings internally.
+   *
+   * @param format - Output format: 'telegram-html', 'telegram-markdown', 'github-markdown', or 'plain'
+   *
+   * @example
+   * ```typescript
+   * // Shared agent can use output format at runtime
+   * getDuyetInfoPrompt({ outputFormat: 'telegram-html' });
+   * getDuyetInfoPrompt({ outputFormat: 'github-markdown' });
+   * ```
+   */
+  withOutputFormat(format: OutputFormat): this {
+    this.builderConfig.outputFormat = format;
+
+    // Map output format to platform-specific settings
+    switch (format) {
+      case 'telegram-html':
+        this.builderConfig.platform = 'telegram';
+        this.builderConfig.telegramParseMode = 'HTML';
+        break;
+      case 'telegram-markdown':
+        this.builderConfig.platform = 'telegram';
+        this.builderConfig.telegramParseMode = 'MarkdownV2';
+        break;
+      case 'github-markdown':
+        this.builderConfig.platform = 'github';
+        break;
+      case 'plain':
+        // No platform-specific formatting
+        this.builderConfig.platform = undefined;
+        break;
+    }
+
     return this;
   }
 
