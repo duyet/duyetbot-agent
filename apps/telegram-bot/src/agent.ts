@@ -9,7 +9,7 @@
  * duyetbot-agents worker via script_name in wrangler.toml.
  */
 
-import type { RouterAgentEnv } from '@duyetbot/chat-agent';
+import type { RouterAgentEnv, TelegramPlatformConfig } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
@@ -29,6 +29,9 @@ import { type TelegramContext, telegramTransport } from './transport.js';
  * Base environment without self-reference
  */
 interface BaseEnv extends ProviderEnv, RouterAgentEnv {
+  // Common config (from wrangler.toml [vars])
+  ENVIRONMENT?: string;
+  // Telegram-specific
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
   TELEGRAM_ALLOWED_USERS?: string;
@@ -73,6 +76,20 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
       platform: 'telegram',
       debug: false,
     },
+    // Extract platform config for shared DOs (non-secret env vars only)
+    extractPlatformConfig: (env): TelegramPlatformConfig => ({
+      platform: 'telegram',
+      // Common config - only include defined values
+      ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
+      ...(env.MODEL && { model: env.MODEL }),
+      ...(env.AI_GATEWAY_NAME && { aiGatewayName: env.AI_GATEWAY_NAME }),
+      // Telegram-specific
+      ...(env.TELEGRAM_PARSE_MODE && { parseMode: env.TELEGRAM_PARSE_MODE }),
+      ...(env.TELEGRAM_ADMIN && { adminUsername: env.TELEGRAM_ADMIN }),
+      ...(env.TELEGRAM_ALLOWED_USERS && {
+        allowedUsers: env.TELEGRAM_ALLOWED_USERS,
+      }),
+    }),
     hooks: {
       onError: async (ctx, error, messageRef) => {
         // Log the error for monitoring

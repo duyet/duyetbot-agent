@@ -3,12 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Bundle .md files as text
-[[rules]]
-type = "Text"
-globs = ["**/*.md"]
-fallthrough = true
-
 [ai]
 binding = "AI"
 

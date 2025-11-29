@@ -3,17 +3,6 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Bundle .md files as text (required for @duyetbot/prompts)
-[[rules]]
-type = "Text"
-globs = ["**/*.md"]
-fallthrough = true
-
-[vars]
-ENVIRONMENT = "production"
-MODEL = "x-ai/grok-4.1-fast:free"
-AI_GATEWAY_NAME = "duyetbot"
-
 [ai]
 binding = "AI"
 

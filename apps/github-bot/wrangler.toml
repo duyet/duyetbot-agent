@@ -15,12 +15,6 @@ MODEL = "x-ai/grok-4.1-fast:free"
 AI_GATEWAY_NAME = "duyetbot"
 BOT_USERNAME = "duyetbot"
 
-# Configure loaders for different file types
-[[rules]]
-type = "Text"
-globs = ["**/*.md"]
-fallthrough = true
-
 [observability]
 enabled = true
 

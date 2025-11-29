@@ -134,6 +134,7 @@ export {
   type AgentResult,
   type BaseAgentConfig,
   type BaseAgentState,
+  type CommonPlatformConfig,
   createBaseState,
   createDuyetInfoAgent,
   createHITLAgent,
@@ -147,7 +148,9 @@ export {
   type DuyetInfoAgentInstance,
   type DuyetInfoAgentMethods,
   type DuyetInfoAgentState,
+  type GenericPlatformConfig,
   getTypedAgent,
+  type GitHubPlatformConfig,
   type HITLAgentClass,
   type HITLAgentConfig,
   type HITLAgentEnv,
@@ -161,6 +164,7 @@ export {
   type OrchestratorAgentInstance,
   type OrchestratorAgentMethods,
   type OrchestratorAgentState,
+  type PlatformConfig,
   type RouterAgentClass,
   type RouterAgentConfig,
   type RouterAgentEnv,
@@ -173,6 +177,7 @@ export {
   type SimpleAgentInstance,
   type SimpleAgentMethods,
   type SimpleAgentState,
+  type TelegramPlatformConfig,
 } from './agents/index.js';
 // Feature Flags
 export {
