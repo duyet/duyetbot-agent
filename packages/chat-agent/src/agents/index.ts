@@ -11,9 +11,14 @@ export {
   type AgentResult,
   type BaseAgentConfig,
   type BaseAgentState,
+  type CommonPlatformConfig,
   createBaseState,
+  type GenericPlatformConfig,
   getTypedAgent,
+  type GitHubPlatformConfig,
   isAgent,
+  type PlatformConfig,
+  type TelegramPlatformConfig,
 } from './base-agent.js';
 // HITL agent (Human-in-the-Loop)
 export {

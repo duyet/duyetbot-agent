@@ -20,6 +20,7 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import type { PlatformConfig } from './agents/base-agent.js';
 import { escapeHtml, formatDebugFooter } from './debug-footer.js';
 import type { DebugContext } from './types.js';
 
@@ -39,6 +40,11 @@ export interface ResponseTarget {
   adminUsername?: string;
   /** Current user's username for admin check (Phase 5) */
   username?: string;
+  /**
+   * Platform-specific configuration from parent worker.
+   * Used to get parseMode and other platform settings.
+   */
+  platformConfig?: PlatformConfig;
 }
 
 /**
@@ -89,13 +95,25 @@ export async function sendPlatformResponse(
   if (platform === 'telegram') {
     // Determine if admin and should show debug footer
     let finalText = text;
-    let parseMode: 'HTML' | 'Markdown' = 'Markdown';
+
+    // Get parseMode from platformConfig if available
+    // Default to HTML for better formatting support
+    let parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML';
+    const platformConfig = target.platformConfig;
+    if (platformConfig?.platform === 'telegram') {
+      const telegramConfig = platformConfig as {
+        parseMode?: 'HTML' | 'MarkdownV2';
+      };
+      if (telegramConfig.parseMode) {
+        parseMode = telegramConfig.parseMode;
+      }
+    }
 
     if (isAdminUser(target) && debugContext) {
       const debugFooter = formatDebugFooter(debugContext);
       if (debugFooter) {
         finalText = escapeHtml(text) + debugFooter;
-        parseMode = 'HTML';
+        parseMode = 'HTML'; // Debug footer uses HTML formatting
 
         logger.debug('[sendPlatformResponse] Debug footer applied', {
           username: target.username,
@@ -130,7 +148,7 @@ async function sendTelegramResponse(
   messageId: number,
   text: string,
   botToken?: string,
-  parseMode: 'HTML' | 'Markdown' = 'Markdown'
+  parseMode: 'HTML' | 'Markdown' | 'MarkdownV2' = 'HTML'
 ): Promise<void> {
   const token = botToken || env.TELEGRAM_BOT_TOKEN;
   if (!token) {

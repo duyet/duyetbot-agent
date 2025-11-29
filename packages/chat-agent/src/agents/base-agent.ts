@@ -39,6 +39,73 @@ export interface BaseAgentConfig<TEnv> {
   name: string;
 }
 
+// ============================================================================
+// Platform Configuration Types
+// ============================================================================
+
+/**
+ * Common configuration shared across all platforms.
+ * Contains non-secret environment variables from parent workers.
+ *
+ * Note: Properties use `| undefined` to support exactOptionalPropertyTypes,
+ * allowing direct assignment from optional env vars.
+ */
+export interface CommonPlatformConfig {
+  /** Environment (production, development) */
+  environment?: 'production' | 'development' | string | undefined;
+  /** LLM model identifier */
+  model?: string | undefined;
+  /** Cloudflare AI Gateway name */
+  aiGatewayName?: string | undefined;
+}
+
+/**
+ * Telegram-specific configuration
+ */
+export interface TelegramPlatformConfig extends CommonPlatformConfig {
+  platform: 'telegram';
+  /** Response format: 'HTML' (default) or 'MarkdownV2' */
+  parseMode?: 'HTML' | 'MarkdownV2' | undefined;
+  /** Admin username for verbose error messages */
+  adminUsername?: string | undefined;
+  /** Comma-separated user IDs (empty = allow all) */
+  allowedUsers?: string | undefined;
+}
+
+/**
+ * GitHub-specific configuration
+ */
+export interface GitHubPlatformConfig extends CommonPlatformConfig {
+  platform: 'github';
+  /** Bot username for @mentions */
+  botUsername?: string | undefined;
+}
+
+/**
+ * Generic platform configuration for CLI, API, etc.
+ */
+export interface GenericPlatformConfig extends CommonPlatformConfig {
+  platform: 'cli' | 'api' | string;
+}
+
+/**
+ * Discriminated union of all platform configurations.
+ * Use TypeScript narrowing with `config.platform` to access platform-specific fields.
+ *
+ * @example
+ * ```typescript
+ * if (config.platform === 'telegram') {
+ *   // TypeScript knows config.parseMode exists here
+ *   const mode = config.parseMode;
+ * }
+ * ```
+ */
+export type PlatformConfig = TelegramPlatformConfig | GitHubPlatformConfig | GenericPlatformConfig;
+
+// ============================================================================
+// Agent Context
+// ============================================================================
+
 /**
  * Context passed between agents during routing
  */
@@ -65,6 +132,12 @@ export interface AgentContext {
    * This enables centralized state management where only the parent agent stores history.
    */
   conversationHistory?: Message[];
+  /**
+   * Platform-specific configuration from parent worker.
+   * Contains non-secret env vars (parseMode, model, etc.) that shared DOs need.
+   * @see PlatformConfig
+   */
+  platformConfig?: PlatformConfig;
 }
 
 /**

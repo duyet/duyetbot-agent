@@ -12,6 +12,7 @@
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
+  type GitHubPlatformConfig,
   type MCPServerConnection,
   type RouterAgentEnv,
   createCloudflareChatAgent,
@@ -39,6 +40,9 @@ const githubMcpServer: MCPServerConnection = {
  * Base environment without self-reference
  */
 interface BaseEnv extends ProviderEnv, RouterAgentEnv {
+  // Common config (from wrangler.toml [vars])
+  ENVIRONMENT?: string;
+  // GitHub-specific
   GITHUB_TOKEN: string;
   GITHUB_WEBHOOK_SECRET?: string;
   BOT_USERNAME?: string;
@@ -65,6 +69,16 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
       platform: 'github',
       debug: false,
     },
+    // Extract platform config for shared DOs (non-secret env vars only)
+    extractPlatformConfig: (env): GitHubPlatformConfig => ({
+      platform: 'github',
+      // Common config - only include defined values
+      ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
+      ...(env.MODEL && { model: env.MODEL }),
+      ...(env.AI_GATEWAY_NAME && { aiGatewayName: env.AI_GATEWAY_NAME }),
+      // GitHub-specific
+      ...(env.BOT_USERNAME && { botUsername: env.BOT_USERNAME }),
+    }),
     // Shorter batch window for GitHub (200ms vs 500ms for Telegram)
     // GitHub comments are typically complete when sent, not rapid-fire like chat
     batchConfig: {

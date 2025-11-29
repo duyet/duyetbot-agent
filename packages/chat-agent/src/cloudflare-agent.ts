@@ -9,7 +9,7 @@ import { logger } from '@duyetbot/hono-middleware';
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import type { AgentContext, AgentResult } from './agents/base-agent.js';
+import type { AgentContext, AgentResult, PlatformConfig } from './agents/base-agent.js';
 import type { RouterAgentEnv } from './agents/router-agent.js';
 import {
   type BatchConfig,
@@ -129,6 +129,22 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
    * When enabled, rapid messages are combined within a time window
    */
   batchConfig?: Partial<BatchConfig>;
+  /**
+   * Extract platform-specific configuration from environment.
+   * Called when building AgentContext for routing to shared agents.
+   * Only non-secret values should be included (no tokens/API keys).
+   *
+   * @example
+   * ```typescript
+   * extractPlatformConfig: (env) => ({
+   *   platform: 'telegram' as const,
+   *   environment: env.ENVIRONMENT,
+   *   model: env.MODEL,
+   *   parseMode: env.TELEGRAM_PARSE_MODE,
+   * })
+   * ```
+   */
+  extractPlatformConfig?: (env: TEnv) => PlatformConfig;
 }
 
 // Re-export types for backward compatibility
@@ -235,6 +251,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
   const mcpServers = config.mcpServers ?? [];
   const builtinTools = config.tools ?? [];
   const routerConfig = config.router;
+  const extractPlatformConfig = config.extractPlatformConfig;
   // Batch config for future use (alarm scheduling, etc.)
   // const batchConfig: BatchConfig = {
   //   ...DEFAULT_BATCH_CONFIG,
@@ -1029,6 +1046,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         adminUsername?: string | undefined;
         /** Current user's username for admin check (Phase 5) */
         username?: string | undefined;
+        /** Platform config for parseMode and other settings */
+        platformConfig?: PlatformConfig | undefined;
       }
     ): Promise<boolean> {
       if (!routerConfig) {
@@ -1193,6 +1212,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
             if (useRouting) {
               // Build agent context for RouterAgent
+              // Extract platform config from environment if extractor provided
+              const env = (this as unknown as { env: TEnv }).env;
+              const platformConfig = extractPlatformConfig?.(env);
+
               const agentContext: AgentContext = {
                 query: chatMessage,
                 userId: input.userId?.toString(),
@@ -1200,6 +1223,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 ...(input.username && { username: input.username }),
                 platform: routerConfig?.platform || 'api',
                 ...(input.metadata && { data: input.metadata }),
+                ...(platformConfig && { platformConfig }),
               };
 
               logger.info('[CloudflareAgent][HANDLE] Routing enabled, calling RouterAgent', {
@@ -1837,6 +1861,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         const useRouting = this.shouldRoute(userIdStr);
 
         if (useRouting) {
+          // Extract platform config from environment if extractor provided
+          const env = (this as unknown as { env: TEnv }).env;
+          const platformConfig = extractPlatformConfig?.(env);
+
           // Build context conditionally to satisfy exactOptionalPropertyTypes
           const agentContext: AgentContext = {
             query: combinedText,
@@ -1847,11 +1875,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             ...(firstMessage?.chatId !== undefined && {
               chatId: firstMessage.chatId.toString(),
             }),
+            ...(platformConfig && { platformConfig }),
           };
 
           // Try fire-and-forget pattern first - delegate to RouterAgent via alarm
           // This prevents blockConcurrencyWhile timeout by returning immediately
-          const env = (this as unknown as { env: TEnv }).env;
           const envWithToken = env as unknown as {
             TELEGRAM_BOT_TOKEN?: string;
             ADMIN_USERNAME?: string;
@@ -1872,6 +1900,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // Pass admin context for debug footer (Phase 5)
             adminUsername: ctxWithAdmin.adminUsername || envWithToken.ADMIN_USERNAME,
             username: ctxWithAdmin.username || firstMessage?.username,
+            // Pass platform config for parseMode and other settings
+            platformConfig,
           });
 
           if (scheduled) {
