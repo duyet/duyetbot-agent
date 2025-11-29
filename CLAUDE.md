@@ -121,10 +121,6 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
 ### Environment Variables
 
 ```bash
-# LLM Providers
-ANTHROPIC_API_KEY=sk-ant-xxx
-OPENROUTER_API_KEY=sk-or-xxx
-
 # Platform Tokens
 TELEGRAM_BOT_TOKEN=xxx
 GITHUB_TOKEN=ghp_xxx
@@ -137,9 +133,9 @@ ROUTER_DEBUG=false  # Enable routing logs
 ### Cloudflare Secrets
 
 ```bash
-cd apps/telegram-bot
-bunx wrangler secret put TELEGRAM_BOT_TOKEN
-bunx wrangler secret put OPENROUTER_API_KEY
+bun run config
+bun run config:telegram
+bun run config:github
 ```
 
 > **Deployment details**: See [docs/deployment.md](docs/deployment.md)

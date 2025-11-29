@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "config": "bun ../../scripts/config.ts agents",
     "test": "vitest run --passWithNoTests",
     "type-check": "tsc --noEmit"
   },
