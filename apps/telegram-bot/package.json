@@ -6,9 +6,10 @@
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
     "config": "bun ../../scripts/config.ts telegram",
-    "test": "bun run test:unit && bun run test:e2e",
+    "test": "bun run test:unit",
     "test:unit": "vitest run --passWithNoTests",
     "test:e2e": "vitest run -c vitest.config.e2e.ts",
+    "test:all": "bun run test:unit && bun run test:e2e",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
