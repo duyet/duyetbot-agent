@@ -1048,6 +1048,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         username?: string | undefined;
         /** Platform config for parseMode and other settings */
         platformConfig?: PlatformConfig | undefined;
+        // GitHub-specific fields (required when platform === 'github')
+        /** GitHub repository owner */
+        githubOwner?: string | undefined;
+        /** GitHub repository name */
+        githubRepo?: string | undefined;
+        /** GitHub issue/PR number */
+        githubIssueNumber?: number | undefined;
+        /** GitHub token for API authentication */
+        githubToken?: string | undefined;
       }
     ): Promise<boolean> {
       if (!routerConfig) {
@@ -1890,6 +1899,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // This prevents blockConcurrencyWhile timeout by returning immediately
           const envWithToken = env as unknown as {
             TELEGRAM_BOT_TOKEN?: string;
+            GITHUB_TOKEN?: string;
             ADMIN_USERNAME?: string;
           };
 
@@ -1900,17 +1910,39 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             username?: string;
           };
 
-          const scheduled = await this.scheduleRouting(combinedText, agentContext, {
+          // Extract GitHub-specific context if platform is 'github'
+          // GitHubContext has owner, repo, issueNumber, githubToken
+          const ctxWithGitHub = ctx as {
+            owner?: string;
+            repo?: string;
+            issueNumber?: number;
+            githubToken?: string;
+          };
+
+          // Build responseTarget with platform-specific fields
+          const responseTarget: Parameters<typeof this.scheduleRouting>[2] = {
             chatId: firstMessage?.chatId?.toString() || '',
             messageRef: { messageId: messageRef as number },
             platform: routerConfig?.platform || 'telegram',
-            botToken: envWithToken.TELEGRAM_BOT_TOKEN,
             // Pass admin context for debug footer (Phase 5)
             adminUsername: ctxWithAdmin.adminUsername || envWithToken.ADMIN_USERNAME,
             username: ctxWithAdmin.username || firstMessage?.username,
             // Pass platform config for parseMode and other settings
             platformConfig,
-          });
+          };
+
+          // Add platform-specific fields
+          if (routerConfig?.platform === 'telegram') {
+            responseTarget.botToken = envWithToken.TELEGRAM_BOT_TOKEN;
+          } else if (routerConfig?.platform === 'github') {
+            // GitHub requires owner/repo/issueNumber for API calls
+            responseTarget.githubOwner = ctxWithGitHub.owner;
+            responseTarget.githubRepo = ctxWithGitHub.repo;
+            responseTarget.githubIssueNumber = ctxWithGitHub.issueNumber;
+            responseTarget.githubToken = ctxWithGitHub.githubToken || envWithToken.GITHUB_TOKEN;
+          }
+
+          const scheduled = await this.scheduleRouting(combinedText, agentContext, responseTarget);
 
           if (scheduled) {
             // Successfully delegated to RouterAgent - it will handle response delivery

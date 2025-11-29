@@ -19,6 +19,63 @@ import {
   AgentMixin,
   type AgentResult,
 } from './base-agent.js';
+import { agentRegistry } from './registry.js';
+
+// =============================================================================
+// Agent Self-Registration
+// =============================================================================
+
+/**
+ * Register DuyetInfoAgent with the agent registry.
+ * This runs at module load time, before any agent instantiation.
+ *
+ * Patterns are designed to NOT match "@duyetbot" bot mentions.
+ * The query "Latest AI News?" should NOT route here because "latest" alone
+ * doesn't indicate a Duyet query - it needs explicit "duyet" context.
+ */
+agentRegistry.register({
+  name: 'duyet-info-agent',
+  description:
+    'Answers questions about Duyet (the person), his blog posts, CV, skills, experience, and contact information. Only handles queries explicitly about Duyet or his personal content.',
+  examples: [
+    'who is duyet',
+    'tell me about duyet',
+    "duyet's blog posts",
+    "duyet's latest articles",
+    'what is your CV',
+    'your skills and experience',
+    'your contact info',
+    'duyet.net',
+  ],
+  triggers: {
+    // Specific patterns - won't match "@duyetbot" bot mentions
+    patterns: [
+      /\b(who\s+(is|are)\s+duyet)\b/i, // "who is duyet"
+      /\bduyet'?s?\s+(blog|cv|resume|bio|posts?|articles?|skills?|experience)\b/i, // "duyet's blog"
+      /\b(about|tell\s+me\s+about)\s+duyet\b/i, // "about duyet"
+      /\bblog\.duyet\b/i, // "blog.duyet.net"
+      /\bduyet\.net\b/i, // "duyet.net"
+      // "your X" patterns for personal info queries (when bot is addressed directly)
+      /\b(your)\s+(cv|resume|bio|experience|skills?|education|contact)\b/i,
+    ],
+    keywords: [
+      'cv',
+      'resume',
+      'about me',
+      'contact info',
+      'bio',
+      'my experience',
+      'my skills',
+      'my education',
+    ],
+    categories: ['duyet'],
+  },
+  capabilities: {
+    tools: ['duyet_mcp'],
+    complexity: 'low',
+  },
+  priority: 50, // Medium priority - below research (60) to avoid catching "latest news"
+});
 
 /**
  * Duyet MCP server connection details
@@ -152,10 +209,12 @@ export interface DuyetInfoAgentConfig<TEnv extends DuyetInfoAgentEnv> {
   createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** Maximum tools to expose to LLM (default: 10) */
   maxTools?: number;
-  /** Connection timeout in ms (default: 10000) */
+  /** MCP connection timeout in ms (default: 5000) - reduced to fit 30s budget */
   connectionTimeoutMs?: number;
-  /** Tool execution timeout in ms (default: 12000) */
+  /** Tool execution timeout in ms (default: 8000) - reduced to fit 30s budget */
   toolTimeoutMs?: number;
+  /** Global execution timeout in ms (default: 25000) - leaves 5s buffer for cleanup */
+  executionTimeoutMs?: number;
   /** Result cache TTL in ms (default: 180000 = 3 min) */
   resultCacheTtlMs?: number;
   /** Maximum tool call iterations (default: 3) */
@@ -201,10 +260,14 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
   config: DuyetInfoAgentConfig<TEnv>
 ): DuyetInfoAgentClass<TEnv> {
   const debug = config.debug ?? false;
-  const connectionTimeoutMs = config.connectionTimeoutMs ?? 10000;
-  const toolTimeoutMs = config.toolTimeoutMs ?? 12000; // 12s per-tool timeout
+  // Reduced timeouts to fit within Cloudflare's 30s blockConcurrencyWhile limit
+  // Time budget: MCP 5s + LLM ~12s + tools 5s + buffer 3s = 25s
+  // With only 1 iteration, we avoid the 3x15s = 45s problem
+  const connectionTimeoutMs = config.connectionTimeoutMs ?? 5000; // 5s MCP connection
+  const toolTimeoutMs = config.toolTimeoutMs ?? 5000; // 5s per-tool (was 8s)
+  const executionTimeoutMs = config.executionTimeoutMs ?? 20000; // 20s global timeout (was 25s)
   const resultCacheTtlMs = config.resultCacheTtlMs ?? 180000; // 3 min cache
-  const maxToolIterations = config.maxToolIterations ?? 3;
+  const maxToolIterations = config.maxToolIterations ?? 1; // 1 iteration only (was 3)
   const maxTools = config.maxTools ?? 10;
 
   const AgentClass = class DuyetInfoAgent extends Agent<TEnv, DuyetInfoAgentState> {
@@ -560,6 +623,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
     /**
      * Execute a query with MCP tools
+     * Wrapped with global timeout to prevent blockConcurrencyWhile timeout (30s limit)
      */
     async execute(query: string, context: AgentContext): Promise<AgentResult> {
       const startTime = Date.now();
@@ -571,9 +635,11 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
       AgentMixin.log('DuyetInfoAgent', 'Executing query', {
         traceId,
         queryLength: query.length,
+        executionTimeoutMs,
       });
 
-      try {
+      // Wrap execution with global timeout to prevent blockConcurrencyWhile timeout
+      const executeWithTimeout = async (): Promise<AgentResult> => {
         // Initialize MCP connection
         await this.initMcp();
 
@@ -653,6 +719,18 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         return AgentMixin.createResult(true, response.content, durationMs, {
           debug: this.buildDebugInfo(),
         });
+      };
+
+      try {
+        // Race between execution and global timeout
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`Execution timeout after ${executionTimeoutMs}ms`)),
+            executionTimeoutMs
+          );
+        });
+
+        return await Promise.race([executeWithTimeout(), timeoutPromise]);
       } catch (error) {
         const durationMs = Date.now() - startTime;
         const errorMessage = error instanceof Error ? error.message : String(error);
@@ -660,6 +738,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         // Check if it's a timeout or MCP-related error - return fallback instead of error
         const isRecoverableError =
           errorMessage.includes('timeout') ||
+          errorMessage.includes('Timeout') ||
           errorMessage.includes('MCP') ||
           errorMessage.includes('Gateway') ||
           errorMessage.includes('408');

@@ -2,7 +2,18 @@
  * Agents Module
  *
  * Agent implementations for the routing/orchestration system.
+ *
+ * IMPORTANT: Agent modules must be imported BEFORE using routing functions
+ * because agents self-register at module load time. The imports below
+ * trigger registration in the agentRegistry.
  */
+
+// Agent Registry - exports first for use by other modules
+export {
+  agentRegistry,
+  type AgentDefinition,
+  type AgentRegistry,
+} from './registry.js';
 
 // Base agent utilities
 export {

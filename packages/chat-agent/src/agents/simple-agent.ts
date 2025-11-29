@@ -13,6 +13,44 @@ import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type Connection } from 'agents';
 import type { ChatOptions, LLMProvider, Message } from '../types.js';
 import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+import { agentRegistry } from './registry.js';
+
+// =============================================================================
+// Agent Self-Registration
+// =============================================================================
+
+/**
+ * Register SimpleAgent with the agent registry.
+ * This is the fallback agent for general queries that don't match other agents.
+ * Priority is low (10) to ensure specialized agents are checked first.
+ */
+agentRegistry.register({
+  name: 'simple-agent',
+  description:
+    'Handles simple questions that can be answered directly without tools. Used for greetings, explanations, general knowledge, help requests, and any query that does not require web search, code tools, or external APIs.',
+  examples: [
+    'hello',
+    'hi there',
+    'what is machine learning',
+    'explain this code',
+    'help',
+    'what can you do',
+    'thank you',
+  ],
+  triggers: {
+    patterns: [
+      /^(hi|hello|hey|good\s+(morning|afternoon|evening))[\s!.]*$/i,
+      /^(help|\/help|\?|what can you do)[\s?]*$/i,
+      /^(thanks?|thank you|thx)[\s!.]*$/i,
+    ],
+    categories: ['general'],
+  },
+  capabilities: {
+    tools: [], // No tools - LLM only
+    complexity: 'low',
+  },
+  priority: 10, // Lowest priority - fallback agent
+});
 
 /**
  * Simple agent state

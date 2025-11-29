@@ -46,6 +46,7 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   GITHUB_TOKEN: string;
   GITHUB_WEBHOOK_SECRET?: string;
   BOT_USERNAME?: string;
+  GITHUB_ADMIN?: string;
   ROUTER_DEBUG?: string;
 }
 
@@ -61,10 +62,17 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
     systemPrompt: getGitHubBotPrompt(),
     welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
     helpMessage: 'Mention me with @duyetbot followed by your question or request.',
-    maxHistory: 10,
     transport: githubTransport,
     mcpServers: [githubMcpServer],
     tools: getPlatformTools('github'),
+    // Reduce history to minimize token usage and subrequests
+    maxHistory: 10,
+    // Thinking rotation interval to match Telegram (keeps connection alive)
+    thinkingRotationInterval: 5000,
+    // Limit tool call iterations to prevent gateway timeouts
+    maxToolIterations: 10,
+    // Limit number of tools to reduce token overhead
+    maxTools: 5,
     router: {
       platform: 'github',
       debug: false,
@@ -81,6 +89,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
       }),
       // GitHub-specific
       ...(env.BOT_USERNAME && { botUsername: env.BOT_USERNAME }),
+      ...(env.GITHUB_ADMIN && { adminUsername: env.GITHUB_ADMIN }),
     }),
     // Shorter batch window for GitHub (200ms vs 500ms for Telegram)
     // GitHub comments are typically complete when sent, not rapid-fire like chat

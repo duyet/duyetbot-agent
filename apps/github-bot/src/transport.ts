@@ -4,7 +4,7 @@
  * Implements the Transport interface for GitHub Issues/PRs API.
  */
 
-import type { ParsedInput, Transport } from '@duyetbot/chat-agent';
+import type { DebugContext, ParsedInput, Transport } from '@duyetbot/chat-agent';
 import { Octokit } from '@octokit/rest';
 import { logger } from './logger.js';
 
@@ -49,6 +49,12 @@ export interface GitHubContext {
   description?: string;
   /** Request ID for trace correlation and deduplication */
   requestId?: string;
+  /** Admin username for debug footer visibility */
+  adminUsername?: string;
+  /** Whether current user is admin (computed from sender.login === adminUsername) */
+  isAdmin?: boolean;
+  /** Debug context for admin users (routing flow, timing, classification) */
+  debugContext?: DebugContext;
 }
 
 /**
@@ -143,8 +149,12 @@ ${labelStr}
 
 `;
 
+    // Strip bot mention from body to avoid misclassification
+    // e.g., "@duyetbot Latest AI News?" should not match "duyet" patterns
+    const cleanedBody = stripBotMention(ctx.body);
+
     const result: ParsedInput = {
-      text: contextBlock + ctx.body,
+      text: contextBlock + cleanedBody,
       userId: ctx.sender.id,
       chatId: `${ctx.owner}/${ctx.repo}#${ctx.issueNumber}`,
       username: ctx.sender.login,
@@ -202,6 +212,33 @@ export interface CreateGitHubContextOptions {
   description?: string;
   /** Request ID for trace correlation */
   requestId?: string;
+  /** Admin username for debug footer visibility */
+  adminUsername?: string;
+}
+
+/**
+ * Normalize username by removing leading @ if present
+ */
+function normalizeUsername(username: string): string {
+  return username.startsWith('@') ? username.slice(1) : username;
+}
+
+/**
+ * Strip bot mention from message body
+ *
+ * This prevents the bot name (e.g., "@duyetbot") from interfering with
+ * query classification. For example, "@duyetbot Latest AI News?" should
+ * be classified as "research" not "duyet" since "duyet" in "@duyetbot"
+ * is just the bot mention, not a query about Duyet the person.
+ *
+ * Handles variations:
+ * - @duyetbot (standard)
+ * - @duyetbot[bot] (GitHub Apps format)
+ * - Multiple mentions
+ */
+function stripBotMention(body: string): string {
+  // Remove @duyetbot or @duyetbot[bot] mentions with optional trailing whitespace
+  return body.replace(/@duyetbot(\[bot\])?\s*/gi, '').trim();
 }
 
 /**
@@ -210,6 +247,11 @@ export interface CreateGitHubContextOptions {
  * @param options - Context creation options
  */
 export function createGitHubContext(options: CreateGitHubContextOptions): GitHubContext {
+  // Compute isAdmin from sender.login and adminUsername
+  const isAdmin =
+    options.adminUsername !== undefined &&
+    normalizeUsername(options.sender.login) === normalizeUsername(options.adminUsername);
+
   const ctx: GitHubContext = {
     githubToken: options.githubToken,
     owner: options.owner,
@@ -223,6 +265,7 @@ export function createGitHubContext(options: CreateGitHubContextOptions): GitHub
     isPullRequest: options.isPullRequest,
     state: options.state,
     labels: options.labels,
+    isAdmin,
   };
   // Only set optional properties if defined (exactOptionalPropertyTypes)
   if (options.commentId !== undefined) {
@@ -233,6 +276,9 @@ export function createGitHubContext(options: CreateGitHubContextOptions): GitHub
   }
   if (options.requestId !== undefined) {
     ctx.requestId = options.requestId;
+  }
+  if (options.adminUsername !== undefined) {
+    ctx.adminUsername = options.adminUsername;
   }
   return ctx;
 }

@@ -13,6 +13,57 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
+import { agentRegistry } from '../registry.js';
+
+// =============================================================================
+// Agent Self-Registration
+// =============================================================================
+
+/**
+ * Register LeadResearcherAgent with the agent registry.
+ * This agent handles research queries that require web search, documentation lookup,
+ * current events, news, and comparative analysis.
+ *
+ * Priority is 60 (higher than duyet at 50) to ensure "Latest AI News?" routes here
+ * instead of to duyet-info-agent. The key patterns focus on:
+ * - Current events and news keywords
+ * - Research and comparison phrases
+ * - Documentation and lookup requests
+ */
+agentRegistry.register({
+  name: 'lead-researcher-agent',
+  description:
+    'Performs web research, fetches news, current events, documentation lookup, and comparative analysis. Handles any query requiring up-to-date information from the internet.',
+  examples: [
+    'latest AI news',
+    "today's tech news",
+    'current events',
+    'compare React vs Vue',
+    'what happened today',
+    'latest news about OpenAI',
+    'research best practices for TypeScript',
+    'find documentation for Cloudflare Workers',
+  ],
+  triggers: {
+    // Patterns for news and current events - higher priority than duyet
+    patterns: [
+      /\b(latest|recent|current|today|breaking)\b.*(news|headlines?|events?|updates?|developments?)\b/i,
+      /\b(news|headlines?)\b.*(latest|today|current|recent)\b/i,
+      /\bai\s+news\b/i,
+      /\btech\s+news\b/i,
+      /\bwhat('s|s|\s+is)\s+(happening|new|going\s+on)\b/i,
+      /\b(research|find|look\s+up|search\s+for)\s+(information|docs?|documentation)\b/i,
+      /\bcompare\s+.+\s+(vs|versus|with|to|and)\s+/i,
+    ],
+    keywords: ['news', 'current events', 'latest', 'today', 'research', 'compare', 'versus'],
+    categories: ['research'],
+  },
+  capabilities: {
+    tools: ['web_search', 'docs_lookup', 'fetch_url'],
+    complexity: 'medium',
+  },
+  priority: 60, // Higher than duyet (50) to catch "latest news" queries
+});
 import {
   type EffortConfig,
   type EffortEstimate,

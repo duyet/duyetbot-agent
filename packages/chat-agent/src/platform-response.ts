@@ -45,6 +45,16 @@ export interface ResponseTarget {
    * Used to get parseMode and other platform settings.
    */
   platformConfig?: PlatformConfig;
+
+  // GitHub-specific fields (required when platform === 'github')
+  /** GitHub repository owner (for GitHub platform) */
+  githubOwner?: string;
+  /** GitHub repository name (for GitHub platform) */
+  githubRepo?: string;
+  /** GitHub issue/PR number (for GitHub platform) */
+  githubIssueNumber?: number;
+  /** GitHub token for API authentication (for GitHub platform) */
+  githubToken?: string;
 }
 
 /**
@@ -124,9 +134,8 @@ export async function sendPlatformResponse(
 
     await sendTelegramResponse(env, chatId, messageRef.messageId, finalText, botToken, parseMode);
   } else if (platform === 'github') {
-    // GitHub response delivery - not yet implemented
-    // Would need to use GitHub API to update PR comment or issue
-    logger.warn('[sendPlatformResponse] GitHub platform not yet implemented');
+    // GitHub response delivery - update comment via GitHub API
+    await sendGitHubResponse(env, target, text, debugContext);
   } else {
     logger.warn('[sendPlatformResponse] Unknown platform', { platform });
   }
@@ -200,4 +209,149 @@ async function sendTelegramResponse(
     messageId,
     textLength: truncatedText.length,
   });
+}
+
+/**
+ * Send response via GitHub API
+ *
+ * Updates an existing comment on an issue/PR.
+ * Similar to Telegram, but uses GitHub's REST API.
+ *
+ * @param env - Environment with tokens
+ * @param target - Response target with GitHub-specific fields
+ * @param text - Message text
+ * @param debugContext - Optional debug context for admin users
+ */
+async function sendGitHubResponse(
+  env: PlatformEnv,
+  target: ResponseTarget,
+  text: string,
+  debugContext?: DebugContext
+): Promise<void> {
+  const { githubOwner, githubRepo, githubToken, messageRef } = target;
+  const token = githubToken || env.GITHUB_TOKEN;
+
+  // Validate required fields
+  if (!token) {
+    logger.error('[sendGitHubResponse] No GitHub token available');
+    throw new Error('No GitHub token available');
+  }
+
+  if (!githubOwner || !githubRepo) {
+    logger.error('[sendGitHubResponse] Missing owner/repo', {
+      owner: githubOwner,
+      repo: githubRepo,
+    });
+    throw new Error('Missing GitHub owner/repo in responseTarget');
+  }
+
+  const commentId = messageRef?.messageId;
+  if (!commentId) {
+    logger.error('[sendGitHubResponse] No comment ID available');
+    throw new Error('No comment ID available for GitHub response');
+  }
+
+  // Format response text with debug footer for admin users
+  let finalText = text;
+  if (isAdminUser(target) && debugContext) {
+    // GitHub uses Markdown, format debug footer accordingly
+    const debugFooter = formatGitHubDebugFooter(debugContext);
+    if (debugFooter) {
+      finalText = text + debugFooter;
+      logger.debug('[sendGitHubResponse] Debug footer applied', {
+        username: target.username,
+        flowLength: debugContext.routingFlow.length,
+      });
+    }
+  }
+
+  // GitHub API: Update issue comment
+  // https://docs.github.com/en/rest/issues/comments#update-an-issue-comment
+  const url = `https://api.github.com/repos/${githubOwner}/${githubRepo}/issues/comments/${commentId}`;
+
+  logger.debug('[sendGitHubResponse] Updating comment', {
+    owner: githubOwner,
+    repo: githubRepo,
+    commentId,
+    textLength: finalText.length,
+  });
+
+  const response = await fetch(url, {
+    method: 'PATCH',
+    headers: {
+      Accept: 'application/vnd.github+json',
+      Authorization: `Bearer ${token}`,
+      'X-GitHub-Api-Version': '2022-11-28',
+      'Content-Type': 'application/json',
+      'User-Agent': 'duyetbot-agent',
+    },
+    body: JSON.stringify({
+      body: finalText,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logger.error('[sendGitHubResponse] GitHub API error', {
+      status: response.status,
+      error: errorText,
+      owner: githubOwner,
+      repo: githubRepo,
+      commentId,
+    });
+    throw new Error(`GitHub API error: ${response.status} - ${errorText}`);
+  }
+
+  logger.info('[sendGitHubResponse] Comment updated successfully', {
+    owner: githubOwner,
+    repo: githubRepo,
+    commentId,
+    textLength: finalText.length,
+  });
+}
+
+/**
+ * Format debug footer for GitHub (Markdown format)
+ *
+ * Uses <details> for collapsible debug info similar to Telegram's HTML format.
+ */
+function formatGitHubDebugFooter(debugContext: DebugContext): string {
+  const { routingFlow, classification, totalDurationMs } = debugContext;
+
+  // Build agent chain with tools
+  const agentChain = routingFlow
+    .map((step) => {
+      let entry = step.agent;
+      if (step.tools && step.tools.length > 0) {
+        entry += ` (${step.tools.join(', ')})`;
+      }
+      return entry;
+    })
+    .join(' → ');
+
+  // Build classification info
+  const classInfo = [
+    classification?.type && `type: ${classification.type}`,
+    classification?.category && `category: ${classification.category}`,
+    classification?.complexity && `complexity: ${classification.complexity}`,
+  ]
+    .filter(Boolean)
+    .join(', ');
+
+  // Format duration
+  const duration = totalDurationMs ? `${(totalDurationMs / 1000).toFixed(2)}s` : 'N/A';
+
+  // GitHub-flavored Markdown with collapsible details
+  return `
+
+<details>
+<summary>🔧 Debug Info</summary>
+
+| Property | Value |
+|----------|-------|
+| **Flow** | ${agentChain} |
+| **Classification** | ${classInfo || 'N/A'} |
+| **Duration** | ${duration} |
+
+</details>`;
 }
