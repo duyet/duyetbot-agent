@@ -23,10 +23,13 @@ const TELEGRAM_TOOLS: ToolDefinition[] = [
 
 /**
  * Get the system prompt for Telegram bot
+ *
  * @param customConfig - Optional configuration overrides
+ * @param customConfig.outputFormat - Use 'telegram-html' (default) or 'telegram-markdown'
  */
 export function getTelegramPrompt(customConfig?: Partial<PromptConfig>): string {
-  const parseMode = customConfig?.telegramParseMode ?? 'HTML';
+  // Default to telegram-html if no outputFormat specified
+  const outputFormat = customConfig?.outputFormat ?? 'telegram-html';
 
   return createPrompt(customConfig)
     .withIdentity()
@@ -58,10 +61,9 @@ Just give the summary directly, e.g.:
 "SSDs lose data when unpowered due to electron leakage in flash cells. Consumer SSDs may start losing data after 1-2 years without power. Enterprise SSDs handle this better but still degrade. For archival storage, HDDs or tape are more reliable."
 `
     )
-    .withTelegramParseMode(parseMode)
+    .withOutputFormat(outputFormat)
     .withGuidelines()
     .withHistoryContext()
-    .forTelegram()
     .build();
 }
 

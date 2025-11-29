@@ -22,11 +22,10 @@ const ORCHESTRATOR_CAPABILITIES = [
 /**
  * Get the system prompt for OrchestratorAgent
  *
- * Supports platform-neutral `outputFormat` (preferred) or legacy `platform` config.
+ * Uses platform-neutral `outputFormat` for format specification.
  *
  * @param config - Optional configuration overrides
- * @param config.outputFormat - Platform-neutral format: 'telegram-html', 'github-markdown', etc.
- * @param config.platform - Legacy platform config (use outputFormat instead)
+ * @param config.outputFormat - Format: 'telegram-html', 'telegram-markdown', 'github-markdown', 'plain'
  */
 export function getOrchestratorPrompt(config?: Partial<PromptConfig>): string {
   const builder = createPrompt(config)
@@ -63,15 +62,9 @@ When given a complex task:
 `
     );
 
-  // Prefer outputFormat (platform-neutral), fall back to platform config
+  // Apply output format if specified
   if (config?.outputFormat) {
     builder.withOutputFormat(config.outputFormat);
-  } else if (config?.platform === 'telegram') {
-    builder.withTelegramParseMode(config.telegramParseMode ?? 'HTML').forTelegram();
-  } else if (config?.platform === 'github') {
-    builder.forGitHub();
-  } else if (config?.platform) {
-    builder.forPlatform(config.platform);
   }
 
   return builder.withGuidelines().build();

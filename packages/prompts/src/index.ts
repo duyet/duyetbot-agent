@@ -31,7 +31,6 @@ export type {
   ToolDefinition,
   CustomSection,
   SectionRenderer,
-  TelegramParseMode,
   OutputFormat,
 } from './types.js';
 
@@ -147,7 +146,8 @@ import type { OutputFormat, Platform, PromptConfig } from './types.js';
  * at runtime.
  *
  * @param platform - Platform string ('telegram', 'github', etc.)
- * @param telegramParseMode - Parse mode for Telegram (default: 'HTML')
+ * @param options - Optional configuration
+ * @param options.markdown - Use markdown format for Telegram (default: false, uses HTML)
  * @returns OutputFormat for use with prompt functions
  *
  * @example
@@ -155,15 +155,18 @@ import type { OutputFormat, Platform, PromptConfig } from './types.js';
  * // In agent's execute() method:
  * const outputFormat = platformToOutputFormat(context.platform);
  * const systemPrompt = getDuyetInfoPrompt({ outputFormat });
+ *
+ * // For Telegram with MarkdownV2:
+ * const outputFormat = platformToOutputFormat('telegram', { markdown: true });
  * ```
  */
 export function platformToOutputFormat(
   platform?: string,
-  telegramParseMode: 'HTML' | 'MarkdownV2' = 'HTML'
+  options?: { markdown?: boolean }
 ): OutputFormat {
   switch (platform) {
     case 'telegram':
-      return telegramParseMode === 'MarkdownV2' ? 'telegram-markdown' : 'telegram-html';
+      return options?.markdown ? 'telegram-markdown' : 'telegram-html';
     case 'github':
       return 'github-markdown';
     default:

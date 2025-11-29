@@ -31,7 +31,6 @@ import type {
   OutputFormat,
   Platform,
   PromptConfig,
-  TelegramParseMode,
   ToolDefinition,
 } from './types.js';
 
@@ -44,7 +43,6 @@ interface BuilderConfig {
   platform: Platform | undefined;
   tools: ToolDefinition[];
   capabilities: string[];
-  telegramParseMode: TelegramParseMode;
   outputFormat: OutputFormat | undefined;
 }
 
@@ -63,7 +61,6 @@ export class PromptBuilder {
       platform: config.platform,
       tools: config.tools ?? [],
       capabilities: config.capabilities ?? [],
-      telegramParseMode: config.telegramParseMode ?? 'HTML',
       outputFormat: config.outputFormat,
     };
   }
@@ -134,18 +131,7 @@ export class PromptBuilder {
    * Formatting and communication style guidance
    */
   withGuidelines(): this {
-    this.sections.push(
-      guidelinesSection(this.builderConfig.platform, this.builderConfig.telegramParseMode)
-    );
-    return this;
-  }
-
-  /**
-   * Set Telegram parse mode for response formatting
-   * @param mode - 'HTML' (default) or 'MarkdownV2'
-   */
-  withTelegramParseMode(mode: TelegramParseMode): this {
-    this.builderConfig.telegramParseMode = mode;
+    this.sections.push(guidelinesSection(this.builderConfig.outputFormat));
     return this;
   }
 
@@ -168,15 +154,11 @@ export class PromptBuilder {
   withOutputFormat(format: OutputFormat): this {
     this.builderConfig.outputFormat = format;
 
-    // Map output format to platform-specific settings
+    // Map output format to platform for platform tag
     switch (format) {
       case 'telegram-html':
-        this.builderConfig.platform = 'telegram';
-        this.builderConfig.telegramParseMode = 'HTML';
-        break;
       case 'telegram-markdown':
         this.builderConfig.platform = 'telegram';
-        this.builderConfig.telegramParseMode = 'MarkdownV2';
         break;
       case 'github-markdown':
         this.builderConfig.platform = 'github';

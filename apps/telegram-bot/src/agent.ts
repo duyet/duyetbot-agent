@@ -53,7 +53,8 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // Dynamic system prompt based on TELEGRAM_PARSE_MODE env var
     systemPrompt: (env) =>
       getTelegramPrompt({
-        telegramParseMode: env.TELEGRAM_PARSE_MODE ?? 'HTML',
+        outputFormat:
+          env.TELEGRAM_PARSE_MODE === 'MarkdownV2' ? 'telegram-markdown' : 'telegram-html',
       }),
     welcomeMessage: getTelegramWelcomeMessage(),
     helpMessage: getTelegramHelpMessage(),
