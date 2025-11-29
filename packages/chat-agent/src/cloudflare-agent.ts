@@ -345,6 +345,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Initialize MCP server connections with timeout
+     * Uses the new addMcpServer() API (agents SDK v0.2.24+) which handles
+     * registration, connection, and discovery in one call
      */
     async initMcp(): Promise<void> {
       if (this._mcpInitialized || mcpServers.length === 0) {
@@ -357,23 +359,30 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       for (const server of mcpServers) {
         try {
           const authHeader = server.getAuthHeader?.(env as Record<string, unknown>);
-          const options: Record<string, unknown> = {};
-
-          if (authHeader) {
-            options.transport = {
-              headers: {
-                Authorization: authHeader,
-              },
-            };
-          }
+          const transportOptions = authHeader
+            ? {
+                headers: {
+                  Authorization: authHeader,
+                },
+              }
+            : undefined;
 
           logger.info(`[CloudflareAgent][MCP] Connecting to ${server.name} at ${server.url}`);
           logger.info(
             `[CloudflareAgent][MCP] Auth header present: ${!!authHeader}, length: ${authHeader?.length || 0}`
           );
 
+          // Use the new addMcpServer() API which combines registerServer() + connectToServer()
+          // This is the recommended approach for agents SDK v0.2.24+
+          const addPromise = this.addMcpServer(
+            server.name,
+            server.url,
+            '', // callbackHost - empty string for non-OAuth servers
+            '', // agentsPrefix - empty string uses default
+            transportOptions ? { transport: transportOptions } : undefined
+          );
+
           // Add timeout to prevent hanging connections
-          const connectPromise = this.mcp.connect(server.url, options);
           const timeoutPromise = new Promise<never>((_, reject) => {
             setTimeout(
               () => reject(new Error(`Connection timeout after ${CONNECTION_TIMEOUT}ms`)),
@@ -381,7 +390,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             );
           });
 
-          const result = await Promise.race([connectPromise, timeoutPromise]);
+          const result = await Promise.race([addPromise, timeoutPromise]);
           logger.info(`[CloudflareAgent][MCP] Connected to ${server.name}: ${result.id}`);
         } catch (error) {
           logger.error(`[CloudflareAgent][MCP] Failed to connect to ${server.name}: ${error}`);

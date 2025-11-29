@@ -166,6 +166,8 @@ export function createMCPWorker<TEnv extends BaseWorkerEnv>(
 
     /**
      * Initialize MCP connection and discover tools
+     * Uses the new addMcpServer() API (agents SDK v0.2.24+) which handles
+     * registration, connection, and discovery in one call
      */
     async initMcp(): Promise<void> {
       if (this._mcpInitialized) {
@@ -176,15 +178,13 @@ export function createMCPWorker<TEnv extends BaseWorkerEnv>(
 
       try {
         const authHeader = config.mcpServer.getAuthHeader?.(env as Record<string, unknown>);
-        const options: Record<string, unknown> = {};
-
-        if (authHeader) {
-          options.transport = {
-            headers: {
-              Authorization: authHeader,
-            },
-          };
-        }
+        const transportOptions = authHeader
+          ? {
+              headers: {
+                Authorization: authHeader,
+              },
+            }
+          : undefined;
 
         if (debug) {
           logger.info(`[${config.workerType}-worker] Connecting to MCP server`, {
@@ -193,8 +193,17 @@ export function createMCPWorker<TEnv extends BaseWorkerEnv>(
           });
         }
 
+        // Use the new addMcpServer() API which combines registerServer() + connectToServer()
+        // This is the recommended approach for agents SDK v0.2.24+
+        const addPromise = this.addMcpServer(
+          config.mcpServer.name,
+          config.mcpServer.url,
+          '', // callbackHost - empty string for non-OAuth servers
+          '', // agentsPrefix - empty string uses default
+          transportOptions ? { transport: transportOptions } : undefined
+        );
+
         // Add timeout to prevent hanging connections
-        const connectPromise = this.mcp.connect(config.mcpServer.url, options);
         const timeoutPromise = new Promise<never>((_, reject) => {
           setTimeout(
             () => reject(new Error(`MCP connection timeout after ${connectionTimeoutMs}ms`)),
@@ -202,10 +211,12 @@ export function createMCPWorker<TEnv extends BaseWorkerEnv>(
           );
         });
 
-        await Promise.race([connectPromise, timeoutPromise]);
+        const result = await Promise.race([addPromise, timeoutPromise]);
 
         if (debug) {
-          logger.info(`[${config.workerType}-worker] MCP connected successfully`);
+          logger.info(`[${config.workerType}-worker] MCP connected successfully`, {
+            id: result.id,
+          });
         }
 
         this._mcpInitialized = true;

@@ -178,7 +178,7 @@ export function createOpenRouterProvider(
   options: OpenRouterProviderOptions = {}
 ): LLMProvider {
   const {
-    defaultModel = 'x-ai/grok-4.1-fast',
+    defaultModel = 'x-ai/grok-4.1-fast:free',
     maxTokens = 1024,
     requestTimeout = 60000,
     enableWebSearch = false,
