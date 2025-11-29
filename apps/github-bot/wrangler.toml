@@ -14,6 +14,7 @@ ENVIRONMENT = "production"
 MODEL = "x-ai/grok-4.1-fast:free"
 AI_GATEWAY_NAME = "duyetbot"
 BOT_USERNAME = "duyetbot"
+GITHUB_ADMIN = "duyet"
 
 [observability]
 enabled = true

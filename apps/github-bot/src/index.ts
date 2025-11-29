@@ -139,6 +139,9 @@ app.post(
       if (requestId !== undefined) {
         contextOptions.requestId = requestId;
       }
+      if (env.GITHUB_ADMIN) {
+        contextOptions.adminUsername = env.GITHUB_ADMIN;
+      }
 
       const ctx = createGitHubContext(contextOptions);
 

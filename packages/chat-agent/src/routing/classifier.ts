@@ -3,10 +3,15 @@
  *
  * Uses LLM to classify incoming queries for routing decisions.
  * Determines query type, category, complexity, and whether human approval is needed.
+ *
+ * Now integrates with the Agent Registry for dynamic classification:
+ * - quickClassify() delegates to agentRegistry.quickClassify()
+ * - LLM prompt is built dynamically from agent registrations
  */
 
 import { logger } from '@duyetbot/hono-middleware';
 import { getRouterPrompt } from '@duyetbot/prompts';
+import { agentRegistry } from '../agents/registry.js';
 import { estimateEffortLevel } from '../config/effort-config.js';
 import type { LLMProvider } from '../types.js';
 import {
@@ -211,72 +216,84 @@ export function addEffortEstimation(
 
 /**
  * Quick classification for simple patterns (no LLM needed)
+ *
+ * Now uses the Agent Registry for pattern matching.
+ * Agents self-register their patterns, and this function delegates to the registry.
+ * This enables adding/removing agents without modifying the classifier.
  */
 export function quickClassify(query: string): QueryClassification | null {
-  const lower = query.toLowerCase().trim();
+  // Delegate to agent registry for pattern-based classification
+  const agentName = agentRegistry.quickClassify(query);
 
-  // Greetings - simple, general, low
-  if (/^(hi|hello|hey|good\s+(morning|afternoon|evening))[\s!.]*$/i.test(lower)) {
-    return {
-      type: 'simple',
-      category: 'general',
-      complexity: 'low',
-      requiresHumanApproval: false,
-      reasoning: 'Simple greeting',
-    };
+  if (!agentName) {
+    // No quick match - need LLM classification
+    return null;
   }
 
-  // Help commands - simple, general, low
-  if (/^(help|\/help|\?|what can you do)[\s?]*$/i.test(lower)) {
-    return {
-      type: 'simple',
-      category: 'general',
-      complexity: 'low',
-      requiresHumanApproval: false,
-      reasoning: 'Help request',
-    };
+  // Get agent definition for building classification
+  const agent = agentRegistry.get(agentName);
+
+  if (!agent) {
+    // Agent registered but not found (shouldn't happen)
+    return null;
   }
 
-  // Clear/reset commands - simple, admin, low, needs approval
-  if (/^(\/clear|clear|reset|start over)[\s!]*$/i.test(lower)) {
-    return {
-      type: 'simple',
-      category: 'admin',
-      complexity: 'low',
-      requiresHumanApproval: true,
-      reasoning: 'Destructive admin command',
-    };
+  // Map agent to classification
+  // This bridges the new registry pattern to existing classification schema
+  const category = agent.triggers?.categories?.[0] ?? 'general';
+
+  // Special handling for certain agent types
+  const isToolConfirmation =
+    agentName === 'hitl-agent' && /^(yes|no|approve|reject|confirm|cancel)[\s!.]*$/i.test(query);
+  const requiresApproval = agent.capabilities?.requiresApproval ?? false;
+
+  // Build classification from agent metadata
+  const classification: QueryClassification = {
+    type: isToolConfirmation ? 'tool_confirmation' : 'simple',
+    // Map category string to valid QueryCategory
+    category: mapToValidCategory(category),
+    complexity: agent.capabilities?.complexity ?? 'low',
+    requiresHumanApproval: requiresApproval,
+    reasoning: `Matched agent ${agentName} via pattern`,
+    suggestedTools: agent.capabilities?.tools,
+  };
+
+  logger.debug('[Classifier] Quick classification via registry', {
+    query: query.slice(0, 50),
+    agentName,
+    category: classification.category,
+    complexity: classification.complexity,
+  });
+
+  return classification;
+}
+
+/**
+ * Map category string to valid QueryCategory enum value
+ * Required because agent registry uses free-form strings but classifier needs enum
+ */
+function mapToValidCategory(
+  category: string
+): 'general' | 'code' | 'research' | 'github' | 'admin' | 'duyet' {
+  const validCategories = ['general', 'code', 'research', 'github', 'admin', 'duyet'] as const;
+
+  const lower = category.toLowerCase();
+
+  // Direct match
+  if (validCategories.includes(lower as (typeof validCategories)[number])) {
+    return lower as (typeof validCategories)[number];
   }
 
-  // Tool confirmation responses
-  if (/^(yes|no|approve|reject|confirm|cancel)[\s!.]*$/i.test(lower)) {
-    return {
-      type: 'tool_confirmation',
-      category: 'general',
-      complexity: 'low',
-      requiresHumanApproval: false,
-      reasoning: 'Tool confirmation response',
-    };
+  // Map common variations
+  if (lower === 'complex' || lower === 'orchestration') {
+    return 'general';
+  }
+  if (lower === 'confirmation' || lower === 'destructive') {
+    return 'admin';
   }
 
-  // Duyet-specific queries - blog, personal info, CV, etc.
-  if (
-    /\b(duyet|duyệt|blog\.duyet|who\s+(is|are)\s+duyet)\b/i.test(lower) ||
-    /\b(your?\s+)?(cv|resume|about\s+me|contact\s+info|bio|experience|skills?|education)\b/i.test(
-      lower
-    )
-  ) {
-    return {
-      type: 'simple',
-      category: 'duyet',
-      complexity: 'low',
-      requiresHumanApproval: false,
-      reasoning: 'Duyet personal/blog info query',
-    };
-  }
-
-  // No quick match - need LLM classification
-  return null;
+  // Default fallback
+  return 'general';
 }
 
 /**

@@ -2,11 +2,16 @@
  * Tests for DuyetInfoAgent
  *
  * Tests the tool filter, routing classification, and agent configuration.
- * Note: We can't directly import duyet-info-agent.ts due to cloudflare: protocol
- * dependencies, so we duplicate the tool filter function here for testing.
+ *
+ * IMPORTANT: Registration data must be imported BEFORE routing functions
+ * to populate the agent registry. We use the lightweight registrations.ts
+ * file instead of actual agent modules to avoid Cloudflare runtime dependencies.
  */
 
 import { describe, expect, it } from 'vitest';
+// Import registrations to populate agent registry (no Cloudflare dependencies)
+import '../agents/registrations.js';
+// Now import routing functions
 import { determineRouteTarget, quickClassify } from '../routing/classifier.js';
 
 /**

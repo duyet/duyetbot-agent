@@ -15,6 +15,53 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { agentRegistry } from './registry.js';
+
+// =============================================================================
+// Agent Self-Registration
+// =============================================================================
+
+/**
+ * Register OrchestratorAgent with the agent registry.
+ * Handles complex multi-step tasks requiring planning and coordination.
+ * Priority is medium (40) - specialized agents should be checked first.
+ */
+agentRegistry.register({
+  name: 'orchestrator-agent',
+  description:
+    'Handles complex multi-step tasks requiring planning, decomposition, and coordination of multiple workers. Use for tasks that need code analysis, research synthesis, GitHub operations, or any combination of specialized capabilities.',
+  examples: [
+    'refactor this module and create a PR',
+    'analyze this codebase and suggest improvements',
+    'research best practices and implement them',
+    'fix this bug across multiple files',
+    'create a comprehensive documentation',
+  ],
+  triggers: {
+    keywords: [
+      'refactor',
+      'analyze and',
+      'research and',
+      'create pr',
+      'pull request',
+      'comprehensive',
+      'across files',
+      'multiple',
+    ],
+    patterns: [
+      /\b(refactor|rewrite)\s+(this|the)\s+\w+/i,
+      /\banalyze\s+.*(and|then)\s+(fix|implement|create)/i,
+      /\b(create|open|submit)\s+(a\s+)?(pr|pull\s+request)\b/i,
+      /\bfix\s+.*(across|in\s+multiple)\s+files?\b/i,
+    ],
+    categories: ['code', 'github', 'complex'],
+  },
+  capabilities: {
+    tools: ['code_tools', 'github_api', 'web_search', 'planning'],
+    complexity: 'high',
+  },
+  priority: 40, // Medium priority - after specialized agents
+});
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import {
   type AggregationResult,

@@ -63,11 +63,11 @@
       "cache": false
     },
     "@duyetbot/telegram-bot#config": {
-      "dependsOn": ["@duyetbot/shared-agents#config"],
+      "dependsOn": ["@duyetbot/shared-agents#config", "@duyetbot/telegram-bot#deploy"],
       "cache": false
     },
     "@duyetbot/github-bot#config": {
-      "dependsOn": ["@duyetbot/shared-agents#config"],
+      "dependsOn": ["@duyetbot/shared-agents#config", "@duyetbot/github-bot#deploy"],
       "cache": false
     }
   }

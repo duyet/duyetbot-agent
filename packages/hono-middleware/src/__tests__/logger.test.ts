@@ -185,8 +185,8 @@ describe('createLogger', () => {
       const logCall = vi.mocked(console.log).mock.calls[0][0];
       const logData = JSON.parse(logCall);
 
-      // Duration should be at least 50ms
-      expect(logData.duration).toBeGreaterThanOrEqual(50);
+      // Duration should be at least ~50ms (allow margin for timer precision)
+      expect(logData.duration).toBeGreaterThanOrEqual(45);
       expect(logData.duration).toBeTypeOf('number');
     });
 

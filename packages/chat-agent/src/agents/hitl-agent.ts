@@ -14,6 +14,51 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { agentRegistry } from './registry.js';
+
+// =============================================================================
+// Agent Self-Registration
+// =============================================================================
+
+/**
+ * Register HITLAgent with the agent registry.
+ * Handles operations requiring human approval (destructive actions, sensitive commands).
+ * Priority is highest (100) - always check first for confirmation responses.
+ */
+agentRegistry.register({
+  name: 'hitl-agent',
+  description:
+    'Handles operations requiring human approval such as destructive actions, sensitive commands, and tool execution confirmations. Also processes user confirmation responses (yes/no/approve/reject).',
+  examples: [
+    'yes',
+    'no',
+    'approve',
+    'reject',
+    'confirm',
+    'cancel',
+    'delete this file',
+    'merge this PR',
+    'reset the database',
+  ],
+  triggers: {
+    patterns: [
+      // Confirmation responses - these must be checked first
+      /^(yes|no|y|n|approve|reject|confirm|cancel)[\s!.]*$/i,
+      /^(approve|reject)\s+(all|#?\d+)/i,
+      // Destructive action requests
+      /\b(delete|remove|drop|reset|destroy)\s+(this|the|all)\b/i,
+      /\bforce\s+(push|merge|delete)\b/i,
+    ],
+    keywords: ['approve', 'reject', 'confirm', 'cancel'],
+    categories: ['admin', 'destructive', 'confirmation'],
+  },
+  capabilities: {
+    tools: ['bash', 'git', 'file_operations'],
+    complexity: 'medium',
+    requiresApproval: true,
+  },
+  priority: 100, // Highest priority - always check first for confirmations
+});
 import { Agent, type Connection } from 'agents';
 import {
   type RiskLevel,

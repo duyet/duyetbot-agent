@@ -2,9 +2,16 @@
  * Routing Tests
  *
  * Tests for query classification and routing logic.
+ *
+ * IMPORTANT: Registration data must be imported BEFORE routing functions
+ * to populate the agent registry. We use the lightweight registrations.ts
+ * file instead of actual agent modules to avoid Cloudflare runtime dependencies.
  */
 
 import { describe, expect, it } from 'vitest';
+// Import registrations to populate agent registry (no Cloudflare dependencies)
+import '../agents/registrations.js';
+// Now import routing functions
 import { type QueryClassification, determineRouteTarget, quickClassify } from '../routing/index.js';
 
 describe('quickClassify', () => {
@@ -89,19 +96,24 @@ describe('quickClassify', () => {
   });
 
   describe('complex queries', () => {
-    it('returns null for complex queries requiring LLM', () => {
+    it('quick classifies PR review (matches research keyword)', () => {
+      // "review" is now matched by lead-researcher-agent patterns
       const result = quickClassify('Can you review this PR for security issues?');
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.category).toBe('research');
     });
 
-    it('returns null for code-related queries', () => {
+    it('returns null for code-related queries without patterns', () => {
+      // Write function doesn't match any quick patterns
       const result = quickClassify('Write a function to parse JSON');
       expect(result).toBeNull();
     });
 
-    it('returns null for research queries', () => {
+    it('quick classifies research queries (matches best practices pattern)', () => {
+      // "best practices" is now matched by lead-researcher-agent patterns
       const result = quickClassify('What are the best practices for React hooks?');
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.category).toBe('research');
     });
   });
 });

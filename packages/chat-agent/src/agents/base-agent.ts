@@ -81,6 +81,8 @@ export interface GitHubPlatformConfig extends CommonPlatformConfig {
   platform: 'github';
   /** Bot username for @mentions */
   botUsername?: string | undefined;
+  /** Admin username for debug footer visibility */
+  adminUsername?: string | undefined;
 }
 
 /**
