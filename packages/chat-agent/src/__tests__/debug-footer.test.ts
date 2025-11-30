@@ -106,7 +106,7 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('duyet-info-agent (error, 27.92s)');
+    expect(footer).toContain('duyet-info-agent (27.92s, error)');
   });
 
   it('formats classification inline between router and target', () => {
@@ -245,10 +245,10 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    // New format: router-agent (time) → [classification] → target (error, time)
+    // New format: router-agent (time) → [classification] → target (time, error)
     expect(footer).toContain('🔍 router-agent (0.12s)');
     expect(footer).toContain('[simple/duyet/low]');
-    expect(footer).toContain('duyet-info-agent (error, 27.92s)');
+    expect(footer).toContain('duyet-info-agent (27.92s, error)');
     expect(footer).toContain('⚠️ duyet-info-agent: MCP connection timeout');
   });
 
@@ -464,7 +464,7 @@ describe('formatDebugFooterMarkdown', () => {
     };
     const footer = formatDebugFooterMarkdown(ctx);
 
-    expect(footer).toContain('failing-agent (error, 27.92s)');
+    expect(footer).toContain('failing-agent (27.92s, error)');
   });
 
   it('handles complex scenario with workers and error', () => {
@@ -493,9 +493,9 @@ describe('formatDebugFooterMarkdown', () => {
     expect(footer).toContain('```');
     expect(footer).toContain('router-agent (0.12s)');
     expect(footer).toContain('[complex/research/high]');
-    expect(footer).toContain('orchestrator-agent (error, 27.92s)');
+    expect(footer).toContain('orchestrator-agent (27.92s, error)');
     expect(footer).toContain('├─ research-worker (2.50s)');
-    expect(footer).toContain('└─ code-worker (error, 1.20s)');
+    expect(footer).toContain('└─ code-worker (1.20s, error)');
     expect(footer).toContain('⚠️ code-worker: MCP connection timeout');
   });
 });

@@ -125,6 +125,25 @@ interface OpenRouterChatResponse {
     };
   }>;
   provider?: string;
+  /** Token usage statistics (OpenAI-compatible format) */
+  usage?: {
+    /** Number of tokens in the prompt */
+    prompt_tokens: number;
+    /** Number of tokens in the completion */
+    completion_tokens: number;
+    /** Total tokens (prompt + completion) */
+    total_tokens?: number;
+    /** Extended prompt token details (model-specific) */
+    prompt_tokens_details?: {
+      /** Cached tokens from prompt cache (Claude, GPT-4 Turbo) */
+      cached_tokens?: number;
+    };
+    /** Extended completion token details (model-specific) */
+    completion_tokens_details?: {
+      /** Reasoning tokens for o1/o3 models */
+      reasoning_tokens?: number;
+    };
+  };
   error?: {
     message: string;
     type?: string;
@@ -325,11 +344,36 @@ export function createOpenRouterProvider(
             hasContent: !!choice?.content,
             toolCallCount: toolCalls?.length || 0,
             citationCount: citations?.length || 0,
+            usage: data.usage
+              ? {
+                  input: data.usage.prompt_tokens,
+                  output: data.usage.completion_tokens,
+                  cached: data.usage.prompt_tokens_details?.cached_tokens,
+                  reasoning: data.usage.completion_tokens_details?.reasoning_tokens,
+                }
+              : undefined,
           });
 
           return {
             content: choice?.content || '',
             ...(toolCalls?.length && { toolCalls }),
+            // Extract token usage from OpenAI-compatible response format
+            ...(data.usage && {
+              usage: {
+                inputTokens: data.usage.prompt_tokens,
+                outputTokens: data.usage.completion_tokens,
+                totalTokens:
+                  data.usage.total_tokens ??
+                  data.usage.prompt_tokens + data.usage.completion_tokens,
+                // Extended fields (model-specific)
+                ...(data.usage.prompt_tokens_details?.cached_tokens && {
+                  cachedTokens: data.usage.prompt_tokens_details.cached_tokens,
+                }),
+                ...(data.usage.completion_tokens_details?.reasoning_tokens && {
+                  reasoningTokens: data.usage.completion_tokens_details.reasoning_tokens,
+                }),
+              },
+            }),
           };
         } finally {
           clearTimeout(timeoutId);

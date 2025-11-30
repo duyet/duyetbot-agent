@@ -13,7 +13,13 @@
  * - Progressive: Shows (running) for active agents/workers
  */
 
-import type { DebugContext, DebugMetadata, ExecutionStatus, WorkerDebugInfo } from './types.js';
+import type {
+  DebugContext,
+  DebugMetadata,
+  ExecutionStatus,
+  TokenUsage,
+  WorkerDebugInfo,
+} from './types.js';
 
 /**
  * Escape HTML entities in text for safe inclusion in HTML messages
@@ -39,18 +45,85 @@ export function escapeMarkdownV2(text: string): string {
 }
 
 /**
- * Format agent/worker with timing or status
- * Examples: "simple-agent (3.77s)", "router-agent (running)", "code-worker (error)"
+ * Format a number with k suffix for thousands
+ * Examples: 500 → "500", 1200 → "1.2k", 15000 → "15k"
  */
-function formatAgentTiming(name: string, durationMs?: number, status?: ExecutionStatus): string {
+function formatNumber(n: number): string {
+  if (n >= 1000) {
+    const k = n / 1000;
+    // Use 1 decimal for values < 10k, no decimal for larger
+    return k >= 10 ? `${Math.round(k)}k` : `${k.toFixed(1)}k`;
+  }
+  return String(n);
+}
+
+/**
+ * Format token usage as compact string
+ * Examples: "500↓/100↑", "1.2k↓/0.5k↑/0.3k⚡", "5k↓/2k↑/1k⚡/3k🧠"
+ *
+ * Symbols:
+ * - ↓ = input tokens (prompt)
+ * - ↑ = output tokens (completion)
+ * - ⚡ = cached tokens (prompt cache hits)
+ * - 🧠 = reasoning tokens (o1/o3 internal reasoning)
+ */
+function formatTokenUsage(usage?: TokenUsage): string {
+  if (!usage || usage.totalTokens === 0) {
+    return '';
+  }
+
+  let result = `${formatNumber(usage.inputTokens)}↓/${formatNumber(usage.outputTokens)}↑`;
+
+  if (usage.cachedTokens && usage.cachedTokens > 0) {
+    result += `/${formatNumber(usage.cachedTokens)}⚡`;
+  }
+  if (usage.reasoningTokens && usage.reasoningTokens > 0) {
+    result += `/${formatNumber(usage.reasoningTokens)}🧠`;
+  }
+
+  return result;
+}
+
+/**
+ * Format agent/worker with timing, tokens, and status
+ * Examples:
+ * - "simple-agent (3.77s)" - timing only
+ * - "router-agent (0.4s, 500↓/100↑)" - timing with tokens
+ * - "router-agent (running)" - status only
+ * - "code-worker (error, 1.2s)" - error with timing
+ */
+function formatAgentTiming(
+  name: string,
+  durationMs?: number,
+  status?: ExecutionStatus,
+  tokenUsage?: TokenUsage
+): string {
   if (status === 'running') {
     return `${name} (running)`;
   }
-  if (status === 'error') {
-    return durationMs ? `${name} (error, ${formatDuration(durationMs)})` : `${name} (error)`;
-  }
+
+  const parts: string[] = [];
+
+  // Add timing
   if (durationMs) {
-    return `${name} (${formatDuration(durationMs)})`;
+    parts.push(formatDuration(durationMs));
+  }
+
+  // Add token usage (only for completed or undefined status, not during running)
+  if (tokenUsage) {
+    const tokens = formatTokenUsage(tokenUsage);
+    if (tokens) {
+      parts.push(tokens);
+    }
+  }
+
+  // Add error status
+  if (status === 'error') {
+    parts.push('error');
+  }
+
+  if (parts.length > 0) {
+    return `${name} (${parts.join(', ')})`;
   }
   return name;
 }
@@ -75,8 +148,8 @@ function formatClassification(classification?: DebugContext['classification']): 
 /**
  * Format workers as nested list with tree characters
  * Example:
- *    ├─ research-worker (2.5s)
- *    └─ code-worker (1.2s)
+ *    ├─ research-worker (2.5s, 1.5k↓/0.3k↑)
+ *    └─ code-worker (1.2s, 0.8k↓/0.2k↑)
  */
 function formatWorkers(workers?: WorkerDebugInfo[]): string {
   if (!workers?.length) {
@@ -87,7 +160,12 @@ function formatWorkers(workers?: WorkerDebugInfo[]): string {
     .map((worker, index, arr) => {
       const isLast = index === arr.length - 1;
       const prefix = isLast ? '└─' : '├─';
-      const timing = formatAgentTiming(worker.name, worker.durationMs, worker.status);
+      const timing = formatAgentTiming(
+        worker.name,
+        worker.durationMs,
+        worker.status,
+        worker.tokenUsage
+      );
       return `\n   ${prefix} ${timing}`;
     })
     .join('');
@@ -95,10 +173,10 @@ function formatWorkers(workers?: WorkerDebugInfo[]): string {
 
 /**
  * Format routing flow in new format:
- * router-agent (0.4s) → [classification] → target-agent (3.77s)
+ * router-agent (0.4s, 500↓/100↑) → [classification] → target-agent (3.77s, 1.2k↓/0.5k↑)
  *
  * New format places classification between router and target agent
- * for clearer flow visualization.
+ * for clearer flow visualization. Token usage is shown per-step.
  */
 function formatRoutingFlow(debugContext: DebugContext): string {
   const { routingFlow, routerDurationMs, classification } = debugContext;
@@ -107,20 +185,30 @@ function formatRoutingFlow(debugContext: DebugContext): string {
   const routerStep = routingFlow.find((s) => s.agent === 'router' || s.agent === 'router-agent');
   const targetStep = routingFlow.find((s) => s.agent !== 'router' && s.agent !== 'router-agent');
 
-  // Build router part with timing
+  // Build router part with timing and tokens
   const routerDuration = routerDurationMs ?? routerStep?.durationMs;
-  const routerPart = formatAgentTiming('router-agent', routerDuration, routerStep?.status);
+  const routerPart = formatAgentTiming(
+    'router-agent',
+    routerDuration,
+    routerStep?.status,
+    routerStep?.tokenUsage
+  );
 
   // Build classification part (inline between router and target)
   const classificationPart = formatClassification(classification);
 
-  // Build target agent part with timing and status
+  // Build target agent part with timing, tokens, and status
   let targetPart = '';
   if (targetStep) {
-    targetPart = formatAgentTiming(targetStep.agent, targetStep.durationMs, targetStep.status);
+    targetPart = formatAgentTiming(
+      targetStep.agent,
+      targetStep.durationMs,
+      targetStep.status,
+      targetStep.tokenUsage
+    );
   }
 
-  // Combine: router (time) → [classification] → target (time)
+  // Combine: router (time, tokens) → [classification] → target (time, tokens)
   const parts = [routerPart];
   if (classificationPart) {
     parts.push(classificationPart);
@@ -180,7 +268,7 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
 }
 
 /**
- * Format workers for MarkdownV2 with escaped tree characters
+ * Format workers for MarkdownV2 with escaped tree characters and token usage
  */
 function formatWorkersMarkdownV2(workers?: WorkerDebugInfo[]): string {
   if (!workers?.length) {
@@ -191,7 +279,12 @@ function formatWorkersMarkdownV2(workers?: WorkerDebugInfo[]): string {
     .map((worker, index, arr) => {
       const isLast = index === arr.length - 1;
       const prefix = isLast ? '└─' : '├─';
-      const timing = formatAgentTiming(worker.name, worker.durationMs, worker.status);
+      const timing = formatAgentTiming(
+        worker.name,
+        worker.durationMs,
+        worker.status,
+        worker.tokenUsage
+      );
       return `\n   ${prefix} ${escapeMarkdownV2(timing)}`;
     })
     .join('');
