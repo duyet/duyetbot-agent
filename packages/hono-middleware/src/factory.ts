@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { bodyLimit } from 'hono/body-limit';
+import { secureHeaders } from 'hono/secure-headers';
 import { errorHandler } from './middleware/error-handler.js';
 import { createLogger } from './middleware/logger.js';
 import { createRateLimiter } from './middleware/rate-limit.js';
@@ -42,6 +44,34 @@ export function createBaseApp<TEnv extends object = object>(
       await next();
     });
   }
+
+  // Security headers - protect against clickjacking, XSS, MIME sniffing
+  app.use(
+    '*',
+    secureHeaders({
+      xFrameOptions: 'DENY',
+      xContentTypeOptions: 'nosniff',
+      strictTransportSecurity: 'max-age=31536000; includeSubDomains',
+      xXssProtection: '1; mode=block',
+      referrerPolicy: 'strict-origin-when-cross-origin',
+    })
+  );
+
+  // Body size limit - prevent JSON bomb attacks and memory exhaustion
+  app.use(
+    '*',
+    bodyLimit({
+      maxSize: 1024 * 1024, // 1MB
+      onError: (c) =>
+        c.json(
+          {
+            error: 'Payload too large',
+            message: 'Request body exceeds 1MB limit',
+          },
+          413
+        ),
+    })
+  );
 
   // Error handler
   app.onError(errorHandler);

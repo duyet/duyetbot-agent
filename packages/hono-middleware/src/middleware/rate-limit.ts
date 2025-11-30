@@ -6,7 +6,25 @@ interface RateLimitEntry {
   resetAt: number;
 }
 
-// In-memory store for rate limiting
+/**
+ * In-memory rate limiting store
+ *
+ * ⚠️ LIMITATIONS:
+ * - Resets on Worker restart
+ * - Not shared across multiple Worker instances
+ * - No persistence
+ * - Can be bypassed by connecting to different instances
+ *
+ * For production use with high availability, consider:
+ * - Cloudflare Durable Objects for distributed state
+ * - Cloudflare KV for persistence
+ * - Per-session rate limiting in Durable Objects
+ *
+ * This implementation is suitable for:
+ * - Low-traffic applications
+ * - Single-instance deployments
+ * - Development/testing environments
+ */
 const store = new Map<string, RateLimitEntry>();
 
 /**

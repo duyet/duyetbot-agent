@@ -36,7 +36,7 @@
   "dependencies": {
     "@cloudflare/workers-oauth-provider": "^0.1.0",
     "@duyetbot/hono-middleware": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.23.0",
     "agents": "catalog:",
     "hono": "catalog:",
     "zod": "^3.23.8",

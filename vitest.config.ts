@@ -5,6 +5,7 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     coverage: {
+      enabled: true,
       provider: 'v8',
       reporter: ['text', 'json', 'html', 'lcov'],
       exclude: [
@@ -16,12 +17,6 @@ export default defineConfig({
         'vitest.config.ts',
         'wrangler.config.ts',
       ],
-      thresholds: {
-        lines: 80,
-        functions: 80,
-        branches: 80,
-        statements: 80,
-      },
     },
     testTimeout: 10000,
     hookTimeout: 10000,

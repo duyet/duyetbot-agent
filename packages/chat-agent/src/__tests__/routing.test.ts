@@ -2,9 +2,16 @@
  * Routing Tests
  *
  * Tests for query classification and routing logic.
+ *
+ * IMPORTANT: Registration data must be imported BEFORE routing functions
+ * to populate the agent registry. We use the lightweight registrations.ts
+ * file instead of actual agent modules to avoid Cloudflare runtime dependencies.
  */
 
 import { describe, expect, it } from 'vitest';
+// Import registrations to populate agent registry (no Cloudflare dependencies)
+import '../agents/registrations.js';
+// Now import routing functions
 import { type QueryClassification, determineRouteTarget, quickClassify } from '../routing/index.js';
 
 describe('quickClassify', () => {
@@ -89,19 +96,24 @@ describe('quickClassify', () => {
   });
 
   describe('complex queries', () => {
-    it('returns null for complex queries requiring LLM', () => {
+    it('quick classifies PR review (matches research keyword)', () => {
+      // "review" is now matched by lead-researcher-agent patterns
       const result = quickClassify('Can you review this PR for security issues?');
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.category).toBe('research');
     });
 
-    it('returns null for code-related queries', () => {
+    it('returns null for code-related queries without patterns', () => {
+      // Write function doesn't match any quick patterns
       const result = quickClassify('Write a function to parse JSON');
       expect(result).toBeNull();
     });
 
-    it('returns null for research queries', () => {
+    it('quick classifies research queries (matches best practices pattern)', () => {
+      // "best practices" is now matched by lead-researcher-agent patterns
       const result = quickClassify('What are the best practices for React hooks?');
-      expect(result).toBeNull();
+      expect(result).not.toBeNull();
+      expect(result?.category).toBe('research');
     });
   });
 });
@@ -151,7 +163,7 @@ describe('determineRouteTarget', () => {
     expect(determineRouteTarget(classification)).toBe('simple-agent');
   });
 
-  it('routes code queries to code-worker', () => {
+  it('routes code queries to orchestrator-agent (which dispatches to CodeWorker)', () => {
     const classification: QueryClassification = {
       type: 'complex',
       category: 'code',
@@ -159,10 +171,11 @@ describe('determineRouteTarget', () => {
       requiresHumanApproval: false,
       reasoning: 'Code analysis task',
     };
-    expect(determineRouteTarget(classification)).toBe('code-worker');
+    // Workers are dispatched by OrchestratorAgent, not directly by Router
+    expect(determineRouteTarget(classification)).toBe('orchestrator-agent');
   });
 
-  it('routes research queries to research-worker', () => {
+  it('routes medium complexity research queries to lead-researcher-agent', () => {
     const classification: QueryClassification = {
       type: 'complex',
       category: 'research',
@@ -170,10 +183,23 @@ describe('determineRouteTarget', () => {
       requiresHumanApproval: false,
       reasoning: 'Research task',
     };
-    expect(determineRouteTarget(classification)).toBe('research-worker');
+    // Medium/high complexity research now goes to lead-researcher-agent (multi-agent research system)
+    expect(determineRouteTarget(classification)).toBe('lead-researcher-agent');
   });
 
-  it('routes github queries to github-worker', () => {
+  it('routes low complexity research queries to orchestrator-agent (which dispatches to ResearchWorker)', () => {
+    const classification: QueryClassification = {
+      type: 'complex', // Must be complex to reach category routing (simple+low goes to simple-agent)
+      category: 'research',
+      complexity: 'low',
+      requiresHumanApproval: false,
+      reasoning: 'Simple research task',
+    };
+    // Workers are dispatched by OrchestratorAgent, not directly by Router
+    expect(determineRouteTarget(classification)).toBe('orchestrator-agent');
+  });
+
+  it('routes github queries to orchestrator-agent (which dispatches to GitHubWorker)', () => {
     const classification: QueryClassification = {
       type: 'complex',
       category: 'github',
@@ -181,7 +207,8 @@ describe('determineRouteTarget', () => {
       requiresHumanApproval: false,
       reasoning: 'GitHub operation',
     };
-    expect(determineRouteTarget(classification)).toBe('github-worker');
+    // Workers are dispatched by OrchestratorAgent, not directly by Router
+    expect(determineRouteTarget(classification)).toBe('orchestrator-agent');
   });
 
   it('routes general medium complexity to simple-agent', () => {

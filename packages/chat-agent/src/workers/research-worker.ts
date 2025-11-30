@@ -8,6 +8,8 @@
  * - Technical research and comparison
  */
 
+import { getResearchWorkerPrompt } from '@duyetbot/prompts';
+import type { AgentContext } from '../agents/base-agent.js';
 import type { PlanStep } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
 import { type BaseWorkerEnv, type WorkerClass, createBaseWorker } from './base-worker.js';
@@ -37,8 +39,8 @@ export interface ResearchWorkerEnv extends BaseWorkerEnv {
  * Configuration for research worker
  */
 export interface ResearchWorkerConfig<TEnv extends ResearchWorkerEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create LLM provider from env, optionally with context for credentials */
+  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** Enable web search integration */
   enableWebSearch?: boolean;
   /** Enable detailed logging */
@@ -47,31 +49,9 @@ export interface ResearchWorkerConfig<TEnv extends ResearchWorkerEnv> {
 
 /**
  * System prompt for research worker
+ * Imported from centralized @duyetbot/prompts package
  */
-const RESEARCH_WORKER_SYSTEM_PROMPT = `You are an expert research assistant specializing in technical information gathering and synthesis.
-
-## Your Capabilities
-- Information Search: Find relevant information from various sources
-- Documentation Lookup: Locate and extract key documentation details
-- Content Summarization: Condense long content into key points
-- Technical Comparison: Compare technologies, approaches, or solutions
-- Concept Explanation: Explain complex topics in accessible terms
-- Trend Analysis: Analyze patterns and trends in technical domains
-
-## Output Guidelines
-- Cite sources when possible
-- Distinguish between facts and opinions
-- Provide balanced perspectives on comparisons
-- Highlight key findings prominently
-- Include relevant code examples when applicable
-- Note any limitations or caveats in findings
-
-## Response Format
-- Use clear headings and sections
-- Bullet points for key findings
-- Tables for comparisons
-- Code blocks for technical examples
-- Include a summary/TL;DR for longer responses`;
+const RESEARCH_WORKER_SYSTEM_PROMPT = getResearchWorkerPrompt();
 
 /**
  * Detect the research task type from the task description

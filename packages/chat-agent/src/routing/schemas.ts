@@ -26,6 +26,7 @@ export const QueryCategory = z.enum([
   'research', // Web search, documentation lookup
   'github', // GitHub operations (PRs, issues, comments)
   'admin', // Administrative tasks (settings, config)
+  'duyet', // Duyet's blog and personal info queries
 ]);
 export type QueryCategory = z.infer<typeof QueryCategory>;
 
@@ -38,6 +39,22 @@ export const ComplexityLevel = z.enum([
   'high', // Many steps, parallel execution needed
 ]);
 export type ComplexityLevel = z.infer<typeof ComplexityLevel>;
+
+/**
+ * Effort estimation for resource allocation
+ * Based on Anthropic's multi-agent research system patterns
+ */
+export const EffortEstimateSchema = z.object({
+  /** Recommended effort level */
+  level: z.enum(['minimal', 'standard', 'thorough', 'exhaustive']),
+  /** Recommended number of subagents (1-10) */
+  recommendedSubagents: z.number().min(1).max(10),
+  /** Maximum tool calls across all subagents (3-100) */
+  maxToolCalls: z.number().min(3).max(100),
+  /** Expected duration category */
+  expectedDuration: z.enum(['fast', 'medium', 'long']),
+});
+export type EffortEstimate = z.infer<typeof EffortEstimateSchema>;
 
 /**
  * Full query classification schema
@@ -59,19 +76,26 @@ export const QueryClassificationSchema = z.object({
   suggestedTools: z.array(z.string()).optional(),
   /** Estimated token cost (rough) */
   estimatedTokens: z.number().optional(),
+  /** Effort estimation for multi-agent research */
+  effortEstimate: EffortEstimateSchema.optional(),
 });
 export type QueryClassification = z.infer<typeof QueryClassificationSchema>;
 
 /**
  * Route target types
+ *
+ * IMPORTANT: Router only dispatches to AGENTS, never directly to workers.
+ * Workers (CodeWorker, ResearchWorker, GitHubWorker) are dispatched by
+ * OrchestratorAgent as part of its ExecutionPlan.
+ *
+ * @see https://developers.cloudflare.com/agents/patterns/
  */
 export const RouteTarget = z.enum([
   'simple-agent', // Direct LLM response
-  'orchestrator-agent', // Complex task orchestration
+  'orchestrator-agent', // Complex task orchestration (dispatches workers internally)
+  'lead-researcher-agent', // Multi-agent research orchestration
   'hitl-agent', // Human-in-the-loop workflow
-  'code-worker', // Code-specific tasks
-  'research-worker', // Research tasks
-  'github-worker', // GitHub operations
+  'duyet-info-agent', // Duyet's blog and personal info
 ]);
 export type RouteTarget = z.infer<typeof RouteTarget>;
 

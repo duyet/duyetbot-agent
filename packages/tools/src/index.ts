@@ -4,9 +4,10 @@
  * Built-in tools for agent operations:
  * - bash: Execute shell commands
  * - git: Git operations
- * - research: Web research
+ * - research: Web research (DuckDuckGo)
  * - plan: Task planning
  * - sleep: Delay execution
+ * - scratchpad: Temporary note storage
  */
 
 import type { Tool } from '@duyetbot/types';

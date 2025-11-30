@@ -5,7 +5,11 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "test": "vitest run --passWithNoTests",
+    "config": "bun ../../scripts/config.ts telegram",
+    "test": "bun run test:unit",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:e2e": "vitest run -c vitest.config.e2e.ts",
+    "test:all": "bun run test:unit && bun run test:e2e",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
@@ -18,6 +22,7 @@
     "hono": "catalog:"
   },
   "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.11",
     "@cloudflare/workers-types": "^4.20241127.0",
     "typescript": "catalog:",
     "vitest": "catalog:",

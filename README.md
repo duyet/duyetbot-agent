@@ -1,114 +1,100 @@
 # duyetbot-agent
 
-Autonomous AI agent system with persistent memory and multi-interface access.
+Personal AI agent with multi-platform routing, persistent memory, and edge deployment.
 
-[![Tests](https://img.shields.io/badge/tests-746%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/tests-1231%2B%20passing-brightgreen)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 [![Docs](https://img.shields.io/badge/docs-GitHub%20Pages-blue)](https://duyet.github.io/duyetbot-agent)
 
 ## Overview
 
-Personal AI assistant that maintains context across CLI, GitHub, and Telegram. Built on Claude Agent SDK with Cloudflare edge deployment.
+AI assistant with intelligent routing and specialized handlers across GitHub, Telegram, and CLI. Built with Cloudflare Durable Objects and Claude Agent SDK.
 
-**Key Features:**
-- Persistent memory across all interfaces
-- Multi-LLM support (Claude, OpenAI, OpenRouter)
-- GitHub bot for PR reviews and issue management
-- CLI tool for local development
-- Edge deployment on Cloudflare Workers
+**Features:**
+- 🎯 **Smart Routing**: Hybrid classifier (pattern + LLM) for query routing
+- 🔄 **Multi-Agent System**: 8 specialized agents (Router, Simple, HITL, Orchestrator, 3 Workers, DuyetInfo)
+- 💾 **Persistent Memory**: Cross-session context via MCP + D1/KV
+- 🚀 **Edge Deployment**: Cloudflare Workers + Durable Objects
+- 🔧 **Multi-LLM**: Claude, OpenRouter, AI Gateway support
+- 📦 **Monorepo**: Bun + TypeScript + Vitest (746+ tests)
 
 ## Architecture
 
-The system implements all five [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
-
-| Pattern | Implementation | Status |
-|---------|---------------|--------|
-| Prompt Chaining | `CloudflareChatAgent.chat()` | ✅ Deployed |
-| Routing | `RouterAgent` + `classifier.ts` | ✅ Deployed |
-| Parallelization | `executor.ts` parallel steps | ✅ Deployed |
-| Orchestrator-Workers | `OrchestratorAgent` + Workers | ✅ Deployed |
-| Evaluator-Optimizer | `aggregator.ts` synthesis | ✅ Deployed |
-
-### Query Flow
-
 ```
-User Message → Platform Webhook (Telegram/GitHub)
-                        │
-                        ▼
-            CloudflareChatAgent.handle()
-                        │
-              shouldRoute(userId)?
-                        │
-           ┌────────────┴────────────┐
-           ▼                         ▼
-    NO: Direct chat()         YES: routeQuery()
-    (LLM + Tools)                    │
-           │                         ▼
-           │               RouterAgent.route()
-           │                         │
-           │               hybridClassify()
-           │                         │
-           │         ┌───────────────┼───────────────┐
-           │         ▼               ▼               ▼
-           │   SimpleAgent    OrchestratorAgent  HITLAgent
-           │   (quick Q&A)    (task decompose)   (approval)
-           │         │               │               │
-           │         │     ┌─────────┼─────────┐     │
-           │         │     ▼         ▼         ▼     │
-           │         │  CodeWrkr  RsrchWrkr  GitHubWrkr
-           │         │  (review)  (search)   (PRs)   │
-           │         │               │               │
-           └─────────┴───────────────┴───────────────┘
-                                     │
-                                     ▼
-                            Response to User
+User → Telegram/GitHub → Transport → RouterAgent
+                                          │
+                        ┌─────────────────┼─────────────────┐
+                        ▼                 ▼                 ▼
+                  SimpleAgent      OrchestratorAgent    HITLAgent
+                  (quick Q&A)      (task decomp)       (approval)
+                                          │
+                        ┌─────────────────┼─────────────────┐
+                        ▼                 ▼                 ▼
+                  CodeWorker        ResearchWorker    GitHubWorker
 ```
 
-### Durable Objects (per bot)
+**8 Durable Objects** (deployed via `shared-agents`):
+1. **RouterAgent**: Hybrid classifier (pattern + LLM)
+2. **SimpleAgent**: Direct responses
+3. **HITLAgent**: Human-in-the-loop approvals
+4. **OrchestratorAgent**: Task decomposition + parallel execution
+5. **CodeWorker**: Code review/analysis
+6. **ResearchWorker**: Web search
+7. **GitHubWorker**: PR/issue operations
+8. **DuyetInfoAgent**: Personal blog queries
 
-| DO | Purpose | State |
-|----|---------|-------|
-| `TelegramAgent`/`GitHubAgent` | Main entry, transport | Messages, metadata |
-| `RouterAgent` | Query classification | Routing history |
-| `SimpleAgent` | Quick responses | Conversation |
-| `HITLAgent` | Tool confirmations | Pending approvals |
-| `OrchestratorAgent` | Task planning | Execution plans |
-| `CodeWorker` | Code analysis | Stateless |
-| `ResearchWorker` | Web research | Stateless |
-| `GitHubWorker` | GitHub ops | Stateless |
+**Cloudflare Patterns**: ✅ Routing ✅ Parallelization ✅ Orchestrator-Workers ✅ HITL ✅ Prompt Chaining
 
-See [docs/architecture.md](./docs/architecture.md) for detailed documentation.
+See [docs/architecture.md](./docs/architecture.md) for details.
 
 ## Quick Start
 
 ```bash
-# Clone and install
+# Install
 git clone https://github.com/duyet/duyetbot-agent.git
 cd duyetbot-agent
-pnpm install
+bun install
 
-# Build and test
-pnpm run build
-pnpm test
+# Develop
+bun run dev      # Watch mode for all packages
+bun run build    # Build all
+bun run test     # Run 1231+ tests
+bun run check    # Lint + typecheck
 
-# Start development
-pnpm run dev
+# Deploy
+bun run deploy                # All bots
+bun run deploy:telegram       # Telegram only
+bun run deploy:github         # GitHub only
+bun run deploy:shared-agents  # Shared DOs
+```
+
+## Project Structure
+
+```
+packages/
+├── chat-agent     # Multi-agent routing system (2400+ LOC, 277 tests)
+├── core           # SDK adapter for agent-server
+├── tools          # Built-in tools (bash, git, github)
+├── providers      # LLM providers (Claude, OpenRouter)
+├── prompts        # System prompts (TypeScript)
+├── types          # Shared types
+└── hono-middleware # Shared Hono utilities
+
+apps/
+├── telegram-bot    # Telegram interface + TelegramAgent DO
+├── github-bot      # GitHub webhook + GitHubAgent DO
+├── shared-agents   # 8 shared DOs (Router, Simple, HITL, etc.)
+├── memory-mcp      # Memory persistence (D1 + KV)
+└── agent-server    # Heavy compute (future: Claude Agent SDK)
 ```
 
 ## Documentation
 
-Full documentation available at **[duyet.github.io/duyetbot-agent](https://duyet.github.io/duyetbot-agent)**
-
-- [Getting Started](https://duyet.github.io/duyetbot-agent/GETTING_STARTED) - Installation and configuration
-- [Use Cases](https://duyet.github.io/duyetbot-agent/USECASES) - What you can do with @duyetbot
-- [Architecture](https://duyet.github.io/duyetbot-agent/ARCHITECTURE) - System design
-- [API Reference](https://duyet.github.io/duyetbot-agent/API) - Endpoints and schemas
-- [Deployment](https://duyet.github.io/duyetbot-agent/DEPLOY) - Deploy to Railway, Fly.io, AWS
-- [Contributing](https://duyet.github.io/duyetbot-agent/CONTRIBUTING) - How to contribute
-
-## Project Status
-
-See [PLAN.md](./PLAN.md) for detailed roadmap and current progress.
+- **[Architecture](./docs/architecture.md)** - System design + routing flow
+- **[Getting Started](./docs/getting-started.md)** - Setup guide
+- **[API Reference](./docs/api.md)** - API endpoints
+- **[Deployment](./docs/deployment.md)** - Deploy guide
+- **[PLAN.md](./PLAN.md)** - Roadmap + progress
 
 ## License
 

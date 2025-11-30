@@ -3,8 +3,16 @@
  *
  * Uses LLM to classify incoming queries for routing decisions.
  * Determines query type, category, complexity, and whether human approval is needed.
+ *
+ * Now integrates with the Agent Registry for dynamic classification:
+ * - quickClassify() delegates to agentRegistry.quickClassify()
+ * - LLM prompt is built dynamically from agent registrations
  */
 
+import { logger } from '@duyetbot/hono-middleware';
+import { getRouterPrompt } from '@duyetbot/prompts';
+import { agentRegistry } from '../agents/registry.js';
+import { estimateEffortLevel } from '../config/effort-config.js';
 import type { LLMProvider } from '../types.js';
 import {
   type QueryClassification,
@@ -40,37 +48,17 @@ export interface ClassifierConfig {
 
 /**
  * System prompt for classification
+ * Imported from centralized @duyetbot/prompts package
  */
-const CLASSIFICATION_SYSTEM_PROMPT = `You are a query classifier for an AI agent system. Analyze user queries and classify them accurately.
+const CLASSIFICATION_SYSTEM_PROMPT = getRouterPrompt();
 
-Your task is to determine:
-1. **type**: How should this query be processed?
-   - "simple": Quick answer, no tools needed (greetings, simple questions, explanations)
-   - "complex": Multi-step task requiring planning and multiple operations
-   - "tool_confirmation": Query is responding to a pending tool approval request
-
-2. **category**: What domain does this belong to?
-   - "general": General questions, chitchat, explanations
-   - "code": Code review, generation, analysis, debugging
-   - "research": Web search, documentation lookup, comparisons
-   - "github": GitHub operations (PRs, issues, comments, reviews)
-   - "admin": Settings, configuration, system commands
-
-3. **complexity**: How resource-intensive is this?
-   - "low": Single step, fast response (< 1 tool call)
-   - "medium": Few steps, moderate processing (1-3 tool calls)
-   - "high": Many steps, needs orchestration (4+ tool calls or parallel work)
-
-4. **requiresHumanApproval**: Does this involve sensitive operations?
-   - true: Deleting files, merging PRs, sending emails, modifying configs
-   - false: Reading, analyzing, generating content
-
-5. **reasoning**: Brief explanation of your classification
-
-6. **suggestedTools**: List tool names that might be needed (optional)
-
-Be conservative with complexity - prefer "low" or "medium" unless clearly complex.
-Be strict with requiresHumanApproval - flag anything destructive or irreversible.`;
+// Log classification system prompt at module load time
+logger.debug('[RouterAgent/Classifier] System prompt loaded', {
+  promptLength: CLASSIFICATION_SYSTEM_PROMPT.length,
+  promptPreview:
+    CLASSIFICATION_SYSTEM_PROMPT.slice(0, 200) +
+    (CLASSIFICATION_SYSTEM_PROMPT.length > 200 ? '...' : ''),
+});
 
 /**
  * Format the classification prompt
@@ -108,8 +96,23 @@ function parseClassificationResponse(response: string): QueryClassification {
     throw new Error('No JSON found in classification response');
   }
 
-  const parsed = JSON.parse(jsonMatch[0]);
-  return QueryClassificationSchema.parse(parsed);
+  try {
+    const parsed = JSON.parse(jsonMatch[0]);
+    return QueryClassificationSchema.parse(parsed);
+  } catch (error) {
+    // Return safe fallback on parse failure
+    logger.error('[Classifier] Failed to parse classification JSON', {
+      error: error instanceof Error ? error.message : String(error),
+      response: response.slice(0, 300),
+    });
+    return {
+      type: 'simple',
+      category: 'general',
+      complexity: 'low',
+      requiresHumanApproval: false,
+      reasoning: 'Classification parsing failed, using fallback',
+    };
+  }
 }
 
 /**
@@ -135,6 +138,7 @@ export async function classifyQuery(
 
 /**
  * Determine route target from classification
+ * Updated to support lead-researcher-agent for complex research tasks
  */
 export function determineRouteTarget(classification: QueryClassification): RouteTarget {
   // Tool confirmation always goes to HITL agent
@@ -142,14 +146,28 @@ export function determineRouteTarget(classification: QueryClassification): Route
     return 'hitl-agent';
   }
 
-  // High complexity goes to orchestrator
-  if (classification.complexity === 'high') {
-    return 'orchestrator-agent';
-  }
-
   // Operations requiring approval go to HITL
   if (classification.requiresHumanApproval) {
     return 'hitl-agent';
+  }
+
+  // Route duyet queries to DuyetInfoAgent (before other routing)
+  if (classification.category === 'duyet') {
+    return 'duyet-info-agent';
+  }
+
+  // High/medium complexity research queries go to lead-researcher-agent
+  // This enables multi-agent parallel research (Anthropic pattern)
+  if (
+    classification.category === 'research' &&
+    (classification.complexity === 'high' || classification.complexity === 'medium')
+  ) {
+    return 'lead-researcher-agent';
+  }
+
+  // High complexity non-research goes to orchestrator
+  if (classification.complexity === 'high') {
+    return 'orchestrator-agent';
   }
 
   // Simple queries with low complexity go to simple agent
@@ -157,14 +175,19 @@ export function determineRouteTarget(classification: QueryClassification): Route
     return 'simple-agent';
   }
 
-  // Route by category to specialized workers
+  // Complex domain-specific queries go to orchestrator
+  // which internally dispatches to the appropriate worker.
+  // Workers are never called directly by router.
   switch (classification.category) {
     case 'code':
-      return 'code-worker';
+      // Code tasks go to orchestrator → CodeWorker
+      return 'orchestrator-agent';
     case 'research':
-      return 'research-worker';
+      // Low complexity research goes to orchestrator → ResearchWorker
+      return 'orchestrator-agent';
     case 'github':
-      return 'github-worker';
+      // GitHub tasks go to orchestrator → GitHubWorker
+      return 'orchestrator-agent';
     default:
       // General queries go to simple agent
       return 'simple-agent';
@@ -172,61 +195,110 @@ export function determineRouteTarget(classification: QueryClassification): Route
 }
 
 /**
+ * Add effort estimation to a classification
+ * Called after LLM classification to add resource planning
+ */
+export function addEffortEstimation(
+  classification: QueryClassification,
+  queryLength: number
+): QueryClassification {
+  const effortEstimate = estimateEffortLevel(
+    classification.complexity,
+    classification.category,
+    queryLength
+  );
+
+  return {
+    ...classification,
+    effortEstimate,
+  };
+}
+
+/**
  * Quick classification for simple patterns (no LLM needed)
+ *
+ * Now uses the Agent Registry for pattern matching.
+ * Agents self-register their patterns, and this function delegates to the registry.
+ * This enables adding/removing agents without modifying the classifier.
  */
 export function quickClassify(query: string): QueryClassification | null {
-  const lower = query.toLowerCase().trim();
+  // Delegate to agent registry for pattern-based classification
+  const agentName = agentRegistry.quickClassify(query);
 
-  // Greetings - simple, general, low
-  if (/^(hi|hello|hey|good\s+(morning|afternoon|evening))[\s!.]*$/i.test(lower)) {
-    return {
-      type: 'simple',
-      category: 'general',
-      complexity: 'low',
-      requiresHumanApproval: false,
-      reasoning: 'Simple greeting',
-    };
+  if (!agentName) {
+    // No quick match - need LLM classification
+    return null;
   }
 
-  // Help commands - simple, general, low
-  if (/^(help|\/help|\?|what can you do)[\s?]*$/i.test(lower)) {
-    return {
-      type: 'simple',
-      category: 'general',
-      complexity: 'low',
-      requiresHumanApproval: false,
-      reasoning: 'Help request',
-    };
+  // Get agent definition for building classification
+  const agent = agentRegistry.get(agentName);
+
+  if (!agent) {
+    // Agent registered but not found (shouldn't happen)
+    return null;
   }
 
-  // Clear/reset commands - simple, admin, low, needs approval
-  if (/^(\/clear|clear|reset|start over)[\s!]*$/i.test(lower)) {
-    return {
-      type: 'simple',
-      category: 'admin',
-      complexity: 'low',
-      requiresHumanApproval: true,
-      reasoning: 'Destructive admin command',
-    };
+  // Map agent to classification
+  // This bridges the new registry pattern to existing classification schema
+  const category = agent.triggers?.categories?.[0] ?? 'general';
+
+  // Special handling for certain agent types
+  const isToolConfirmation =
+    agentName === 'hitl-agent' && /^(yes|no|approve|reject|confirm|cancel)[\s!.]*$/i.test(query);
+  const requiresApproval = agent.capabilities?.requiresApproval ?? false;
+
+  // Build classification from agent metadata
+  const classification: QueryClassification = {
+    type: isToolConfirmation ? 'tool_confirmation' : 'simple',
+    // Map category string to valid QueryCategory
+    category: mapToValidCategory(category),
+    complexity: agent.capabilities?.complexity ?? 'low',
+    requiresHumanApproval: requiresApproval,
+    reasoning: `Matched agent ${agentName} via pattern`,
+    suggestedTools: agent.capabilities?.tools,
+  };
+
+  logger.debug('[Classifier] Quick classification via registry', {
+    query: query.slice(0, 50),
+    agentName,
+    category: classification.category,
+    complexity: classification.complexity,
+  });
+
+  return classification;
+}
+
+/**
+ * Map category string to valid QueryCategory enum value
+ * Required because agent registry uses free-form strings but classifier needs enum
+ */
+function mapToValidCategory(
+  category: string
+): 'general' | 'code' | 'research' | 'github' | 'admin' | 'duyet' {
+  const validCategories = ['general', 'code', 'research', 'github', 'admin', 'duyet'] as const;
+
+  const lower = category.toLowerCase();
+
+  // Direct match
+  if (validCategories.includes(lower as (typeof validCategories)[number])) {
+    return lower as (typeof validCategories)[number];
   }
 
-  // Tool confirmation responses
-  if (/^(yes|no|approve|reject|confirm|cancel)[\s!.]*$/i.test(lower)) {
-    return {
-      type: 'tool_confirmation',
-      category: 'general',
-      complexity: 'low',
-      requiresHumanApproval: false,
-      reasoning: 'Tool confirmation response',
-    };
+  // Map common variations
+  if (lower === 'complex' || lower === 'orchestration') {
+    return 'general';
+  }
+  if (lower === 'confirmation' || lower === 'destructive') {
+    return 'admin';
   }
 
-  // No quick match - need LLM classification
-  return null;
+  // Default fallback
+  return 'general';
 }
 
 /**
  * Hybrid classifier: tries quick patterns first, falls back to LLM
+ * Now includes effort estimation for resource planning
  */
 export async function hybridClassify(
   query: string,
@@ -236,11 +308,15 @@ export async function hybridClassify(
   // Try quick classification first
   const quick = quickClassify(query);
   if (quick) {
-    return quick;
+    // Add effort estimation even for quick classifications
+    return addEffortEstimation(quick, query.length);
   }
 
   // Fall back to LLM classification
-  return classifyQuery(query, config, context);
+  const classification = await classifyQuery(query, config, context);
+
+  // Add effort estimation for resource planning
+  return addEffortEstimation(classification, query.length);
 }
 
 /**

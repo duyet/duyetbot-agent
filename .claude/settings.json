@@ -1,18 +1,29 @@
 {
-  "$schema": "https://docs.claude.com/schemas/claude-settings.json",
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "hooks": {
-    "sessionStart": {
-      "command": ".claude/hooks/session-start.sh",
-      "description": "Setup development environment on session start"
-    },
-    "bash": {
-      "post": {
-        "pattern": "^git push",
-        "command": ".claude/hooks/pre-push.sh",
-        "blocking": true,
-        "description": "Run lint and test checks before git push"
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/session-start.sh",
+            "timeout": 30
+          }
+        ]
       }
-    },
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/post-bash.sh",
+            "timeout": 60
+          }
+        ]
+      }
+    ],
     "Stop": [
       {
         "hooks": [

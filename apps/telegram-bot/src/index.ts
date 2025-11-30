@@ -7,31 +7,17 @@
 
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
+import { type Env, TelegramAgent } from './agent.js';
+import { handleAdminCommand } from './commands/admin.js';
 import {
-  CodeWorker,
-  type Env,
-  GitHubWorker,
-  HITLAgent,
-  OrchestratorAgent,
-  ResearchWorker,
-  RouterAgent,
-  SimpleAgent,
-  TelegramAgent,
-} from './agent.js';
-import { authorizationMiddleware } from './middlewares/authorization.js';
+  createTelegramAuthMiddleware,
+  createTelegramParserMiddleware,
+} from './middlewares/index.js';
 import { createTelegramContext, telegramTransport } from './transport.js';
 
-// Re-export agents for Durable Object bindings
-export {
-  TelegramAgent,
-  RouterAgent,
-  SimpleAgent,
-  HITLAgent,
-  OrchestratorAgent,
-  CodeWorker,
-  ResearchWorker,
-  GitHubWorker,
-};
+// Re-export local agent for Durable Object binding
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+export { TelegramAgent };
 
 const app = createBaseApp<Env>({
   name: 'telegram-bot',
@@ -42,76 +28,140 @@ const app = createBaseApp<Env>({
 });
 
 // Telegram webhook handler
-app.post('/webhook', createTelegramWebhookAuth<Env>(), authorizationMiddleware(), async (c) => {
-  const env = c.env;
+app.post(
+  '/webhook',
+  createTelegramWebhookAuth<Env>(),
+  createTelegramParserMiddleware(),
+  createTelegramAuthMiddleware(),
+  async (c) => {
+    const env = c.env;
+    const startTime = Date.now();
 
-  // Generate request ID for trace correlation across webhook and DO invocations
-  const requestId = crypto.randomUUID().slice(0, 8);
+    // Generate request ID for trace correlation across webhook and DO invocations
+    const requestId = crypto.randomUUID().slice(0, 8);
 
-  // Check if we should skip processing
-  if (c.get('skipProcessing')) {
-    // Handle unauthorized users
-    if (c.get('unauthorized')) {
-      const webhookCtx = c.get('webhookContext');
-      const ctx = createTelegramContext(
-        env.TELEGRAM_BOT_TOKEN,
-        webhookCtx,
-        env.TELEGRAM_ADMIN,
-        requestId
-      );
+    // Log incoming webhook (webhookCtx is set by parser middleware)
+    const webhookCtx = c.get('webhookContext');
+    logger.info(`[${requestId}] [WEBHOOK] Received`, {
+      requestId,
+      chatId: webhookCtx?.chatId,
+      userId: webhookCtx?.userId,
+      username: webhookCtx?.username,
+      text: webhookCtx?.text?.substring(0, 100), // Truncate for logging
+    });
 
-      await telegramTransport.send(ctx, 'Sorry, you are not authorized.');
+    // Check if we should skip processing
+    if (c.get('skipProcessing')) {
+      const reason = c.get('unauthorized') ? 'unauthorized' : 'skip_flag';
+      logger.info(`[${requestId}] [WEBHOOK] Skipping`, {
+        requestId,
+        reason,
+        durationMs: Date.now() - startTime,
+      });
+
+      // Handle unauthorized users - webhookCtx is set by auth middleware for unauthorized users
+      if (c.get('unauthorized') && webhookCtx) {
+        const ctx = createTelegramContext(
+          env.TELEGRAM_BOT_TOKEN,
+          webhookCtx,
+          env.TELEGRAM_ADMIN,
+          requestId,
+          env.TELEGRAM_PARSE_MODE
+        );
+        await telegramTransport.send(ctx, 'Sorry, you are not authorized.');
+      }
+      return c.text('OK');
     }
+
+    // At this point, skipProcessing is false, so webhookCtx must be defined
+    // Parser middleware ensures webhookCtx is set when skipProcessing is false
+    if (!webhookCtx) {
+      logger.error(`[${requestId}] [WEBHOOK] Missing webhookContext`, {
+        requestId,
+        durationMs: Date.now() - startTime,
+      });
+      return c.text('OK');
+    }
+
+    // Create transport context with requestId for trace correlation
+    const ctx = createTelegramContext(
+      env.TELEGRAM_BOT_TOKEN,
+      webhookCtx,
+      env.TELEGRAM_ADMIN,
+      requestId,
+      env.TELEGRAM_PARSE_MODE
+    );
+
+    // Check for admin commands
+    if (ctx.text.startsWith('/')) {
+      const response = await handleAdminCommand(ctx.text, ctx);
+      if (response !== undefined) {
+        logger.info(`[${requestId}] [WEBHOOK] Admin command executed`, {
+          requestId,
+          command: ctx.text,
+          isAdmin: ctx.isAdmin,
+          durationMs: Date.now() - startTime,
+        });
+        await telegramTransport.send(ctx, response);
+        return c.text('OK');
+      }
+    }
+
+    // Get agent by name (consistent with github-bot pattern)
+    const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
+
+    logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
+      requestId,
+      agentId,
+      ctx,
+    });
+
+    // Queue message for batch processing with alarm-based execution
+    // Messages arriving within 500ms are combined into a single LLM call
+    // This handles rapid typing, corrections, and multi-message input naturally
+    try {
+      const agent = getChatAgent(env.TelegramAgent, agentId);
+
+      logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
+        requestId,
+        agentId,
+        ctx,
+        durationMs: Date.now() - startTime,
+      });
+
+      // Queue message - alarm will fire after batch window (500ms by default)
+      // Await to ensure message is queued before returning
+      const { queued, batchId } = await agent.queueMessage(ctx);
+
+      logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+        requestId,
+        agentId,
+        queued,
+        batchId,
+        ctx,
+        durationMs: Date.now() - startTime,
+      });
+    } catch (error) {
+      logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
+        requestId,
+        agentId,
+        ctx,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        durationMs: Date.now() - startTime,
+      });
+
+      // Send error message to user if queueing fails
+      await telegramTransport
+        .send(ctx, '❌ Sorry, an error occurred. Please try again later.')
+        .catch(() => {
+          // Ignore if we can't send the error message
+        });
+    }
+
+    // Return immediately to Telegram
     return c.text('OK');
   }
-
-  const webhookCtx = c.get('webhookContext');
-
-  // Create transport context with requestId for trace correlation
-  const ctx = createTelegramContext(
-    env.TELEGRAM_BOT_TOKEN,
-    webhookCtx,
-    env.TELEGRAM_ADMIN,
-    requestId
-  );
-
-  // Get agent by name (consistent with github-bot pattern)
-  const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
-  logger.info(`[${requestId}] [WEBHOOK] Getting agent`, {
-    agentId,
-    requestId,
-  });
-
-  // Use waitUntil to process in background - respond immediately to prevent Telegram retries
-  // Telegram retries if response takes >10s, causing duplicate "Thinking" messages
-  c.executionCtx.waitUntil(
-    (async () => {
-      try {
-        const agent = getChatAgent(env.TelegramAgent, agentId);
-
-        // Agent handles everything: commands, chat, sending response
-        await agent.handle(ctx);
-      } catch (error) {
-        logger.error('[WEBHOOK] Failed to process message', {
-          agentId,
-          requestId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-
-        // Send error message to user if agent invocation fails
-        // Note: This only fires when DO invocation fails before sending "Thinking..."
-        // DO's internal error handling edits the thinking message for errors during processing
-        try {
-          await telegramTransport.send(ctx, '❌ Sorry, an error occurred. Please try again later.');
-        } catch {
-          // Ignore if we can't send the error message
-        }
-      }
-    })()
-  );
-
-  // Return immediately to Telegram
-  return c.text('OK');
-});
+);
 
 export default app;

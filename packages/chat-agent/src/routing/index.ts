@@ -6,6 +6,7 @@
 
 // Classifier
 export {
+  addEffortEstimation,
   type ClassificationContext,
   type ClassifierConfig,
   classifyQuery,
@@ -30,6 +31,8 @@ export {
 // Schemas
 export {
   ComplexityLevel,
+  type EffortEstimate,
+  EffortEstimateSchema,
   type ExecutionPlan,
   ExecutionPlanSchema,
   type PlanStep,

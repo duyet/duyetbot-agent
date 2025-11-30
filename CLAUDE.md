@@ -40,20 +40,22 @@ Tier 1 (Cloudflare Workers)          Tier 2 (Container/Fly.io)
 
 ### Multi-Agent Routing (Tier 1)
 
-Each bot deploys 8 Durable Objects implementing [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
+Each bot deploys Durable Objects implementing [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
 
 ```
 User Message → CloudflareChatAgent → RouterAgent (classifier)
                                           │
-              ┌───────────────────────────┼───────────────────────────┐
-              ↓                           ↓                           ↓
-        SimpleAgent              OrchestratorAgent              HITLAgent
-        (quick Q&A)              (task decomposition)           (approval)
+              ┌───────────────────────────┼──────────────────────┐
+              ↓                           ↓                      ↓
+        SimpleAgent              OrchestratorAgent         DuyetInfoAgent
+        (quick Q&A)              (task decomposition)      (personal info)
                                           │
                     ┌─────────────────────┼─────────────────────┐
                     ↓                     ↓                     ↓
               CodeWorker          ResearchWorker          GitHubWorker
 ```
+
+**Note**: Router dispatches to **Agents** only. Workers are dispatched by OrchestratorAgent.
 
 ### Transport Layer Pattern
 
@@ -75,7 +77,7 @@ interface Transport<TContext> {
 | `@duyetbot/chat-agent` | Cloudflare agent patterns | `CloudflareChatAgent`, routing, HITL |
 | `@duyetbot/tools` | Built-in tools | `bash`, `git`, `github`, `research`, `plan` |
 | `@duyetbot/providers` | LLM providers | Claude, OpenRouter, AI Gateway |
-| `@duyetbot/prompts` | System prompts | `TELEGRAM_SYSTEM_PROMPT`, `GITHUB_SYSTEM_PROMPT` |
+| `@duyetbot/prompts` | System prompts | `getTelegramPrompt()`, `getGitHubBotPrompt()` |
 | `@duyetbot/hono-middleware` | Shared Hono utilities | `createBaseApp()`, health routes |
 | `@duyetbot/types` | Shared types | `Tool`, `Message`, `Agent` |
 
@@ -121,10 +123,6 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
 ### Environment Variables
 
 ```bash
-# LLM Providers
-ANTHROPIC_API_KEY=sk-ant-xxx
-OPENROUTER_API_KEY=sk-or-xxx
-
 # Platform Tokens
 TELEGRAM_BOT_TOKEN=xxx
 GITHUB_TOKEN=ghp_xxx
@@ -137,9 +135,9 @@ ROUTER_DEBUG=false  # Enable routing logs
 ### Cloudflare Secrets
 
 ```bash
-cd apps/telegram-bot
-bunx wrangler secret put TELEGRAM_BOT_TOKEN
-bunx wrangler secret put OPENROUTER_API_KEY
+bun run config
+bun run config:telegram
+bun run config:github
 ```
 
 > **Deployment details**: See [docs/deployment.md](docs/deployment.md)
