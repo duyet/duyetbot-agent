@@ -43,7 +43,6 @@ export interface ListSessionsOptions {
  */
 export class FileSessionManager {
   private sessionsDir: string;
-  private idCounter = 0;
 
   constructor(sessionsDir: string) {
     this.sessionsDir = sessionsDir;

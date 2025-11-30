@@ -23,7 +23,9 @@
       "import": "./dist/sdk/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -32,7 +34,12 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
-  "keywords": ["agent", "core", "session", "duyetbot"],
+  "keywords": [
+    "agent",
+    "core",
+    "session",
+    "duyetbot"
+  ],
   "author": "duyet",
   "license": "MIT",
   "dependencies": {

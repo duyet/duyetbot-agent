@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type TestServer, startTestServer } from '../helpers/server';
+import { startTestServer, type TestServer } from '../helpers/server';
 
 function createMockKV() {
   const store = new Map<string, string>();

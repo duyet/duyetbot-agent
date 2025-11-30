@@ -11,7 +11,6 @@ import {
   EventCollector,
   type ObservabilityEnv,
   ObservabilityStorage,
-  getCollector,
 } from '@duyetbot/observability';
 import { type Env, TelegramAgent } from './agent.js';
 import { handleAdminCommand } from './commands/admin.js';

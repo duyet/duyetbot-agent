@@ -17,6 +17,14 @@
 
 import {
   type CodeWorkerEnv,
+  createCodeWorker,
+  createDuyetInfoAgent,
+  createGitHubWorker,
+  createHITLAgent,
+  createOrchestratorAgent,
+  createResearchWorker,
+  createRouterAgent,
+  createSimpleAgent,
   type DuyetInfoAgentClass,
   type GitHubWorkerEnv,
   type HITLAgentClass,
@@ -28,17 +36,9 @@ import {
   type SimpleAgentClass,
   StateDO as StateDOClass,
   type WorkerClass,
-  createCodeWorker,
-  createDuyetInfoAgent,
-  createGitHubWorker,
-  createHITLAgent,
-  createOrchestratorAgent,
-  createResearchWorker,
-  createRouterAgent,
-  createSimpleAgent,
 } from '@duyetbot/chat-agent';
 import { getSimpleAgentPrompt } from '@duyetbot/prompts';
-import { type ProviderEnv, createProvider } from './provider.js';
+import { createProvider, type ProviderEnv } from './provider.js';
 
 /**
  * Environment for shared agents

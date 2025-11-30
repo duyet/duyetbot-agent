@@ -1,6 +1,6 @@
 import { Hono } from 'hono';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { type TestServer, startTestServer } from '../helpers/server';
+import { startTestServer, type TestServer } from '../helpers/server';
 
 // Simple session manager for E2E testing
 class TestSessionManager {

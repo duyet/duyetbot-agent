@@ -14,17 +14,17 @@ import { describe, expect, it } from 'vitest';
 import {
   type BatchConfig,
   type BatchState,
+  calculateRetryDelay,
+  combineBatchMessages,
+  createInitialBatchState,
   DEFAULT_BATCH_CONFIG,
   DEFAULT_HEARTBEAT_CONFIG,
   DEFAULT_RETRY_CONFIG,
   type HeartbeatConfig,
-  type PendingMessage,
-  type RetryConfig,
-  calculateRetryDelay,
-  combineBatchMessages,
-  createInitialBatchState,
   isBatchStuckByHeartbeat,
   isDuplicateMessage,
+  type PendingMessage,
+  type RetryConfig,
   shouldProcessImmediately,
 } from '../batch-types.js';
 

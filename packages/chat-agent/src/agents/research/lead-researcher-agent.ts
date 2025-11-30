@@ -64,6 +64,7 @@ agentRegistry.register({
   },
   priority: 60, // Higher than duyet (50) to catch "latest news" queries
 });
+
 import {
   type EffortConfig,
   type EffortEstimate,
@@ -80,9 +81,9 @@ import {
   getDefaultToolGuidance,
 } from './delegation-templates.js';
 import {
-  type ExecutionMetrics,
   createTrace,
   createTraceLogger,
+  type ExecutionMetrics,
   globalPerformanceMonitor,
 } from './observability.js';
 import type {

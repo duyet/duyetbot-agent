@@ -11,7 +11,11 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist", "src", "migrations"],
+  "files": [
+    "dist",
+    "src",
+    "migrations"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "wrangler dev",
@@ -30,7 +34,13 @@
     "db:console": "wrangler d1 execute duyetbot-memory --command \"SELECT 1\"",
     "logs": "wrangler tail duyetbot-memory"
   },
-  "keywords": ["mcp", "memory", "cloudflare", "workers", "duyetbot"],
+  "keywords": [
+    "mcp",
+    "memory",
+    "cloudflare",
+    "workers",
+    "duyetbot"
+  ],
   "author": "duyet",
   "license": "MIT",
   "dependencies": {

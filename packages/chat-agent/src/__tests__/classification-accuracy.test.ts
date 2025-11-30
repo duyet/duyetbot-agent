@@ -12,7 +12,7 @@ import { describe, expect, it } from 'vitest';
 // Import registrations to populate agent registry (no Cloudflare dependencies)
 import '../agents/registrations.js';
 // Now import routing functions
-import { type QueryClassification, determineRouteTarget, quickClassify } from '../routing/index.js';
+import { determineRouteTarget, type QueryClassification, quickClassify } from '../routing/index.js';
 
 /**
  * Test helper to create classification and verify route

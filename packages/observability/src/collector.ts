@@ -157,7 +157,9 @@ export class EventCollector {
   addWorkerToAgent(parentAgentName: string, worker: AgentStep): void {
     const parent = this.agents.find((a) => a.name === parentAgentName);
     if (parent) {
-      if (!parent.workers) parent.workers = [];
+      if (!parent.workers) {
+        parent.workers = [];
+      }
       parent.workers.push(worker);
     }
   }

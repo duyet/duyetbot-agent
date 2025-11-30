@@ -12,16 +12,16 @@
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
+  createCloudflareChatAgent,
   type GitHubPlatformConfig,
   type MCPServerConnection,
   type RouterAgentEnv,
-  createCloudflareChatAgent,
 } from '@duyetbot/chat-agent';
 import { getGitHubBotPrompt } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
 import { Octokit } from '@octokit/rest';
 import { logger } from './logger.js';
-import { type ProviderEnv, createOpenRouterProvider } from './provider.js';
+import { createOpenRouterProvider, type ProviderEnv } from './provider.js';
 import { type GitHubContext, githubTransport } from './transport.js';
 
 /**
