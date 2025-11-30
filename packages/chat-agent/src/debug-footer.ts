@@ -247,3 +247,65 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
 
   return `🔍 ${flow}${workers}`;
 }
+
+/**
+ * Format debug footer for GitHub-flavored Markdown
+ *
+ * Uses <details> for collapsible section and code block for tree structure.
+ * Shows full agent flow with timing, nested workers, and error metadata.
+ *
+ * @example Output (simple agent):
+ * ```markdown
+ * <details>
+ * <summary>🔍 Debug Info</summary>
+ *
+ * ```
+ * router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * ```
+ *
+ * </details>
+ * ```
+ *
+ * @example Output (orchestrator with workers):
+ * ```markdown
+ * <details>
+ * <summary>🔍 Debug Info</summary>
+ *
+ * ```
+ * router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
+ *    ├─ research-worker (2.5s)
+ *    └─ code-worker (1.2s)
+ * ⚠️ Tool timeout: external_api
+ * ```
+ *
+ * </details>
+ * ```
+ */
+export function formatDebugFooterMarkdown(debugContext?: DebugContext): string | null {
+  if (!debugContext?.routingFlow?.length) {
+    return null;
+  }
+
+  const flow = formatRoutingFlow(debugContext);
+  const workers = formatWorkers(debugContext.workers);
+  // No escaping needed for Markdown code blocks
+  const metadata = formatMetadata(debugContext.metadata, (s) => s);
+
+  // Build content lines
+  const contentLines = [`🔍 ${flow}${workers}`];
+  if (metadata) {
+    contentLines.push(metadata);
+  }
+
+  // GitHub-flavored Markdown with collapsible details and code block
+  return `
+
+<details>
+<summary>🔍 Debug Info</summary>
+
+\`\`\`
+${contentLines.join('\n')}
+\`\`\`
+
+</details>`;
+}
