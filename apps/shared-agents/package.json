@@ -1,0 +1,25 @@
+{
+  "name": "@duyetbot/shared-agents",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "config": "bun ../../scripts/config.ts agents",
+    "test": "vitest run --passWithNoTests",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/hono-middleware": "workspace:*",
+    "@duyetbot/prompts": "workspace:*",
+    "@duyetbot/providers": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

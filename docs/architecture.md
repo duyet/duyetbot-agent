@@ -1,961 +1,1129 @@
-# Architecture
+# Architecture: duyetbot-agent System Design
 
-**Related:** [Getting Started](getting-started.md) | [Use Cases](usecases.md) | [API Reference](api.md) | [Deployment](deploy.md)
+**Table of Contents**: [System Overview](#system-overview) | [Message Flow](#message-flow) | [Routing System](#routing-system) | [Batch Processing](#batch-processing) | [Package Architecture](#package-architecture) | [Transport Layer](#transport-layer) | [Error Handling](#error-handling) | [Deployment](#deployment)
 
-## Overview
+---
 
-duyetbot-agent is a personal AI agent system built on the **Claude Agent SDK as its core engine**. It implements a **Hybrid Supervisor-Worker Architecture** where Cloudflare Workflows orchestrates durable execution while Fly.io Machines provide the compute environment for heavy LLM tasks.
+## System Overview
 
-The system uses a **Transport Layer Pattern** to cleanly separate platform-specific messaging from agent logic, enabling easy addition of new platforms with minimal code.
+**duyetbot-agent** is a sophisticated multi-agent system built entirely on Cloudflare Workers + Durable Objects. It routes incoming messages (from Telegram/GitHub webhooks) to one of 8 specialized agents based on query classification.
 
-## Transport Layer Pattern
+### Architecture Diagram
 
-The core innovation in the application layer is the Transport abstraction that separates:
+```
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                        Cloudflare Workers (Edge)                             │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  HTTP Handlers (Webhook Entry Points)                               │   │
+│  │  ┌──────────────────┐  ┌──────────────────┐  ┌─────────────────┐   │   │
+│  │  │ Telegram Webhook │  │  GitHub Webhook  │  │  Health Routes  │   │   │
+│  │  │  /webhook POST   │  │  /webhook POST   │  │  /health /etc   │   │   │
+│  │  └────────┬─────────┘  └────────┬─────────┘  └─────────────────┘   │   │
+│  │           │                     │                                   │   │
+│  │           └─────────┬───────────┘                                   │   │
+│  │                     │                                               │   │
+│  │              Parse & Validate                                       │   │
+│  │         (auth, signature, dedup)                                   │   │
+│  │                     │                                               │   │
+│  │                     ▼                                               │   │
+│  │        ┌────────────────────────┐                                   │   │
+│  │        │  TelegramAgent (DO)    │     ┌───────────────────┐       │   │
+│  │        │  or GitHubAgent (DO)   │────→│ Shared Agents     │       │   │
+│  │        │                        │     │ via script_name   │       │   │
+│  │        │ • State Management     │     │ binding:          │       │   │
+│  │        │ • Message Queue        │     │ • RouterAgent     │       │   │
+│  │        │ • Batch Processing     │     │ • SimpleAgent     │       │   │
+│  │        │ • Heartbeat            │     │ • Orchestrator    │       │   │
+│  │        └────────────────────────┘     │ • HITLAgent       │       │   │
+│  │                                        │ • 4 Workers       │       │   │
+│  │                                        └───────────────────┘       │   │
+│  │                                                                     │   │
+│  │  ┌──────────────────────────────────────────────────────────────┐  │   │
+│  │  │  Memory MCP Server (D1 + KV)                                │  │   │
+│  │  │  • Cross-session memory persistence                         │  │   │
+│  │  │  • User isolation                                           │  │   │
+│  │  │  • Semantic search (future: Vectorize)                      │  │   │
+│  │  └──────────────────────────────────────────────────────────────┘  │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                              │
+│  External Integrations:                                                     │
+│  • Claude API (via Anthropic base URL)                                     │
+│  • GitHub API (webhooks + REST)                                           │
+│  • Telegram Bot API (webhooks + REST)                                     │
+│  • MCP Servers (duyet-mcp, github-mcp, etc.)                             │
+└──────────────────────────────────────────────────────────────────────────────┘
+```
 
-- **Application Layer**: Thin webhook handlers that connect transport to agent
-- **Transport Layer**: Platform-specific message sending/receiving
-- **Agent Layer**: All workflow logic, LLM calls, state management
+### Key Design Principles
+
+```
+1. Fire-and-Forget Pattern
+   ├─ Webhook returns immediately (<100ms)
+   └─ DO continues independently with own timeout
+
+2. Dual-Batch Queue
+   ├─ pendingBatch (collecting) never blocks
+   └─ activeBatch (processing) runs atomically
+
+3. Hybrid Classification
+   ├─ Quick pattern match (instant)
+   └─ LLM fallback (semantic analysis)
+
+4. Transport Abstraction
+   ├─ Platform-agnostic agent logic
+   ├─ Pluggable platform transports
+   └─ Reduced per-app code
+
+5. Heartbeat & Recovery
+   ├─ Rotating messages prove liveness
+   ├─ Stuck detection after 30s no heartbeat
+   └─ Automatic recovery without user action
+```
+
+---
+
+## Message Flow: Webhook to Response
+
+### Complete Execution Timeline
+
+```
+User Sends Message
+      │
+      ▼
+┌─────────────────────────────────────────┐
+│  Webhook Ingestion (T+0-6ms)            │
+├─────────────────────────────────────────┤
+│                                         │
+│  T+0ms:   POST /webhook received        │
+│  T+1ms:   Middleware validation         │
+│           ├─ X-Hub-Signature-256        │
+│           ├─ JSON parse                 │
+│           └─ Authorization check        │
+│                                         │
+│  T+2ms:   Request ID generation         │
+│           └─ For trace correlation      │
+│                                         │
+│  T+3ms:   Deduplication check           │
+│           ├─ Look up requestId          │
+│           └─ Skip if duplicate          │
+│                                         │
+│  T+4ms:   Get or create Durable Object  │
+│           └─ env.TelegramAgent.get()    │
+│                                         │
+│  T+5ms:   Queue message                 │
+│           ├─ agent.queueMessage(ctx)    │
+│           ├─ Add to pendingBatch        │
+│           ├─ Schedule alarm (500ms)     │
+│           └─ Mark requestId processed   │
+│                                         │
+│  T+6ms:   Return HTTP 200 OK            │
+│           └─ Webhook complete!          │
+│                                         │
+└─────────────────────────────────────────┘
+                      │
+        ✅ Webhook exits here,
+           DO continues independently
+                      │
+                      ▼
+┌─────────────────────────────────────────┐
+│  Batch Window & Processing (T+506-5002) │
+├─────────────────────────────────────────┤
+│                                         │
+│  T+506ms:  onBatchAlarm() fires         │
+│            └─ Scheduled from queueMsg   │
+│                                         │
+│  T+507ms:  Atomic promotion             │
+│            ├─ activeBatch = pendingBatch│
+│            ├─ pendingBatch = empty      │
+│            └─ Status: processing        │
+│                                         │
+│  T+508ms:  processBatch() starts        │
+│            ├─ Combine all messages      │
+│            ├─ "msg1\n---\nmsg2"        │
+│            └─ (Multiple msgs → 1 LLM)  │
+│                                         │
+│  T+509ms:  Send typing indicator        │
+│            └─ User sees "typing..."     │
+│                                         │
+│  T+510ms:  Send thinking message        │
+│            ├─ Text: "Thinking 🧠"       │
+│            └─ Get messageRef for edits  │
+│                                         │
+│  T+511ms:  Start rotation loop          │
+│            ├─ Every 5s: edit message    │
+│            ├─ Update lastHeartbeat      │
+│            └─ Proves DO alive           │
+│                                         │
+│  T+512ms:  Routing decision             │
+│            ├─ Check shouldRoute()       │
+│            │                            │
+│            ├─ Path A: Direct chat()     │
+│            │  └─ Call LLM, blocking     │
+│            │                            │
+│            └─ Path B: scheduleRouting() │
+│               ├─ RouterAgent.execute()  │
+│               ├─ Fire-and-forget        │
+│               └─ Return immediately     │
+│                                         │
+│  T+513-5000ms: LLM execution            │
+│            ├─ Hybrid classification     │
+│            ├─ Route to agent            │
+│            ├─ Execute tools if needed   │
+│            └─ Compile response          │
+│                                         │
+│  T+5001ms: Edit thinking message        │
+│            ├─ Replace with response     │
+│            └─ User sees final answer    │
+│                                         │
+│  T+5002ms: Mark batch complete          │
+│            ├─ activeBatch.status: done  │
+│            └─ Clear activeBatch         │
+│                                         │
+└─────────────────────────────────────────┘
+```
+
+### Routing Decision Point
+
+When `processBatch()` reaches the routing decision (T+512ms), it chooses:
+
+```
+shouldRoute(userIdStr)
+    ├─ Check: routerConfig present?
+    ├─ Check: routing enabled?
+    │
+    ├─ YES to both: scheduleRouting()
+    │  ├─ Fire-and-forget to RouterAgent
+    │  ├─ Return immediately
+    │  └─ RouterAgent handles response
+    │
+    └─ NO: Direct chat()
+       ├─ Call this.chat(combinedText)
+       ├─ Get response
+       └─ Send directly to user
+```
+
+### Key Pattern: Fire-and-Forget
+
+```
+❌ WRONG - Blocks webhook:
+c.executionCtx.waitUntil(agent.queueMessage(ctx));
+├─ DO inherits webhook's 30s timeout
+├─ If processing >30s, entire context fails
+└─ User sees nothing
+
+✅ CORRECT - Independent execution:
+agent.queueMessage(ctx).catch(() => {});
+├─ Webhook returns in ~6ms
+├─ DO has independent 30s timeout
+├─ Multiple DOs can run in series
+└─ Error isolation preserved
+```
+
+---
+
+## Multi-Agent Routing System
+
+### 8 Durable Objects (All Deployed ✅)
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│               RouterAgent (Hybrid Classifier)                │
+│                                                              │
+│  Input: User query (from Telegram/GitHub)                   │
+│                                                              │
+│  ┌─ Phase 1: Pattern Match (10-50ms) ──────────────────┐   │
+│  │                                                      │   │
+│  │  Regex checks for quick route:                       │   │
+│  │  ├─ /^(hi|hello|hey)/i ────→ SimpleAgent            │   │
+│  │  ├─ /help|\?/i ────────────→ SimpleAgent            │   │
+│  │  ├─ /yes|no|approve/i ─────→ HITLAgent              │   │
+│  │  └─ No match? → Phase 2                             │   │
+│  │                                                      │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                      │                                       │
+│                      ▼                                       │
+│  ┌─ Phase 2: LLM Classification (200-500ms) ────────────┐   │
+│  │                                                      │   │
+│  │  Call Claude with classification prompt              │   │
+│  │  Analyze: type, category, complexity, approval      │   │
+│  │                                                      │   │
+│  │  Returns schema:                                     │   │
+│  │  {                                                   │   │
+│  │    type: "simple" | "complex",                       │   │
+│  │    category: "code" | "research" | "github" | ...,   │   │
+│  │    complexity: "low" | "medium" | "high",            │   │
+│  │    requiresHumanApproval: boolean,                   │   │
+│  │    reasoning: string                                 │   │
+│  │  }                                                   │   │
+│  │                                                      │   │
+│  └──────────────────────────────────────────────────────┘   │
+│                      │                                       │
+└──────────────────────┼───────────────────────────────────────┘
+                       │
+              Determine Route Target
+                       │
+        ┌──────────────┼──────────────┐
+        │              │              │
+        ▼              ▼              ▼
+   SimpleAgent    HITLAgent    OrchestratorAgent
+   Quick Q&A      Approval       Decomposition
+   Greetings      Confirmation   Complex tasks
+                  Sensitive ops
+
+
+┌─ Route Determination Algorithm ───────────────────────────┐
+│                                                           │
+│  IMPORTANT: Router only dispatches to AGENTS.             │
+│  Workers are dispatched by OrchestratorAgent.             │
+│                                                           │
+│  if (type === 'tool_confirmation')                        │
+│    → return 'hitl-agent'                                  │
+│                                                           │
+│  if (requiresHumanApproval === true)                      │
+│    → return 'hitl-agent'                                  │
+│                                                           │
+│  if (category === 'duyet')                                │
+│    → return 'duyet-info-agent'                            │
+│                                                           │
+│  if (category === 'research' && complexity >= 'medium')   │
+│    → return 'lead-researcher-agent'                       │
+│                                                           │
+│  if (complexity === 'high')                               │
+│    → return 'orchestrator-agent'                          │
+│                                                           │
+│  if (type === 'simple' && complexity === 'low')           │
+│    → return 'simple-agent'                                │
+│                                                           │
+│  if (category === 'code' || 'research' || 'github')       │
+│    → return 'orchestrator-agent'  // dispatches workers   │
+│                                                           │
+│  default:                                                 │
+│    → return 'simple-agent'                                │
+│                                                           │
+└───────────────────────────────────────────────────────────┘
+```
+
+### Agent vs Worker Distinction
+
+**IMPORTANT**: Router only dispatches to **Agents**, never directly to Workers.
+
+| Type | Purpose | Called By | Interface |
+|------|---------|-----------|-----------|
+| **Agents** | Stateful coordinators with conversation history | RouterAgent | `execute(query, context): AgentResult` |
+| **Workers** | Stateless executors for single tasks | OrchestratorAgent only | `execute(WorkerInput): WorkerResult` |
+
+**Agents** (called by Router):
+- SimpleAgent, OrchestratorAgent, HITLAgent, LeadResearcherAgent, DuyetInfoAgent
+
+**Workers** (called by Orchestrator):
+- CodeWorker, ResearchWorker, GitHubWorker
+
+Workers implement the [Orchestrator-Workers pattern](https://developers.cloudflare.com/agents/patterns/).
+They expect a `PlanStep` and return `WorkerResult`, not `AgentResult`.
+
+### Agent Responsibilities
+
+| Agent | Trigger | Logic | Example |
+|-------|---------|-------|---------|
+| **SimpleAgent** | pattern:greeting OR type:simple+complexity:low | Direct LLM call | "Hi!" "How's the weather?" |
+| **HITLAgent** | tool_confirmation OR requiresApproval | State machine: pending→approved→execute | "Delete all logs?" → confirm |
+| **OrchestratorAgent** | complexity:high OR domain tasks | 1. Plan, 2. Dispatch workers, 3. Aggregate | "Review PR and summarize" |
+| **LeadResearcherAgent** | category:research + complexity>=medium | Multi-agent parallel research | "Compare AI frameworks" |
+| **DuyetInfoAgent** | category:duyet | MCP connection to duyet-mcp | "Tell me about yourself" |
+
+### Worker Responsibilities (OrchestratorAgent only)
+
+| Worker | Task Type | Logic | Example |
+|--------|-----------|-------|---------|
+| **CodeWorker** | workerType:code | Code analysis/review/generation | "Fix this bug" |
+| **ResearchWorker** | workerType:research | Web search + synthesis | "Latest AI news" |
+| **GitHubWorker** | workerType:github | GitHub API operations | "Merge if CI passes" |
+
+---
+
+## Batch Processing Architecture
+
+### Dual-Batch Queue (The Heart of Reliability)
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                    Application Layer                         │
-│           (telegram-bot, github-bot, future apps)            │
-│                                                              │
-│  • Webhook handling & routing                                │
-│  • Context creation from platform payload                    │
-│  • ~50 lines of code per app                                 │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                     Transport Layer                          │
-│                                                              │
-│  interface Transport<TContext> {                             │
-│    send: (ctx, text) => Promise<MessageRef>                  │
-│    edit?: (ctx, ref, text) => Promise<void>                  │
-│    typing?: (ctx) => Promise<void>                           │
-│    parseContext: (ctx) => ParsedInput                        │
-│  }                                                           │
-└──────────────────────────┬──────────────────────────────────┘
-                           │
-                           ▼
-┌─────────────────────────────────────────────────────────────┐
-│                       Agent Layer                            │
-│                   (chat-agent package)                       │
-│                                                              │
-│  agent.handle(ctx) orchestrates:                             │
-│    1. Parse input from context                               │
-│    2. Route: command or chat                                 │
-│    3. Process with LLM if needed                             │
-│    4. Use transport to respond                               │
-│                                                              │
-│  Lifecycle hooks: beforeHandle, afterHandle, onError         │
+│           State: Two-Batch Architecture                      │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│  pendingBatch: BatchState (mutable, always collecting)      │
+│  ├─ status: 'collecting'                                   │
+│  ├─ pendingMessages: PendingMessage[]                       │
+│  ├─ lastMessageAt: number                                   │
+│  └─ (New messages added here ALWAYS)                        │
+│                                                             │
+│  activeBatch: BatchState | null (immutable during process) │
+│  ├─ status: 'processing'                                   │
+│  ├─ pendingMessages: PendingMessage[] (snapshot)            │
+│  ├─ lastHeartbeat: number (updated every 5s)               │
+│  └─ messageRef: string (for thinking message edits)         │
+│                                                             │
+│  Why two batches?                                          │
+│  • pendingBatch never blocks new messages                  │
+│  • activeBatch processes atomically                        │
+│  • Stuck activeBatch won't block new input                 │
+│  • Recovery: promote pendingBatch → activeBatch            │
+│                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-### Benefits of Transport Layer
+### Message Arrival to Processing
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| **App code size** | ~300 lines | ~50 lines |
-| **Logic location** | Scattered across app & agent | Centralized in agent |
-| **Testability** | Hard (mixed concerns) | Easy (mock transport) |
-| **New platform** | Copy entire app | Just add transport |
-| **Command handling** | In each app | Single place in agent |
-| **Error handling** | Duplicated | Configurable hooks |
+```
+Message Arrives → queueMessage(ctx)
+        │
+        ▼
+    Validate
+    ├─ Parse request ID
+    ├─ Check deduplication
+    └─ Ensure auth
+        │
+        ▼
+    Check activeBatch State
+        │
+    ┌───┴───┐
+    │       │
+    ▼       ▼
+ EXISTS   NULL
+    │       │
+    │       ├─ Add to pendingBatch
+    │       ├─ Schedule alarm:
+    │       │  onBatchAlarm()
+    │       │  after 500ms
+    │       └─ Return immediately
+    │
+    └─ Add to pendingBatch
+       └─ Return immediately
+          (alarm already scheduled)
+
+Batch Window (500ms default)
+    ├─ Collect: msg1, msg2, msg3...
+    └─ Wait for window
+
+onBatchAlarm() Fires
+    ├─ Check: activeBatch exists?
+    │  ├─ YES: Skip (already processing)
+    │  └─ NO: Continue
+    │
+    ├─ Check: pendingBatch has messages?
+    │  ├─ NO: Done (nothing to do)
+    │  └─ YES: Continue
+    │
+    ├─ Atomic Promotion:
+    │  ├─ activeBatch = { ...pendingBatch, status:'processing' }
+    │  ├─ pendingBatch = { empty }
+    │  └─ Start: processBatch(activeBatch)
+    │
+    └─ Meanwhile:
+       └─ New messages → fresh pendingBatch
+```
+
+### Heartbeat & Stuck Detection
+
+```
+processBatch(activeBatch)
+    │
+    ├─ Send "Thinking 🧠" message
+    ├─ Get messageRef
+    └─ Start rotation loop:
+       │
+       ├─ Loop every 5s:
+       │  ├─ Get next rotation text
+       │  ├─ Update: activeBatch.lastHeartbeat = now
+       │  ├─ Edit message via transport
+       │  └─ Catch errors gracefully
+       │
+       └─ During LLM processing:
+          ├─ T+511ms: 1st rotation
+          ├─ T+516ms: 2nd rotation
+          ├─ T+521ms: 3rd rotation
+          └─ ... continues until response ready
+
+Stuck Detection (Independent Check)
+    ├─ On new message arrival:
+    │  └─ Check activeBatch
+    │
+    ├─ Is it stuck?
+    │  └─ lastHeartbeat < (now - 30s)
+    │
+    ├─ If YES:
+    │  ├─ Log: "Batch stuck for X seconds"
+    │  ├─ Clear activeBatch
+    │  ├─ pendingBatch becomes active
+    │  └─ User can proceed (recovered!)
+    │
+    └─ If NO:
+       └─ Process normally
+```
+
+### Benefits of Dual-Batch Design
+
+| Scenario | Single-Batch | Dual-Batch |
+|----------|---|---|
+| **LLM slow (20s)** | Messages pile up | Collected in pending |
+| **DO crashes** | All queued messages lost | pendingBatch survives |
+| **Stuck batch (no heartbeat)** | User blocked | Recovered automatically |
+| **Rapid messages** | Process separately (N calls) | Combined batch (1 call) |
+| **Cost efficiency** | 3 msgs = 3 LLM calls | 3 msgs = 1 LLM call |
+
+---
+
+## Package Architecture
+
+### Monorepo Structure (11 Packages + 5 Apps)
+
+```
+Foundation Layer
+└─ @duyetbot/types
+   ├─ Agent, Tool, Message types
+   ├─ Provider interface
+   └─ Shared Zod schemas
+
+   Intermediate Layer
+   ├─ @duyetbot/providers
+   │  ├─ Claude adapter
+   │  ├─ OpenRouter adapter
+   │  └─ Provider factory
+   │
+   ├─ @duyetbot/tools
+   │  ├─ bash, git, github tools
+   │  ├─ research, plan tools
+   │  └─ Tool registry
+   │
+   ├─ @duyetbot/prompts
+   │  ├─ Telegram prompt
+   │  ├─ GitHub prompt
+   │  ├─ Router prompt
+   │  └─ Agent-specific prompts
+   │
+   └─ @duyetbot/hono-middleware
+      ├─ Logger middleware
+      ├─ Auth middleware
+      └─ Health routes
+
+      Core Business Layer
+      └─ @duyetbot/core
+         ├─ SDK adapter (query())
+         ├─ Session manager
+         └─ MCP client
+
+      └─ @duyetbot/chat-agent (2400+ LOC)
+         ├─ CloudflareChatAgent
+         ├─ RouterAgent + classifier
+         ├─ SimpleAgent, OrchestratorAgent
+         ├─ HITLAgent
+         ├─ 4 Workers (Code, Research, GitHub, DuyetInfo)
+         ├─ Batch processing logic
+         └─ Transport interface
+
+Application Layer
+├─ apps/telegram-bot
+│  └─ Telegram transport + TelegramAgent DO
+│
+├─ apps/github-bot
+│  └─ GitHub transport + GitHubAgent DO
+│
+├─ apps/memory-mcp
+│  └─ MCP server (D1 + KV)
+│
+├─ apps/shared-agents
+│  └─ Shared DO pool (RouterAgent, etc.)
+│
+└─ apps/agent-server
+   └─ Long-running agent (future)
+
+Support Packages
+├─ @duyetbot/cli
+│  └─ Local chat CLI
+│
+└─ @duyetbot/config-*
+   └─ Build configs
+```
+
+### Dependency Graph
+
+```
+                  @duyetbot/types
+                        ↓
+        ┌───────────────┼───────────────┐
+        │               │               │
+  @duyetbot/      @duyetbot/      @duyetbot/
+   providers        tools          prompts
+        │               │               │
+        └───────────────┼───────────────┘
+                        ↓
+                 @duyetbot/core
+                        ↓
+          @duyetbot/chat-agent
+                        ↓
+        ┌───────────────┼───────────────┬───────────────┐
+        │               │               │               │
+  telegram-bot    github-bot      memory-mcp     agent-server
+```
+
+### Package Responsibilities
+
+```
+@duyetbot/types
+├─ Agent interface
+├─ Tool interface
+├─ Message types
+├─ LLMProvider interface
+└─ Zod validation schemas
+
+@duyetbot/providers
+├─ Claude provider (via AI Gateway or direct)
+├─ OpenRouter provider
+├─ Provider factory
+└─ Base URL override support
+
+@duyetbot/tools
+├─ bash tool (exec shell commands)
+├─ git tool (git operations)
+├─ github tool (GitHub API)
+├─ research tool (web search)
+├─ plan tool (task planning)
+└─ Tool registry & platform-specific filtering
+
+@duyetbot/prompts
+├─ Telegram bot personality
+├─ GitHub bot personality
+├─ Router classification prompt
+├─ Orchestrator planning prompt
+├─ Agent-specific prompts
+└─ Prompt builder (template system)
+
+@duyetbot/core
+├─ SDK adapter: query() async generator
+├─ Tool execution wrapper
+├─ Session manager interface
+└─ MCP client
+
+@duyetbot/chat-agent
+├─ CloudflareChatAgent (main DO wrapper)
+├─ Message batching logic
+├─ Batch state management
+├─ Stuck detection & recovery
+├─ Router + hybrid classifier
+├─ 7 specialized agents
+├─ Transport interface
+└─ Lifecycle hooks
+```
+
+---
+
+## Transport Layer Pattern
+
+The **Transport Layer** is the key innovation enabling clean separation between platform-specific and agent logic.
 
 ### Transport Interface
 
 ```typescript
-// Message reference for edits (platform-specific)
-type MessageRef = string | number;
+interface Transport<TContext> {
+  // Send message, get reference for edits
+  send(ctx: TContext, text: string): Promise<MessageRef>;
 
-// Normalized input from any platform
+  // Edit existing message (for streaming updates)
+  edit?(ctx: TContext, ref: MessageRef, text: string): Promise<void>;
+
+  // Delete message
+  delete?(ctx: TContext, ref: MessageRef): Promise<void>;
+
+  // Show typing indicator
+  typing?(ctx: TContext): Promise<void>;
+
+  // Add emoji reaction
+  react?(ctx: TContext, ref: MessageRef, emoji: string): Promise<void>;
+
+  // Extract normalized input from platform context
+  parseContext(ctx: TContext): ParsedInput;
+}
+
 interface ParsedInput {
   text: string;
   userId: string | number;
   chatId: string | number;
-  messageRef?: MessageRef;
-  replyTo?: MessageRef;
-}
-
-// Transport interface
-interface Transport<TContext> {
-  send: (ctx: TContext, text: string) => Promise<MessageRef>;
-  edit?: (ctx: TContext, ref: MessageRef, text: string) => Promise<void>;
-  delete?: (ctx: TContext, ref: MessageRef) => Promise<void>;
-  typing?: (ctx: TContext) => Promise<void>;
-  react?: (ctx: TContext, ref: MessageRef, emoji: string) => Promise<void>;
-  parseContext: (ctx: TContext) => ParsedInput;
+  messageRef?: string | number;
+  metadata?: Record<string, unknown>;
 }
 ```
 
-### Example: Simplified App Code
+### Telegram Transport
+
+```
+telegram-bot/src/transport.ts
+
+send(ctx: TelegramContext, text: string)
+├─ Split message if > 4096 chars
+│  ├─ Split at newlines (respect formatting)
+│  └─ Send multiple messages if needed
+├─ Try Markdown parse mode
+├─ Fallback to plain text if formatting fails
+└─ Return message_id for edits
+
+edit(ctx: TelegramContext, messageId, text)
+├─ Check message length
+│  ├─ If >4096: truncate + "..."
+│  └─ Otherwise: send as-is
+├─ Retry on conflict (message deleted)
+└─ Log admin debug footer (if admin user)
+
+typing(ctx: TelegramContext)
+├─ sendChatAction(chatId, 'typing')
+└─ User sees "typing..." indicator
+
+parseContext(webhookContext)
+├─ Extract text
+├─ Extract user ID, chat ID
+├─ Generate request ID
+└─ Return normalized ParsedInput
+```
+
+### GitHub Transport
+
+```
+github-bot/src/transport.ts
+
+send(ctx: GitHubContext, text: string)
+├─ Create comment on issue/PR
+├─ Include context header:
+│  ├─ Issue/PR URL
+│  ├─ State (open/closed)
+│  └─ Labels
+└─ Return comment.id for edits
+
+edit(ctx: GitHubContext, commentId, text)
+├─ Update comment via Octokit
+├─ Preserve formatting
+└─ Return void
+
+react(ctx: GitHubContext, commentId, emoji)
+├─ Add emoji reaction to comment
+├─ Use GitHub API reactions endpoint
+└─ Return void
+
+parseContext(webhookPayload)
+├─ Extract issue/PR metadata
+├─ Extract sender info
+├─ Include full context (title, labels, etc.)
+└─ Return normalized ParsedInput
+```
+
+### Benefits
+
+| Aspect | Without Transport | With Transport |
+|--------|---|---|
+| **App boilerplate** | ~300 lines | ~50 lines |
+| **Duplicate logic** | Across apps | None |
+| **New platform** | Copy entire app | Just add transport |
+| **Testing** | Hard (mixed concerns) | Easy (mock transport) |
+| **Hooks** | Per-app | Configurable |
+
+---
+
+## Error Handling & Recovery
+
+### Deduplication Strategy
+
+```
+Message Arrival
+    │
+    ├─ Extract requestId from context
+    ├─ Check processedRequestIds set
+    │
+    ├─ If found (duplicate):
+    │  ├─ Log: "Duplicate request"
+    │  └─ Return without processing
+    │
+    └─ If not found:
+       ├─ Process normally
+       ├─ Add requestId to processed set
+       └─ Trim to recent window (rolling)
+
+Purpose:
+├─ Handle platform retries (Telegram, GitHub)
+├─ Prevent duplicate LLM calls
+└─ Save on token costs
+```
+
+### Stuck Batch Detection
+
+```
+On New Message Arrival:
+
+Check activeBatch
+    │
+    ├─ No activeBatch? → process normally
+    │
+    └─ Has activeBatch?
+       │
+       ├─ Calculate: time since last heartbeat
+       │  └─ now - activeBatch.lastHeartbeat
+       │
+       ├─ If < 30s (healthy):
+       │  └─ Process new batch normally
+       │
+       └─ If >= 30s (stuck):
+          ├─ Log: "Batch stuck for Xs"
+          │        (includes diagnostics)
+          ├─ Clear activeBatch
+          │  (throw away stuck messages)
+          ├─ Promote pendingBatch → active
+          │  (begin processing new messages)
+          └─ User can now proceed
+             (automatic recovery!)
+```
+
+### Recovery Mechanisms
+
+```
+LLM Error (during chat/routing)
+    ├─ Catch error
+    ├─ Log with batch context
+    ├─ Clear activeBatch (don't retry)
+    ├─ Send error message to user
+    └─ Ready for next batch
+
+Tool Execution Error
+    ├─ Catch and log
+    ├─ Continue with other tools
+    ├─ Include error in response
+    └─ User sees partial results
+
+DO Crash/Timeout
+    ├─ Webhook resends message
+    ├─ queueMessage() receives again
+    ├─ Deduplication prevents double-process
+    └─ New DO invocation succeeds
+
+Router Error
+    ├─ Fall through to simpler agent
+    ├─ Direct chat() instead of routing
+    ├─ User still gets response
+    └─ Degraded but functional
+```
+
+---
+
+## Durable Object State Management
+
+### State Schema
 
 ```typescript
-// apps/telegram-bot/src/index.ts (~50 lines total)
-app.post('/webhook', async (c) => {
-  const env = c.env;
-  const update = await c.req.json();
+interface CloudflareAgentState {
+  // Session identity
+  userId?: string | number;
+  chatId?: string | number;
+  createdAt: number;
+  updatedAt: number;
 
-  // Create context from webhook
-  const ctx = createTelegramContext(bot, update);
-  if (!ctx) return c.json({ ok: true });
+  // Conversation context
+  messages: Message[];  // Trimmed to maxHistory (20-100)
 
-  // Get agent instance for this chat
-  const agentId = env.TELEGRAM_AGENT.idFromName(String(ctx.chatId));
-  const agent = env.TELEGRAM_AGENT.get(agentId);
+  // Batch processing
+  activeBatch?: {
+    batchId: string;
+    status: 'processing' | 'delegated';
+    pendingMessages: PendingMessage[];
+    lastHeartbeat: number;  // For stuck detection
+    messageRef?: string | number;  // Reference for edits
+    batchStartedAt: number;
+  };
 
-  // Agent handles everything
-  await agent.handle(ctx);
+  pendingBatch?: {
+    batchId: string;
+    status: 'collecting';
+    pendingMessages: PendingMessage[];
+    batchStartedAt: number;
+  };
 
-  return c.json({ ok: true });
-});
+  // Deduplication
+  processedRequestIds?: string[];  // Rolling window
+
+  // Custom data
+  metadata?: Record<string, unknown>;
+}
 ```
 
-## The Hybrid Supervisor-Worker Model
-
-The system splits responsibilities between two complementary platforms:
-
-- **Supervisor (Cloudflare Workflows)**: The "Brain" - handles state management, webhook ingestion, and human-in-the-loop orchestration
-- **Worker (Fly.io Machines)**: The "Hands" - provides filesystem and shell primitives required by the Claude Agent SDK
-
-This architecture solves the fundamental challenge: heavy LLM tasks need a "computer-like" environment, but we want serverless cost-efficiency.
-
-## High-Level System Design
+### State Persistence
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                        User Interactions                          │
-├────────────────┬────────────────┬──────────────┬─────────────────┤
-│ GitHub @mentions│ Telegram Bot   │  CLI Tool    │ Web UI (future) │
-└────────┬───────┴────────┬───────┴──────┬───────┴─────────────────┘
-         │                │              │
-         ▼                ▼              │
-┌─────────────────────────────────────────────────────────────────┐
-│        Cloudflare Workers (Tier 1 - Lightweight Agents)          │
-│  ┌─────────────────────────────────────────────────────────────┐ │
-│  │  @duyetbot/hono-middleware (Shared)                         │ │
-│  │  • Logger, error handler, rate limiting                     │ │
-│  │  • Health routes (/health, /health/live, /health/ready)     │ │
-│  │  • Auth middleware (webhook signatures, API keys)           │ │
-│  └─────────────────────────────────────────────────────────────┘ │
-│                          │                                       │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │ github-bot   │  │ telegram-bot │  │  memory-mcp  │           │
-│  │ (DO Agent)   │  │ (DO Agent)   │  │  (D1 + KV)   │           │
-│  │ + Transport  │  │ + Transport  │  │              │           │
-│  └──────┬───────┘  └──────┬───────┘  └──────────────┘           │
-└─────────┼─────────────────┼─────────────────────────────────────┘
-          │                 │
-          ▼                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│           Workflow Supervisor (Cloudflare Durable Object)        │
-│  • State machine: status, machine_id, volume_id                  │
-│  • Provisions Fly.io resources                                   │
-│  • Manages Human-in-the-Loop wait states                         │
-│  • Can sleep for days/weeks without cost                         │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-                          ▼
-┌─────────────────────────────────────────────────────────────────┐
-│        Agent Runner (Tier 2 - Heavy Compute, Fly.io Machine)     │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Docker Container                                          │ │
-│  │  • Node.js + git + gh + ripgrep                            │ │
-│  │  • Claude Agent SDK                                        │ │
-│  │  • Custom tools (GitHub, Research)                         │ │
-│  └────────────────────────────────────────────────────────────┘ │
-│                          │                                       │
-│                          ▼                                       │
-│  ┌────────────────────────────────────────────────────────────┐ │
-│  │  Persistent Volume (NVMe)                                  │ │
-│  │  • Session state (/root/.claude)                           │ │
-│  │  • Conversation history                                    │ │
-│  │  • Cloned repositories                                     │ │
-│  └────────────────────────────────────────────────────────────┘ │
-└─────────────────────────┬───────────────────────────────────────┘
-                          │
-              ┌───────────┼───────────┐
-              │           │           │
-              ▼           ▼           ▼
-         ┌────────┐  ┌────────┐  ┌────────┐
-         │ GitHub │  │Anthropic│  │  MCP   │
-         │  API   │  │   API   │  │ Memory │
-         └────────┘  └────────┘  └────────┘
+Durable Object Storage (Automatic)
+    ├─ Transactional writes
+    ├─ Geographically replicated
+    ├─ Auto-backup on failure
+    └─ Survives worker restart
+
+On setState(newState):
+    ├─ State validated
+    ├─ Persisted atomically
+    ├─ Available immediately on next request
+    └─ Replicated globally
+
+Benefits:
+    ├─ No separate database needed
+    ├─ Sub-millisecond access
+    ├─ Transactional guarantees
+    └─ Free (included in Cloudflare)
 ```
 
-## Why Hybrid? Platform Comparison
+---
 
-| Feature | Cloudflare Workflows Only | Fly.io Only | Hybrid Model |
-|---------|---------------------------|-------------|--------------|
-| Filesystem Access | ❌ None (V8 Isolate) | ✅ Full Linux | ✅ Full Linux |
-| Shell Tools (git, bash) | ❌ Impossible | ✅ Native | ✅ Native |
-| Long Sleep (Days) | ✅ Up to 365 days | ❌ Pay for idle | ✅ Free (Cloudflare) |
-| Cold Start | ⚡ <10ms | 🐢 ~300ms-2s | 🚀 ~2s (Acceptable) |
-| Cost (Idle) | 💰 Free | 💸 Expensive | 💰 Free |
-| Orchestration | ✅ Built-in | ❌ DIY | ✅ Full power |
+## Deployment Architecture
 
-## Two-Tier Agent Architecture
+### Shared Agent Pattern
 
-The system uses two types of agents for different workloads:
-
-### Tier 1: Cloudflare Agents (Lightweight)
-
-Fast, serverless agents for receiving messages and quick responses:
-
-| App | Runtime | Worker Name | Purpose |
-|-----|---------|-------------|---------|
-| `apps/telegram-bot` | Workers + Durable Objects | `duyetbot-telegram` | Telegram chat interface |
-| `apps/github-bot` | Workers + Durable Objects | `duyetbot-github` | GitHub @mentions and webhooks |
-| `apps/memory-mcp` | Workers | `duyetbot-memory-mcp` | Cross-session memory (D1 + KV) |
-
-**Capabilities**:
-- Receive and respond to messages quickly (<100ms cold start)
-- Stateful sessions via Durable Objects
-- Built-in SQLite storage
-- **Transport Layer** for platform-specific messaging
-- Can trigger Cloudflare Workflows for:
-  - **Deferred tasks**: Reminders, scheduled messages, delayed actions
-  - **Complex tasks**: Multi-step operations requiring Tier 2 compute
-
-### Tier 2: Claude Agent SDK (Heavy)
-
-Long-running agents for complex tasks requiring full compute environment:
-
-| App | Runtime | Purpose |
-|-----|---------|---------|
-| `apps/agent-server` | Container (Cloudflare sandbox) | Full agent with filesystem/shell tools |
-
-**Capabilities**:
-- `child_process.spawn()` for bash/git operations
-- Filesystem access for code operations
-- Long-running tasks (minutes to hours)
-- Triggered by Cloudflare Workflows from Tier 1 agents
-
-**Note**: Tier 2 implementation is planned for later phases.
-
-### Agent Flow
+To avoid duplicating 8 agents across apps, the system uses **script_name binding**:
 
 ```
-User Message → Cloudflare Agent (Tier 1) → Quick Response
-                     ↓
-              Task Type Detection
-                     ↓
-         ┌─────────────┴─────────────┐
-         ↓                           ↓
-   Deferred Task              Complex Task
-   (Lightweight)                 (Heavy)
-         ↓                           ↓
- Cloudflare Workflow         Cloudflare Workflow
-   (sleep, alarm)              (provision)
-         ↓                           ↓
-   Execute Later          Claude Agent SDK (Tier 2)
-   (same Tier 1)              Full Compute
+duyetbot-shared-agents Worker (One deployment)
+├─ RouterAgent (Durable Object)
+├─ SimpleAgent (Durable Object)
+├─ OrchestratorAgent (Durable Object)
+├─ HITLAgent (Durable Object)
+├─ CodeWorker (Durable Object)
+├─ ResearchWorker (Durable Object)
+├─ GitHubWorker (Durable Object)
+└─ DuyetInfoAgent (Durable Object)
+
+duyetbot-telegram Worker
+├─ TelegramAgent (Durable Object)
+├─ References shared agents via:
+│  └─ [[durable_objects.bindings]]
+│     name = "RouterAgent"
+│     script_name = "duyetbot-shared-agents"
+└─ Result: single code, shared execution
+
+duyetbot-github Worker
+├─ GitHubAgent (Durable Object)
+├─ References same shared agents
+└─ Both bots use same 8 agent instances
 ```
 
-**Examples**:
-- `@duyetbot remind me in 10 minutes` → Lightweight Workflow (sleep) → Tier 1 sends reminder
-- `@duyetbot review this PR thoroughly` → Heavy Workflow → Tier 2 with filesystem/git
-
-**Why this separation?**
-- Tier 1: Instant responses, cost-effective, edge deployment
-- Lightweight Workflows: Deferred tasks without compute cost (free sleep up to 365 days)
-- Tier 2: Full Linux environment for heavy tasks, billed only when running
-
-## Multi-Agent Routing System
-
-The Tier 1 agents use a **RouterAgent** to classify queries and route them to specialized handlers. The system implements all five [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
-
-| Pattern | Implementation | Component |
-|---------|---------------|-----------|
-| Prompt Chaining | LLM→Tool→LLM flow | `CloudflareChatAgent.chat()` |
-| Routing | Hybrid classification | `RouterAgent` + `classifier.ts` |
-| Parallelization | Concurrent step execution | `executor.ts` |
-| Orchestrator-Workers | Task decomposition | `OrchestratorAgent` + Workers |
-| Evaluator-Optimizer | Result synthesis | `aggregator.ts` |
-
-### Complete Query Flow
-
-```
-User Message → Platform Webhook (Telegram/GitHub)
-                        │
-                        ▼
-            CloudflareChatAgent.handle()
-                        │
-              Route Query
-              via RouterAgent
-                        │
-           ┌────────────┴────────────┐
-           ▼                         ▼
-    NO: Direct chat()         YES: routeQuery()
-    (LLM + Tools)                    │
-           │                         ▼
-           │               RouterAgent.route()
-           │                         │
-           │               hybridClassify()
-           │               ┌─────────┴─────────┐
-           │               ▼                   ▼
-           │         Quick Pattern       LLM Fallback
-           │         (regex: hi,         (semantic
-           │          help, yes)          analysis)
-           │               └─────────┬─────────┘
-           │                         │
-           │         ┌───────────────┼───────────────┐
-           │         ▼               ▼               ▼
-           │   SimpleAgent    OrchestratorAgent  HITLAgent
-           │   (quick Q&A)    (task decompose)   (approval)
-           │         │               │               │
-           │         │     ┌─────────┼─────────┐     │
-           │         │     ▼         ▼         ▼     │
-           │         │  CodeWrkr  RsrchWrkr  GitHubWrkr
-           │         │  (review)  (search)   (PRs)   │
-           │         │               │               │
-           └─────────┴───────────────┴───────────────┘
-                                     │
-                                     ▼
-                            Response to User
-```
-
-### Routing Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      RouterAgent (DO)                           │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │               Hybrid Classifier                           │  │
-│  │  1. Quick Pattern Match (regex) ─── Instant Response     │  │
-│  │     • Greetings: hi, hello, hey                          │  │
-│  │     • Help: help, ?, what can you do                     │  │
-│  │     • Confirmations: yes, no, approve, reject            │  │
-│  │  2. LLM Classification (fallback) ── ~200-500ms          │  │
-│  │     • Analyzes query semantics                           │  │
-│  │     • Determines type, category, complexity              │  │
-│  └───────────────────────────────────────────────────────────┘  │
-│                              │                                   │
-│  Route Target Decision (Priority Order):                        │
-│  1. tool_confirmation ────────────────► hitl-agent              │
-│  2. complexity: high ─────────────────► orchestrator-agent      │
-│  3. requiresHumanApproval: true ──────► hitl-agent              │
-│  4. type: simple + complexity: low ───► simple-agent            │
-│  5. category: code ───────────────────► code-worker             │
-│  6. category: research ───────────────► research-worker         │
-│  7. category: github ─────────────────► github-worker           │
-│  8. default ──────────────────────────► simple-agent            │
-└─────────────────────────────────────────────────────────────────┘
-                              │
-         ┌────────────────────┼────────────────────┐
-         ▼                    ▼                    ▼
-┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────┐
-│  SimpleAgent    │  │   HITLAgent     │  │  OrchestratorAgent  │
-│  • Quick Q&A    │  │  • Tool approval│  │  • Task decompose   │
-│  • Greetings    │  │  • Confirmations│  │  • Parallel exec    │
-│  • Direct LLM   │  │  • State machine│  │  • Worker coord     │
-└─────────────────┘  └─────────────────┘  └─────────┬───────────┘
-                                                    │
-                                    ┌───────────────┼───────────────┐
-                                    ▼               ▼               ▼
-                              ┌──────────┐  ┌───────────┐  ┌────────────┐
-                              │CodeWorker│  │ResearchWkr│  │GitHubWorker│
-                              │• Review  │  │• Web search│  │• PRs/Issues│
-                              │• Debug   │  │• Doc lookup│  │• CI status │
-                              └──────────┘  └───────────┘  └────────────┘
-```
-
-### Agent Responsibilities
-
-| Agent | Purpose | Triggers | Complexity |
-|-------|---------|----------|------------|
-| **SimpleAgent** | Quick responses, direct LLM | Greetings, help, simple Q&A | Low |
-| **HITLAgent** | Human approval workflow | Confirmations, destructive ops | Low-Medium |
-| **OrchestratorAgent** | Task decomposition | Multi-step, high complexity | High |
-| **CodeWorker** | Code analysis | Review, debug, refactor | Medium |
-| **ResearchWorker** | Information gathering | Web search, docs | Medium |
-| **GitHubWorker** | GitHub operations | PRs, issues, reviews | Medium |
-
-### Routing Configuration
-
-```bash
-# Environment variables
-ROUTER_DEBUG=true     # Enable debug logging (default: false)
-```
+### Wrangler Configuration
 
 ```toml
-# wrangler.toml - Durable Object binding
+# apps/telegram-bot/wrangler.toml
+
+name = "duyetbot-telegram"
+type = "service"
+
+[env.production]
+routes = [
+  { pattern = "telegram.duyetbot.workers.dev/*", zone_name = "duyetbot.com" }
+]
+
 [[durable_objects.bindings]]
-name = "RouterAgent"
-class_name = "RouterAgent"
-
-[[migrations]]
-tag = "v2"
-new_sqlite_classes = ["RouterAgent"]
-```
-
-## Agent Implementation Details
-
-This section covers the concrete implementation patterns for the multi-agent routing system.
-
-### File Structure
-
-The routing system is organized into dedicated modules for separation of concerns:
-
-```
-packages/chat-agent/src/
-├── agents/
-│   ├── index.ts                 # Agent exports
-│   ├── base-agent.ts            # Abstract base with Durable Object functionality
-│   ├── router-agent.ts          # Query classification & routing orchestration
-│   ├── simple-agent.ts          # Direct LLM responses (stateless)
-│   └── hitl-agent.ts            # Human-in-the-loop tool confirmations
-│
-├── workers/
-│   ├── index.ts                 # Worker exports
-│   ├── base-worker.ts           # Abstract worker base
-│   ├── code-worker.ts           # Code analysis/review/generation
-│   ├── research-worker.ts       # Web research & documentation
-│   └── github-worker.ts         # GitHub operations via MCP
-│
-├── routing/
-│   ├── index.ts                 # Routing exports
-│   ├── classifier.ts            # Query classification logic
-│   ├── schemas.ts               # Zod schemas for classification
-│   └── router.ts                # Route selection algorithms
-│
-├── orchestration/
-│   ├── index.ts                 # Orchestration exports
-│   ├── planner.ts               # Task planning with LLM
-│   ├── executor.ts              # Parallel execution engine
-│   └── aggregator.ts            # Result synthesis
-│
-├── hitl/
-│   ├── index.ts                 # HITL exports
-│   ├── confirmation.ts          # Tool confirmation workflow
-│   ├── state-machine.ts         # HITL state management
-│   └── executions.ts            # Tool execution handlers
-│
-└── [existing files - kept for backward compatibility]
-    ├── cloudflare-agent.ts
-    ├── agent.ts
-    ├── transport.ts
-    └── types.ts
-```
-
-### Key Classification Schemas
-
-The routing system uses Zod schemas to structure query classification:
-
-```typescript
-// Schema for query classification
-const ClassificationSchema = z.object({
-  type: z.enum(['simple', 'complex', 'tool_confirmation']),
-  category: z.enum(['general', 'code', 'research', 'github', 'admin']),
-  complexity: z.enum(['low', 'medium', 'high']),
-  requiresHumanApproval: z.boolean(),
-  reasoning: z.string(),
-});
-
-// Schema for orchestrator execution plans
-const ExecutionPlanSchema = z.object({
-  taskId: z.string(),
-  summary: z.string(),
-  steps: z.array(
-    z.object({
-      id: z.string(),
-      description: z.string(),
-      workerType: z.enum(['code', 'research', 'github']),
-      task: z.string(),
-      dependsOn: z.array(z.string()).optional(),
-      priority: z.number().min(1).max(10),
-    })
-  ),
-  estimatedComplexity: z.enum(['low', 'medium', 'high']),
-});
-
-// Schema for tool confirmation requests
-interface ToolConfirmation {
-  id: string;
-  toolName: string;
-  toolArgs: Record<string, unknown>;
-  status: 'pending' | 'approved' | 'rejected';
-  requestedAt: number;
-  respondedAt?: number;
-  reason?: string;
-}
-```
-
-### Agent Implementation Patterns
-
-#### RouterAgent - Query Classification
-
-The RouterAgent uses a **hybrid classifier**:
-1. **Pattern matching** for instant routing (greetings, help, confirmations)
-2. **LLM-based classification** for semantic analysis (fallback)
-
-Maintains routing history in Durable Object state for context across messages.
-
-**Routing Logic**:
-- `tool_confirmation` → HITLAgent
-- `complexity: high` → OrchestratorAgent
-- `requiresHumanApproval: true` → HITLAgent
-- `type: simple` → SimpleAgent
-- `category: code` → CodeWorker
-- `category: research` → ResearchWorker
-- `category: github` → GitHubWorker
-- Default → SimpleAgent
-
-#### OrchestratorAgent - Task Decomposition
-
-The OrchestratorAgent breaks complex tasks into executable steps:
-
-**Three-phase execution**:
-1. **Planning**: Uses LLM to decompose task into independent steps
-2. **Execution**: Groups steps by dependencies, executes in parallel
-3. **Aggregation**: Synthesizes results from all steps into coherent response
-
-Supports dependency management - steps can depend on results from previous steps.
-
-#### HITLAgent - Human-in-the-Loop
-
-Implements tool confirmation workflow for sensitive operations:
-
-**Lifecycle**:
-1. Agent reaches decision point for tool that requires confirmation
-2. Creates ToolConfirmation record with pending status
-3. Streams back to user (or Check Run) asking for approval
-4. User approves/rejects via UI
-5. Agent resumes execution based on user decision
-
-Maintains state machine: `idle` → `awaiting_confirmation` → `executing` → `completed`
-
-#### Specialized Workers
-
-Workers are **stateless** agents optimized for specific task categories:
-- **CodeWorker**: Code review, generation, analysis
-- **ResearchWorker**: Web search, documentation lookup
-- **GitHubWorker**: PR operations, issue management, CI checks
-
-Workers receive task description + context (results from dependencies) and return structured results.
-
-### Testing Strategy
-
-#### Unit Tests - Routing
-
-```typescript
-describe('QueryClassifier', () => {
-  it('classifies simple queries correctly', async () => {
-    const result = await classifier.classify('What time is it?');
-    expect(result.type).toBe('simple');
-    expect(result.complexity).toBe('low');
-  });
-
-  it('classifies complex queries correctly', async () => {
-    const result = await classifier.classify(
-      'Review this PR for security issues, summarize, and post to Slack'
-    );
-    expect(result.type).toBe('complex');
-    expect(result.complexity).toBe('high');
-  });
-
-  it('identifies tool confirmation queries', async () => {
-    const result = await classifier.classify('Delete all test files');
-    expect(result.requiresHumanApproval).toBe(true);
-  });
-});
-```
-
-#### Integration Tests - Orchestration
-
-```typescript
-describe('Orchestrator E2E', () => {
-  it('plans and executes multi-step tasks in parallel', async () => {
-    const orchestrator = await getAgentByName(env.OrchestratorAgent, 'test');
-
-    const result = await orchestrator.orchestrate(
-      'Review the authentication code and summarize security concerns',
-      { repo: 'test/repo' }
-    );
-
-    expect(result.stepCount).toBeGreaterThan(1);
-    expect(result.successCount).toBe(result.stepCount);
-  });
-});
-```
-
-### Implementation Phases
-
-All five Cloudflare Agent Patterns are fully implemented and deployed:
-
-| Phase | Focus | Status | Tests |
-|-------|-------|--------|-------|
-| 1 | Core infrastructure (base agents, routing, schemas) | ✅ Complete | 22 |
-| 2 | Human-in-the-loop (confirmation workflows) | ✅ Complete | 57 |
-| 3 | Orchestrator-Workers (task decomposition, parallel execution) | ✅ Complete | 49 |
-| 4 | Platform integration (TelegramAgent, GitHubAgent) | ✅ Complete | 12 |
-| 5 | Validation & rollout (full DO deployment) | ✅ Complete | 43 |
-
-**Total: 277 tests passing**
-
-All patterns are fully implemented and deployed. See the [README](../README.md) for current status.
-
-### Deployed Durable Objects (per bot)
-
-Each bot (Telegram/GitHub) now deploys 8 Durable Objects:
-
-```toml
-# wrangler.toml - all DO bindings
-[[durable_objects.bindings]]
-name = "TelegramAgent"  # or GitHubAgent
+name = "TelegramAgent"
 class_name = "TelegramAgent"
 
+# Shared agents from different worker
 [[durable_objects.bindings]]
 name = "RouterAgent"
 class_name = "RouterAgent"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "SimpleAgent"
 class_name = "SimpleAgent"
+script_name = "duyetbot-shared-agents"
 
-[[durable_objects.bindings]]
-name = "HITLAgent"
-class_name = "HITLAgent"
-
-[[durable_objects.bindings]]
-name = "OrchestratorAgent"
-class_name = "OrchestratorAgent"
-
-[[durable_objects.bindings]]
-name = "CodeWorker"
-class_name = "CodeWorker"
-
-[[durable_objects.bindings]]
-name = "ResearchWorker"
-class_name = "ResearchWorker"
-
-[[durable_objects.bindings]]
-name = "GitHubWorker"
-class_name = "GitHubWorker"
-
-[[migrations]]
-tag = "v3"
-new_sqlite_classes = ["SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker"]
+# ... repeat for all 8 shared agents
 ```
 
-### Metrics & Monitoring
+### Deployment Commands
 
-**Key metrics to track**:
-- **Routing Accuracy**: % of queries routed to correct handler
-- **Orchestration Efficiency**: Parallel vs sequential execution ratio
-- **HITL Conversion**: % of confirmations approved vs rejected
-- **Latency**: P50, P95, P99 for each agent type
-- **Cost**: Token usage per query type
+```bash
+# Deploy all workers
+bun run deploy
 
-**Structured Logging Pattern**:
+# Deploy individual apps
+bun run deploy:telegram
+bun run deploy:github
+bun run deploy:memory-mcp
+bun run deploy:shared
+
+# Rollback
+wrangler rollback
+```
+
+### Environment Variables
+
+```
+ANTHROPIC_API_KEY      # Claude API key
+ANTHROPIC_BASE_URL     # Optional: custom endpoint (Z.AI, etc.)
+TELEGRAM_BOT_TOKEN     # Telegram bot token (secret)
+GITHUB_TOKEN           # GitHub PAT (secret)
+GITHUB_WEBHOOK_SECRET  # GitHub webhook verification (secret)
+ROUTER_DEBUG           # Enable debug logging (optional)
+```
+
+---
+
+## Metrics & Monitoring
+
+### Key Metrics to Track
+
+```
+Routing Accuracy
+├─ % of queries routed to correct handler
+├─ Breakdown by agent type
+└─ Identify misclassifications
+
+Processing Latency
+├─ P50, P95, P99 response times
+├─ Batch size vs latency correlation
+└─ LLM call duration
+
+Batch Processing
+├─ Messages per batch (avg, p99)
+├─ Batch window utilization
+├─ Stuck batch count (per day)
+
+Agent Performance
+├─ Success rate by agent
+├─ Error rate by agent
+├─ Token usage per agent
+├─ Cost breakdown
+
+System Health
+├─ DO invocation success rate
+├─ Message deduplication hits
+├─ Recovery actions triggered
+```
+
+### Logging Pattern
+
 ```typescript
 logger.info('[ROUTER] Query classified', {
+  queryId,           // Trace correlation ID
+  type: 'simple',
+  category: 'general',
+  complexity: 'low',
+  routedTo: 'simple-agent',
+  latencyMs: 125,
+  userId,
+  timestamp: Date.now(),
+});
+
+logger.warn('[BATCH] Stuck batch detected', {
+  batchId,
+  duration: '35000ms',
+  messageCount: 3,
+  action: 'cleared',
+});
+
+logger.error('[LLM] Call failed', {
   queryId,
-  type: classification.type,
-  category: classification.category,
-  complexity: classification.complexity,
-  routedTo: route,
-  latencyMs: Date.now() - startTime,
+  error: error.message,
+  retryable: true,
+  attempts: 1,
 });
 ```
 
-## Claude Agent SDK Integration
+---
 
-The Claude Agent SDK is the **primary execution engine** running on Fly.io Machines:
+## Future Architecture
 
-```typescript
-// SDK query with streaming
-import { query, createDefaultOptions } from '@duyetbot/core';
-
-const options = createDefaultOptions({
-  model: 'sonnet',
-  tools: [bashTool, gitTool, githubTool],
-  systemPrompt: 'You are a helpful assistant.',
-});
-
-for await (const message of query('Help me review this PR', options)) {
-  switch (message.type) {
-    case 'assistant':
-      console.log(message.content);
-      break;
-    case 'tool_use':
-      console.log(`Using: ${message.toolName}`);
-      break;
-    case 'result':
-      console.log(`Tokens: ${message.totalTokens}`);
-      break;
-  }
-}
-```
-
-### Why SDK Needs Full Environment
-
-The Claude Agent SDK requires:
-- **Bash tool**: Uses `child_process.spawn` to run shell commands
-- **Git operations**: Native git for cloning, diffing, committing
-- **Filesystem tools**: grep, find, read, write operations
-
-These are impossible in Cloudflare Workers' V8 isolates.
-
-## Volume-as-Session Pattern
-
-The SDK relies on local filesystem for session state. We solve this with persistent volumes:
+### Tier 2: Long-Running Agent (Planned)
 
 ```
-Volume Creation:
-  PR #123 opened → Create vol_duyetbot_pr_123
+Cloud Provider: Cloudflare Sandbox / Fly.io / Custom
+Runtime: Node.js/Bun + Linux environment
 
-Mount on Run:
-  Machine boots → Mount volume to /root/.claude
+Use Cases:
+├─ Full filesystem access (git clone, file ops)
+├─ Shell tools (bash, git, gh CLI, ripgrep)
+├─ Long-running tasks (5-30 minutes)
+└─ Triggered by Tier 1 via Cloudflare Workflows
 
-Session Persistence:
-  SDK writes → Actually writes to NVMe volume
-  Machine dies → Data survives
+Integration:
+├─ Tier 1 detects complex task
+├─ Creates Cloudflare Workflow
+├─ Provisions compute resource
+├─ Tier 2 executes with full SDK
+├─ Results stream back to user
+└─ Resource auto-cleanup on completion
 
-Resume:
-  Next webhook → New machine, same volume
-  SDK boots → Finds existing state, resumes context
+Status: PLANNED (not yet implemented)
 ```
 
-This enables multi-day conversations without complex database serialization.
-
-## Component Architecture
-
-### 1. Ingress Worker (Cloudflare)
-
-Public entry point for webhooks:
-- Validates `X-Hub-Signature-256`
-- Routes events to appropriate Workflow
-- Maps PR ID → Workflow Instance ID
-
-### 2. Workflow Supervisor (Cloudflare Durable Object)
-
-State machine managing agent lifecycle:
-- **State**: `status`, `fly_machine_id`, `fly_volume_id`, `last_activity`
-- **Provisions**: Creates Fly.io volumes and machines
-- **Waits**: Uses `step.wait_for_event()` for HITL (free while waiting)
-- **Cleanup**: Destroys resources when PR closes
-
-### 3. Agent Runner (Fly.io Machine)
-
-Docker container with full environment:
-- **Image**: Node.js 20, git, gh CLI, ripgrep
-- **Runtime**: Mounts volume, runs SDK, streams logs
-- **Output**: Updates GitHub Checks API in real-time
-
-## Human-in-the-Loop via GitHub Checks API
-
-For tasks requiring human approval:
+### Vector Memory (Planned)
 
 ```
-1. Agent Decision
-   → Agent reaches decision point requiring approval
+Cloudflare Vectorize integration
 
-2. Check Update
-   → Status: completed, Conclusion: action_required
-   → Actions: [{ label: "Approve Fix", identifier: "approve" }]
+Current: Cross-session memory via memory-mcp (D1 + KV)
+Future: Semantic search via embeddings
 
-3. Workflow Sleep
-   → Runner exits
-   → Supervisor calls step.wait_for_event('requested_action')
+Benefits:
+├─ Find relevant past conversations
+├─ Context-aware suggestions
+├─ Personalized memory retrieval
+└─ Better user experience
 
-4. User Clicks Button
-   → GitHub sends check_run.requested_action webhook
-
-5. Resume
-   → Workflow wakes, provisions new machine
-   → Agent resumes with user's decision
+Status: PLANNED (not yet implemented)
 ```
 
-This allows the bot to wait days/weeks for user input without cost.
+---
 
-## Data Flow: PR Review
+## Key Architectural Insights
 
 ```
-1. GitHub webhook (pull_request.opened)
-   ↓
-2. Ingress Worker validates signature
-   ↓
-3. Workflow Supervisor receives event
-   ↓
-4. Supervisor provisions:
-   • Creates Fly.io Volume (vol_pr_123)
-   • Starts Fly.io Machine with volume mounted
-   ↓
-5. Agent Runner boots (~2s)
-   • Mounts /root/.claude to volume
-   • Creates GitHub Check Run (in_progress)
-   ↓
-6. Claude Agent SDK executes:
-   • Clones repository
-   • Analyzes diff
-   • Runs tests if needed
-   • Streams progress to Check Run
-   ↓
-7. Agent completes or requests input
-   • Posts review comments
-   • Updates Check Run (success/action_required)
-   ↓
-8. Machine stops, volume persists
-   ↓
-9. Supervisor sleeps (if awaiting input)
+★ Insight: Fire-and-Forget Pattern
+├─ Webhook returns <100ms (prevents platform retry)
+├─ DO continues with independent 30s timeout
+├─ Multiple DOs can chain in series (each gets 30s)
+└─ Error isolation prevents cascade failures
+
+★ Insight: Dual-Batch Queue
+├─ pendingBatch (always collecting) never blocks
+├─ activeBatch (immutable during processing) runs atomically
+├─ If activeBatch stuck: pendingBatch promotes automatically
+└─ User never blocked, system always responsive
+
+★ Insight: Heartbeat = Liveness Proof
+├─ Rotating messages serve dual purpose
+├─ User feedback: "Still working on this..."
+├─ Liveness proof: edit proves DO alive
+├─ Combined with timestamp: enables stuck detection
+
+★ Insight: Transport Abstraction
+├─ ~50 lines of transport per app
+├─ ~2400 lines of agent logic (reused)
+├─ Platform changes = transport change only
+├─ Enables rapid platform onboarding
+
+★ Insight: Hybrid Classification
+├─ Quick pattern match covers 80% of queries (instant)
+├─ LLM fallback handles semantic analysis (slower)
+├─ Best of both: speed and accuracy
+└─ Graceful degradation under load
 ```
 
-## Key Architectural Decisions
+---
 
-| Component | Choice | Rationale |
-|-----------|--------|-----------|
-| **Orchestration** | Cloudflare Workflows | Durable execution, free sleep, built-in retries |
-| **Compute** | Fly.io Machines | Full Linux, fast boot, API-driven lifecycle |
-| **State** | Fly.io Volumes | SDK requires filesystem, NVMe performance |
-| **Agent Engine** | Claude Agent SDK | Battle-tested, maintained by Anthropic |
-| **Feedback** | GitHub Checks API | Real-time streaming, action_required support |
-| **Memory** | MCP Server (CF Workers) | Cross-session search, user isolation |
-| **Messaging** | Transport Layer | Platform abstraction, simplified apps |
+## Quick Reference
 
-## Cost Model
+- **Package Dependency Graph**: See [Package Architecture](#package-architecture)
+- **Message Flow Timing**: See [Message Flow](#message-flow) (T+0ms to T+5002ms)
+- **Router Logic**: See [Multi-Agent Routing](#multi-agent-routing-system)
+- **Batch Architecture**: See [Batch Processing](#batch-processing-architecture)
+- **Deployment**: See [Deployment Architecture](#deployment-architecture)
+- **Implementation Status**: See `PLAN.md`
 
-### Scenario: 100 PRs/month, 10 min avg active time
+---
 
-| Component | Calculation | Cost |
-|-----------|-------------|------|
-| Fly.io Compute | 60,000s × $0.000011/s | $0.66 |
-| Fly.io Storage | 100 PRs × 1GB × 5 days | $2.50 |
-| Cloudflare | Mostly routing | ~$0.50 |
-| **Total** | | **~$3.66/mo** |
+## External References
 
-Compare to always-on containers: **~$58/mo** (2× machines)
-
-## Security
-
-### Authentication
-- Fly API token in Cloudflare secrets
-- Single-use callback tokens for Runner → Supervisor
-- GitHub webhook signature validation
-
-### Networking
-- Fly Machines use private IPv6 (no public IP)
-- Communication via public APIs (GitHub, Cloudflare)
-- Flycast for internal-only services
-
-### Volume Cleanup
-- Janitor Workflow runs daily via Cron
-- Cross-references volumes with PR status
-- Deletes orphaned volumes
-
-## Packages & Components
-
-### Core (`packages/core`)
-- SDK adapter layer (`sdk/`)
-- Session management
-- MCP client
-- Used by agent-server (Claude Agent SDK)
-
-### Chat Agent (`packages/chat-agent`)
-Reusable chat agent abstraction for Workers with Transport Layer support:
-- `Transport<TContext>` - Platform-agnostic messaging interface
-- `ChatAgent.handle(ctx)` - Main entry point for handling messages
-- `ParsedInput` - Normalized input from any platform
-- `CloudflareAgentAdapter` - Adapter for Cloudflare Agents SDK
-- `createChatAgent()` - Factory for creating agents
-- Provider-agnostic (OpenRouter, Anthropic via AI Gateway)
-- Built-in conversation history management
-- Lifecycle hooks (`beforeHandle`, `afterHandle`, `onError`)
-
-### Hono Middleware (`packages/hono-middleware`)
-Shared Hono middleware for all Cloudflare Workers apps:
-- `createBaseApp()` - Factory for creating Hono apps with standard middleware
-- Request logger with unique request IDs
-- Error handler with consistent JSON responses
-- Health check routes (`/health`, `/health/live`, `/health/ready`)
-- Rate limiting middleware
-- Auth middleware (Bearer, API key, webhook signature)
-
-### Prompts (`packages/prompts`)
-Shared system prompts as markdown files:
-- `prompts/telegram.md` - Telegram bot personality
-- `prompts/github.md` - GitHub bot personality
-- `prompts/default.md` - Base prompt fragments
-- `loadPrompt()` - Async prompt loader
-- `TELEGRAM_SYSTEM_PROMPT`, `GITHUB_SYSTEM_PROMPT` - Pre-loaded exports
-
-### Tools (`packages/tools`)
-Built-in tools (SDK-compatible):
-- `bash` - Shell execution
-- `git` - Repository operations
-- `github` - API operations
-- `research` - Web research
-- `plan` - Task planning
-
-### Providers (`packages/providers`)
-LLM provider abstractions:
-- Claude provider with base URL override (Z.AI support)
-- OpenRouter provider
-- Provider factory with configuration
-
-### Telegram Bot (`apps/telegram-bot`)
-Cloudflare Agents SDK with Durable Objects:
-- `TelegramAgent` class extending `Agent`
-- `telegramTransport` - Telegram-specific Transport implementation
-- Built-in state for conversation history
-- MCP client for memory-mcp connection
-- Uses `@duyetbot/hono-middleware` for shared routes
-- Deploy: `wrangler deploy` → `duyetbot-telegram`
-
-### GitHub Bot (`apps/github-bot`)
-Cloudflare Agents SDK with Durable Objects:
-- `GitHubAgent` class extending `Agent`
-- `githubTransport` - GitHub-specific Transport implementation
-- GitHub MCP for API operations
-- duyet-mcp for knowledge base
-- Uses `@duyetbot/hono-middleware` for shared routes
-- Deploy: `wrangler deploy` → `duyetbot-github`
-
-### Memory MCP (`apps/memory-mcp`)
-Cloudflare Workers for cross-session memory:
-- D1 - Metadata, users
-- KV - Message history
-- Vectorize - Semantic search (future)
-- Deploy: `wrangler deploy` → `duyetbot-memory-mcp`
-
-### CLI (`packages/cli`)
-Local development and testing:
-- Embeds SDK directly
-- File-based or MCP storage
-
-## Environment Configuration
-
-```env
-# LLM Provider
-ANTHROPIC_API_KEY=sk-ant-xxx
-ANTHROPIC_BASE_URL=https://api.anthropic.com
-
-# GitHub
-GITHUB_TOKEN=ghp_xxx
-WEBHOOK_SECRET=xxx
-BOT_USERNAME=duyetbot
-
-# Fly.io (for Supervisor)
-FLY_API_TOKEN=xxx
-FLY_ORG=personal
-
-# MCP Memory (optional)
-MCP_SERVER_URL=https://memory.duyetbot.workers.dev
-```
-
-## Deployment
-
-See [Deployment Guide](deploy.md) for component-specific instructions:
-- [GitHub Bot](deployment/github-bot.md) - Webhook handler
-- [Telegram Bot](deployment/telegram-bot.md) - Chat interface
-- [Memory MCP](deployment/memory-mcp.md) - Session persistence
-- [Agent Server](deployment/agent-server.md) - Long-running server
-- [Cloudflare Agents](deployment/cloudflare-agents.md) - Stateful serverless
-
-## Next Steps
-
-- [Getting Started](getting-started.md) - Installation and quick start
-- [Use Cases](usecases.md) - Common workflows
-- [Report Issues](https://github.com/duyet/duyetbot-agent/issues)
+- **Model Context Protocol**: https://modelcontextprotocol.io/
+- **Cloudflare Workers**: https://developers.cloudflare.com/workers/
+- **Cloudflare Durable Objects**: https://developers.cloudflare.com/durable-objects/
+- **Anthropic Claude API**: https://docs.anthropic.com/
+- **Telegram Bot API**: https://core.telegram.org/bots/api
+- **GitHub Webhooks**: https://docs.github.com/en/developers/webhooks-and-events/webhooks

@@ -1,0 +1,27 @@
+# Test configuration for E2E tests
+# This config uses a minimal test worker to avoid CJS dependency issues
+
+name = "duyetbot-telegram-test"
+# Use minimal test worker instead of full worker to avoid ajv/CJS issues
+main = "src/__tests__/e2e/test-worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+MODEL = "x-ai/grok-4.1-fast"
+AI_GATEWAY_NAME = "duyetbot"
+AI_GATEWAY_PROVIDER = "openrouter"
+TELEGRAM_ADMIN = "duyet"
+TELEGRAM_ALLOWED_USERS = ""
+
+# Local Durable Object only - for E2E testing
+# External DOs are not available in miniflare isolated mode
+[[durable_objects.bindings]]
+name = "TelegramAgent"
+class_name = "TelegramAgent"
+
+# Migration for local TelegramAgent
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["TelegramAgent"]

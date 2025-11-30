@@ -100,6 +100,7 @@ export async function executePlan(
   });
 
   // Execute each level sequentially, steps within a level in parallel
+  // Using Promise.allSettled for true fault-tolerant parallelism
   for (let level = 0; level < stepGroups.length; level++) {
     const group = stepGroups[level];
     if (!group || group.length === 0) {
@@ -143,8 +144,8 @@ export async function executePlan(
       onProgress?.(step.id, 'failed', results.get(step.id));
     }
 
-    // Execute steps in parallel batches
-    const levelResults = await executeStepsParallel(
+    // Execute steps in parallel with fault-tolerance
+    const levelResults = await executeStepsParallelSafe(
       executableSteps,
       results,
       context,
@@ -213,9 +214,10 @@ export async function executePlan(
 }
 
 /**
- * Execute steps in parallel with concurrency limit
+ * Execute steps in parallel with concurrency limit and fault tolerance
+ * Uses Promise.allSettled for true parallelism - one step failure doesn't block others
  */
-async function executeStepsParallel(
+async function executeStepsParallelSafe(
   steps: PlanStep[],
   previousResults: Map<string, WorkerResult>,
   context: AgentContext,
@@ -226,7 +228,7 @@ async function executeStepsParallel(
 ): Promise<Map<string, WorkerResult>> {
   const results = new Map<string, WorkerResult>();
 
-  // Process in batches
+  // Process in batches with allSettled for fault tolerance
   for (let i = 0; i < steps.length; i += maxParallel) {
     const batch = steps.slice(i, i + maxParallel);
 
@@ -234,10 +236,19 @@ async function executeStepsParallel(
       executeStep(step, previousResults, results, context, config, traceId, onProgress)
     );
 
-    const batchResults = await Promise.all(batchPromises);
+    // Use allSettled instead of all - one failure doesn't block parallel execution
+    const batchSettled = await Promise.allSettled(batchPromises);
 
-    for (const result of batchResults) {
-      results.set(result.stepId, result);
+    for (const settled of batchSettled) {
+      if (settled.status === 'fulfilled') {
+        const result = settled.value;
+        results.set(result.stepId, result);
+      } else {
+        // Handle rejected promises as execution failures
+        AgentMixin.logError('Executor', 'Step execution rejected', settled.reason, {
+          traceId,
+        });
+      }
     }
   }
 

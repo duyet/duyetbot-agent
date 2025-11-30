@@ -32,11 +32,11 @@ const APPS: Record<string, AppConfig> = {
     dir: 'apps/telegram-bot',
     workerName: 'duyetbot-telegram',
     secrets: [
-      { name: 'GITHUB_TOKEN', required: false },
+      { name: 'AI_GATEWAY_API_KEY', required: true },
       { name: 'TELEGRAM_BOT_TOKEN', required: true },
       { name: 'TELEGRAM_WEBHOOK_SECRET', required: false },
       { name: 'TELEGRAM_ALLOWED_USERS', required: false },
-      { name: 'AI_GATEWAY_API_KEY', required: false },
+      { name: 'GITHUB_TOKEN', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
@@ -46,9 +46,9 @@ const APPS: Record<string, AppConfig> = {
     dir: 'apps/github-bot',
     workerName: 'duyetbot-github',
     secrets: [
+      { name: 'AI_GATEWAY_API_KEY', required: true },
       { name: 'GITHUB_TOKEN', required: true },
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
-      { name: 'AI_GATEWAY_API_KEY', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
@@ -60,6 +60,21 @@ const APPS: Record<string, AppConfig> = {
     secrets: [
       { name: 'GITHUB_CLIENT_ID', required: true },
       { name: 'GITHUB_CLIENT_SECRET', required: true },
+    ],
+  },
+  agents: {
+    name: 'Shared Agents',
+    dir: 'apps/shared-agents',
+    workerName: 'duyetbot-agents',
+    secrets: [
+      { name: 'AI_GATEWAY_API_KEY', required: true },
+      { name: 'TELEGRAM_BOT_TOKEN', required: true },
+      { name: 'TELEGRAM_WEBHOOK_SECRET', required: false },
+      { name: 'TELEGRAM_ALLOWED_USERS', required: false },
+      { name: 'GITHUB_TOKEN', required: true },
+      { name: 'GITHUB_WEBHOOK_SECRET', required: false },
+      { name: 'MEMORY_MCP_URL', required: false },
+      { name: 'MEMORY_MCP_TOKEN', required: false },
     ],
   },
 };
@@ -336,6 +351,7 @@ switch (app) {
   case 'telegram':
   case 'github':
   case 'memory-mcp':
+  case 'agents':
     await configureApp(app, subCommand);
     break;
   case 'show':

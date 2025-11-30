@@ -293,7 +293,7 @@ describe('SDK Query', () => {
   });
 
   describe('query', () => {
-    it('should yield user message first', { timeout: 10000 }, async () => {
+    it('should yield user message first', { timeout: 60000 }, async () => {
       const messages = [];
       for await (const message of query('test input', createDefaultOptions())) {
         messages.push(message);

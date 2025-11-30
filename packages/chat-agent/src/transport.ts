@@ -21,6 +21,8 @@ export interface ParsedInput {
   userId: string | number;
   /** Chat/conversation identifier */
   chatId: string | number;
+  /** Username (platform-specific: Telegram @username, GitHub login) */
+  username?: string;
   /** Original message reference (for replies) */
   messageRef?: MessageRef;
   /** Message this is replying to */

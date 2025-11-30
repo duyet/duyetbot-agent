@@ -39,6 +39,14 @@ export {
   type ToolExecution,
   type ToolStatus,
 } from './format.js';
+// Debug footer utilities
+export {
+  escapeHtml,
+  escapeMarkdownV2,
+  formatDebugFooter,
+  formatDebugFooterMarkdownV2,
+  formatProgressiveDebugFooter,
+} from './debug-footer.js';
 // Utilities
 export { formatForLLM, getMessageText, trimHistory } from './history.js';
 export {
@@ -78,6 +86,8 @@ export type {
 export type {
   AgentState,
   ChatAgentConfig,
+  ChatOptions,
+  DebugContext,
   LLMMessage,
   LLMProvider,
   LLMResponse,
@@ -87,25 +97,61 @@ export type {
   Tool,
   ToolCall,
   ToolExecutor,
+  WebSearchPlugin,
+  // Step progress types
+  StepEvent,
+  StepProgressConfig,
+  StepType,
 } from './types.js';
+// Step progress tracker
+export {
+  createStepProgressTracker,
+  StepProgressTracker,
+} from './step-progress.js';
+// Batch types (alarm-based processing)
+export {
+  type BatchConfig,
+  type BatchState,
+  type BatchStatus,
+  calculateRetryDelay,
+  combineBatchMessages,
+  createInitialBatchState,
+  DEFAULT_BATCH_CONFIG,
+  DEFAULT_RETRY_CONFIG,
+  isDuplicateMessage,
+  type PendingMessage,
+  type RetryConfig,
+  shouldProcessImmediately,
+} from './batch-types.js';
 
 // =============================================================================
 // NEW: Routing & Orchestration Architecture
 // =============================================================================
 
-// Agents (Router, Simple, HITL, Orchestrator)
+// Agents (Router, Simple, HITL, Orchestrator, DuyetInfo)
 export {
   type AgentContext,
   AgentMixin,
   type AgentResult,
   type BaseAgentConfig,
   type BaseAgentState,
+  type CommonPlatformConfig,
   createBaseState,
+  createDuyetInfoAgent,
   createHITLAgent,
   createOrchestratorAgent,
   createRouterAgent,
   createSimpleAgent,
+  duyetToolFilter,
+  type DuyetInfoAgentClass,
+  type DuyetInfoAgentConfig,
+  type DuyetInfoAgentEnv,
+  type DuyetInfoAgentInstance,
+  type DuyetInfoAgentMethods,
+  type DuyetInfoAgentState,
+  type GenericPlatformConfig,
   getTypedAgent,
+  type GitHubPlatformConfig,
   type HITLAgentClass,
   type HITLAgentConfig,
   type HITLAgentEnv,
@@ -119,6 +165,7 @@ export {
   type OrchestratorAgentInstance,
   type OrchestratorAgentMethods,
   type OrchestratorAgentState,
+  type PlatformConfig,
   type RouterAgentClass,
   type RouterAgentConfig,
   type RouterAgentEnv,
@@ -131,6 +178,7 @@ export {
   type SimpleAgentInstance,
   type SimpleAgentMethods,
   type SimpleAgentState,
+  type TelegramPlatformConfig,
 } from './agents/index.js';
 // Feature Flags
 export {
@@ -255,3 +303,35 @@ export {
   type WorkerMethods,
   type WorkerType,
 } from './workers/index.js';
+
+// =============================================================================
+// State Management DO (Observability & Watchdog)
+// =============================================================================
+
+// State DO
+export { StateDO, type StateDOEnv } from './agents/state-do.js';
+
+// State types
+export {
+  type AggregatedMetrics,
+  type AgentMetrics,
+  type CompleteBatchParams,
+  createInitialStateDOState,
+  createSessionState,
+  DEFAULT_STUCK_THRESHOLD_MS,
+  type ExecutionTrace,
+  type HeartbeatParams,
+  type LogTraceParams,
+  type MarkDelegatedParams,
+  MAX_TRACES,
+  type Platform,
+  type RecoveryResult,
+  type RegisterBatchParams,
+  type ResponseTarget,
+  type SessionState,
+  type StateDOMethods,
+  type StateDOState,
+  type TrackedBatchStatus,
+  type TraceStatus,
+  WATCHDOG_INTERVAL_SECONDS,
+} from './state-types.js';

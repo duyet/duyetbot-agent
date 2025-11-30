@@ -10,17 +10,9 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     },
-    "./claude": {
-      "types": "./dist/claude.d.ts",
-      "import": "./dist/claude.js"
-    },
     "./openrouter": {
       "types": "./dist/openrouter.d.ts",
       "import": "./dist/openrouter.js"
-    },
-    "./factory": {
-      "types": "./dist/factory.d.ts",
-      "import": "./dist/factory.js"
     }
   },
   "files": ["dist"],
@@ -36,8 +28,8 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.69.0",
     "@duyetbot/types": "workspace:*",
+    "@openrouter/sdk": "^0.1.27",
     "zod": "^3.23.8"
   },
   "devDependencies": {

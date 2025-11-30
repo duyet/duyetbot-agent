@@ -6,11 +6,62 @@
  * 2. Executing: Running steps in parallel where possible
  * 3. Aggregating: Combining results into unified response
  *
+ * This agent is STATELESS for conversation history - history is passed via
+ * AgentContext.conversationHistory from the parent agent (CloudflareAgent).
+ * This enables centralized state management where only the parent stores history.
+ *
  * Based on Cloudflare's Orchestrator-Workers pattern:
  * https://developers.cloudflare.com/agents/patterns/orchestrator-workers/
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { agentRegistry } from './registry.js';
+
+// =============================================================================
+// Agent Self-Registration
+// =============================================================================
+
+/**
+ * Register OrchestratorAgent with the agent registry.
+ * Handles complex multi-step tasks requiring planning and coordination.
+ * Priority is medium (40) - specialized agents should be checked first.
+ */
+agentRegistry.register({
+  name: 'orchestrator-agent',
+  description:
+    'Handles complex multi-step tasks requiring planning, decomposition, and coordination of multiple workers. Use for tasks that need code analysis, research synthesis, GitHub operations, or any combination of specialized capabilities.',
+  examples: [
+    'refactor this module and create a PR',
+    'analyze this codebase and suggest improvements',
+    'research best practices and implement them',
+    'fix this bug across multiple files',
+    'create a comprehensive documentation',
+  ],
+  triggers: {
+    keywords: [
+      'refactor',
+      'analyze and',
+      'research and',
+      'create pr',
+      'pull request',
+      'comprehensive',
+      'across files',
+      'multiple',
+    ],
+    patterns: [
+      /\b(refactor|rewrite)\s+(this|the)\s+\w+/i,
+      /\banalyze\s+.*(and|then)\s+(fix|implement|create)/i,
+      /\b(create|open|submit)\s+(a\s+)?(pr|pull\s+request)\b/i,
+      /\bfix\s+.*(across|in\s+multiple)\s+files?\b/i,
+    ],
+    categories: ['code', 'github', 'complex'],
+  },
+  capabilities: {
+    tools: ['code_tools', 'github_api', 'web_search', 'planning'],
+    complexity: 'high',
+  },
+  priority: 40, // Medium priority - after specialized agents
+});
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import {
   type AggregationResult,
@@ -26,12 +77,21 @@ import {
   validatePlanDependencies,
 } from '../orchestration/index.js';
 import type { ExecutionPlan, WorkerResult } from '../routing/schemas.js';
-import type { LLMProvider, Message } from '../types.js';
+import type { LLMProvider } from '../types.js';
 import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
-import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+import {
+  type AgentContext,
+  type AgentDebugInfo,
+  AgentMixin,
+  type AgentResult,
+} from './base-agent.js';
 
 /**
  * Orchestrator agent state
+ *
+ * NOTE: This agent is intentionally stateless for conversation history.
+ * Conversation history is passed via AgentContext.conversationHistory from the parent agent.
+ * This enables centralized state management where only the parent (CloudflareAgent) stores history.
  */
 export interface OrchestratorAgentState {
   /** Session identifier */
@@ -48,8 +108,6 @@ export interface OrchestratorAgentState {
     totalDurationMs: number;
     timestamp: number;
   }>;
-  /** Conversation messages */
-  messages: Message[];
   /** Creation timestamp */
   createdAt: number;
   /** Last update timestamp */
@@ -77,8 +135,8 @@ export interface OrchestratorAgentEnv {
  * Configuration for orchestrator agent
  */
 export interface OrchestratorAgentConfig<TEnv extends OrchestratorAgentEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create LLM provider from env and optional context */
+  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** Maximum steps per plan */
   maxSteps?: number;
   /** Maximum parallel executions */
@@ -150,7 +208,6 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
       sessionId: '',
       currentPlan: undefined,
       orchestrationHistory: [],
-      messages: [],
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
@@ -182,7 +239,8 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 
       try {
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env);
+        // Pass context for platformConfig credentials
+        const provider = config.createProvider(env, context);
 
         // Step 1: Create execution plan
         const plannerConfig: PlannerConfig = {
@@ -259,8 +317,40 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
           failureCount: executionResult.failedSteps.length,
         });
 
-        return AgentMixin.createResult(true, aggregationResult.response, durationMs, {
+        // Build worker debug info from execution results
+        // Maps stepId -> workerType and includes timing
+        const workerDebugInfo: AgentDebugInfo['workers'] = plan.steps
+          .filter((step) => executionResult.results.has(step.id))
+          .map((step) => {
+            const result = executionResult.results.get(step.id);
+            // Build worker info object, only including durationMs if defined
+            // to satisfy exactOptionalPropertyTypes
+            const workerInfo: {
+              name: string;
+              durationMs?: number;
+              status: 'completed' | 'error';
+            } = {
+              name: `${step.workerType}-worker`,
+              status: result?.success ? 'completed' : 'error',
+            };
+            if (result?.durationMs !== undefined) {
+              workerInfo.durationMs = result.durationMs;
+            }
+            return workerInfo;
+          });
+
+        // Build result extras with optional debug property
+        // Use spread to avoid assigning undefined with exactOptionalPropertyTypes
+        const resultExtras: Partial<AgentResult> = {
           data: {
+            // Return new messages so parent can append to its state
+            newMessages: [
+              { role: 'user' as const, content: query },
+              {
+                role: 'assistant' as const,
+                content: aggregationResult.response,
+              },
+            ],
             plan: {
               taskId: plan.taskId,
               summary: plan.summary,
@@ -274,7 +364,15 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
             errors: aggregationResult.errors,
           },
           nextAction: executionResult.allSucceeded ? 'complete' : 'continue',
-        });
+        };
+
+        // Only add debug info if there are workers
+        if (workerDebugInfo && workerDebugInfo.length > 0) {
+          resultExtras.debug = { workers: workerDebugInfo };
+        }
+
+        // Return result with new messages for parent to save
+        return AgentMixin.createResult(true, aggregationResult.response, durationMs, resultExtras);
       } catch (error) {
         const durationMs = Date.now() - startTime;
         AgentMixin.logError('OrchestratorAgent', 'Orchestration failed', error, {
@@ -493,8 +591,13 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 
     /**
      * Clear orchestration history
+     * @deprecated This agent is stateless for conversation messages. Only clears orchestration history.
      */
     clearHistory(): void {
+      // Conversation history is managed by parent agent
+      logger.info(
+        '[OrchestratorAgent] clearHistory called - clearing orchestration history only (conversation history is stateless)'
+      );
       this.setState({
         ...this.state,
         orchestrationHistory: [],
