@@ -312,7 +312,7 @@ export class ObservabilityStorage {
    */
   async getEventById(eventId: string): Promise<ObservabilityEvent | null> {
     const result = await this.db
-      .prepare(`SELECT * FROM observability_events WHERE event_id = ?`)
+      .prepare('SELECT * FROM observability_events WHERE event_id = ?')
       .bind(eventId)
       .first<EventRow>();
 
