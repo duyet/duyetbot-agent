@@ -4,9 +4,9 @@
  * Manages active agent sessions in memory
  */
 
-import type { LLMMessage } from '@duyetbot/types';
+import type { LLMMessage } from "@duyetbot/types";
 
-export type SessionState = 'active' | 'paused' | 'completed' | 'failed';
+export type SessionState = "active" | "paused" | "completed" | "failed";
 
 export interface AgentSession {
   id: string;
@@ -45,6 +45,7 @@ export interface CleanupOptions {
  */
 export class AgentSessionManager {
   private sessions = new Map<string, AgentSession>();
+  private idCounter = 0;
 
   /**
    * Generate unique session ID
@@ -61,7 +62,7 @@ export class AgentSessionManager {
     const session: AgentSession = {
       id: this.generateId(),
       userId: input.userId,
-      state: 'active',
+      state: "active",
       messages: input.messages || [],
       createdAt: now,
       updatedAt: now,
@@ -86,7 +87,10 @@ export class AgentSessionManager {
   /**
    * Update session
    */
-  async updateSession(id: string, input: UpdateSessionInput): Promise<AgentSession> {
+  async updateSession(
+    id: string,
+    input: UpdateSessionInput,
+  ): Promise<AgentSession> {
     const session = this.sessions.get(id);
     if (!session) {
       throw new Error(`Session not found: ${id}`);
@@ -112,8 +116,13 @@ export class AgentSessionManager {
   /**
    * List sessions for a user
    */
-  async listSessions(userId: string, options?: ListSessionsOptions): Promise<AgentSession[]> {
-    let sessions = Array.from(this.sessions.values()).filter((s) => s.userId === userId);
+  async listSessions(
+    userId: string,
+    options?: ListSessionsOptions,
+  ): Promise<AgentSession[]> {
+    let sessions = Array.from(this.sessions.values()).filter(
+      (s) => s.userId === userId,
+    );
 
     if (options?.state) {
       sessions = sessions.filter((s) => s.state === options.state);
@@ -137,7 +146,9 @@ export class AgentSessionManager {
    * Get count of active sessions
    */
   getActiveSessionCount(): number {
-    return Array.from(this.sessions.values()).filter((s) => s.state === 'active').length;
+    return Array.from(this.sessions.values()).filter(
+      (s) => s.state === "active",
+    ).length;
   }
 
   /**
