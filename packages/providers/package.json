@@ -15,7 +15,9 @@
       "import": "./dist/openrouter.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -24,7 +26,14 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
-  "keywords": ["llm", "provider", "claude", "openai", "openrouter", "duyetbot"],
+  "keywords": [
+    "llm",
+    "provider",
+    "claude",
+    "openai",
+    "openrouter",
+    "duyetbot"
+  ],
   "author": "duyet",
   "license": "MIT",
   "dependencies": {

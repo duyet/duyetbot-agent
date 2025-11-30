@@ -16,6 +16,7 @@
   "dependencies": {
     "@duyetbot/chat-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
+    "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "@octokit/rest": "^21.0.0",

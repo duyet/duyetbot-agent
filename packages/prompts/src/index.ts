@@ -21,63 +21,58 @@
  * ```
  */
 
-// Configuration
-export { config } from './config.js';
-
-// Types
-export type {
-  Platform,
-  PromptConfig,
-  ToolDefinition,
-  CustomSection,
-  SectionRenderer,
-  OutputFormat,
-} from './types.js';
-
-// Builder
-export { PromptBuilder, createPrompt } from './builder.js';
-
-// Sections (for advanced composition)
-export {
-  identitySection,
-  policySection,
-  capabilitiesSection,
-  toolsSection,
-  guidelinesSection,
-  codingStandardsSection,
-  extendedCodingStandardsSection,
-  historyContextSection,
-  DEFAULT_CAPABILITIES,
-  COMMON_TOOLS,
-} from './sections/index.js';
-
 // Agent Prompts
 export {
-  // Core agents
-  getSimpleAgentPrompt,
-  getRouterPrompt,
-  getOrchestratorPrompt,
-  getPlanningPrompt,
+  GITHUB_TOOLS,
   getAggregationPrompt,
-  getHITLAgentPrompt,
-  getConfirmationPrompt,
-  getDuyetInfoPrompt,
-  getMemoryAgentPrompt,
   // Workers
   getCodeWorkerPrompt,
-  getResearchWorkerPrompt,
+  getConfirmationPrompt,
+  getDuyetInfoPrompt,
   getGitHubWorkerPrompt,
+  getHITLAgentPrompt,
+  getMemoryAgentPrompt,
+  getOrchestratorPrompt,
+  getPlanningPrompt,
+  getResearchWorkerPrompt,
+  getRouterPrompt,
+  // Core agents
+  getSimpleAgentPrompt,
   RESEARCH_TOOLS,
-  GITHUB_TOOLS,
 } from './agents/index.js';
-
+// Builder
+export { createPrompt, PromptBuilder } from './builder.js';
+// Configuration
+export { config } from './config.js';
 // Platform Prompts
 export {
+  getGitHubBotPrompt,
+  getTelegramHelpMessage,
   getTelegramPrompt,
   getTelegramWelcomeMessage,
-  getTelegramHelpMessage,
-  getGitHubBotPrompt,
 } from './platforms/index.js';
+// Sections (for advanced composition)
+export {
+  COMMON_TOOLS,
+  capabilitiesSection,
+  codingStandardsSection,
+  DEFAULT_CAPABILITIES,
+  extendedCodingStandardsSection,
+  guidelinesSection,
+  historyContextSection,
+  identitySection,
+  policySection,
+  toolsSection,
+} from './sections/index.js';
+// Types
+export type {
+  CustomSection,
+  OutputFormat,
+  Platform,
+  PromptConfig,
+  SectionRenderer,
+  ToolDefinition,
+} from './types.js';
 
 // =============================================================================
 // Backward Compatibility Exports
@@ -86,11 +81,11 @@ export {
 
 import { getSimpleAgentPrompt } from './agents/index.js';
 import {
+  getGitHubBotPrompt,
   getTelegramHelpMessage,
   getTelegramPrompt,
   getTelegramWelcomeMessage,
 } from './platforms/index.js';
-import { getGitHubBotPrompt } from './platforms/index.js';
 
 /**
  * @deprecated Use getTelegramPrompt() instead

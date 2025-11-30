@@ -5,7 +5,7 @@
  * and API error handling.
  */
 
-import { SELF, env } from 'cloudflare:test';
+import { SELF } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createUpdate, resetFixtureCounters } from './helpers/fixtures';

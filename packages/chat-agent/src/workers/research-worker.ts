@@ -12,7 +12,7 @@ import { getResearchWorkerPrompt } from '@duyetbot/prompts';
 import type { AgentContext } from '../agents/base-agent.js';
 import type { PlanStep } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
-import { type BaseWorkerEnv, type WorkerClass, createBaseWorker } from './base-worker.js';
+import { type BaseWorkerEnv, createBaseWorker, type WorkerClass } from './base-worker.js';
 
 /**
  * Research task types that this worker handles

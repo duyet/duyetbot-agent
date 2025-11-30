@@ -11,14 +11,20 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit"
   },
-  "keywords": ["mcp", "servers", "duyetbot"],
+  "keywords": [
+    "mcp",
+    "servers",
+    "duyetbot"
+  ],
   "author": "duyet",
   "license": "MIT",
   "dependencies": {

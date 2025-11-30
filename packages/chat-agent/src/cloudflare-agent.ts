@@ -14,11 +14,11 @@ import type { RouterAgentEnv } from './agents/router-agent.js';
 import {
   type BatchConfig,
   type BatchState,
-  type PendingMessage,
   combineBatchMessages,
   createInitialBatchState,
   isBatchStuckByHeartbeat,
   isDuplicateInBothBatches,
+  type PendingMessage,
 } from './batch-types.js';
 import type { RoutingFlags } from './feature-flags.js';
 import {

@@ -6,12 +6,12 @@ import { Hono } from 'hono';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type AuthVariables,
-  type Env,
-  type TelegramUpdate,
-  type WebhookContext,
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
+  type Env,
   isUserAuthorized,
+  type TelegramUpdate,
+  type WebhookContext,
 } from '../middlewares/index.js';
 
 /** Response type from test endpoint */

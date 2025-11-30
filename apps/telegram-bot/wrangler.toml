@@ -92,3 +92,9 @@ new_sqlite_classes = ["TelegramAgent"]
 binding = "MEMORY_SERVICE"
 service = "duyetbot-memory"
 entrypoint = "MemoryServiceEntrypoint"
+
+# D1 Database binding for observability (schema owned by shared-agents)
+[[d1_databases]]
+binding = "OBSERVABILITY_DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"

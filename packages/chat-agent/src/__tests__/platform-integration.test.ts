@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { type RoutingFlags, parseFlagsFromEnv } from '../feature-flags.js';
+import { parseFlagsFromEnv } from '../feature-flags.js';
 
 describe('Feature Flags', () => {
   describe('parseFlagsFromEnv', () => {

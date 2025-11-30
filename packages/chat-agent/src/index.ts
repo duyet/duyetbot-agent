@@ -6,6 +6,21 @@
 
 // Core agent
 export { ChatAgent } from './agent.js';
+// Batch types (alarm-based processing)
+export {
+  type BatchConfig,
+  type BatchState,
+  type BatchStatus,
+  calculateRetryDelay,
+  combineBatchMessages,
+  createInitialBatchState,
+  DEFAULT_BATCH_CONFIG,
+  DEFAULT_RETRY_CONFIG,
+  isDuplicateMessage,
+  type PendingMessage,
+  type RetryConfig,
+  shouldProcessImmediately,
+} from './batch-types.js';
 // Cloudflare Durable Object wrapper
 export {
   type CloudflareAgentConfig,
@@ -18,6 +33,14 @@ export {
   type MCPServerConnection,
   type RouterConfig,
 } from './cloudflare-agent.js';
+// Debug footer utilities
+export {
+  escapeHtml,
+  escapeMarkdownV2,
+  formatDebugFooter,
+  formatDebugFooterMarkdownV2,
+  formatProgressiveDebugFooter,
+} from './debug-footer.js';
 // Factory
 export { createAgent } from './factory.js';
 // Format utilities
@@ -39,14 +62,6 @@ export {
   type ToolExecution,
   type ToolStatus,
 } from './format.js';
-// Debug footer utilities
-export {
-  escapeHtml,
-  escapeMarkdownV2,
-  formatDebugFooter,
-  formatDebugFooterMarkdownV2,
-  formatProgressiveDebugFooter,
-} from './debug-footer.js';
 // Utilities
 export { formatForLLM, getMessageText, trimHistory } from './history.js';
 export {
@@ -75,6 +90,11 @@ export {
   ServiceBindingMemoryAdapter,
   type ServiceBindingMemoryAdapterConfig,
 } from './service-binding-adapter.js';
+// Step progress tracker
+export {
+  createStepProgressTracker,
+  StepProgressTracker,
+} from './step-progress.js';
 // Transport layer
 export type {
   MessageRef,
@@ -94,35 +114,15 @@ export type {
   Message,
   MessageRole,
   OpenAITool,
-  Tool,
-  ToolCall,
-  ToolExecutor,
-  WebSearchPlugin,
   // Step progress types
   StepEvent,
   StepProgressConfig,
   StepType,
+  Tool,
+  ToolCall,
+  ToolExecutor,
+  WebSearchPlugin,
 } from './types.js';
-// Step progress tracker
-export {
-  createStepProgressTracker,
-  StepProgressTracker,
-} from './step-progress.js';
-// Batch types (alarm-based processing)
-export {
-  type BatchConfig,
-  type BatchState,
-  type BatchStatus,
-  calculateRetryDelay,
-  combineBatchMessages,
-  createInitialBatchState,
-  DEFAULT_BATCH_CONFIG,
-  DEFAULT_RETRY_CONFIG,
-  isDuplicateMessage,
-  type PendingMessage,
-  type RetryConfig,
-  shouldProcessImmediately,
-} from './batch-types.js';
 
 // =============================================================================
 // NEW: Routing & Orchestration Architecture
@@ -142,16 +142,16 @@ export {
   createOrchestratorAgent,
   createRouterAgent,
   createSimpleAgent,
-  duyetToolFilter,
   type DuyetInfoAgentClass,
   type DuyetInfoAgentConfig,
   type DuyetInfoAgentEnv,
   type DuyetInfoAgentInstance,
   type DuyetInfoAgentMethods,
   type DuyetInfoAgentState,
+  duyetToolFilter,
   type GenericPlatformConfig,
-  getTypedAgent,
   type GitHubPlatformConfig,
+  getTypedAgent,
   type HITLAgentClass,
   type HITLAgentConfig,
   type HITLAgentEnv,
@@ -313,8 +313,8 @@ export { StateDO, type StateDOEnv } from './agents/state-do.js';
 
 // State types
 export {
-  type AggregatedMetrics,
   type AgentMetrics,
+  type AggregatedMetrics,
   type CompleteBatchParams,
   createInitialStateDOState,
   createSessionState,
@@ -322,8 +322,8 @@ export {
   type ExecutionTrace,
   type HeartbeatParams,
   type LogTraceParams,
-  type MarkDelegatedParams,
   MAX_TRACES,
+  type MarkDelegatedParams,
   type Platform,
   type RecoveryResult,
   type RegisterBatchParams,
@@ -331,7 +331,7 @@ export {
   type SessionState,
   type StateDOMethods,
   type StateDOState,
-  type TrackedBatchStatus,
   type TraceStatus,
+  type TrackedBatchStatus,
   WATCHDOG_INTERVAL_SECONDS,
 } from './state-types.js';

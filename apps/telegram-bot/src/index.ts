@@ -7,6 +7,11 @@
 
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
+import {
+  EventCollector,
+  type ObservabilityEnv,
+  ObservabilityStorage,
+} from '@duyetbot/observability';
 import { type Env, TelegramAgent } from './agent.js';
 import { handleAdminCommand } from './commands/admin.js';
 import {
@@ -15,11 +20,14 @@ import {
 } from './middlewares/index.js';
 import { createTelegramContext, telegramTransport } from './transport.js';
 
+// Extend Env to include observability bindings
+type EnvWithObservability = Env & ObservabilityEnv;
+
 // Re-export local agent for Durable Object binding
 // Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
 export { TelegramAgent };
 
-const app = createBaseApp<Env>({
+const app = createBaseApp<EnvWithObservability>({
   name: 'telegram-bot',
   version: '1.0.0',
   logger: true,
@@ -30,7 +38,7 @@ const app = createBaseApp<Env>({
 // Telegram webhook handler
 app.post(
   '/webhook',
-  createTelegramWebhookAuth<Env>(),
+  createTelegramWebhookAuth<EnvWithObservability>(),
   createTelegramParserMiddleware(),
   createTelegramAuthMiddleware(),
   async (c) => {
@@ -39,6 +47,22 @@ app.post(
 
     // Generate request ID for trace correlation across webhook and DO invocations
     const requestId = crypto.randomUUID().slice(0, 8);
+
+    // Initialize observability collector
+    let collector: EventCollector | null = null;
+    let storage: ObservabilityStorage | null = null;
+
+    if (env.OBSERVABILITY_DB) {
+      storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
+      collector = new EventCollector({
+        eventId: crypto.randomUUID(),
+        appSource: 'telegram-webhook',
+        eventType: 'message',
+        triggeredAt: startTime,
+        requestId,
+      });
+      collector.markProcessing();
+    }
 
     // Log incoming webhook (webhookCtx is set by parser middleware)
     const webhookCtx = c.get('webhookContext');
@@ -92,6 +116,16 @@ app.post(
       env.TELEGRAM_PARSE_MODE
     );
 
+    // Set observability context
+    if (collector) {
+      collector.setContext({
+        userId: String(ctx.userId),
+        username: ctx.username,
+        chatId: String(ctx.chatId),
+      });
+      collector.setInput(ctx.text);
+    }
+
     // Check for admin commands
     if (ctx.text.startsWith('/')) {
       const response = await handleAdminCommand(ctx.text, ctx);
@@ -141,6 +175,11 @@ app.post(
         ctx,
         durationMs: Date.now() - startTime,
       });
+
+      // Complete observability event on success
+      if (collector) {
+        collector.complete({ status: 'success' });
+      }
     } catch (error) {
       logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
         requestId,
@@ -151,12 +190,30 @@ app.post(
         durationMs: Date.now() - startTime,
       });
 
+      // Complete observability event on error
+      if (collector) {
+        collector.complete({
+          status: 'error',
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+
       // Send error message to user if queueing fails
       await telegramTransport
         .send(ctx, '❌ Sorry, an error occurred. Please try again later.')
         .catch(() => {
           // Ignore if we can't send the error message
         });
+    } finally {
+      // Write observability event to D1 (fire-and-forget)
+      if (collector && storage) {
+        storage.writeEvent(collector.toEvent()).catch((err) => {
+          logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+            requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
     }
 
     // Return immediately to Telegram
