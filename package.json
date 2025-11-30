@@ -34,7 +34,7 @@
   "author": "duyet",
   "license": "MIT",
   "devDependencies": {
-    "@biomejs/biome": "^1.9.4",
+    "@biomejs/biome": "^2.3.8",
     "concurrently": "^9.2.1",
     "turbo": "^2.0.0",
     "wrangler": "^4.51.0"
