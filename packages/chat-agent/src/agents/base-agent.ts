@@ -39,6 +39,77 @@ export interface BaseAgentConfig<TEnv> {
   name: string;
 }
 
+// ============================================================================
+// Platform Configuration Types
+// ============================================================================
+
+/**
+ * Common configuration shared across all platforms.
+ * Contains non-secret environment variables from parent workers.
+ *
+ * Note: Properties use `| undefined` to support exactOptionalPropertyTypes,
+ * allowing direct assignment from optional env vars.
+ */
+export interface CommonPlatformConfig {
+  /** Environment (production, development) */
+  environment?: 'production' | 'development' | string | undefined;
+  /** LLM model identifier */
+  model?: string | undefined;
+  /** Cloudflare AI Gateway name */
+  aiGatewayName?: string | undefined;
+  /** AI Gateway API key for BYOK authentication (passed from parent worker) */
+  aiGatewayApiKey?: string | undefined;
+}
+
+/**
+ * Telegram-specific configuration
+ */
+export interface TelegramPlatformConfig extends CommonPlatformConfig {
+  platform: 'telegram';
+  /** Response format: 'HTML' (default) or 'MarkdownV2' */
+  parseMode?: 'HTML' | 'MarkdownV2' | undefined;
+  /** Admin username for verbose error messages */
+  adminUsername?: string | undefined;
+  /** Comma-separated user IDs (empty = allow all) */
+  allowedUsers?: string | undefined;
+}
+
+/**
+ * GitHub-specific configuration
+ */
+export interface GitHubPlatformConfig extends CommonPlatformConfig {
+  platform: 'github';
+  /** Bot username for @mentions */
+  botUsername?: string | undefined;
+  /** Admin username for debug footer visibility */
+  adminUsername?: string | undefined;
+}
+
+/**
+ * Generic platform configuration for CLI, API, etc.
+ */
+export interface GenericPlatformConfig extends CommonPlatformConfig {
+  platform: 'cli' | 'api' | string;
+}
+
+/**
+ * Discriminated union of all platform configurations.
+ * Use TypeScript narrowing with `config.platform` to access platform-specific fields.
+ *
+ * @example
+ * ```typescript
+ * if (config.platform === 'telegram') {
+ *   // TypeScript knows config.parseMode exists here
+ *   const mode = config.parseMode;
+ * }
+ * ```
+ */
+export type PlatformConfig = TelegramPlatformConfig | GitHubPlatformConfig | GenericPlatformConfig;
+
+// ============================================================================
+// Agent Context
+// ============================================================================
+
 /**
  * Context passed between agents during routing
  */
@@ -49,6 +120,8 @@ export interface AgentContext {
   userId?: string | number;
   /** Chat/session identifier */
   chatId?: string | number;
+  /** Username (platform-specific: Telegram @username, GitHub login) */
+  username?: string;
   /** Platform (telegram, github, api) */
   platform?: string;
   /** Additional context data */
@@ -57,6 +130,61 @@ export interface AgentContext {
   parentAgentId?: string;
   /** Trace ID for distributed tracing */
   traceId?: string;
+  /**
+   * Conversation history from parent agent.
+   * Child agents should use this instead of maintaining their own messages[] state.
+   * This enables centralized state management where only the parent agent stores history.
+   */
+  conversationHistory?: Message[];
+  /**
+   * Platform-specific configuration from parent worker.
+   * Contains non-secret env vars (parseMode, model, etc.) that shared DOs need.
+   * @see PlatformConfig
+   */
+  platformConfig?: PlatformConfig;
+}
+
+/**
+ * Worker execution info for debug context
+ */
+export interface WorkerExecutionInfo {
+  /** Worker name (e.g., 'code-worker', 'research-worker') */
+  name: string;
+  /** Execution duration in milliseconds */
+  durationMs?: number;
+  /** Current execution status */
+  status?: 'running' | 'completed' | 'error';
+}
+
+/**
+ * Debug information from agent execution
+ * Used for admin debugging in Telegram messages
+ */
+export interface AgentDebugInfo {
+  /** Tools used by this agent during execution */
+  tools?: string[];
+  /** Sub-agents delegated to (for orchestrator pattern) */
+  subAgents?: string[];
+  /** Workers executed by orchestrator (with timing info) */
+  workers?: WorkerExecutionInfo[];
+  /** Additional metadata (fallback, cache, timeout info) */
+  metadata?: {
+    /** Whether response is a fallback due to error */
+    fallback?: boolean;
+    /** Original error message if fallback */
+    originalError?: string;
+    /** Cache statistics */
+    cacheHits?: number;
+    cacheMisses?: number;
+    /** Tool timeout count */
+    toolTimeouts?: number;
+    /** Tools that timed out */
+    timedOutTools?: string[];
+    /** Tool error count */
+    toolErrors?: number;
+    /** Last tool error message (truncated) */
+    lastToolError?: string;
+  };
 }
 
 /**
@@ -77,6 +205,8 @@ export interface AgentResult {
   tokensUsed: number | undefined;
   /** Next action (for HITL) */
   nextAction: 'await_confirmation' | 'continue' | 'complete' | undefined;
+  /** Debug information for admin users */
+  debug?: AgentDebugInfo;
 }
 
 /**

@@ -2,28 +2,26 @@
  * GitHub Bot Entry Point
  *
  * Hono-based webhook server using Transport Layer pattern.
- * Simplified: Uses agent.handle() for clean separation of concerns.
+ * Uses middleware chain for signature verification, parsing, and mention detection.
+ * Uses alarm-based batch processing for reliable message handling.
  */
 
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp } from '@duyetbot/hono-middleware';
-import { getAgentByName } from 'agents';
+
 import { type Env } from './agent.js';
 import { logger } from './logger.js';
+import {
+  createGitHubMentionMiddleware,
+  createGitHubParserMiddleware,
+  createGitHubSignatureMiddleware,
+} from './middlewares/index.js';
 import { createGitHubContext } from './transport.js';
 
 export type { Env, GitHubAgentInstance } from './agent.js';
-// Cloudflare Durable Object exports
-export {
-  GitHubAgent,
-  RouterAgent,
-  SimpleAgent,
-  HITLAgent,
-  OrchestratorAgent,
-  CodeWorker,
-  ResearchWorker,
-  GitHubWorker,
-} from './agent.js';
+// Local Durable Object export
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+export { GitHubAgent } from './agent.js';
 // Utility exports
 export {
   extractAllMentions,
@@ -41,31 +39,6 @@ export type {
   GitHubUser,
 } from './types.js';
 
-/**
- * Verify GitHub webhook signature
- */
-function verifySignature(payload: string, signature: string, secret: string): boolean {
-  const hmac = createHmac('sha256', secret);
-  const digest = `sha256=${hmac.update(payload).digest('hex')}`;
-  return timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
-}
-
-/**
- * Check if text contains bot mention
- */
-function hasBotMention(text: string, botUsername: string): boolean {
-  const mentionPattern = new RegExp(`@${botUsername}\\b`, 'i');
-  return mentionPattern.test(text);
-}
-
-/**
- * Extract task from mention (text after @botname)
- */
-function extractTask(text: string, botUsername: string): string {
-  const mentionPattern = new RegExp(`@${botUsername}\\s*`, 'i');
-  return text.replace(mentionPattern, '').trim();
-}
-
 // Create base app
 const app = createBaseApp<Env>({
   name: 'github-bot',
@@ -75,181 +48,154 @@ const app = createBaseApp<Env>({
   ignorePaths: ['/cdn-cgi/'],
 });
 
-// Webhook endpoint with Transport Layer pattern
-app.post('/webhook', async (c) => {
-  const env = c.env;
-  const body = await c.req.text();
+/**
+ * Webhook endpoint with middleware chain and Transport Layer pattern
+ *
+ * Middleware chain:
+ * 1. Signature middleware - verifies HMAC-SHA256 signature
+ * 2. Parser middleware - parses payload and extracts context
+ * 3. Mention middleware - detects @bot mentions and extracts task
+ */
+app.post(
+  '/webhook',
+  createGitHubSignatureMiddleware(),
+  createGitHubParserMiddleware(),
+  createGitHubMentionMiddleware(),
+  async (c) => {
+    const startTime = Date.now();
 
-  // Verify signature
-  const signature = c.req.header('x-hub-signature-256');
-  if (signature && env.GITHUB_WEBHOOK_SECRET) {
-    if (!verifySignature(body, signature, env.GITHUB_WEBHOOK_SECRET)) {
-      return c.json({ error: 'Invalid signature' }, 401);
+    // Check if processing should be skipped (no mention, unhandled event, etc.)
+    if (c.get('skipProcessing')) {
+      const ctx = c.get('webhookContext');
+
+      // Handle ping event specially
+      if (ctx?.event === 'ping') {
+        return c.json({ ok: true, event: 'ping' });
+      }
+
+      return c.json({ ok: true, skipped: true });
     }
-  }
 
-  // Parse event
-  const event = c.req.header('x-github-event');
-  const payload = JSON.parse(body);
-  const botUsername = env.BOT_USERNAME || 'duyetbot';
+    // Get context, payload, and task from middleware
+    const webhookCtx = c.get('webhookContext')!;
+    const payload = c.get('payload')!;
+    const task = c.get('task')!;
+    const env = c.env;
 
-  const repo = payload.repository?.full_name || 'unknown';
-  const action = payload.action || 'unknown';
+    const { requestId, event, action, owner, repo, sender, issue, comment, isPullRequest } =
+      webhookCtx;
 
-  logger.info('[WEBHOOK] Received', {
-    event,
-    action,
-    repository: repo,
-    sender: payload.sender?.login,
-  });
+    logger.info(`[${requestId}] [WEBHOOK] Processing`, {
+      requestId,
+      event,
+      action,
+      repository: `${owner}/${repo}`,
+      sender: sender.login,
+      issueNumber: issue?.number,
+      taskLength: task.length,
+      taskPreview: task.substring(0, 100),
+    });
 
-  try {
-    // Handle issue_comment events with Transport Layer
-    if (event === 'issue_comment' && action === 'created') {
-      const comment = payload.comment;
-      const issue = payload.issue;
+    try {
+      // Get full issue/PR from payload for additional data (url, labels)
+      const payloadIssue = payload.issue;
+      const payloadPr = payload.pull_request;
+      const fullIssueOrPr = payloadIssue || payloadPr;
 
-      // Check for bot mention
-      if (!hasBotMention(comment.body, botUsername)) {
-        logger.debug('[WEBHOOK] No bot mention, skipping', {
-          repository: repo,
+      if (!issue || !fullIssueOrPr) {
+        logger.warn(`[${requestId}] [WEBHOOK] No issue or PR in context`, {
+          requestId,
+          event,
+          action,
         });
-        return c.json({ ok: true, skipped: 'no_mention' });
+        return c.json({ ok: true, skipped: 'no_issue_or_pr' });
       }
 
-      // Extract task from mention
-      const task = extractTask(comment.body, botUsername);
-      if (!task) {
-        logger.debug('[WEBHOOK] Empty task, skipping', { repository: repo });
-        return c.json({ ok: true, skipped: 'empty_task' });
-      }
-
-      // Create transport context (serializable for DO RPC)
-      const isPullRequest = !!issue.pull_request;
-      const ctx = createGitHubContext({
+      // Create transport context options
+      const contextOptions: Parameters<typeof createGitHubContext>[0] = {
         githubToken: env.GITHUB_TOKEN,
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
+        owner,
+        repo,
         issueNumber: issue.number,
         body: task,
-        sender: payload.sender,
-        commentId: comment.id,
-        url: issue.html_url,
+        sender: {
+          id: sender.id,
+          login: sender.login,
+        },
+        url: fullIssueOrPr.html_url,
         title: issue.title,
         isPullRequest,
         state: issue.state,
-        labels: (issue.labels || []).map((l: { name: string }) => l.name),
-        description: issue.body,
-      });
+        labels: (fullIssueOrPr.labels || []).map((l: { name: string }) => l.name),
+      };
+
+      // Only set optional properties if defined (exactOptionalPropertyTypes)
+      if (comment?.id !== undefined) {
+        contextOptions.commentId = comment.id;
+      }
+      if (issue.body) {
+        contextOptions.description = issue.body;
+      }
+      if (requestId !== undefined) {
+        contextOptions.requestId = requestId;
+      }
+      if (env.GITHUB_ADMIN) {
+        contextOptions.adminUsername = env.GITHUB_ADMIN;
+      }
+
+      const ctx = createGitHubContext(contextOptions);
 
       // Get agent by name (issue-based session)
-      const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
-      logger.info('[WEBHOOK] Getting agent', { agentId });
-
-      const agent = await getAgentByName(env.GitHubAgent, agentId);
-
-      // Agent handles everything: parsing, LLM call, sending response
-      await agent.handle(ctx);
-
-      logger.info('[WEBHOOK] Processed', { event, repository: repo, agentId });
-      return c.json({ ok: true });
-    }
-
-    // Handle pull_request_review_comment events
-    if (event === 'pull_request_review_comment' && action === 'created') {
-      const comment = payload.comment;
-      const pr = payload.pull_request;
-
-      if (!hasBotMention(comment.body, botUsername)) {
-        return c.json({ ok: true, skipped: 'no_mention' });
-      }
-
-      const task = extractTask(comment.body, botUsername);
-      if (!task) {
-        return c.json({ ok: true, skipped: 'empty_task' });
-      }
-
-      const ctx = createGitHubContext({
-        githubToken: env.GITHUB_TOKEN,
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-        issueNumber: pr.number,
-        body: task,
-        sender: payload.sender,
-        commentId: comment.id,
-        url: pr.html_url,
-        title: pr.title,
-        isPullRequest: true,
-        state: pr.state,
-        labels: (pr.labels || []).map((l: { name: string }) => l.name),
-        description: pr.body,
+      const agentId = `github:${owner}/${repo}#${issue.number}`;
+      logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
+        requestId,
+        agentId,
+        isPullRequest,
+        durationMs: Date.now() - startTime,
       });
 
-      const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${pr.number}`;
-      const agent = await getAgentByName(env.GitHubAgent, agentId);
-      await agent.handle(ctx);
+      const agent = getChatAgent(env.GitHubAgent, agentId);
 
-      return c.json({ ok: true });
-    }
-
-    // Handle issues with bot mention in body
-    if (event === 'issues' && (action === 'opened' || action === 'edited')) {
-      const issue = payload.issue;
-
-      if (!hasBotMention(issue.body || '', botUsername)) {
-        return c.json({ ok: true, skipped: 'no_mention' });
-      }
-
-      const task = extractTask(issue.body || '', botUsername);
-      if (!task) {
-        return c.json({ ok: true, skipped: 'empty_task' });
-      }
-
-      const ctx = createGitHubContext({
-        githubToken: env.GITHUB_TOKEN,
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-        issueNumber: issue.number,
-        body: task,
-        sender: payload.sender,
-        url: issue.html_url,
-        title: issue.title,
-        isPullRequest: false,
-        state: issue.state,
-        labels: (issue.labels || []).map((l: { name: string }) => l.name),
-        description: issue.body,
+      logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
+        requestId,
+        agentId,
+        durationMs: Date.now() - startTime,
       });
 
-      const agentId = `github:${payload.repository.owner.login}/${payload.repository.name}#${issue.number}`;
-      const agent = await getAgentByName(env.GitHubAgent, agentId);
-      await agent.handle(ctx);
+      // Queue message - alarm will fire after batch window (200ms by default for GitHub)
+      try {
+        const { queued, batchId } = await agent.queueMessage(ctx);
+        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+          requestId,
+          agentId,
+          queued,
+          batchId,
+          durationMs: Date.now() - startTime,
+        });
+      } catch (error) {
+        logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
+          requestId,
+          agentId,
+          error: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined,
+          durationMs: Date.now() - startTime,
+        });
+      }
 
       return c.json({ ok: true });
+    } catch (error) {
+      logger.error(`[${requestId}] [WEBHOOK] Error`, {
+        requestId,
+        event,
+        repository: `${owner}/${repo}`,
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        durationMs: Date.now() - startTime,
+      });
+      return c.json({ error: 'Internal error' }, 500);
     }
-
-    // Handle ping
-    if (event === 'ping') {
-      logger.info('[WEBHOOK] Ping received', { repository: repo });
-      return c.json({ ok: true, event: 'ping' });
-    }
-
-    // Other events - log and skip
-    logger.debug('[WEBHOOK] Unhandled event', {
-      event,
-      action,
-      repository: repo,
-    });
-    return c.json({ ok: true, skipped: 'unhandled_event' });
-  } catch (error) {
-    logger.error('[WEBHOOK] Error', {
-      event,
-      repository: repo,
-      error: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-    return c.json({ error: 'Internal error' }, 500);
   }
-});
+);
 
 // Cloudflare Workers export - uses Transport Layer pattern
 export default app;

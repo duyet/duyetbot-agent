@@ -1,11 +1,17 @@
 /**
  * Base Worker
  *
- * Abstract base class for all specialized workers in the orchestration system.
+ * Abstract base class for all specialized workers in the Orchestrator-Workers pattern.
  * Workers are lightweight, stateless executors that handle single-domain tasks.
  *
  * Unlike agents which maintain conversation state, workers focus on
  * executing specific task types (code, research, github) and returning results.
+ *
+ * IMPORTANT: Workers are ONLY called by OrchestratorAgent with a proper WorkerInput.
+ * DO NOT call workers directly from RouterAgent or other agents.
+ * Workers expect a PlanStep and return WorkerResult, not AgentResult.
+ *
+ * @see https://developers.cloudflare.com/agents/patterns/
  */
 
 import { logger } from '@duyetbot/hono-middleware';
@@ -54,20 +60,18 @@ export interface BaseWorkerState {
 
 /**
  * Environment bindings for workers
+ * Note: Actual env fields depend on the provider (OpenRouterProviderEnv, etc.)
+ * This interface is kept minimal - extend with provider-specific env in your app
  */
-export interface BaseWorkerEnv {
-  AI_GATEWAY_ACCOUNT_ID?: string;
-  AI_GATEWAY_ID?: string;
-  ANTHROPIC_API_KEY?: string;
-  OPENROUTER_API_KEY?: string;
-}
+// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extend with provider env
+export interface BaseWorkerEnv {}
 
 /**
  * Configuration for base worker
  */
 export interface BaseWorkerConfig<TEnv extends BaseWorkerEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create LLM provider from env, optionally with context for credentials */
+  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
   /** Worker type for identification */
   workerType: WorkerType;
   /** System prompt for the worker's domain */
@@ -207,9 +211,9 @@ export function createBaseWorker<TEnv extends BaseWorkerEnv>(
       });
 
       try {
-        // Get LLM provider
+        // Get LLM provider (pass context for AI Gateway credentials)
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env);
+        const provider = config.createProvider(env, input.context);
 
         // Build context from dependencies
         const dependencyContext = formatDependencyContext(dependencyResults);

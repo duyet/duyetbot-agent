@@ -3,22 +3,16 @@ main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
-# Bundle .md files as text
-[[rules]]
-type = "Text"
-globs = ["**/*.md"]
-fallthrough = true
-
 [ai]
 binding = "AI"
 
 [vars]
 ENVIRONMENT = "production"
-MODEL = "x-ai/grok-4.1-fast"
+MODEL = "x-ai/grok-4.1-fast:free"
 AI_GATEWAY_NAME = "duyetbot"
-AI_GATEWAY_PROVIDER = "openrouter"
 TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
 TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
+TELEGRAM_PARSE_MODE = "HTML" # Response format: 'HTML' (default) or 'MarkdownV2'
 
 [observability]
 enabled = true
@@ -35,51 +29,63 @@ head_sampling_rate = 1 # Log 100% of requests
 [placement]
 mode = "smart"
 
-# Durable Objects for Agent state
+# Local Durable Object - TelegramAgent is app-specific
 [[durable_objects.bindings]]
 name = "TelegramAgent"
 class_name = "TelegramAgent"
 
+# Shared Durable Objects - from duyetbot-agents worker
 [[durable_objects.bindings]]
 name = "RouterAgent"
 class_name = "RouterAgent"
+script_name = "duyetbot-agents"
 
 [[durable_objects.bindings]]
 name = "SimpleAgent"
 class_name = "SimpleAgent"
+script_name = "duyetbot-agents"
 
 [[durable_objects.bindings]]
 name = "HITLAgent"
 class_name = "HITLAgent"
+script_name = "duyetbot-agents"
 
 [[durable_objects.bindings]]
 name = "OrchestratorAgent"
 class_name = "OrchestratorAgent"
+script_name = "duyetbot-agents"
 
 [[durable_objects.bindings]]
 name = "CodeWorker"
 class_name = "CodeWorker"
+script_name = "duyetbot-agents"
 
 [[durable_objects.bindings]]
 name = "ResearchWorker"
 class_name = "ResearchWorker"
+script_name = "duyetbot-agents"
 
 [[durable_objects.bindings]]
 name = "GitHubWorker"
 class_name = "GitHubWorker"
+script_name = "duyetbot-agents"
 
-# Migrations for SQLite state persistence
+[[durable_objects.bindings]]
+name = "DuyetInfoAgent"
+class_name = "DuyetInfoAgent"
+script_name = "duyetbot-agents"
+
+# State Management DO for observability and watchdog recovery
+[[durable_objects.bindings]]
+name = "StateDO"
+class_name = "StateDO"
+script_name = "duyetbot-agents"
+
+# Migration for local TelegramAgent only
+# Shared DOs are now in duyetbot-agents (referenced via script_name)
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["TelegramAgent"]
-
-[[migrations]]
-tag = "v2"
-new_sqlite_classes = ["RouterAgent"]
-
-[[migrations]]
-tag = "v3"
-new_sqlite_classes = ["SimpleAgent", "HITLAgent", "OrchestratorAgent", "CodeWorker", "ResearchWorker", "GitHubWorker"]
 
 # Service binding to Memory MCP for RPC calls
 [[services]]

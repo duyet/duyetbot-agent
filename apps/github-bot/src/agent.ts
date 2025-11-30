@@ -4,34 +4,20 @@
  * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern with Durable Object state.
  *
- * Full multi-agent system with:
- * - RouterAgent: Query classification and routing
- * - SimpleAgent: Quick responses without tools
- * - HITLAgent: Human-in-the-loop for sensitive operations
- * - OrchestratorAgent: Complex task decomposition
- * - Workers: CodeWorker, ResearchWorker, GitHubWorker
+ * This file only exports GitHubAgent (local DO).
+ * Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from
+ * duyetbot-agents worker via script_name in wrangler.toml.
  */
 
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
-  type HITLAgentClass,
+  type GitHubPlatformConfig,
   type MCPServerConnection,
-  type OrchestratorAgentClass,
-  type RouterAgentClass,
   type RouterAgentEnv,
-  type SimpleAgentClass,
-  type WorkerClass,
   createCloudflareChatAgent,
-  createCodeWorker,
-  createGitHubWorker,
-  createHITLAgent,
-  createOrchestratorAgent,
-  createResearchWorker,
-  createRouterAgent,
-  createSimpleAgent,
 } from '@duyetbot/chat-agent';
-import { GITHUB_SYSTEM_PROMPT } from '@duyetbot/prompts';
+import { getGitHubBotPrompt } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
 import { Octokit } from '@octokit/rest';
 import { logger } from './logger.js';
@@ -54,9 +40,13 @@ const githubMcpServer: MCPServerConnection = {
  * Base environment without self-reference
  */
 interface BaseEnv extends ProviderEnv, RouterAgentEnv {
+  // Common config (from wrangler.toml [vars])
+  ENVIRONMENT?: string;
+  // GitHub-specific
   GITHUB_TOKEN: string;
   GITHUB_WEBHOOK_SECRET?: string;
   BOT_USERNAME?: string;
+  GITHUB_ADMIN?: string;
   ROUTER_DEBUG?: string;
 }
 
@@ -69,16 +59,44 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
 export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
   createCloudflareChatAgent<BaseEnv, GitHubContext>({
     createProvider: (env) => createOpenRouterProvider(env),
-    systemPrompt: GITHUB_SYSTEM_PROMPT,
+    systemPrompt: getGitHubBotPrompt(),
     welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
     helpMessage: 'Mention me with @duyetbot followed by your question or request.',
-    maxHistory: 10,
     transport: githubTransport,
     mcpServers: [githubMcpServer],
     tools: getPlatformTools('github'),
+    // Reduce history to minimize token usage and subrequests
+    maxHistory: 10,
+    // Thinking rotation interval to match Telegram (keeps connection alive)
+    thinkingRotationInterval: 5000,
+    // Limit tool call iterations to prevent gateway timeouts
+    maxToolIterations: 10,
+    // Limit number of tools to reduce token overhead
+    maxTools: 5,
     router: {
       platform: 'github',
       debug: false,
+    },
+    // Extract platform config for shared DOs (includes AI Gateway credentials)
+    extractPlatformConfig: (env): GitHubPlatformConfig => ({
+      platform: 'github',
+      // Common config - only include defined values
+      ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
+      ...(env.MODEL && { model: env.MODEL }),
+      ...(env.AI_GATEWAY_NAME && { aiGatewayName: env.AI_GATEWAY_NAME }),
+      ...(env.AI_GATEWAY_API_KEY && {
+        aiGatewayApiKey: env.AI_GATEWAY_API_KEY,
+      }),
+      // GitHub-specific
+      ...(env.BOT_USERNAME && { botUsername: env.BOT_USERNAME }),
+      ...(env.GITHUB_ADMIN && { adminUsername: env.GITHUB_ADMIN }),
+    }),
+    // Shorter batch window for GitHub (200ms vs 500ms for Telegram)
+    // GitHub comments are typically complete when sent, not rapid-fire like chat
+    batchConfig: {
+      windowMs: 200,
+      maxWindowMs: 3000,
+      maxMessages: 5,
     },
     hooks: {
       beforeHandle: async (ctx) => {
@@ -126,64 +144,6 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
  * Type for agent instance
  */
 export type GitHubAgentInstance = InstanceType<typeof GitHubAgent>;
-
-/**
- * RouterAgent for query classification
- */
-export const RouterAgent: RouterAgentClass<BaseEnv> = createRouterAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  debug: false,
-});
-
-/**
- * SimpleAgent for quick responses without tools
- */
-export const SimpleAgent: SimpleAgentClass<BaseEnv> = createSimpleAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  systemPrompt: GITHUB_SYSTEM_PROMPT,
-  maxHistory: 10,
-});
-
-/**
- * HITLAgent for human-in-the-loop confirmations
- */
-export const HITLAgent: HITLAgentClass<BaseEnv> = createHITLAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  systemPrompt: GITHUB_SYSTEM_PROMPT,
-  confirmationThreshold: 'high',
-});
-
-/**
- * OrchestratorAgent for complex task decomposition
- */
-export const OrchestratorAgent: OrchestratorAgentClass<BaseEnv> = createOrchestratorAgent<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  maxSteps: 10,
-  maxParallel: 3,
-  continueOnError: true,
-});
-
-/**
- * CodeWorker for code analysis and generation
- */
-export const CodeWorker: WorkerClass<BaseEnv> = createCodeWorker<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-  defaultLanguage: 'typescript',
-});
-
-/**
- * ResearchWorker for web research and documentation
- */
-export const ResearchWorker: WorkerClass<BaseEnv> = createResearchWorker<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-});
-
-/**
- * GitHubWorker for GitHub operations
- */
-export const GitHubWorker: WorkerClass<BaseEnv> = createGitHubWorker<BaseEnv>({
-  createProvider: (env) => createOpenRouterProvider(env),
-});
 
 /**
  * Full environment with agent binding

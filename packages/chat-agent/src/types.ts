@@ -60,18 +60,69 @@ export interface ToolCall {
 }
 
 /**
+ * Token usage metrics from LLM response
+ */
+export interface TokenUsage {
+  /** Input/prompt tokens consumed */
+  inputTokens: number;
+  /** Output/completion tokens generated */
+  outputTokens: number;
+  /** Total tokens (input + output) */
+  totalTokens: number;
+  /** Cached prompt tokens (prompt cache hits) */
+  cachedTokens?: number;
+  /** Reasoning tokens (o1/o3 internal reasoning) */
+  reasoningTokens?: number;
+}
+
+/**
  * Response from LLM provider
  */
 export interface LLMResponse {
   content: string;
   toolCalls?: ToolCall[];
+  /** Token usage metrics */
+  usage?: TokenUsage;
+}
+
+/**
+ * OpenRouter web search plugin configuration
+ * @deprecated Use ChatOptions.webSearch instead with :online model suffix
+ */
+export interface WebSearchPlugin {
+  id: 'web';
+  engine?: 'native' | 'exa';
+  max_results?: number;
+}
+
+/**
+ * Options for LLM chat requests
+ */
+export interface ChatOptions {
+  /**
+   * Enable web search by appending :online suffix to model name.
+   * This is the recommended approach as it works reliably through
+   * Cloudflare AI Gateway to OpenRouter.
+   *
+   * When enabled, xAI/OpenAI/Anthropic models use native search,
+   * other models use Exa-powered search.
+   *
+   * @see https://openrouter.ai/docs/guides/features/web-search
+   */
+  webSearch?: boolean;
+
+  /**
+   * OpenRouter plugins (e.g., web search)
+   * @deprecated Use webSearch: true instead - plugins may not pass through AI Gateway
+   */
+  plugins?: WebSearchPlugin[];
 }
 
 /**
  * LLM provider interface - implement this for different backends
  */
 export interface LLMProvider {
-  chat(messages: LLMMessage[], tools?: OpenAITool[]): Promise<LLMResponse>;
+  chat(messages: LLMMessage[], tools?: OpenAITool[], options?: ChatOptions): Promise<LLMResponse>;
 }
 
 /**
@@ -111,3 +162,99 @@ export interface AgentState {
   createdAt: number;
   updatedAt: number;
 }
+
+/**
+ * Debug metadata for agent execution
+ */
+export interface DebugMetadata {
+  /** Whether response is a fallback due to error */
+  fallback?: boolean;
+  /** Original error message if fallback */
+  originalError?: string;
+  /** Cache statistics */
+  cacheHits?: number;
+  cacheMisses?: number;
+  /** Tool timeout count */
+  toolTimeouts?: number;
+  /** Tools that timed out */
+  timedOutTools?: string[];
+  /** Tool error count */
+  toolErrors?: number;
+  /** Last tool error message (truncated) */
+  lastToolError?: string;
+  /** Aggregated token usage for entire request */
+  tokenUsage?: TokenUsage;
+}
+
+/**
+ * Execution status for progressive debug footer updates
+ */
+export type ExecutionStatus = 'running' | 'completed' | 'error';
+
+/**
+ * Worker execution info for orchestrator debug context
+ */
+export interface WorkerDebugInfo {
+  /** Worker name (e.g., 'code-worker', 'research-worker') */
+  name: string;
+  /** Execution duration in milliseconds */
+  durationMs?: number;
+  /** Current execution status */
+  status?: ExecutionStatus;
+  /** Token usage for this worker */
+  tokenUsage?: TokenUsage;
+}
+
+/**
+ * Debug context for routing/orchestration tracing
+ * Used by admin users to see agent flow and timing
+ */
+export interface DebugContext {
+  /** Routing flow showing agent -> agent transitions */
+  routingFlow: Array<{
+    /** Agent name (e.g., 'router', 'simple-agent', 'orchestrator') */
+    agent: string;
+    /** Tools used by this agent (if any) - kept for backwards compat */
+    tools?: string[];
+    /** Ordered tool execution chain (e.g., ['duyet_cv', 'get_posts']) */
+    toolChain?: string[];
+    /** Execution duration for this step in milliseconds */
+    durationMs?: number;
+    /** Error message if this agent failed */
+    error?: string;
+    /** Current execution status for progressive updates */
+    status?: ExecutionStatus;
+    /** Token usage for this routing step */
+    tokenUsage?: TokenUsage;
+  }>;
+  /** Router classification duration in milliseconds (separate from agent execution) */
+  routerDurationMs?: number;
+  /** Total execution duration in milliseconds */
+  totalDurationMs?: number;
+  /** Query classification details */
+  classification?: {
+    /** Query type (simple, complex, tool_confirmation) */
+    type: string;
+    /** Query category (general, code, research, github, admin) */
+    category: string;
+    /** Complexity level (low, medium, high) */
+    complexity: string;
+  };
+  /** Worker execution details for orchestrator (displayed as nested list) */
+  workers?: WorkerDebugInfo[];
+  /** Additional debug metadata (fallback, cache, timeout) */
+  metadata?: DebugMetadata;
+  /** Execution path trace for step-by-step debugging */
+  executionPath?: string[];
+}
+
+// Re-export step progress types for convenience
+export type {
+  StepType,
+  StepEvent,
+  StepProgressConfig,
+} from './step-progress.js';
+export {
+  StepProgressTracker,
+  createStepProgressTracker,
+} from './step-progress.js';
