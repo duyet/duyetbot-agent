@@ -214,6 +214,19 @@
         "typescript": "catalog:",
       },
     },
+    "packages/observability": {
+      "name": "@duyetbot/observability",
+      "version": "0.1.0",
+      "dependencies": {
+        "@cloudflare/workers-types": "^4.20241127.0",
+        "hono": "^4.7.7",
+      },
+      "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "packages/prompts": {
       "name": "@duyetbot/prompts",
       "version": "0.1.0",
@@ -404,6 +417,8 @@
     "@duyetbot/mcp-servers": ["@duyetbot/mcp-servers@workspace:packages/mcp-servers"],
 
     "@duyetbot/memory-mcp": ["@duyetbot/memory-mcp@workspace:apps/memory-mcp"],
+
+    "@duyetbot/observability": ["@duyetbot/observability@workspace:packages/observability"],
 
     "@duyetbot/prompts": ["@duyetbot/prompts@workspace:packages/prompts"],
 

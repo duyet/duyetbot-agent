@@ -68,3 +68,12 @@ new_sqlite_classes = ["RouterAgent", "SimpleAgent", "HITLAgent", "OrchestratorAg
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["StateDO"]
+
+# D1 Database for observability events
+# Schema owner: shared-agents (migrations in ./migrations/)
+# Used by: telegram-bot, github-bot (via cross-binding)
+[[d1_databases]]
+binding = "OBSERVABILITY_DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+migrations_dir = "migrations"
