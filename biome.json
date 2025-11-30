@@ -8,14 +8,7 @@
   },
   "files": {
     "ignoreUnknown": false,
-    "includes": [
-      "**",
-      "!**/node_modules",
-      "!**/dist",
-      "!**/.wrangler",
-      "!**/coverage",
-      "!**/*.min.js"
-    ]
+    "includes": ["**"]
   },
   "formatter": {
     "enabled": true,
@@ -24,7 +17,6 @@
     "lineWidth": 100,
     "lineEnding": "lf"
   },
-  "assist": { "actions": { "source": { "organizeImports": "on" } } },
   "linter": {
     "enabled": true,
     "rules": {
@@ -143,7 +135,7 @@
   },
   "overrides": [
     {
-      "include": ["**/*.test.ts", "**/*.spec.ts", "**/tests/**/*.ts"],
+      "includes": ["**/*.test.ts", "**/*.spec.ts", "**/tests/**/*.ts"],
       "linter": {
         "rules": {
           "suspicious": {
