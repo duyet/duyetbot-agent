@@ -56,9 +56,7 @@
         "noUnusedVariables": "warn",
         "useIsNan": "error",
         "useValidForDirection": "error",
-        "useYield": "error",
-        "noInvalidBuiltinInstantiation": "error",
-        "useValidTypeof": "error"
+        "useYield": "error"
       },
       "security": {
         "noDangerouslySetInnerHtml": "warn",
@@ -105,8 +103,7 @@
         "noShadowRestrictedNames": "error",
         "noUnsafeDeclarationMerging": "error",
         "noUnsafeNegation": "error",
-        "useGetterReturn": "error",
-        "noWith": "error"
+        "useGetterReturn": "error"
       }
     }
   },
