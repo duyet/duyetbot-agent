@@ -10,13 +10,13 @@
 
 import type { DebugContext } from '@duyetbot/chat-agent';
 // Direct path import to avoid cloudflare: protocol issues in tests
-import { formatDebugFooter as coreFormatDebugFooter } from '@duyetbot/chat-agent/debug-footer';
+import { formatDebugFooterMarkdown as coreFormatDebugFooterMarkdown } from '@duyetbot/chat-agent/debug-footer';
 import type { GitHubContext } from './transport.js';
 
 /**
  * Format debug context as collapsible details section (admin only)
  *
- * Wraps the core formatDebugFooter with an admin check.
+ * Wraps the core formatDebugFooterMarkdown with an admin check.
  * Returns null for non-admin users.
  *
  * Uses GitHub-flavored Markdown <details> element for collapsible section.
@@ -26,58 +26,21 @@ export function formatDebugFooter(ctx: GitHubContext): string | null {
     return null;
   }
 
-  // Use the GitHub-specific format from core
+  // Use the GitHub-specific Markdown format from core
   return formatGitHubDebugFooter(ctx.debugContext);
 }
 
 /**
  * Format debug footer for GitHub (Markdown format)
  *
- * Uses <details> for collapsible debug info similar to Telegram's HTML format.
+ * Delegates to the shared core formatter which provides:
+ * - Full agent flow with timing: router-agent (0.4s) → [type/cat/complexity] → agent (3.77s)
+ * - Nested workers with tree structure: ├─ worker (2.5s), └─ worker (1.2s)
+ * - Error metadata: ⚠️ error message
+ * - Collapsible <details> wrapper with code block for monospace formatting
  */
 export function formatGitHubDebugFooter(debugContext?: DebugContext): string | null {
-  if (!debugContext?.routingFlow?.length) {
-    return null;
-  }
-
-  const { routingFlow, classification, totalDurationMs } = debugContext;
-
-  // Build agent chain with tools
-  const agentChain = routingFlow
-    .map((step) => {
-      let entry = step.agent;
-      if (step.tools && step.tools.length > 0) {
-        entry += ` (${step.tools.join(', ')})`;
-      }
-      return entry;
-    })
-    .join(' \u2192 ');
-
-  // Build classification info
-  const classInfo = [
-    classification?.type && `type: ${classification.type}`,
-    classification?.category && `category: ${classification.category}`,
-    classification?.complexity && `complexity: ${classification.complexity}`,
-  ]
-    .filter(Boolean)
-    .join(', ');
-
-  // Format duration
-  const duration = totalDurationMs ? `${(totalDurationMs / 1000).toFixed(2)}s` : 'N/A';
-
-  // GitHub-flavored Markdown with collapsible details
-  return `
-
-<details>
-<summary>\ud83d\udd27 Debug Info</summary>
-
-| Property | Value |
-|----------|-------|
-| **Flow** | ${agentChain} |
-| **Classification** | ${classInfo || 'N/A'} |
-| **Duration** | ${duration} |
-
-</details>`;
+  return coreFormatDebugFooterMarkdown(debugContext);
 }
 
 /**
