@@ -59,26 +59,27 @@ agentRegistry.register({
   },
   priority: 100, // Highest priority - always check first for confirmations
 });
+
 import { Agent, type Connection } from 'agents';
 import {
-  type RiskLevel,
   createToolConfirmation,
   formatMultipleConfirmations,
   hasToolConfirmation,
   parseConfirmationResponse,
+  type RiskLevel,
   requiresConfirmation,
 } from '../hitl/confirmation.js';
 import {
-  type ToolExecutor,
   executeApprovedTools,
   formatExecutionResults,
+  type ToolExecutor,
 } from '../hitl/executions.js';
 import {
-  type HITLState,
   createInitialHITLState,
   getApprovedConfirmations,
   getExpiredConfirmationIds,
   getPendingConfirmations,
+  type HITLState,
   hasExpiredConfirmations,
   isAwaitingConfirmation,
   transitionHITLState,

@@ -1,5 +1,5 @@
 {
-  "$schema": "https://biomejs.dev/schemas/1.9.4/schema.json",
+  "$schema": "https://biomejs.dev/schemas/2.3.8/schema.json",
   "vcs": {
     "enabled": true,
     "clientKind": "git",
@@ -7,8 +7,7 @@
     "defaultBranch": "main"
   },
   "files": {
-    "ignoreUnknown": false,
-    "ignore": ["node_modules", "dist", ".wrangler", "coverage", "*.min.js"]
+    "ignoreUnknown": true
   },
   "formatter": {
     "enabled": true,
@@ -17,19 +16,15 @@
     "lineWidth": 100,
     "lineEnding": "lf"
   },
-  "organizeImports": {
-    "enabled": true
-  },
   "linter": {
     "enabled": true,
     "rules": {
       "recommended": true,
       "complexity": {
         "noExtraBooleanCast": "error",
-        "noMultipleSpacesInRegularExpressionLiterals": "error",
         "noUselessCatch": "error",
         "noUselessTypeConstraint": "error",
-        "noWith": "error"
+        "noAdjacentSpacesInRegex": "error"
       },
       "correctness": {
         "noConstAssign": "error",
@@ -38,7 +33,6 @@
         "noEmptyPattern": "error",
         "noGlobalObjectCalls": "error",
         "noInvalidConstructorSuper": "error",
-        "noInvalidNewBuiltin": "error",
         "noNonoctalDecimalEscape": "error",
         "noPrecisionLoss": "error",
         "noSelfAssign": "error",
@@ -73,7 +67,6 @@
           }
         },
         "useForOf": "warn",
-        "useShorthandArrayType": "warn",
         "useSingleVarDeclarator": "warn"
       },
       "suspicious": {
@@ -101,8 +94,7 @@
         "noShadowRestrictedNames": "error",
         "noUnsafeDeclarationMerging": "error",
         "noUnsafeNegation": "error",
-        "useGetterReturn": "error",
-        "useValidTypeof": "error"
+        "useGetterReturn": "error"
       }
     }
   },
@@ -142,7 +134,7 @@
   },
   "overrides": [
     {
-      "include": ["*.test.ts", "*.spec.ts", "tests/**/*.ts"],
+      "includes": ["**/*.test.ts", "**/*.spec.ts", "**/tests/**/*.ts"],
       "linter": {
         "rules": {
           "suspicious": {

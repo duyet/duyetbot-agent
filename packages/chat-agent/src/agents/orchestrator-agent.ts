@@ -62,19 +62,20 @@ agentRegistry.register({
   },
   priority: 40, // Medium priority - after specialized agents
 });
+
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import {
   type AggregationResult,
   type AggregatorConfig,
-  type ExecutionResult,
-  type ExecutorConfig,
-  type PlannerConfig,
-  type WorkerDispatcher,
   aggregateResults,
   createPlan,
+  type ExecutionResult,
+  type ExecutorConfig,
   executePlan,
+  type PlannerConfig,
   quickAggregate,
   validatePlanDependencies,
+  type WorkerDispatcher,
 } from '../orchestration/index.js';
 import type { ExecutionPlan, WorkerResult } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';

@@ -25,15 +25,14 @@
  * ```
  */
 
-// Types
-export * from './types.js';
+// Auth middleware
+export {
+  AuthErrorCodes,
+  createTelegramAuthMiddleware,
+  isUserAuthorized,
+} from './auth.js';
 
 // Parser middleware
 export { createTelegramParserMiddleware } from './parser.js';
-
-// Auth middleware
-export {
-  createTelegramAuthMiddleware,
-  isUserAuthorized,
-  AuthErrorCodes,
-} from './auth.js';
+// Types
+export * from './types.js';

@@ -6,9 +6,9 @@
 
 import * as readline from 'node:readline';
 import {
-  type QueryOptions,
   createDefaultOptions,
   createQueryController,
+  type QueryOptions,
   query,
   toSDKTools,
 } from '@duyetbot/core';

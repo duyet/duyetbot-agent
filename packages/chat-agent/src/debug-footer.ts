@@ -41,7 +41,7 @@ export function escapeHtml(text: string): string {
  */
 export function escapeMarkdownV2(text: string): string {
   // All special characters that need escaping in MarkdownV2
-  return text.replace(/([_*\[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
+  return text.replace(/([_*[\]()~`>#+\-=|{}.!\\])/g, '\\$1');
 }
 
 /**

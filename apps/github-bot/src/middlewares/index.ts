@@ -32,21 +32,18 @@
  * ```
  */
 
-// Types
-export * from './types.js';
-
-// Signature middleware
-export {
-  createGitHubSignatureMiddleware,
-  verifySignature,
-} from './signature.js';
-
-// Parser middleware
-export { createGitHubParserMiddleware } from './parser.js';
-
 // Mention middleware
 export {
   createGitHubMentionMiddleware,
   extractTask,
   hasBotMention,
 } from './mention.js';
+// Parser middleware
+export { createGitHubParserMiddleware } from './parser.js';
+// Signature middleware
+export {
+  createGitHubSignatureMiddleware,
+  verifySignature,
+} from './signature.js';
+// Types
+export * from './types.js';

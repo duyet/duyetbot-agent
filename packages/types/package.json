@@ -35,14 +35,20 @@
       "import": "./dist/mention-parser.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit"
   },
-  "keywords": ["types", "typescript", "duyetbot"],
+  "keywords": [
+    "types",
+    "typescript",
+    "duyetbot"
+  ],
   "author": "duyet",
   "license": "MIT",
   "dependencies": {

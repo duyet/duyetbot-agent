@@ -1,9 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-  type StepEvent,
-  StepProgressTracker,
-  createStepProgressTracker,
-} from '../step-progress.js';
+import { createStepProgressTracker, StepProgressTracker } from '../step-progress.js';
 
 describe('StepProgressTracker', () => {
   let mockOnUpdate: ReturnType<typeof vi.fn>;

@@ -13,6 +13,8 @@ import { Agent } from 'agents';
 import {
   type AggregatedMetrics,
   type CompleteBatchParams,
+  createInitialStateDOState,
+  createSessionState,
   DEFAULT_STUCK_THRESHOLD_MS,
   type ExecutionTrace,
   type HeartbeatParams,
@@ -25,8 +27,6 @@ import {
   type StateDOMethods,
   type StateDOState,
   WATCHDOG_INTERVAL_SECONDS,
-  createInitialStateDOState,
-  createSessionState,
 } from '../state-types.js';
 
 /**

@@ -7,9 +7,9 @@
 
 import type { LLMProvider } from '@duyetbot/chat-agent';
 import {
+  createOpenRouterProvider,
   type OpenRouterProviderEnv,
   type OpenRouterProviderOptions,
-  createOpenRouterProvider,
 } from '@duyetbot/providers';
 import { logger } from './logger.js';
 

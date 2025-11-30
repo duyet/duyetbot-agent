@@ -6,7 +6,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type BatchState, DEFAULT_BATCH_CONFIG, createInitialBatchState } from '../batch-types.js';
+import { type BatchState, createInitialBatchState, DEFAULT_BATCH_CONFIG } from '../batch-types.js';
 import type { ParsedInput, Transport } from '../transport.js';
 
 // Mock transport for testing

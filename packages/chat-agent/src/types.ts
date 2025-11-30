@@ -250,11 +250,11 @@ export interface DebugContext {
 
 // Re-export step progress types for convenience
 export type {
-  StepType,
   StepEvent,
   StepProgressConfig,
+  StepType,
 } from './step-progress.js';
 export {
-  StepProgressTracker,
   createStepProgressTracker,
+  StepProgressTracker,
 } from './step-progress.js';

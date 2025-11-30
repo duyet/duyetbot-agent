@@ -39,7 +39,9 @@
       "import": "./dist/registry.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -48,7 +50,14 @@
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest"
   },
-  "keywords": ["tools", "agent", "bash", "git", "github", "duyetbot"],
+  "keywords": [
+    "tools",
+    "agent",
+    "bash",
+    "git",
+    "github",
+    "duyetbot"
+  ],
   "author": "duyet",
   "license": "MIT",
   "dependencies": {

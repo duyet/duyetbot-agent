@@ -25,10 +25,10 @@ function createMockD1() {
     prepare: vi.fn((sql: string) => ({
       bind: vi.fn((...args: unknown[]) => ({
         first: vi.fn(async <T>() => {
-          if (sql.includes('FROM users WHERE id')) {
+          if (sql.includes('FROM memory_users WHERE id')) {
             return data.users.get(args[0] as string) as T;
           }
-          if (sql.includes('FROM users WHERE github_id')) {
+          if (sql.includes('FROM memory_users WHERE github_id')) {
             for (const user of data.users.values()) {
               if (user.github_id === args[0]) {
                 return user as T;
@@ -36,10 +36,10 @@ function createMockD1() {
             }
             return null;
           }
-          if (sql.includes('FROM sessions WHERE id')) {
+          if (sql.includes('FROM memory_sessions WHERE id')) {
             return data.sessions.get(args[0] as string) as T;
           }
-          if (sql.includes('FROM session_tokens WHERE token')) {
+          if (sql.includes('FROM memory_session_tokens WHERE token')) {
             return data.tokens.get(args[0] as string) as T;
           }
           if (sql.includes('COUNT(*)')) {
@@ -48,17 +48,17 @@ function createMockD1() {
           return null;
         }),
         all: vi.fn(async <T>() => {
-          if (sql.includes('FROM sessions WHERE user_id')) {
+          if (sql.includes('FROM memory_sessions WHERE user_id')) {
             const userId = args[0];
             const results = Array.from(data.sessions.values()).filter((s) => s.user_id === userId);
             return { results } as { results: T[] };
           }
-          if (sql.includes('FROM messages WHERE session_id')) {
+          if (sql.includes('FROM memory_messages WHERE session_id')) {
             const sessionId = args[0] as string;
             const msgs = data.messages.get(sessionId) || [];
             return { results: msgs } as { results: T[] };
           }
-          if (sql.includes('FROM messages m')) {
+          if (sql.includes('FROM memory_messages m')) {
             // Search messages
             const userId = args[0] as string;
             const query = (args[1] as string).replace(/%/g, '');
@@ -79,7 +79,7 @@ function createMockD1() {
           return { results: [] };
         }),
         run: vi.fn(async () => {
-          if (sql.includes('INSERT INTO users')) {
+          if (sql.includes('INSERT INTO memory_users')) {
             const user: User = {
               id: args[0] as string,
               github_id: args[1] as string,
@@ -92,7 +92,7 @@ function createMockD1() {
             };
             data.users.set(user.id, user);
           }
-          if (sql.includes('INSERT INTO sessions')) {
+          if (sql.includes('INSERT INTO memory_sessions')) {
             const session = {
               id: args[0] as string,
               user_id: args[1] as string,
@@ -104,7 +104,7 @@ function createMockD1() {
             };
             data.sessions.set(session.id, session);
           }
-          if (sql.includes('INSERT INTO session_tokens')) {
+          if (sql.includes('INSERT INTO memory_session_tokens')) {
             const token: SessionToken = {
               token: args[0] as string,
               user_id: args[1] as string,
@@ -113,13 +113,13 @@ function createMockD1() {
             };
             data.tokens.set(token.token, token);
           }
-          if (sql.includes('DELETE FROM sessions')) {
+          if (sql.includes('DELETE FROM memory_sessions')) {
             data.sessions.delete(args[args.length - 1] as string);
           }
-          if (sql.includes('DELETE FROM session_tokens WHERE token')) {
+          if (sql.includes('DELETE FROM memory_session_tokens WHERE token')) {
             data.tokens.delete(args[0] as string);
           }
-          if (sql.includes('DELETE FROM session_tokens WHERE expires_at')) {
+          if (sql.includes('DELETE FROM memory_session_tokens WHERE expires_at')) {
             const now = args[0] as number;
             for (const [key, token] of data.tokens) {
               if (token.expires_at < now) {
@@ -127,10 +127,10 @@ function createMockD1() {
               }
             }
           }
-          if (sql.includes('DELETE FROM messages WHERE session_id')) {
+          if (sql.includes('DELETE FROM memory_messages WHERE session_id')) {
             data.messages.delete(args[0] as string);
           }
-          if (sql.includes('INSERT INTO messages')) {
+          if (sql.includes('INSERT INTO memory_messages')) {
             const sessionId = args[0] as string;
             const msgs = data.messages.get(sessionId) || [];
             msgs.push({

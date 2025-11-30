@@ -1,0 +1,43 @@
+{
+  "name": "@duyetbot/observability",
+  "version": "0.1.0",
+  "description": "Observability and logging for duyetbot-agent webhooks and agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "observability",
+    "logging",
+    "metrics",
+    "d1",
+    "cloudflare"
+  ],
+  "author": "duyet",
+  "license": "MIT",
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "hono": "^4.7.7"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
