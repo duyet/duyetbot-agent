@@ -16,6 +16,7 @@
     "@duyetbot/chat-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/mcp-servers": "workspace:*",
+    "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "agents": "catalog:",

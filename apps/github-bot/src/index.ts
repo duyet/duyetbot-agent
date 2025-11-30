@@ -8,6 +8,11 @@
 
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp } from '@duyetbot/hono-middleware';
+import {
+  EventCollector,
+  type ObservabilityEnv,
+  ObservabilityStorage,
+} from '@duyetbot/observability';
 
 import { type Env } from './agent.js';
 import { logger } from './logger.js';
@@ -39,8 +44,11 @@ export type {
   GitHubUser,
 } from './types.js';
 
+// Extend Env to include observability bindings
+type EnvWithObservability = Env & ObservabilityEnv;
+
 // Create base app
-const app = createBaseApp<Env>({
+const app = createBaseApp<EnvWithObservability>({
   name: 'github-bot',
   version: '2.0.0',
   logger: true,
@@ -63,6 +71,26 @@ app.post(
   createGitHubMentionMiddleware(),
   async (c) => {
     const startTime = Date.now();
+    const env = c.env;
+
+    // Generate request ID for trace correlation
+    const requestId = crypto.randomUUID().slice(0, 8);
+
+    // Initialize observability collector
+    let collector: EventCollector | null = null;
+    let storage: ObservabilityStorage | null = null;
+
+    if (env.OBSERVABILITY_DB) {
+      storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
+      collector = new EventCollector({
+        eventId: crypto.randomUUID(),
+        appSource: 'github-webhook',
+        eventType: 'mention',
+        triggeredAt: startTime,
+        requestId,
+      });
+      collector.markProcessing();
+    }
 
     // Check if processing should be skipped (no mention, unhandled event, etc.)
     if (c.get('skipProcessing')) {
@@ -80,10 +108,18 @@ app.post(
     const webhookCtx = c.get('webhookContext')!;
     const payload = c.get('payload')!;
     const task = c.get('task')!;
-    const env = c.env;
 
-    const { requestId, event, action, owner, repo, sender, issue, comment, isPullRequest } =
-      webhookCtx;
+    const { event, action, owner, repo, sender, issue, comment, isPullRequest } = webhookCtx;
+
+    // Set observability context
+    if (collector) {
+      collector.setContext({
+        userId: String(sender.id),
+        username: sender.login,
+        chatId: `${owner}/${repo}#${issue?.number ?? 'unknown'}`,
+      });
+      collector.setInput(task);
+    }
 
     logger.info(`[${requestId}] [WEBHOOK] Processing`, {
       requestId,
@@ -172,6 +208,11 @@ app.post(
           batchId,
           durationMs: Date.now() - startTime,
         });
+
+        // Complete observability event on success
+        if (collector) {
+          collector.complete({ status: 'success' });
+        }
       } catch (error) {
         logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
           requestId,
@@ -180,6 +221,24 @@ app.post(
           stack: error instanceof Error ? error.stack : undefined,
           durationMs: Date.now() - startTime,
         });
+
+        // Complete observability event on error
+        if (collector) {
+          collector.complete({
+            status: 'error',
+            error: error instanceof Error ? error : new Error(String(error)),
+          });
+        }
+      } finally {
+        // Write observability event to D1 (fire-and-forget)
+        if (collector && storage) {
+          storage.writeEvent(collector.toEvent()).catch((err) => {
+            logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+              requestId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
+        }
       }
 
       return c.json({ ok: true });
@@ -192,6 +251,25 @@ app.post(
         stack: error instanceof Error ? error.stack : undefined,
         durationMs: Date.now() - startTime,
       });
+
+      // Complete observability event on outer error
+      if (collector) {
+        collector.complete({
+          status: 'error',
+          error: error instanceof Error ? error : new Error(String(error)),
+        });
+      }
+
+      // Write observability event to D1 (fire-and-forget)
+      if (collector && storage) {
+        storage.writeEvent(collector.toEvent()).catch((err) => {
+          logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+            requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
+
       return c.json({ error: 'Internal error' }, 500);
     }
   }

@@ -81,3 +81,9 @@ script_name = "duyetbot-agents"
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GitHubAgent"]
+
+# D1 Database binding for observability (schema owned by shared-agents)
+[[d1_databases]]
+binding = "OBSERVABILITY_DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
