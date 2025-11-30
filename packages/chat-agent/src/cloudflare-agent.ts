@@ -536,6 +536,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Call LLM with tools if available
       let response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
 
+      // Track token usage from LLM response
+      if (response.usage) {
+        stepTracker?.addTokenUsage(response.usage);
+      }
+
       // Handle tool calls (up to maxToolIterations)
       let iterations = 0;
 
@@ -656,6 +661,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         // Continue conversation with tool results
         response = await llmProvider.chat(toolMessages, hasTools ? tools : undefined);
+
+        // Track token usage from follow-up LLM calls
+        if (response.usage) {
+          stepTracker?.addTokenUsage(response.usage);
+        }
       }
 
       // Emit preparing step before finalizing

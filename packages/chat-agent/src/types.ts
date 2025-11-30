@@ -60,11 +60,29 @@ export interface ToolCall {
 }
 
 /**
+ * Token usage metrics from LLM response
+ */
+export interface TokenUsage {
+  /** Input/prompt tokens consumed */
+  inputTokens: number;
+  /** Output/completion tokens generated */
+  outputTokens: number;
+  /** Total tokens (input + output) */
+  totalTokens: number;
+  /** Cached prompt tokens (prompt cache hits) */
+  cachedTokens?: number;
+  /** Reasoning tokens (o1/o3 internal reasoning) */
+  reasoningTokens?: number;
+}
+
+/**
  * Response from LLM provider
  */
 export interface LLMResponse {
   content: string;
   toolCalls?: ToolCall[];
+  /** Token usage metrics */
+  usage?: TokenUsage;
 }
 
 /**
@@ -164,6 +182,8 @@ export interface DebugMetadata {
   toolErrors?: number;
   /** Last tool error message (truncated) */
   lastToolError?: string;
+  /** Aggregated token usage for entire request */
+  tokenUsage?: TokenUsage;
 }
 
 /**
@@ -181,6 +201,8 @@ export interface WorkerDebugInfo {
   durationMs?: number;
   /** Current execution status */
   status?: ExecutionStatus;
+  /** Token usage for this worker */
+  tokenUsage?: TokenUsage;
 }
 
 /**
@@ -202,6 +224,8 @@ export interface DebugContext {
     error?: string;
     /** Current execution status for progressive updates */
     status?: ExecutionStatus;
+    /** Token usage for this routing step */
+    tokenUsage?: TokenUsage;
   }>;
   /** Router classification duration in milliseconds (separate from agent execution) */
   routerDurationMs?: number;

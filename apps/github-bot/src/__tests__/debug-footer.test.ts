@@ -121,7 +121,7 @@ describe('formatGitHubDebugFooter', () => {
     };
     const footer = formatGitHubDebugFooter(ctx);
 
-    expect(footer).toContain('failing-agent (error, 27.92s)');
+    expect(footer).toContain('failing-agent (27.92s, error)');
   });
 });
 

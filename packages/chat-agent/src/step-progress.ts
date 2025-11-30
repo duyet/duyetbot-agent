@@ -31,7 +31,7 @@
  * ```
  */
 
-import type { DebugContext, ExecutionStatus, WorkerDebugInfo } from './types.js';
+import type { DebugContext, ExecutionStatus, TokenUsage, WorkerDebugInfo } from './types.js';
 
 /**
  * Types of steps in the agent execution flow
@@ -148,6 +148,16 @@ export class StepProgressTracker {
 
   /** Current target agent start time */
   private targetAgentStartTime: number | undefined;
+
+  /** Accumulated token usage for the entire request */
+  private aggregatedTokenUsage: TokenUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+  };
+
+  /** Token usage for current routing step (router or target agent) */
+  private currentStepTokenUsage: TokenUsage | undefined;
 
   /**
    * Create a new step progress tracker
@@ -277,7 +287,15 @@ export class StepProgressTracker {
    * Get the current debug context for progressive footer display
    */
   getDebugContext(): DebugContext {
-    return { ...this.debugContext };
+    // Include aggregated token usage in metadata
+    const context = { ...this.debugContext };
+    if (this.aggregatedTokenUsage.totalTokens > 0) {
+      context.metadata = {
+        ...context.metadata,
+        tokenUsage: { ...this.aggregatedTokenUsage },
+      };
+    }
+    return context;
   }
 
   /**
@@ -287,6 +305,125 @@ export class StepProgressTracker {
    */
   setDebugContext(context: DebugContext): void {
     this.debugContext = { ...context };
+    // Import token usage from context if present
+    if (context.metadata?.tokenUsage) {
+      this.aggregatedTokenUsage = { ...context.metadata.tokenUsage };
+    }
+  }
+
+  // ============================================================================
+  // Token Usage Tracking Methods
+  // ============================================================================
+
+  /**
+   * Add token usage from an LLM call to the current step and aggregate totals
+   *
+   * @param usage - Token usage from the LLM response
+   */
+  addTokenUsage(usage: TokenUsage): void {
+    // Accumulate to current step
+    if (!this.currentStepTokenUsage) {
+      this.currentStepTokenUsage = {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+      };
+    }
+    this.currentStepTokenUsage.inputTokens += usage.inputTokens;
+    this.currentStepTokenUsage.outputTokens += usage.outputTokens;
+    this.currentStepTokenUsage.totalTokens += usage.totalTokens;
+    if (usage.cachedTokens) {
+      this.currentStepTokenUsage.cachedTokens =
+        (this.currentStepTokenUsage.cachedTokens ?? 0) + usage.cachedTokens;
+    }
+    if (usage.reasoningTokens) {
+      this.currentStepTokenUsage.reasoningTokens =
+        (this.currentStepTokenUsage.reasoningTokens ?? 0) + usage.reasoningTokens;
+    }
+
+    // Accumulate to aggregate totals
+    this.aggregatedTokenUsage.inputTokens += usage.inputTokens;
+    this.aggregatedTokenUsage.outputTokens += usage.outputTokens;
+    this.aggregatedTokenUsage.totalTokens += usage.totalTokens;
+    if (usage.cachedTokens) {
+      this.aggregatedTokenUsage.cachedTokens =
+        (this.aggregatedTokenUsage.cachedTokens ?? 0) + usage.cachedTokens;
+    }
+    if (usage.reasoningTokens) {
+      this.aggregatedTokenUsage.reasoningTokens =
+        (this.aggregatedTokenUsage.reasoningTokens ?? 0) + usage.reasoningTokens;
+    }
+  }
+
+  /**
+   * Finalize token usage for the current routing step (router or target agent)
+   * This attaches the accumulated tokens to the current step in routingFlow
+   */
+  finalizeStepTokenUsage(): void {
+    if (!this.currentStepTokenUsage) {
+      return;
+    }
+
+    const routingFlow = this.debugContext.routingFlow;
+    if (routingFlow.length === 0) {
+      this.currentStepTokenUsage = undefined;
+      return;
+    }
+
+    // Find the current active step (last one with 'running' or most recent)
+    // Use reverse loop since findLast may not be available in all environments
+    let currentStep = routingFlow[routingFlow.length - 1];
+    for (let i = routingFlow.length - 1; i >= 0; i--) {
+      const step = routingFlow[i];
+      if (step && step.status === 'running') {
+        currentStep = step;
+        break;
+      }
+    }
+
+    if (currentStep && this.currentStepTokenUsage.totalTokens > 0) {
+      currentStep.tokenUsage = { ...this.currentStepTokenUsage };
+    }
+
+    // Reset for next step
+    this.currentStepTokenUsage = undefined;
+  }
+
+  /**
+   * Add token usage to a specific worker
+   *
+   * @param workerName - The worker name
+   * @param usage - Token usage for the worker
+   */
+  addWorkerTokenUsage(workerName: string, usage: TokenUsage): void {
+    if (!this.debugContext.workers) {
+      return;
+    }
+
+    const worker = this.debugContext.workers.find((w) => w.name === workerName);
+    if (worker) {
+      worker.tokenUsage = { ...usage };
+    }
+
+    // Also add to aggregate (workers are part of total)
+    this.aggregatedTokenUsage.inputTokens += usage.inputTokens;
+    this.aggregatedTokenUsage.outputTokens += usage.outputTokens;
+    this.aggregatedTokenUsage.totalTokens += usage.totalTokens;
+    if (usage.cachedTokens) {
+      this.aggregatedTokenUsage.cachedTokens =
+        (this.aggregatedTokenUsage.cachedTokens ?? 0) + usage.cachedTokens;
+    }
+    if (usage.reasoningTokens) {
+      this.aggregatedTokenUsage.reasoningTokens =
+        (this.aggregatedTokenUsage.reasoningTokens ?? 0) + usage.reasoningTokens;
+    }
+  }
+
+  /**
+   * Get the aggregated token usage for all steps
+   */
+  getAggregatedTokenUsage(): TokenUsage {
+    return { ...this.aggregatedTokenUsage };
   }
 
   /**
