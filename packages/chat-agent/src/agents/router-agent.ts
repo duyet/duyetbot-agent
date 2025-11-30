@@ -13,10 +13,10 @@ import { type ResponseTarget, sendPlatformResponse } from '../platform-response.
 import {
   type ClassificationContext,
   type ClassifierConfig,
-  type QueryClassification,
-  type RouteTarget,
   determineRouteTarget,
   hybridClassify,
+  type QueryClassification,
+  type RouteTarget,
 } from '../routing/index.js';
 import type { DebugContext, LLMProvider, Message } from '../types.js';
 import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';

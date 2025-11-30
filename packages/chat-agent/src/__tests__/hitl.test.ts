@@ -6,9 +6,6 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  type HITLEvent,
-  type HITLState,
-  type ToolExecutor,
   canTransitionTo,
   // State machine
   createInitialHITLState,
@@ -27,6 +24,8 @@ import {
   getApprovedConfirmations,
   getExpiredConfirmationIds,
   getPendingConfirmations,
+  type HITLEvent,
+  type HITLState,
   hasExpiredConfirmations,
   // Confirmation
   hasToolConfirmation,
@@ -34,6 +33,7 @@ import {
   isConfirmationValid,
   parseConfirmationResponse,
   requiresConfirmation,
+  type ToolExecutor,
   transitionHITLState,
 } from '../hitl/index.js';
 import type { ToolConfirmation } from '../routing/schemas.js';

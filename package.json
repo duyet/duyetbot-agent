@@ -4,7 +4,11 @@
   "description": "Autonomous bot agent system with multi-LLM support - Monorepo",
   "private": true,
   "type": "module",
-  "workspaces": ["packages/*", "apps/*", "tests/*"],
+  "workspaces": [
+    "packages/*",
+    "apps/*",
+    "tests/*"
+  ],
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -30,7 +34,15 @@
     "config:memory-mcp": "bun scripts/config.ts memory",
     "config:show": "bun scripts/config.ts show"
   },
-  "keywords": ["agent", "bot", "cloudflare-workers", "llm", "claude", "automation", "monorepo"],
+  "keywords": [
+    "agent",
+    "bot",
+    "cloudflare-workers",
+    "llm",
+    "claude",
+    "automation",
+    "monorepo"
+  ],
   "author": "duyet",
   "license": "MIT",
   "devDependencies": {
@@ -40,7 +52,12 @@
     "wrangler": "^4.51.0"
   },
   "packageManager": "bun@1.3.3",
-  "trustedDependencies": ["@biomejs/biome", "esbuild", "sharp", "workerd"],
+  "trustedDependencies": [
+    "@biomejs/biome",
+    "esbuild",
+    "sharp",
+    "workerd"
+  ],
   "catalog": {
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",

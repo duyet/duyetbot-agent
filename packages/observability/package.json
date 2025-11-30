@@ -11,7 +11,9 @@
       "import": "./dist/index.js"
     }
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
@@ -20,7 +22,13 @@
     "test": "vitest run",
     "test:watch": "vitest"
   },
-  "keywords": ["observability", "logging", "metrics", "d1", "cloudflare"],
+  "keywords": [
+    "observability",
+    "logging",
+    "metrics",
+    "d1",
+    "cloudflare"
+  ],
   "author": "duyet",
   "license": "MIT",
   "dependencies": {

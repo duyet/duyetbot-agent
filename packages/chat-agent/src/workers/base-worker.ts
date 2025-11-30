@@ -20,10 +20,10 @@ import { type AgentContext, AgentMixin } from '../agents/base-agent.js';
 import type { PlanStep, WorkerResult } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
 import {
-  type WorkerType,
   formatDependencyContext,
   isSuccessfulResult,
   summarizeResults,
+  type WorkerType,
 } from './worker-utils.js';
 
 // Re-export utilities from worker-utils for convenience

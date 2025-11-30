@@ -6,7 +6,9 @@
   "license": "MIT",
   "type": "module",
   "main": "vitest.config.ts",
-  "files": ["*.ts"],
+  "files": [
+    "*.ts"
+  ],
   "devDependencies": {
     "@vitest/coverage-v8": "^2.1.8",
     "vitest": "catalog:"

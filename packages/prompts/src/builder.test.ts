@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { getDuyetInfoPrompt, getRouterPrompt, getSimpleAgentPrompt } from './agents/index.js';
-import { PromptBuilder, createPrompt } from './builder.js';
+import { createPrompt, PromptBuilder } from './builder.js';
 import { getGitHubBotPrompt, getTelegramPrompt } from './platforms/index.js';
 import { guidelinesSection } from './sections/index.js';
 

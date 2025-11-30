@@ -15,7 +15,7 @@ import type { MCPServerConnection } from '../cloudflare-agent.js';
 import type { PlanStep, WorkerResult } from '../routing/schemas.js';
 import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
 import type { BaseWorkerEnv, WorkerClass, WorkerInput } from './base-worker.js';
-import { type WorkerType, formatDependencyContext } from './worker-utils.js';
+import { formatDependencyContext, type WorkerType } from './worker-utils.js';
 
 /**
  * Configuration for MCP-enabled worker

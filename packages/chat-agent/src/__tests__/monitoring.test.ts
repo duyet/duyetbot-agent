@@ -4,7 +4,6 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  type RoutingHistoryEntry,
   calculateAccuracyMetrics,
   calculateEnhancedStats,
   exportRoutingHistoryCSV,
@@ -12,6 +11,7 @@ import {
   formatAccuracyMetrics,
   formatEnhancedStats,
   formatRoutingStats,
+  type RoutingHistoryEntry,
 } from '../routing/monitoring.js';
 import type { RouteTarget } from '../routing/schemas.js';
 

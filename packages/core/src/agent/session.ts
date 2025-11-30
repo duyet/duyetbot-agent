@@ -105,10 +105,7 @@ export interface SessionManager {
   /**
    * List sessions
    */
-  list(filter?: {
-    state?: SessionState;
-    metadata?: Record<string, unknown>;
-  }): Promise<Session[]>;
+  list(filter?: { state?: SessionState; metadata?: Record<string, unknown> }): Promise<Session[]>;
 
   /**
    * Resume a paused session
@@ -156,7 +153,6 @@ export class SessionError extends Error {
  */
 export class InMemorySessionManager implements SessionManager {
   private sessions = new Map<string, Session>();
-  private idCounter = 0;
 
   /**
    * Generate unique session ID

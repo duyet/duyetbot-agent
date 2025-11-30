@@ -339,19 +339,45 @@ export class ObservabilityStorage {
     };
 
     // Conditionally add optional properties (exactOptionalPropertyTypes)
-    if (row.request_id !== null) event.requestId = row.request_id;
-    if (row.user_id !== null) event.userId = row.user_id;
-    if (row.username !== null) event.username = row.username;
-    if (row.chat_id !== null) event.chatId = row.chat_id;
-    if (row.repo !== null) event.repo = row.repo;
-    if (row.completed_at !== null) event.completedAt = row.completed_at;
-    if (row.duration_ms !== null) event.durationMs = row.duration_ms;
-    if (row.error_type !== null) event.errorType = row.error_type;
-    if (row.error_message !== null) event.errorMessage = row.error_message;
-    if (row.input_text !== null) event.inputText = row.input_text;
-    if (row.response_text !== null) event.responseText = row.response_text;
-    if (row.model !== null) event.model = row.model;
-    if (row.metadata !== null) event.metadata = JSON.parse(row.metadata);
+    if (row.request_id !== null) {
+      event.requestId = row.request_id;
+    }
+    if (row.user_id !== null) {
+      event.userId = row.user_id;
+    }
+    if (row.username !== null) {
+      event.username = row.username;
+    }
+    if (row.chat_id !== null) {
+      event.chatId = row.chat_id;
+    }
+    if (row.repo !== null) {
+      event.repo = row.repo;
+    }
+    if (row.completed_at !== null) {
+      event.completedAt = row.completed_at;
+    }
+    if (row.duration_ms !== null) {
+      event.durationMs = row.duration_ms;
+    }
+    if (row.error_type !== null) {
+      event.errorType = row.error_type;
+    }
+    if (row.error_message !== null) {
+      event.errorMessage = row.error_message;
+    }
+    if (row.input_text !== null) {
+      event.inputText = row.input_text;
+    }
+    if (row.response_text !== null) {
+      event.responseText = row.response_text;
+    }
+    if (row.model !== null) {
+      event.model = row.model;
+    }
+    if (row.metadata !== null) {
+      event.metadata = JSON.parse(row.metadata);
+    }
 
     if (row.classification_type && row.classification_category) {
       event.classification = {

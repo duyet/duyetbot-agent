@@ -22,7 +22,7 @@ import {
   getTelegramWelcomeMessage,
 } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
-import { type ProviderEnv, createAIGatewayProvider } from './provider.js';
+import { createAIGatewayProvider, type ProviderEnv } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
 
 /**

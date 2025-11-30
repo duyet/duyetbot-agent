@@ -6,9 +6,9 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 
 import {
-  type QueryOptions,
   createDefaultOptions,
   mergeOptions,
+  type QueryOptions,
   validateOptions,
 } from '../options.js';
 import { collectMessages, createQueryController, query, querySingle } from '../query.js';

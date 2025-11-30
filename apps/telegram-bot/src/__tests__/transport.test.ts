@@ -4,9 +4,9 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
-  type TelegramContext,
   createTelegramContext,
   splitMessage,
+  type TelegramContext,
   telegramTransport,
 } from '../transport.js';
 

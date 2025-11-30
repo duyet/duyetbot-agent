@@ -4,37 +4,6 @@
  * Exports for the lead researcher and subagent system.
  */
 
-// Types
-export type {
-  Citation,
-  DelegationContext,
-  LeadResearcherState,
-  OutputFormat,
-  ResearchPlan,
-  ResearchResult,
-  SubagentResult,
-  SubagentTask,
-  SubagentType,
-} from './types.js';
-
-export {
-  CitationSchema,
-  OutputFormat as OutputFormatSchema,
-  ResearchPlanSchema,
-  SubagentTaskSchema,
-  SubagentType as SubagentTypeSchema,
-} from './types.js';
-
-// Lead Researcher Agent
-export {
-  createLeadResearcherAgent,
-  type LeadResearcherAgentClass,
-  type LeadResearcherAgentInstance,
-  type LeadResearcherConfig,
-  type LeadResearcherEnv,
-  type LeadResearcherMethods,
-} from './lead-researcher-agent.js';
-
 // Delegation Templates
 export {
   buildDelegationPrompt,
@@ -44,7 +13,15 @@ export {
   getDefaultToolGuidance,
   getSubagentSystemPrompt,
 } from './delegation-templates.js';
-
+// Lead Researcher Agent
+export {
+  createLeadResearcherAgent,
+  type LeadResearcherAgentClass,
+  type LeadResearcherAgentInstance,
+  type LeadResearcherConfig,
+  type LeadResearcherEnv,
+  type LeadResearcherMethods,
+} from './lead-researcher-agent.js';
 // Subagents
 export {
   createCodeSubagent,
@@ -58,3 +35,22 @@ export {
   type SubagentMethods,
   type SubagentState,
 } from './research-subagent.js';
+// Types
+export type {
+  Citation,
+  DelegationContext,
+  LeadResearcherState,
+  OutputFormat,
+  ResearchPlan,
+  ResearchResult,
+  SubagentResult,
+  SubagentTask,
+  SubagentType,
+} from './types.js';
+export {
+  CitationSchema,
+  OutputFormat as OutputFormatSchema,
+  ResearchPlanSchema,
+  SubagentTaskSchema,
+  SubagentType as SubagentTypeSchema,
+} from './types.js';

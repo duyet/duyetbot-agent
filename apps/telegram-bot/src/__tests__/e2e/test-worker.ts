@@ -43,12 +43,6 @@ const BATCH_WINDOW_MS = 500; // 500ms batching window
  * Implements alarm-based message batching for E2E testing
  */
 export class TelegramAgent extends DurableObject {
-  /** Message queue for batch processing */
-  private messageQueue: QueuedMessage[] = [];
-
-  /** Track processed batches for verification */
-  private processedBatches: QueuedMessage[][] = [];
-
   async fetch(request: Request): Promise<Response> {
     const url = new URL(request.url);
 

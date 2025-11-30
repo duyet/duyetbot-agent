@@ -13,7 +13,7 @@
 import { runDurableObjectAlarm, runInDurableObject } from 'cloudflare:test';
 import { beforeEach, describe, expect, it } from 'vitest';
 
-import { CHATS, USERS, resetFixtureCounters } from './helpers/fixtures';
+import { CHATS, resetFixtureCounters, USERS } from './helpers/fixtures';
 import { getAgentStub } from './helpers/utils';
 
 /** Message structure with extended fields */

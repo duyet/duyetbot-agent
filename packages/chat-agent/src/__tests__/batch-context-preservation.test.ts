@@ -9,7 +9,7 @@
  * Fix: Use originalContext from the first pending message.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { PendingMessage } from '../batch-types.js';
 import type { ParsedInput, Transport } from '../transport.js';
 

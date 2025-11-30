@@ -27,9 +27,9 @@
 import type { CommonPlatformConfig, LLMProvider } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
+  createOpenRouterProvider,
   type OpenRouterProviderEnv,
   type OpenRouterProviderOptions,
-  createOpenRouterProvider,
 } from '@duyetbot/providers';
 
 /**

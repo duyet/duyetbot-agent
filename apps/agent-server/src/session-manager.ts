@@ -45,7 +45,6 @@ export interface CleanupOptions {
  */
 export class AgentSessionManager {
   private sessions = new Map<string, AgentSession>();
-  private idCounter = 0;
 
   /**
    * Generate unique session ID
