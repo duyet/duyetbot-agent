@@ -4,24 +4,19 @@
  * Session types and interfaces for agent execution state
  */
 
-import type { LLMMessage, ProviderConfig } from "@duyetbot/types";
+import type { LLMMessage, ProviderConfig } from '@duyetbot/types';
 
 /**
  * Session state
  */
-export type SessionState =
-  | "active"
-  | "paused"
-  | "completed"
-  | "failed"
-  | "cancelled";
+export type SessionState = 'active' | 'paused' | 'completed' | 'failed' | 'cancelled';
 
 /**
  * Tool execution result
  */
 export interface ToolResult {
   toolName: string;
-  status: "success" | "error";
+  status: 'success' | 'error';
   output?: unknown;
   error?:
     | {
@@ -110,10 +105,7 @@ export interface SessionManager {
   /**
    * List sessions
    */
-  list(filter?: {
-    state?: SessionState;
-    metadata?: Record<string, unknown>;
-  }): Promise<Session[]>;
+  list(filter?: { state?: SessionState; metadata?: Record<string, unknown> }): Promise<Session[]>;
 
   /**
    * Resume a paused session
@@ -133,10 +125,7 @@ export interface SessionManager {
   /**
    * Fail a session
    */
-  fail(
-    id: string,
-    error: { message: string; code: string; details?: unknown },
-  ): Promise<Session>;
+  fail(id: string, error: { message: string; code: string; details?: unknown }): Promise<Session>;
 
   /**
    * Cancel a session
@@ -151,10 +140,10 @@ export class SessionError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: unknown,
+    public details?: unknown
   ) {
     super(message);
-    this.name = "SessionError";
+    this.name = 'SessionError';
   }
 }
 
@@ -179,7 +168,7 @@ export class InMemorySessionManager implements SessionManager {
   async create(input: CreateSessionInput): Promise<Session> {
     const session: Session = {
       id: this.generateId(),
-      state: "active",
+      state: 'active',
       createdAt: new Date(),
       updatedAt: new Date(),
       ...input,
@@ -202,7 +191,7 @@ export class InMemorySessionManager implements SessionManager {
   async update(id: string, input: UpdateSessionInput): Promise<Session> {
     const session = this.sessions.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
     const updated: Session = {
@@ -241,7 +230,7 @@ export class InMemorySessionManager implements SessionManager {
           return false;
         }
         return Object.entries(filter.metadata ?? {}).every(
-          ([key, value]) => s.metadata?.[key] === value,
+          ([key, value]) => s.metadata?.[key] === value
         );
       });
     }
@@ -255,20 +244,17 @@ export class InMemorySessionManager implements SessionManager {
   async resume(id: string): Promise<Session> {
     const session = this.sessions.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
-    if (session.state !== "paused") {
-      throw new SessionError(
-        `Cannot resume session in state: ${session.state}`,
-        "INVALID_STATE",
-      );
+    if (session.state !== 'paused') {
+      throw new SessionError(`Cannot resume session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const { resumeToken, ...sessionWithoutToken } = session;
     const resumed: Session = {
       ...sessionWithoutToken,
-      state: "active",
+      state: 'active',
       updatedAt: new Date(),
     };
 
@@ -282,19 +268,16 @@ export class InMemorySessionManager implements SessionManager {
   async pause(id: string, resumeToken?: string): Promise<Session> {
     const session = this.sessions.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
-    if (session.state !== "active") {
-      throw new SessionError(
-        `Cannot pause session in state: ${session.state}`,
-        "INVALID_STATE",
-      );
+    if (session.state !== 'active') {
+      throw new SessionError(`Cannot pause session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const paused: Session = {
       ...session,
-      state: "paused",
+      state: 'paused',
       ...(resumeToken && { resumeToken }),
       updatedAt: new Date(),
     };
@@ -309,23 +292,20 @@ export class InMemorySessionManager implements SessionManager {
   async complete(id: string): Promise<Session> {
     const session = this.sessions.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
-    if (session.state === "completed") {
-      throw new SessionError("Session already completed", "INVALID_STATE");
+    if (session.state === 'completed') {
+      throw new SessionError('Session already completed', 'INVALID_STATE');
     }
 
-    if (session.state !== "active") {
-      throw new SessionError(
-        `Cannot complete session in state: ${session.state}`,
-        "INVALID_STATE",
-      );
+    if (session.state !== 'active') {
+      throw new SessionError(`Cannot complete session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const completed: Session = {
       ...session,
-      state: "completed",
+      state: 'completed',
       completedAt: new Date(),
       updatedAt: new Date(),
     };
@@ -339,23 +319,20 @@ export class InMemorySessionManager implements SessionManager {
    */
   async fail(
     id: string,
-    error: { message: string; code: string; details?: unknown },
+    error: { message: string; code: string; details?: unknown }
   ): Promise<Session> {
     const session = this.sessions.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
-    if (session.state !== "active") {
-      throw new SessionError(
-        `Cannot fail session in state: ${session.state}`,
-        "INVALID_STATE",
-      );
+    if (session.state !== 'active') {
+      throw new SessionError(`Cannot fail session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const failed: Session = {
       ...session,
-      state: "failed",
+      state: 'failed',
       error,
       updatedAt: new Date(),
     };
@@ -370,19 +347,16 @@ export class InMemorySessionManager implements SessionManager {
   async cancel(id: string): Promise<Session> {
     const session = this.sessions.get(id);
     if (!session) {
-      throw new SessionError(`Session not found: ${id}`, "SESSION_NOT_FOUND");
+      throw new SessionError(`Session not found: ${id}`, 'SESSION_NOT_FOUND');
     }
 
-    if (session.state === "completed" || session.state === "failed") {
-      throw new SessionError(
-        `Cannot cancel session in state: ${session.state}`,
-        "INVALID_STATE",
-      );
+    if (session.state === 'completed' || session.state === 'failed') {
+      throw new SessionError(`Cannot cancel session in state: ${session.state}`, 'INVALID_STATE');
     }
 
     const cancelled: Session = {
       ...session,
-      state: "cancelled",
+      state: 'cancelled',
       updatedAt: new Date(),
     };
 

@@ -4,11 +4,11 @@
  * File-based session storage for local mode
  */
 
-import * as fs from "node:fs";
-import * as path from "node:path";
-import type { LLMMessage } from "@duyetbot/types";
+import * as fs from 'node:fs';
+import * as path from 'node:path';
+import type { LLMMessage } from '@duyetbot/types';
 
-export type SessionState = "active" | "paused" | "completed" | "failed";
+export type SessionState = 'active' | 'paused' | 'completed' | 'failed';
 
 export interface LocalSession {
   id: string;
@@ -82,7 +82,7 @@ export class FileSessionManager {
     const session: LocalSession = {
       id: this.generateId(),
       title: input.title,
-      state: "active",
+      state: 'active',
       messages: [],
       createdAt: now,
       updatedAt: now,
@@ -108,17 +108,14 @@ export class FileSessionManager {
       return undefined;
     }
 
-    const content = fs.readFileSync(sessionPath, "utf-8");
+    const content = fs.readFileSync(sessionPath, 'utf-8');
     return JSON.parse(content) as LocalSession;
   }
 
   /**
    * Update session
    */
-  async updateSession(
-    id: string,
-    input: UpdateSessionInput,
-  ): Promise<LocalSession> {
+  async updateSession(id: string, input: UpdateSessionInput): Promise<LocalSession> {
     const session = await this.getSession(id);
 
     if (!session) {
@@ -156,17 +153,12 @@ export class FileSessionManager {
       return [];
     }
 
-    const files = fs
-      .readdirSync(this.sessionsDir)
-      .filter((f) => f.endsWith(".json"));
+    const files = fs.readdirSync(this.sessionsDir).filter((f) => f.endsWith('.json'));
 
     let sessions: LocalSession[] = [];
 
     for (const file of files) {
-      const content = fs.readFileSync(
-        path.join(this.sessionsDir, file),
-        "utf-8",
-      );
+      const content = fs.readFileSync(path.join(this.sessionsDir, file), 'utf-8');
       sessions.push(JSON.parse(content) as LocalSession);
     }
 
