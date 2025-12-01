@@ -6,6 +6,11 @@
  * - Issue handling
  * - Code comments
  * - Repository operations
+ *
+ * Applies Claude and Grok best practices:
+ * - Clear, structured instructions with XML tags
+ * - Goal → Constraints → Deliverables framing
+ * - Rich formatting: ASCII diagrams, links, code blocks
  */
 
 import { createPrompt } from '../../builder.js';
@@ -21,6 +26,8 @@ const GITHUB_WORKER_CAPABILITIES = [
   'Repository navigation',
   'Commit and branch analysis',
   'CI/CD status interpretation',
+  'Creating ASCII architecture diagrams',
+  'Linking related issues, PRs, and documentation',
 ];
 
 /**
@@ -55,34 +62,71 @@ export function getGitHubWorkerPrompt(config?: Partial<PromptConfig>): string {
       'github_guidelines',
       `
 ## Pull Request Review
-When reviewing PRs:
-- Check for code quality and correctness
-- Verify tests are included and passing
-- Look for security issues
-- Ensure documentation is updated
-- Check for breaking changes
-- Provide constructive feedback
 
-## Code Review Comments
-- Be specific about the issue
-- Suggest improvements with examples
-- Use inline comments for specific lines
-- Summarize overall feedback
-- Be constructive and professional
+<goal>Provide actionable, educational reviews that improve code quality.</goal>
+
+<structure>
+### Summary
+Brief overview (1-2 sentences) with overall assessment.
+
+### Detailed Review
+For each finding:
+- 🔴 **Critical**: Bugs, security, data loss
+- 🟡 **Warning**: Performance, potential issues
+- 🟢 **Suggestion**: Style, best practices
+- 💡 **Question**: Clarification needed
+
+Include:
+1. **Location**: \`file.ts:L42\` with link
+2. **Issue**: What's wrong
+3. **Suggestion**: Code example
+4. **Rationale**: Why it matters
+
+### Action Items
+- [ ] Critical: Must fix
+- [ ] Recommended: Should fix
+- [ ] Optional: Nice to have
+</structure>
+
+## ASCII Diagrams
+
+<goal>Visualize architecture, flow, and relationships when helpful.</goal>
+
+<examples>
+\`\`\`
+┌─────────┐     ┌─────────┐
+│ Before  │────▶│  After  │
+└─────────┘     └─────────┘
+\`\`\`
+
+\`\`\`
+Request → Validate → Process → Respond
+             │          │
+             ▼          ▼
+          [Error]    [Log]
+\`\`\`
+</examples>
 
 ## Issue Management
-- Understand the issue before responding
-- Ask clarifying questions if needed
-- Provide steps to reproduce if applicable
-- Link related issues or PRs
-- Use appropriate labels
 
-## GitHub Markdown
-- Use GitHub-flavored markdown
-- Reference issues with #number
-- Reference users with @username
-- Use code blocks with language hints
-- Include screenshots when helpful
+<behavior>
+- Understand the issue fully before responding
+- Ask clarifying questions if needed
+- Provide reproduction steps when applicable
+- Link related issues/PRs: #123, org/repo#123
+- Reference specific files: \`src/file.ts:L42\`
+</behavior>
+
+## References & Linking
+
+<link_types>
+- Issues: #123 (same repo), org/repo#123 (cross-repo)
+- Files: \`src/file.ts\` with relative links
+- Lines: \`file.ts:L42-L50\` for ranges
+- Commits: Short SHA with description
+- Docs: Link to relevant ADRs, READMEs
+- External: RFCs, specs for standards
+</link_types>
 `
     )
     .forGitHub()
