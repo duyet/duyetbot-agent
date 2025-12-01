@@ -13,8 +13,10 @@ import {
   type ObservabilityEnv,
   ObservabilityStorage,
 } from '@duyetbot/observability';
+import { Octokit } from '@octokit/rest';
 
 import { type Env } from './agent.js';
+import { fetchIssueContext, fetchPRContext } from './github-api.js';
 import { logger } from './logger.js';
 import {
   createGitHubMentionMiddleware,
@@ -177,6 +179,76 @@ app.post(
       }
       if (env.GITHUB_ADMIN) {
         contextOptions.adminUsername = env.GITHUB_ADMIN;
+      }
+
+      // Add PR-specific metadata from webhook context
+      if (webhookCtx.additions !== undefined) {
+        contextOptions.additions = webhookCtx.additions;
+      }
+      if (webhookCtx.deletions !== undefined) {
+        contextOptions.deletions = webhookCtx.deletions;
+      }
+      if (webhookCtx.commits !== undefined) {
+        contextOptions.commits = webhookCtx.commits;
+      }
+      if (webhookCtx.changedFiles !== undefined) {
+        contextOptions.changedFiles = webhookCtx.changedFiles;
+      }
+      if (webhookCtx.headRef !== undefined) {
+        contextOptions.headRef = webhookCtx.headRef;
+      }
+      if (webhookCtx.baseRef !== undefined) {
+        contextOptions.baseRef = webhookCtx.baseRef;
+      }
+
+      // Fetch context enrichment (comments history and PR diff)
+      const octokit = new Octokit({ auth: env.GITHUB_TOKEN });
+      try {
+        logger.debug(`[${requestId}] [WEBHOOK] Fetching context enrichment`, {
+          requestId,
+          isPullRequest,
+          issueNumber: issue.number,
+        });
+
+        if (isPullRequest) {
+          // Fetch both comments and diff for PRs
+          const { commentsThread, diffSnippets } = await fetchPRContext(octokit, {
+            owner,
+            repo,
+            pullNumber: issue.number,
+            commentLimit: 5,
+          });
+          if (commentsThread) {
+            contextOptions.commentsThread = commentsThread;
+          }
+          if (diffSnippets) {
+            contextOptions.diffSnippets = diffSnippets;
+          }
+        } else {
+          // Fetch only comments for issues
+          const { commentsThread } = await fetchIssueContext(octokit, {
+            owner,
+            repo,
+            issueNumber: issue.number,
+            commentLimit: 5,
+          });
+          if (commentsThread) {
+            contextOptions.commentsThread = commentsThread;
+          }
+        }
+
+        logger.debug(`[${requestId}] [WEBHOOK] Context enrichment complete`, {
+          requestId,
+          hasComments: !!contextOptions.commentsThread,
+          hasDiff: !!contextOptions.diffSnippets,
+          durationMs: Date.now() - startTime,
+        });
+      } catch (enrichError) {
+        // Log but don't fail - enrichment is optional
+        logger.warn(`[${requestId}] [WEBHOOK] Context enrichment failed`, {
+          requestId,
+          error: enrichError instanceof Error ? enrichError.message : String(enrichError),
+        });
       }
 
       const ctx = createGitHubContext(contextOptions);

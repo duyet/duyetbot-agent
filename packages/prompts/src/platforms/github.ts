@@ -31,6 +31,13 @@ const GITHUB_CAPABILITIES = [
  */
 export function getGitHubBotPrompt(customConfig?: Partial<PromptConfig>): string {
   return createPrompt(customConfig)
+    .withCustomSection(
+      'role_statement',
+      `You are @duyetbot, an AI assistant designed to help with GitHub issues and pull requests. Think carefully as you analyze the context and respond appropriately.
+
+Here's the context for your current task:
+`
+    )
     .withIdentity()
     .withPolicy()
     .withCapabilities(GITHUB_CAPABILITIES)
