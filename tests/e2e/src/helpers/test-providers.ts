@@ -7,7 +7,7 @@
  * - Supports both local development and CI environments
  */
 
-import { createOpenRouterProvider } from "@duyetbot/providers";
+import { createOpenRouterProvider } from '@duyetbot/providers';
 
 export interface TestProviderConfig {
   useRealAPI: boolean;
@@ -35,8 +35,8 @@ export function createTestProviderConfig(): TestProviderConfig {
     return {
       useRealAPI: true,
       apiKey: process.env.AI_GATEWAY_API_KEY!,
-      gatewayName: process.env.AI_GATEWAY_NAME || "duyetbot",
-      model: process.env.MODEL || "x-ai/grok-4.1-fast",
+      gatewayName: process.env.AI_GATEWAY_NAME || 'duyetbot',
+      model: process.env.MODEL || 'x-ai/grok-4.1-fast',
       baseURL: process.env.AI_GATEWAY_BASE_URL,
       timeout: 60000, // 60 seconds for real API calls
     };
@@ -45,7 +45,7 @@ export function createTestProviderConfig(): TestProviderConfig {
   // Fallback configuration for mock/testing
   return {
     useRealAPI: false,
-    model: "mock-model",
+    model: 'mock-model',
     timeout: 5000, // Shorter timeout for mocks
   };
 }
@@ -65,8 +65,7 @@ export function createTestProvider() {
     AI: {
       gateway: (gatewayId: string) => ({
         getUrl: async (provider: string) =>
-          config.baseURL ||
-          `https://gateway.ai.cloudflare.com/v2/${gatewayId}/${provider}`,
+          config.baseURL || `https://gateway.ai.cloudflare.com/v2/${gatewayId}/${provider}`,
       }),
     },
     AI_GATEWAY_NAME: config.gatewayName!,
@@ -84,11 +83,11 @@ export function createTestProvider() {
  * Test environment metadata
  */
 export const testEnvironment = {
-  isCI: process.env.CI === "true",
+  isCI: process.env.CI === 'true',
   nodeEnv: process.env.NODE_ENV,
   hasRealAPI: shouldUseRealAPI(),
-  configuredModel: process.env.MODEL || "x-ai/grok-4.1-fast",
-  gatewayName: process.env.AI_GATEWAY_NAME || "duyetbot",
+  configuredModel: process.env.MODEL || 'x-ai/grok-4.1-fast',
+  gatewayName: process.env.AI_GATEWAY_NAME || 'duyetbot',
 };
 
 /**
@@ -99,8 +98,7 @@ export function createWebSearchConfig() {
 
   return {
     enabled: config.useRealAPI,
-    useNativeSearch:
-      config.model.includes("xai") || config.model.includes("grok"),
+    useNativeSearch: config.model.includes('xai') || config.model.includes('grok'),
     searchTimeout: Math.min(config.timeout, 30000), // Cap search timeout at 30s
     maxResults: 5,
   };
@@ -110,22 +108,21 @@ export function createWebSearchConfig() {
  * Parse mode testing configuration
  */
 export const parseModeTestConfig = {
-  modes: ["HTML", "MarkdownV2"] as const,
+  modes: ['HTML', 'MarkdownV2'] as const,
   testMessages: {
-    simple: ["hi", "hello", "help"],
+    simple: ['hi', 'hello', 'help'],
     formatted: [
-      "This is *bold* and _italic_ text",
-      "Here is some `code` and [a link](https://example.com)",
-      "Check out this ```typescript\nconst x = 1;\n``` code block",
+      'This is *bold* and _italic_ text',
+      'Here is some `code` and [a link](https://example.com)',
+      'Check out this ```typescript\nconst x = 1;\n``` code block',
     ],
     complex: [
-      "*Bold* with _italic_ and `code` all together",
-      "List item 1\nList item 2\n*Bold sublist*\n- Normal item",
-      "[Link with *bold* text](https://example.com)",
+      '*Bold* with _italic_ and `code` all together',
+      'List item 1\nList item 2\n*Bold sublist*\n- Normal item',
+      '[Link with *bold* text](https://example.com)',
     ],
   },
-  fallbackTest:
-    "This message contains special characters: * _ ` [ ] ( ) ~ ` > # + - = | { } . !",
+  fallbackTest: 'This message contains special characters: * _ ` [ ] ( ) ~ ` > # + - = | { } . !',
 };
 
 /**

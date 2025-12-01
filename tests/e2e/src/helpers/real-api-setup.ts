@@ -5,12 +5,8 @@
  * including provider initialization, web search setup, and test utilities.
  */
 
-import { beforeAll, afterAll } from "vitest";
-import {
-  createTestProvider,
-  shouldUseRealAPI,
-  testEnvironment,
-} from "./test-providers";
+import { afterAll, beforeAll } from 'vitest';
+import { createTestProvider, shouldUseRealAPI, testEnvironment } from './test-providers';
 
 let provider: any = null;
 
@@ -20,24 +16,22 @@ let provider: any = null;
 export function setupRealAPITesting() {
   // Only setup real APIs if environment is configured
   if (!shouldUseRealAPI()) {
-    console.warn(
-      "⚠️ Real API environment not configured. Tests will use mocks.",
-    );
+    console.warn('⚠️ Real API environment not configured. Tests will use mocks.');
     return;
   }
 
-  console.log("🔧 Setting up real API testing environment...");
+  console.log('🔧 Setting up real API testing environment...');
   console.log(`Environment: ${JSON.stringify(testEnvironment, null, 2)}`);
 
   try {
     provider = createTestProvider();
     if (!provider) {
-      throw new Error("Failed to create test provider");
+      throw new Error('Failed to create test provider');
     }
 
-    console.log("✅ Real API provider created successfully");
+    console.log('✅ Real API provider created successfully');
   } catch (error) {
-    console.error("❌ Failed to setup real API provider:", error);
+    console.error('❌ Failed to setup real API provider:', error);
     throw error;
   }
 }
@@ -47,7 +41,7 @@ export function setupRealAPITesting() {
  */
 export function cleanupRealAPITesting() {
   if (provider) {
-    console.log("🧹 Cleaning up real API testing environment...");
+    console.log('🧹 Cleaning up real API testing environment...');
     provider = null;
   }
 }
