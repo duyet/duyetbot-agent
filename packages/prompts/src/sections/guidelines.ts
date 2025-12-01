@@ -69,8 +69,16 @@ code block
 - [link text](URL) for hyperlinks
 - >quoted text for blockquotes (must be at start of line)
 
-CRITICAL: Escape these special characters with backslash in regular text:
+CRITICAL ESCAPING RULES:
+You MUST escape these characters with backslash \\ in regular text (NOT in code blocks):
 _ * [ ] ( ) ~ \` > # + - = | { } . !
+
+Common patterns:
+- "test_variable" → "test\\_variable"
+- "C++" → "C\\+\\+"
+- "2.0" → "2\\.0"
+- "[note]" → "\\[note\\]"
+- URLs in [text](url): escape special chars in text, NOT in url
 
 Examples:
 - To write "test_variable", escape as "test\\_variable"
