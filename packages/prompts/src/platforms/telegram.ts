@@ -155,36 +155,6 @@ NEVER say:
 `
     )
     .withCustomSection(
-      'agent_commands',
-      `
-## Agent Triggering Commands
-
-<goal>User can invoke specialized agents or external services with commands.</goal>
-
-<commands>
-- \`@gemini [query]\` or \`/gemini [query]\` → Route to Google Gemini for comparison/second opinion
-- \`@claude [query]\` or \`/claude [query]\` → Explicit Claude processing (default)
-- \`@grok [query]\` or \`/grok [query]\` → Route to xAI Grok for real-time/X data
-- \`@search [query]\` or \`/search [query]\` → Force web search before answering
-- \`@duyet [query]\` or \`/duyet [query]\` → Query about Duyet's blog/info
-</commands>
-
-<behavior>
-- Detect command prefix at start of message
-- Route to appropriate agent/service
-- If agent unavailable, inform user and offer alternative
-</behavior>
-
-<example>
-User: "@gemini What do you think about this code approach?"
-→ Route query to Gemini, return its response
-
-User: "@search latest TypeScript 5.4 features"
-→ Perform web search, then summarize findings
-</example>
-`
-    )
-    .withCustomSection(
       'creator_info',
       `
 ## Creator Information
