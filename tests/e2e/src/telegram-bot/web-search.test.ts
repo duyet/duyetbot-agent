@@ -15,7 +15,11 @@ import {
   setupTelegramAPISpy,
   validateWebSearchResponse,
 } from '../helpers/bot-test-utils';
-import { createWebSearchConfig, getTestProvider, isRealAPITestingAvailable } from '../helpers/test-providers';
+import {
+  createWebSearchConfig,
+  getTestProvider,
+  isRealAPITestingAvailable,
+} from '../helpers/test-providers';
 
 describe('Telegram Bot - Web Search Integration', () => {
   let bot: any;
@@ -58,19 +62,21 @@ describe('Telegram Bot - Web Search Integration', () => {
       }
 
       const update = createMockUpdate('What are the latest developments in AI?');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
 
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: true,
-        hasCurrentInfo: true,
-        maxResponseTime: 30000, // 30s for web search
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: true,
+          hasCurrentInfo: true,
+          maxResponseTime: 30000, // 30s for web search
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -87,17 +93,19 @@ describe('Telegram Bot - Web Search Integration', () => {
       if (!isRealAPITestingAvailable()) return;
 
       const update = createMockUpdate('What is trending on social media today?');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: webSearchConfig.useNativeSearch,
-        hasCurrentInfo: true,
-        maxResponseTime: 30000,
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: webSearchConfig.useNativeSearch,
+          hasCurrentInfo: true,
+          maxResponseTime: 30000,
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -109,17 +117,19 @@ describe('Telegram Bot - Web Search Integration', () => {
       if (!isRealAPITestingAvailable()) return;
 
       const update = createMockUpdate('Find recent news about climate change solutions');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: webSearchConfig.useNativeSearch,
-        hasCurrentInfo: true,
-        maxResponseTime: 30000,
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: webSearchConfig.useNativeSearch,
+          hasCurrentInfo: true,
+          maxResponseTime: 30000,
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -137,16 +147,18 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const testUrl = 'https://example.com';
       const update = createMockUpdate(`Summarize the content from ${testUrl}`);
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: false, // Direct URL fetch might not need citations
-        maxResponseTime: 25000, // 25s for URL analysis
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: false, // Direct URL fetch might not need citations
+          maxResponseTime: 25000, // 25s for URL analysis
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -160,21 +172,20 @@ describe('Telegram Bot - Web Search Integration', () => {
     it('should handle multiple URL requests', async () => {
       if (!isRealAPITestingAvailable()) return;
 
-      const urls = [
-        'https://example.com/page1',
-        'https://example.com/page2',
-      ];
+      const urls = ['https://example.com/page1', 'https://example.com/page2'];
       const update = createMockUpdate(`Compare these URLs: ${urls.join(', ')}`);
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: false,
-        maxResponseTime: 30000, // Longer for multiple URLs
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: false,
+          maxResponseTime: 30000, // Longer for multiple URLs
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -182,7 +193,7 @@ describe('Telegram Bot - Web Search Integration', () => {
       expect(lastResponse.text).toMatch(/compare|differences|similarities|analysis/gi);
 
       // Should reference multiple sources
-      const urlMatches = lastResponse.text.match(/https?:\/\//[^,\s]+/gi);
+      const urlMatches = lastResponse.text.match(/https?:\/\/[^\s,]+/gi);
       expect(urlMatches?.length).toBeGreaterThan(0);
     });
   });
@@ -192,16 +203,18 @@ describe('Telegram Bot - Web Search Integration', () => {
       if (!isRealAPITestingAvailable()) return;
 
       const update = createMockUpdate('What is the capital of France?');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: webSearchConfig.useNativeSearch,
-        maxResponseTime: 15000, // Should be fast for factual queries
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: webSearchConfig.useNativeSearch,
+          maxResponseTime: 15000, // Should be fast for factual queries
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -216,16 +229,18 @@ describe('Telegram Bot - Web Search Integration', () => {
       if (!isRealAPITestingAvailable()) return;
 
       const update = createMockUpdate('Tell me about Python');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: webSearchConfig.useNativeSearch,
-        maxResponseTime: 25000, // Might take longer for disambiguation
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: webSearchConfig.useNativeSearch,
+          maxResponseTime: 25000, // Might take longer for disambiguation
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -243,9 +258,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const invalidUrl = 'https://nonexistent-domain-12345.com';
       const update = createMockUpdate(`What can you tell me about ${invalidUrl}?`);
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -262,9 +275,7 @@ describe('Telegram Bot - Web Search Integration', () => {
       const update = createMockUpdate(
         'Provide a comprehensive analysis of the latest developments in quantum computing, artificial intelligence, and renewable energy technologies'
       );
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -281,17 +292,13 @@ describe('Telegram Bot - Web Search Integration', () => {
       if (!isRealAPITestingAvailable()) return;
 
       const update = createMockUpdate('asdfghjkl qwerty');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
 
       // Should provide a helpful response rather than failing
-      expect(lastResponse.text).toMatch(
-        /understand|clarify|meaning|help|query|search/gi
-      );
+      expect(lastResponse.text).toMatch(/understand|clarify|meaning|help|query|search/gi);
       expect(lastResponse.text.length).toBeGreaterThan(20);
     });
   });
@@ -312,20 +319,19 @@ describe('Telegram Bot - Web Search Integration', () => {
         apiSpy.clearMessages();
 
         const update = createMockUpdate(query);
-        const { responseTime } = await measureResponseTime(() =>
-          bot.handleUpdate(update)
-        );
+        const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
         responseTimes.push(responseTime);
 
         // Small delay between requests
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        await new Promise((resolve) => setTimeout(resolve, 2000));
       }
 
       // Calculate performance metrics
-      const avgResponseTime = responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
+      const avgResponseTime =
+        responseTimes.reduce((sum, time) => sum + time, 0) / responseTimes.length;
       const maxResponseTime = Math.max(...responseTimes);
-      const fastResponses = responseTimes.filter(time => time <= 30000).length;
+      const fastResponses = responseTimes.filter((time) => time <= 30000).length;
       const responseRate = fastResponses / responseTimes.length;
 
       // Most responses should be within 30 seconds
@@ -333,7 +339,9 @@ describe('Telegram Bot - Web Search Integration', () => {
       expect(avgResponseTime).toBeLessThan(35000); // Average under 35s
       expect(maxResponseTime).toBeLessThan(60000); // Max under 60s
 
-      console.log(`📊 Search Performance: avg=${avgResponseTime}ms, max=${maxResponseTime}ms, success_rate=${responseRate * 100}%`);
+      console.log(
+        `📊 Search Performance: avg=${avgResponseTime}ms, max=${maxResponseTime}ms, success_rate=${responseRate * 100}%`
+      );
     });
 
     it('should handle concurrent search requests efficiently', async () => {
@@ -374,16 +382,18 @@ describe('Telegram Bot - Web Search Integration', () => {
       if (!isRealAPITestingAvailable()) return;
 
       const update = createMockUpdate('What are the environmental impacts of cryptocurrency?');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
-      );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
-      const validation = validateWebSearchResponse(lastResponse.text, {
-        requiresCitations: webSearchConfig.useNativeSearch,
-        maxResponseTime: 30000,
-      }, responseTime);
+      const validation = validateWebSearchResponse(
+        lastResponse.text,
+        {
+          requiresCitations: webSearchConfig.useNativeSearch,
+          maxResponseTime: 30000,
+        },
+        responseTime
+      );
 
       expect(validation.isValid).toBe(true);
 
@@ -401,10 +411,10 @@ describe('Telegram Bot - Web Search Integration', () => {
     it('should properly attribute sources when available', async () => {
       if (!isRealAPITestingAvailable()) return;
 
-      const update = createMockUpdate('What recent discoveries has the James Webb Space Telescope made?');
-      const { result, responseTime } = await measureResponseTime(() =>
-        bot.handleUpdate(update)
+      const update = createMockUpdate(
+        'What recent discoveries has the James Webb Space Telescope made?'
       );
+      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
