@@ -55,6 +55,24 @@ export interface GitHubContext {
   isAdmin?: boolean;
   /** Debug context for admin users (routing flow, timing, classification) */
   debugContext?: DebugContext;
+  // PR-specific metadata
+  /** Lines added in the PR */
+  additions?: number;
+  /** Lines deleted in the PR */
+  deletions?: number;
+  /** Number of commits in the PR */
+  commits?: number;
+  /** Number of changed files */
+  changedFiles?: number;
+  /** Source branch name */
+  headRef?: string;
+  /** Target branch name */
+  baseRef?: string;
+  // Context enrichment (fetched from API)
+  /** Formatted previous comments thread */
+  commentsThread?: string;
+  /** Relevant diff snippets for PRs */
+  diffSnippets?: string;
 }
 
 /**
@@ -137,24 +155,77 @@ export const githubTransport: Transport<GitHubContext> = {
   },
 
   parseContext: (ctx) => {
-    // Build context block to prepend to user message
     const contextType = ctx.isPullRequest ? 'PR' : 'Issue';
-    const labelStr = ctx.labels.length > 0 ? `**Labels**: ${ctx.labels.join(', ')}\n` : '';
 
-    const contextBlock = `**Context**: ${contextType} #${ctx.issueNumber} "${ctx.title}"
-**URL**: ${ctx.url}
-**State**: ${ctx.state}
-${labelStr}
----
+    // Build XML-structured context block (following Claude on GitHub pattern)
+    const formattedContextLines = [
+      '<formatted_context>',
+      `${contextType} Title: ${ctx.title}`,
+      `${contextType} Author: ${ctx.sender.login}`,
+    ];
 
-`;
+    // Add PR-specific metadata
+    if (ctx.isPullRequest) {
+      if (ctx.headRef && ctx.baseRef) {
+        formattedContextLines.push(`PR Branch: ${ctx.headRef} -> ${ctx.baseRef}`);
+      }
+    }
+
+    formattedContextLines.push(`${contextType} State: ${ctx.state.toUpperCase()}`);
+
+    if (ctx.isPullRequest) {
+      if (ctx.additions !== undefined) {
+        formattedContextLines.push(`PR Additions: ${ctx.additions}`);
+      }
+      if (ctx.deletions !== undefined) {
+        formattedContextLines.push(`PR Deletions: ${ctx.deletions}`);
+      }
+      if (ctx.commits !== undefined) {
+        formattedContextLines.push(`Total Commits: ${ctx.commits}`);
+      }
+      if (ctx.changedFiles !== undefined) {
+        formattedContextLines.push(`Changed Files: ${ctx.changedFiles} files`);
+      }
+    }
+
+    if (ctx.labels.length > 0) {
+      formattedContextLines.push(`Labels: ${ctx.labels.join(', ')}`);
+    }
+
+    formattedContextLines.push('</formatted_context>');
+
+    const formattedContext = formattedContextLines.join('\n');
+
+    // PR/Issue body section
+    const bodySection = `<pr_or_issue_body>
+${ctx.description || 'No description provided.'}
+</pr_or_issue_body>`;
+
+    // Comments thread section
+    const commentsSection = `<comments>
+${ctx.commentsThread || 'No previous comments.'}
+</comments>`;
+
+    // Diff snippets section (only for PRs with diff data)
+    const diffSection =
+      ctx.isPullRequest && ctx.diffSnippets
+        ? `<diff_snippets>
+${ctx.diffSnippets}
+</diff_snippets>`
+        : '';
+
+    // Combine all sections
+    const contextBlockParts = [formattedContext, bodySection, commentsSection];
+    if (diffSection) {
+      contextBlockParts.push(diffSection);
+    }
+    const contextBlock = contextBlockParts.join('\n\n');
 
     // Strip bot mention from body to avoid misclassification
-    // e.g., "@duyetbot Latest AI News?" should not match "duyet" patterns
     const cleanedBody = stripBotMention(ctx.body);
 
     const result: ParsedInput = {
-      text: contextBlock + cleanedBody,
+      text: `${contextBlock}\n\n---\n\n${cleanedBody}`,
       userId: ctx.sender.id,
       chatId: `${ctx.owner}/${ctx.repo}#${ctx.issueNumber}`,
       username: ctx.sender.login,
@@ -214,6 +285,24 @@ export interface CreateGitHubContextOptions {
   requestId?: string;
   /** Admin username for debug footer visibility */
   adminUsername?: string;
+  // PR-specific metadata
+  /** Lines added in the PR */
+  additions?: number;
+  /** Lines deleted in the PR */
+  deletions?: number;
+  /** Number of commits in the PR */
+  commits?: number;
+  /** Number of changed files */
+  changedFiles?: number;
+  /** Source branch name */
+  headRef?: string;
+  /** Target branch name */
+  baseRef?: string;
+  // Context enrichment (fetched from API)
+  /** Formatted previous comments thread */
+  commentsThread?: string;
+  /** Relevant diff snippets for PRs */
+  diffSnippets?: string;
 }
 
 /**
@@ -279,6 +368,32 @@ export function createGitHubContext(options: CreateGitHubContextOptions): GitHub
   }
   if (options.adminUsername !== undefined) {
     ctx.adminUsername = options.adminUsername;
+  }
+  // PR-specific metadata
+  if (options.additions !== undefined) {
+    ctx.additions = options.additions;
+  }
+  if (options.deletions !== undefined) {
+    ctx.deletions = options.deletions;
+  }
+  if (options.commits !== undefined) {
+    ctx.commits = options.commits;
+  }
+  if (options.changedFiles !== undefined) {
+    ctx.changedFiles = options.changedFiles;
+  }
+  if (options.headRef !== undefined) {
+    ctx.headRef = options.headRef;
+  }
+  if (options.baseRef !== undefined) {
+    ctx.baseRef = options.baseRef;
+  }
+  // Context enrichment
+  if (options.commentsThread !== undefined) {
+    ctx.commentsThread = options.commentsThread;
+  }
+  if (options.diffSnippets !== undefined) {
+    ctx.diffSnippets = options.diffSnippets;
   }
   return ctx;
 }

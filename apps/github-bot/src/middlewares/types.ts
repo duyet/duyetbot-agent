@@ -75,6 +75,25 @@ export interface GitHubPullRequest {
   labels: Array<{ name: string }>;
   /** HTML URL to the PR */
   html_url: string;
+  /** Lines added in the PR */
+  additions?: number;
+  /** Lines deleted in the PR */
+  deletions?: number;
+  /** Number of commits in the PR */
+  commits?: number;
+  /** Number of changed files */
+  changed_files?: number;
+  /** Source branch reference */
+  head?: {
+    ref: string;
+    sha: string;
+  };
+  /** Target branch reference */
+  base?: {
+    ref: string;
+  };
+  /** URL to fetch the diff */
+  diff_url?: string;
 }
 
 /**
@@ -145,6 +164,19 @@ export interface WebhookContext {
   comment?: CommentContext | undefined;
   /** Whether this event is from a pull request (vs issue) */
   isPullRequest: boolean;
+  // PR-specific metadata (only present for pull requests)
+  /** Lines added in the PR */
+  additions?: number;
+  /** Lines deleted in the PR */
+  deletions?: number;
+  /** Number of commits in the PR */
+  commits?: number;
+  /** Number of changed files */
+  changedFiles?: number;
+  /** Source branch name */
+  headRef?: string;
+  /** Target branch name */
+  baseRef?: string;
 }
 
 /**

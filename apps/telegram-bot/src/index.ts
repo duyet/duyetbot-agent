@@ -27,6 +27,10 @@ type EnvWithObservability = Env & ObservabilityEnv;
 // Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
 export { TelegramAgent };
 
+export type { TelegramBot } from './test-utils.js';
+// Re-export test utilities for E2E testing
+export { createTelegramBot, type TelegramBotConfig } from './test-utils.js';
+
 const app = createBaseApp<EnvWithObservability>({
   name: 'telegram-bot',
   version: '1.0.0',

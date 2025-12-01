@@ -47,7 +47,10 @@ export function buildWebhookContext(
   deliveryId: string,
   requestId: string
 ): WebhookContext {
-  return {
+  const pr = payload.pull_request;
+  const isPullRequest = !!pr || payload.issue?.pull_request !== undefined;
+
+  const ctx: WebhookContext = {
     owner: payload.repository.owner.login,
     repo: payload.repository.name,
     event: eventType,
@@ -69,8 +72,32 @@ export function buildWebhookContext(
           body: payload.comment.body,
         }
       : undefined,
-    isPullRequest: !!payload.pull_request || payload.issue?.pull_request !== undefined,
+    isPullRequest,
   };
+
+  // Extract PR-specific metadata when available
+  if (pr) {
+    if (pr.additions !== undefined) {
+      ctx.additions = pr.additions;
+    }
+    if (pr.deletions !== undefined) {
+      ctx.deletions = pr.deletions;
+    }
+    if (pr.commits !== undefined) {
+      ctx.commits = pr.commits;
+    }
+    if (pr.changed_files !== undefined) {
+      ctx.changedFiles = pr.changed_files;
+    }
+    if (pr.head?.ref !== undefined) {
+      ctx.headRef = pr.head.ref;
+    }
+    if (pr.base?.ref !== undefined) {
+      ctx.baseRef = pr.base.ref;
+    }
+  }
+
+  return ctx;
 }
 
 /**
