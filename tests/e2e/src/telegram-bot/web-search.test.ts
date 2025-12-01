@@ -7,15 +7,15 @@
  * Tests validate search result accuracy, citation inclusion, and performance.
  */
 
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { isRealAPITestingAvailable, getTestProvider, createWebSearchConfig } from '../helpers/test-providers';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createMockTelegramBot,
   createMockUpdate,
+  measureResponseTime,
   setupTelegramAPISpy,
   validateWebSearchResponse,
-  measureResponseTime,
 } from '../helpers/bot-test-utils';
+import { createWebSearchConfig, getTestProvider, isRealAPITestingAvailable } from '../helpers/test-providers';
 
 describe('Telegram Bot - Web Search Integration', () => {
   let bot: any;
@@ -392,7 +392,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       if (validation.hasCitations) {
         // Should have proper citation format
-        const urlPattern = /https?:\/\/[^\s\)]+/gi;
+        const urlPattern = /https?:\/\/[^\s)]+/gi;
         const urls = lastResponse.text.match(urlPattern);
         expect(urls?.length).toBeGreaterThan(0);
       }

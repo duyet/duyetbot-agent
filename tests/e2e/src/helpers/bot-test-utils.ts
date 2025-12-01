@@ -8,12 +8,9 @@
  * - Parse mode detection and validation
  */
 
-import { createTelegramBot, type TelegramBot } from "@duyetbot/telegram-bot";
-import type { Update, Message } from "telegram-bot-api-types";
-import {
-  parseModeTestConfig,
-  getPerformanceThresholds,
-} from "./test-providers";
+import { createTelegramBot, type TelegramBot } from '@duyetbot/telegram-bot';
+import type { Message, Update } from 'telegram-bot-api-types';
+import { getPerformanceThresholds, parseModeTestConfig } from './test-providers';
 
 /**
  * Create a mock Telegram update for testing
@@ -24,15 +21,10 @@ export function createMockUpdate(
     userId?: number;
     chatId?: number;
     messageId?: number;
-    parseMode?: "HTML" | "MarkdownV2";
-  } = {},
+    parseMode?: 'HTML' | 'MarkdownV2';
+  } = {}
 ): Update {
-  const {
-    userId = 12345,
-    chatId = 12345,
-    messageId = 1,
-    parseMode = "HTML",
-  } = options;
+  const { userId = 12345, chatId = 12345, messageId = 1, parseMode = 'HTML' } = options;
 
   return {
     update_id: Date.now(),
@@ -41,26 +33,26 @@ export function createMockUpdate(
       from: {
         id: userId,
         is_bot: false,
-        first_name: "Test",
-        last_name: "User",
-        username: "testuser",
+        first_name: 'Test',
+        last_name: 'User',
+        username: 'testuser',
       },
       chat: {
         id: chatId,
-        first_name: "Test",
-        last_name: "User",
-        username: "testuser",
-        type: "private",
+        first_name: 'Test',
+        last_name: 'User',
+        username: 'testuser',
+        type: 'private',
       },
       date: Math.floor(Date.now() / 1000),
       text: message,
       entities:
-        parseMode === "MarkdownV2"
+        parseMode === 'MarkdownV2'
           ? [
               {
-                type: "bold",
-                offset: message.indexOf("*") + 1,
-                length: message.split("*")[1]?.length || 0,
+                type: 'bold',
+                offset: message.indexOf('*') + 1,
+                length: message.split('*')[1]?.length || 0,
               },
             ]
           : [],
@@ -76,10 +68,10 @@ export async function createMockTelegramBot(): Promise<TelegramBot> {
   const bot = await createTelegramBot({
     // Mock environment for testing
     env: {
-      TELEGRAM_BOT_TOKEN: "test_token",
-      AI_GATEWAY_NAME: "test-gateway",
-      AI_GATEWAY_API_KEY: "test-key",
-      MODEL: "test-model",
+      TELEGRAM_BOT_TOKEN: 'test_token',
+      AI_GATEWAY_NAME: 'test-gateway',
+      AI_GATEWAY_API_KEY: 'test-key',
+      MODEL: 'test-model',
     },
     // Mock bindings
     bindings: {},
@@ -126,7 +118,7 @@ export function setupTelegramAPISpy(bot: TelegramBot): {
       text,
       chat: {
         id: chatId,
-        type: "private",
+        type: 'private',
       },
     };
   };
@@ -152,7 +144,7 @@ export function validateMessageResponse(
     isReplyTo?: number;
     maxResponseTime?: number;
   },
-  actualResponseTime?: number,
+  actualResponseTime?: number
 ): {
   isValid: boolean;
   errors: string[];
@@ -172,9 +164,7 @@ export function validateMessageResponse(
 
   // Content validation
   if (sentMessage.text.length < minLength) {
-    errors.push(
-      `Response too short: ${sentMessage.text.length} < ${minLength}`,
-    );
+    errors.push(`Response too short: ${sentMessage.text.length} < ${minLength}`);
   }
 
   if (sentMessage.text.length > maxLength) {
@@ -191,14 +181,14 @@ export function validateMessageResponse(
   // Parse mode validation
   if (expectedParseMode && sentMessage.parseMode !== expectedParseMode) {
     errors.push(
-      `Parse mode mismatch: expected "${expectedParseMode}", got "${sentMessage.parseMode}"`,
+      `Parse mode mismatch: expected "${expectedParseMode}", got "${sentMessage.parseMode}"`
     );
   }
 
   // Reply validation
   if (isReplyTo && sentMessage.replyToMessageId !== isReplyTo) {
     errors.push(
-      `Reply to wrong message: expected ${isReplyTo}, got ${sentMessage.replyToMessageId}`,
+      `Reply to wrong message: expected ${isReplyTo}, got ${sentMessage.replyToMessageId}`
     );
   }
 
@@ -206,7 +196,7 @@ export function validateMessageResponse(
   if (actualResponseTime && maxResponseTime) {
     if (actualResponseTime > maxResponseTime) {
       warnings.push(
-        `Response time exceeded threshold: ${actualResponseTime}ms > ${maxResponseTime}ms`,
+        `Response time exceeded threshold: ${actualResponseTime}ms > ${maxResponseTime}ms`
       );
     }
   }
@@ -223,7 +213,7 @@ export function validateMessageResponse(
  */
 export function testParseModeFormatting(
   message: string,
-  parseMode: "HTML" | "MarkdownV2",
+  parseMode: 'HTML' | 'MarkdownV2'
 ): {
   formattedMessage: string;
   hasValidEntities: boolean;
@@ -231,11 +221,11 @@ export function testParseModeFormatting(
 } {
   const warnings: string[] = [];
 
-  if (parseMode === "HTML") {
+  if (parseMode === 'HTML') {
     // HTML formatting validation
     const hasInvalidTags = /<\/?(?!b|i|u|s|a|code|pre)[^>]*>/i.test(message);
     if (hasInvalidTags) {
-      warnings.push("Contains unsupported HTML tags");
+      warnings.push('Contains unsupported HTML tags');
     }
 
     return {
@@ -245,40 +235,35 @@ export function testParseModeFormatting(
     };
   }
 
-  if (parseMode === "MarkdownV2") {
+  if (parseMode === 'MarkdownV2') {
     // MarkdownV2 special characters that need escaping
     const specialChars = [
-      "_",
-      "*",
-      "[",
-      "]",
-      "(",
-      ")",
-      "~",
-      "`",
-      ">",
-      "#",
-      "+",
-      "-",
-      "=",
-      "|",
-      "{",
-      "}",
-      ".",
-      "!",
+      '_',
+      '*',
+      '[',
+      ']',
+      '(',
+      ')',
+      '~',
+      '`',
+      '>',
+      '#',
+      '+',
+      '-',
+      '=',
+      '|',
+      '{',
+      '}',
+      '.',
+      '!',
     ];
     const unescapedChars = specialChars.filter((char) => {
-      const regex = new RegExp(
-        `(?<!\\\\)${char.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`,
-        "g",
-      );
+      const regex = new RegExp(`(?<!\\\\)${char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`, 'g');
       return regex.test(message) && !message.includes(`\\${char}`);
     });
 
     if (unescapedChars.length > 0) {
-      warnings.push(
-        `Unescaped MarkdownV2 characters: ${unescapedChars.join(", ")}`,
-      );
+      warnings.push(`Unescaped MarkdownV2 characters: ${unescapedChars.join(', ')}`);
     }
 
     return {
@@ -299,7 +284,7 @@ export function testParseModeFormatting(
  * Measure response time for a bot operation
  */
 export async function measureResponseTime<T>(
-  operation: () => Promise<T>,
+  operation: () => Promise<T>
 ): Promise<{ result: T; responseTime: number }> {
   const startTime = Date.now();
   const result = await operation();
@@ -324,18 +309,14 @@ export function createTestScenarios() {
       },
     })),
 
-    formattedMessages: parseModeTestConfig.testMessages.formatted.map(
-      (text) => ({
-        input: text,
-        expectations: {
-          minLength: 10,
-          maxLength: 2000,
-          containsText: text.match(/`([^`]+)`/)?.[1]
-            ? [text.match(/`([^`]+)`/)?.[1]!]
-            : [],
-        },
-      }),
-    ),
+    formattedMessages: parseModeTestConfig.testMessages.formatted.map((text) => ({
+      input: text,
+      expectations: {
+        minLength: 10,
+        maxLength: 2000,
+        containsText: text.match(/`([^`]+)`/)?.[1] ? [text.match(/`([^`]+)`/)?.[1]!] : [],
+      },
+    })),
 
     complexMessages: parseModeTestConfig.testMessages.complex.map((text) => ({
       input: text,
@@ -357,7 +338,7 @@ export function validateWebSearchResponse(
     hasCurrentInfo?: boolean;
     maxResponseTime?: number;
   },
-  actualResponseTime?: number,
+  actualResponseTime?: number
 ): {
   isValid: boolean;
   errors: string[];
@@ -373,19 +354,19 @@ export function validateWebSearchResponse(
   const hasCitations = citations.length > 0;
 
   if (expectations.requiresCitations && !hasCitations) {
-    errors.push("Response requires citations but none found");
+    errors.push('Response requires citations but none found');
   }
 
   // Basic content validation
   if (response.length < 50) {
-    errors.push("Web search response too short");
+    errors.push('Web search response too short');
   }
 
   // Performance validation
   if (actualResponseTime && expectations.maxResponseTime) {
     if (actualResponseTime > expectations.maxResponseTime) {
       warnings.push(
-        `Web search response time exceeded threshold: ${actualResponseTime}ms > ${expectations.maxResponseTime}ms`,
+        `Web search response time exceeded threshold: ${actualResponseTime}ms > ${expectations.maxResponseTime}ms`
       );
     }
   }
