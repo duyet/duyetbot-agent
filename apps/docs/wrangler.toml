@@ -1,0 +1,6 @@
+name = "duyetbot-agent-docs"
+compatibility_date = "2024-10-01"
+
+[build]
+command = "bun install && bun contentlayer:build && bun build"
+output_directory = "out"

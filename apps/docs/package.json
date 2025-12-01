@@ -1,0 +1,32 @@
+{
+  "name": "duyetbot-agent-docs",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "contentlayer:build": "contentlayer build",
+    "contentlayer:watch": "contentlayer watch"
+  },
+  "dependencies": {
+    "next": "14.2.15",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "@fumadocs/ui": "^3.3.4",
+    "fumadocs-mdx": "^0.6.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@contentlayer/next": "^0.6.5",
+    "contentlayer": "^0.6.5",
+    "typescript": "^5.6.3",
+    "tailwindcss": "^3.4.17",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss-animate": "^1.0.7"
+  }
+}
