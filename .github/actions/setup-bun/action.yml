@@ -28,11 +28,14 @@ runs:
         restore-keys: |
           ${{ runner.os }}-bun-
 
-    - name: Cache Turbo
+    - name: Cache Turbo and build outputs
       uses: actions/cache@v4
       with:
-        path: .turbo
-        key: ${{ runner.os }}-turbo-${{ github.sha }}
+        path: |
+          .turbo
+          packages/*/dist
+          apps/*/dist
+        key: ${{ runner.os }}-turbo-${{ hashFiles('packages/*/src/**', 'apps/*/src/**', 'bun.lock') }}
         restore-keys: |
           ${{ runner.os }}-turbo-
 
