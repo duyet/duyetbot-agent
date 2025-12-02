@@ -144,6 +144,43 @@ export class ObservabilityStorage {
   }
 
   /**
+   * Write event with retry logic and exponential backoff.
+   * Returns success status instead of throwing, allowing callers to handle failures gracefully.
+   *
+   * @param event - The observability event to write
+   * @param maxRetries - Maximum number of retry attempts (default: 3)
+   * @returns Object with success status and optional error message
+   */
+  async writeEventWithRetry(
+    event: ObservabilityEvent,
+    maxRetries = 3
+  ): Promise<{ success: boolean; error?: string; attempts: number }> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.writeEvent(event);
+        return { success: true, attempts: attempt };
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+
+        // Don't retry on the last attempt
+        if (attempt < maxRetries) {
+          // Exponential backoff: 100ms, 200ms, 400ms
+          const delay = 100 * 2 ** (attempt - 1);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: lastError?.message ?? 'Unknown error',
+      attempts: maxRetries,
+    };
+  }
+
+  /**
    * Get recent events ordered by triggered_at descending.
    */
   async getRecentEvents(limit = 50): Promise<ObservabilityEvent[]> {
