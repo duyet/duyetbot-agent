@@ -7,6 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
     "contentlayer:build": "contentlayer build",
     "contentlayer:watch": "contentlayer watch"
   },
@@ -14,19 +16,24 @@
     "next": "14.2.15",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "@fumadocs/ui": "^3.3.4",
-    "fumadocs-mdx": "^0.6.2"
+    "fumadocs-ui": "^16.2.1",
+    "fumadocs-mdx": "^14.0.4"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^6.5.0",
+    "@testing-library/react": "^16.0.0",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@contentlayer/next": "^0.6.5",
-    "contentlayer": "^0.6.5",
-    "typescript": "^5.6.3",
-    "tailwindcss": "^3.4.17",
+    "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "contentlayer": "^0.3.4",
+    "jsdom": "^25.0.1",
+    "next-contentlayer2": "^0.5.8",
     "postcss": "^8.4.47",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.6.3",
+    "vitest": "^2.0.0"
   }
 }
