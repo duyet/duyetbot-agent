@@ -65,3 +65,4 @@ Thumbs.db
 packages/*/dist/
 .turbo/
 .turbo
+apps/docs/out/

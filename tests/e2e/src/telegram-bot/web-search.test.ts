@@ -64,7 +64,7 @@ describe('Telegram Bot - Web Search Integration', () => {
       }
 
       const update = createMockUpdate('What are the latest developments in AI?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -98,7 +98,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('What is trending on social media today?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -125,7 +125,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('Find recent news about climate change solutions');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -157,7 +157,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const testUrl = 'https://example.com';
       const update = createMockUpdate(`Summarize the content from ${testUrl}`);
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -186,7 +186,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const urls = ['https://example.com/page1', 'https://example.com/page2'];
       const update = createMockUpdate(`Compare these URLs: ${urls.join(', ')}`);
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -218,7 +218,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('What is the capital of France?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -247,7 +247,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('Tell me about Python');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -278,7 +278,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const invalidUrl = 'https://nonexistent-domain-12345.com';
       const update = createMockUpdate(`What can you tell me about ${invalidUrl}?`);
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -297,7 +297,7 @@ describe('Telegram Bot - Web Search Integration', () => {
       const update = createMockUpdate(
         'Provide a comprehensive analysis of the latest developments in quantum computing, artificial intelligence, and renewable energy technologies'
       );
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -316,7 +316,7 @@ describe('Telegram Bot - Web Search Integration', () => {
       }
 
       const update = createMockUpdate('asdfghjkl qwerty');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -414,7 +414,7 @@ describe('Telegram Bot - Web Search Integration', () => {
 
       const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('What are the environmental impacts of cryptocurrency?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -448,7 +448,7 @@ describe('Telegram Bot - Web Search Integration', () => {
       const update = createMockUpdate(
         'What recent discoveries has the James Webb Space Telescope made?'
       );
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
