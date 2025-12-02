@@ -38,51 +38,51 @@ Set webhook at [@BotFather](https://t.me/botfather). Ping bot!
 ## 🏗️ Phase 1 Architecture
 
 ```
-        Telegram/GitHub Webhook
-                 │
-                 ▼
-          Platform Agent DO
-                 │
-     Memory MCP D1/KV ◀──┤
-            │            │
-            ▼            │
-       RouterAgent       │
-   (Hybrid Classifier)   │
-            │◀───────────┘
-         ┌──┼────┬──────┬──────┐
-         │  │    │      │      │
-         ▼  ▼    ▼      ▼      ▼
-      Simple HITL Orch Duyet (other)
-      Agent Agent Agent Info
-               │  Agent
-           ┌───┼────┬─────┐
-           │   │    │     │
-           ▼   ▼    ▼     ▼
-         Code Res GitHub (workers)
-         Worker Worker Worker
+                    Telegram/GitHub Webhook
+                              |
+                              v
+                       Platform Agent DO
+                              |
+                Memory MCP D1/KV <--+
+                       |            |
+                       v            |
+                    RouterAgent     |
+              (Hybrid Classifier)   |
+                       |<-----------+
+                +------+------+------+
+                |      |      |      |
+                v      v      v      v
+             Simple  HITL  Orch  Duyet
+             Agent  Agent Agent  Info
+                          |   Agent
+                       +---+---+-----+
+                       |   |   |     |
+                       v   v   v     v
+                     Code Res GitHub
+                     Worker Worker Worker
 
-    Claude/OpenRouter (LLM)
-           ▲
-           │ connected to all agents
-           ▼
-       D, E, F, G, H, I, J agents
+                 Claude/OpenRouter (LLM)
+                          ^
+                          | connected to all agents
+                          v
+                     D, E, F, G, H, I, J agents
 ```
 
 **8 Durable Objects.** Shared via `script_name` bindings.
 
 ## 📖 Sections
 
-- [Getting Started →](/getting-started/env-setup)
-- [Guides →](/guides/telegram-bot-setup)
+- [Getting Started](/getting-started/env-setup)
+- [Guides](/guides/telegram-bot-setup)
 - [Architecture](/architecture)
 - [Deployment](/deployment)
 
 ## 🔍 Search This Doc
 
-**Prompt**: "Quickstart for GitHub bot" → Jump to guide.
+**Prompt**: "Quickstart for GitHub bot" -> Jump to guide.
 
 **Quiz**: What deploys Telegram?  
 A: `bun run deploy:telegram` ✅
 
-**Next**: [Env Setup →](/getting-started/env-setup)  
+**Next**: [Env Setup](/getting-started/env-setup)  
 **⭐ Star** [GitHub](https://github.com/duyet/duyetbot-agent){{t('cta.star')}}

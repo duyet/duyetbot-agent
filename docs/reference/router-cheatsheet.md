@@ -17,15 +17,15 @@ TelegramAgent/GitHubAgent (DO) ← Independent 30s timeout
 Batch Queue (500ms window) ← Collect messages
     ↓
 RouterAgent (Hybrid Classifier)
-    ├─ Phase 1: Pattern Match (0 tokens, 80% of queries)
-    └─ Phase 2: LLM (300 tokens, 20% of queries)
+    +- Phase 1: Pattern Match (0 tokens, 80% of queries)
+    +- Phase 2: LLM (300 tokens, 20% of queries)
     ↓
 Specialized Agent
-    ├─ SimpleAgent (50-150 tokens) → Direct LLM
-    ├─ OrchestratorAgent (500-2000 tokens) → Plan + workers
-    ├─ HITLAgent (300-1000 tokens) → Confirmation
-    ├─ LeadResearcherAgent (1000-3000 tokens) → Parallel research
-    └─ DuyetInfoAgent (100-300 tokens) → MCP info
+    +- SimpleAgent (50-150 tokens) -> Direct LLM
+    +- OrchestratorAgent (500-2000 tokens) -> Plan + workers
+    +- HITLAgent (300-1000 tokens) -> Confirmation
+    +- LeadResearcherAgent (1000-3000 tokens) -> Parallel research
+    +- DuyetInfoAgent (100-300 tokens) -> MCP info
     ↓
 Response to User
 ```
@@ -46,11 +46,11 @@ Response to User
 ### Phase 1: Pattern Match (Zero Tokens)
 
 ```regex
-/^(hi|hello|hey)/i           → SimpleAgent
-/help|\?/i                   → SimpleAgent
-/^(yes|no|approve)/i         → HITLAgent
-/code|bug|fix/i              → OrchestratorAgent
-/no match/                   → Phase 2: LLM
+/^(hi|hello|hey)/i           -> SimpleAgent
+/help|\?/i                   -> SimpleAgent
+/^(yes|no|approve)/i         -> HITLAgent
+/code|bug|fix/i              -> OrchestratorAgent
+/no match/                   -> Phase 2: LLM
 ```
 
 ### Phase 2: LLM Classification (Only 20% of queries)
@@ -65,12 +65,12 @@ Returns JSON with:
 ### Route Determination
 
 ```
-if requiresHumanApproval → HITLAgent
-if category === 'duyet' → DuyetInfoAgent
-if category === 'research' && complexity >= 'medium' → LeadResearcherAgent
-if complexity === 'high' → OrchestratorAgent
-if type === 'simple' && complexity === 'low' → SimpleAgent
-default → SimpleAgent
+if requiresHumanApproval -> HITLAgent
+if category === 'duyet' -> DuyetInfoAgent
+if category === 'research' && complexity >= 'medium' -> LeadResearcherAgent
+if complexity === 'high' -> OrchestratorAgent
+if type === 'simple' && complexity === 'low' -> SimpleAgent
+default -> SimpleAgent
 ```
 
 ## 🤖 Agent vs Worker
@@ -92,15 +92,15 @@ default → SimpleAgent
 
 ```
 pendingBatch (always collecting, mutable)
-├─ Receives new messages
-├─ Never blocks incoming
-└─ No status = collecting
++- Receives new messages
++- Never blocks incoming
++- No status = collecting
 
 activeBatch (processing, immutable)
-├─ Snapshot from pendingBatch
-├─ Atomic & locked during processing
-├─ If stuck >30s → auto-recovery
-└─ Status = processing
++- Snapshot from pendingBatch
++- Atomic & locked during processing
++- If stuck >30s -> auto-recovery
++- Status = processing
 
 Timeline:
 T+0ms:     User sends message
@@ -118,18 +118,18 @@ T+5002ms:  Ready for next batch
 ### Example 1: Simple Query
 ```
 User: "Hi there!"
-  → Pattern: /^hi/i matches ✓
-  → Tokens: 0 (pattern) + 100 (response) = 100
-  → Route: SimpleAgent (direct LLM)
+  -> Pattern: /^hi/i matches ✓
+  -> Tokens: 0 (pattern) + 100 (response) = 100
+  -> Route: SimpleAgent (direct LLM)
 ```
 
 ### Example 2: Semantic Query
 ```
 User: "What are the latest AI trends?"
-  → Pattern: No match ✗
-  → LLM: Classification (300 tokens)
-  → Route: LeadResearcherAgent (1000+ tokens)
-  → Total: ~1300 tokens
+  -> Pattern: No match ✗
+  -> LLM: Classification (300 tokens)
+  -> Route: LeadResearcherAgent (1000+ tokens)
+  -> Total: ~1300 tokens
 ```
 
 ### Example 3: 3 Rapid Messages (Without Router)
@@ -138,7 +138,7 @@ User sends 3 messages in 100ms:
   msg1: "What's the weather?" (150 tokens)
   msg2: "In New York?" (200 tokens)
   msg3: "Thanks" (100 tokens)
-  → 3 LLM calls = 450 tokens total
+  -> 3 LLM calls = 450 tokens total
 ```
 
 ### Example 3: 3 Rapid Messages (With Router + Batching)
@@ -146,8 +146,8 @@ User sends 3 messages in 100ms:
 User sends 3 messages in 100ms:
   T+0-500ms: Collect all 3
   T+506ms: Combine & send 1 LLM call
-  → 1 LLM call = 200 tokens total
-  → Savings: 55%!
+  -> 1 LLM call = 200 tokens total
+  -> Savings: 55%!
 ```
 
 ## ⚙️ Configuration
@@ -164,9 +164,9 @@ User sends 3 messages in 100ms:
 }
 
 // Batch window guidance
-100ms   → Real-time (fewer savings)
-500ms   → Optimal balance (recommended)
-1000ms  → Batch processing (best savings)
+100ms   -> Real-time (fewer savings)
+500ms   -> Optimal balance (recommended)
+1000ms  -> Batch processing (best savings)
 ```
 
 ## 📈 Performance Targets
@@ -196,7 +196,7 @@ export ROUTER_DEBUG=true
 
 # Watch batch processing
 [BATCH] Collected: 3 messages
-[BATCH] Promoting: pendingBatch → activeBatch
+[BATCH] Promoting: pendingBatch -> activeBatch
 [BATCH] Processing: "msg1\n---\nmsg2\n---\nmsg3"
 [BATCH] LLM tokens: 200
 
@@ -277,23 +277,23 @@ if (activeBatch && noHeartbeatFor(30s)) {
 
 ## 🎓 Learning Path
 
-1. **Start here** → This cheatsheet (5 min read)
-2. **Interactive view** → `docs/multiagent-flows.html` (10 min explore)
-3. **Deep dive** → `docs/token-optimization-guide.md` (20 min read)
-4. **Implementation** → `docs/architecture.md` (30 min study)
-5. **Code review** → `packages/chat-agent/src/` (60 min exploration)
+1. **Start here** -> This cheatsheet (5 min read)
+2. **Interactive view** -> `docs/multiagent-flows.html` (10 min explore)
+3. **Deep dive** -> `docs/token-optimization-guide.md` (20 min read)
+4. **Implementation** -> `docs/architecture.md` (30 min study)
+5. **Code review** -> `packages/chat-agent/src/` (60 min exploration)
 
 ## 💡 Quick Stats
 
 ```
 100 Queries/Day:
-  Without Router:  30,000 tokens → $0.09
-  With Router:     7,500 tokens  → $0.0225
+  Without Router:  30,000 tokens -> $0.09
+  With Router:     7,500 tokens  -> $0.0225
   Savings:         75% (22,500 tokens)
 
 1,000 Queries/Day:
-  Without Router:  300,000 tokens → $0.90
-  With Router:     75,000 tokens  → $0.225
+  Without Router:  300,000 tokens -> $0.90
+  With Router:     75,000 tokens  -> $0.225
   Savings:         75% (~$0.675/day)
 
 Annual (1K queries/day):

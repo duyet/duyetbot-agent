@@ -53,5 +53,5 @@ A: `bun scripts/config.ts telegram` ✅
 
 ## 🚀 Next
 
-[Deploy →](/getting-started/cloudflare-deploy)  
+[Deploy ->](/getting-started/cloudflare-deploy)  
 **Try**: `bun scripts/config.ts telegram` now! {{t('env.setup_done')}}

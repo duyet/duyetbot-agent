@@ -51,7 +51,7 @@ clear - Clear conversation history
 
 ## Step 2: Create Cloudflare AI Gateway
 
-1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) → AI → AI Gateway
+1. Go to [Cloudflare Dashboard](https://dash.cloudflare.com) -> AI -> AI Gateway
 2. Click "Create Gateway"
 3. Name it (e.g., `duyetbot`) - **Save this name** as `AI_GATEWAY_NAME`
 4. Configure the gateway:
@@ -199,7 +199,7 @@ npx wrangler tail --name duyetbot-telegram --search "error"
 ### 401 No auth credentials found
 
 This error from AI Gateway means your OpenRouter API key is not configured:
-1. Go to Cloudflare Dashboard → AI → AI Gateway
+1. Go to Cloudflare Dashboard -> AI -> AI Gateway
 2. Select your gateway and configure authentication
 3. Add your OpenRouter API key in the provider settings
 
@@ -239,7 +239,7 @@ bun run dev
 ## Architecture
 
 ```
-Telegram → Webhook → Hono App → Durable Object Agent → AI Gateway → OpenRouter
+Telegram -> Webhook -> Hono App -> Durable Object Agent -> AI Gateway -> OpenRouter
                                       ↓
                                SQLite State (messages, user context)
 ```

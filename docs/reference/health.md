@@ -42,7 +42,7 @@ description: GET /health, /live, /ready. K8s probes + full status (name/version/
 
 ## Errors
 
-Always 200 on healthy. 500 → middleware error.
+Always 200 on healthy. 500 -> middleware error.
 
 ## Code
 
@@ -59,7 +59,7 @@ routes.get('/health', (c) => c.json({
 
 **createBaseApp** auto-includes (`health: true`).
 
-**Quiz**: /ready fail → ?
+**Quiz**: /ready fail -> ?
 A: Pods not receive traffic ✅
 
 ## Integrate
@@ -68,6 +68,6 @@ A: Pods not receive traffic ✅
 const app = createBaseApp({ name: 'my-app', health: true });
 ```
 
-**Deploy**: `curl https://your-worker/health` → Verify!
+**Deploy**: `curl https://your-worker/health` -> Verify!
 
 **Related**: [Hono Middleware](../hono-middleware.md) | [Webhook ←](./webhook.md)

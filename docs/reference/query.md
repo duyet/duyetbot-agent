@@ -5,7 +5,7 @@ description: "Async generator for agent execution. Stream messages, tools, resul
 
 <!-- i18n: en -->
 
-**TL;DR**: `for await (const msg of sdk.query("Hello", {tools}))` → Stream user/assistant/result. AbortController support.
+**TL;DR**: `for await (const msg of sdk.query("Hello", {tools}))` -> Stream user/assistant/result. AbortController support.
 
 ## Table of Contents
 - [Signature](#signature)
@@ -77,11 +77,11 @@ for await (const msg of query("Long task", {}, ctrl)) { /* ... */ }
 
 ## Errors
 
-Handled as `system` msg. Validation fails → early yield.
+Handled as `system` msg. Validation fails -> early yield.
 
-**Quiz**: query("Hi", {tools}) → MCP server?
+**Quiz**: query("Hi", {tools}) -> MCP server?
 A: duyetbot-tools ✅
 
-**Try**: Import `sdk`, run playground → Stream live!
+**Try**: Import `sdk`, run playground -> Stream live!
 
-**Related**: [Subagents →](./subagent.md)
+**Related**: [Subagents ->](./subagent.md)

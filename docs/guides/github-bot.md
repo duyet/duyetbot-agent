@@ -151,7 +151,7 @@ After creating the app:
 
 ### Verify Webhook Delivery
 
-1. Go to your GitHub App settings → **Advanced** → **Recent Deliveries**
+1. Go to your GitHub App settings -> **Advanced** -> **Recent Deliveries**
 2. Check that deliveries show green checkmarks
 3. If red X, click to see error details
 
@@ -187,7 +187,7 @@ npx wrangler tail --name duyetbot-github --search "error"
 
 ### Webhook not received
 
-1. Check GitHub App settings → Advanced → Recent Deliveries
+1. Check GitHub App settings -> Advanced -> Recent Deliveries
 2. Verify webhook URL matches your deployed Worker URL
 3. Verify webhook secret matches `GITHUB_WEBHOOK_SECRET`
 4. Ensure webhook is marked as **Active**
