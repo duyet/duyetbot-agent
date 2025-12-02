@@ -10,6 +10,6 @@ const nextConfig = {
   },
 };
 
-const { withContentlayer } = require('@contentlayer/next');
+const { withContentlayer } = require('next-contentlayer2');
 
 module.exports = withContentlayer(nextConfig);
