@@ -1,6 +1,12 @@
-import Link from 'next/link'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@fumadocs/ui/components/card'
-import { Button } from '@fumadocs/ui/components/button'
+import { Button } from 'fumadocs-ui/components/button';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from 'fumadocs-ui/components/card';
+import Link from 'next/link';
 
 export default function HomePage() {
   return (
@@ -14,9 +20,7 @@ export default function HomePage() {
         </p>
         <div className="fumadocs-flex fumadocs-flex-col fumadocs-sm:fumadocs-flex-row fumadocs-gap-4">
           <Button variant="secondary" size="lg" asChild>
-            <Link href="/docs/README">
-              Get Started
-            </Link>
+            <Link href="/docs/README">Get Started</Link>
           </Button>
         </div>
       </div>
@@ -28,9 +32,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <Button variant="outline" asChild className="fumadocs-w-full">
-              <Link href="/docs/getting-started">
-                getting-started.md
-              </Link>
+              <Link href="/docs/getting-started">getting-started.md</Link>
             </Button>
           </CardContent>
         </Card>
@@ -41,9 +43,7 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <Button variant="outline" asChild className="fumadocs-w-full">
-              <Link href="/docs/architecture">
-                architecture.md
-              </Link>
+              <Link href="/docs/architecture">architecture.md</Link>
             </Button>
           </CardContent>
         </Card>
@@ -54,13 +54,11 @@ export default function HomePage() {
           </CardHeader>
           <CardContent>
             <Button variant="outline" asChild className="fumadocs-w-full">
-              <Link href="/docs/deploy">
-                deploy.md
-              </Link>
+              <Link href="/docs/deploy">deploy.md</Link>
             </Button>
           </CardContent>
         </Card>
       </div>
     </main>
-  )
+  );
 }
