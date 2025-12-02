@@ -27,6 +27,8 @@
     "deploy:telegram": "turbo run deploy config --filter=@duyetbot/telegram-bot...",
     "deploy:github": "turbo run deploy config --filter=@duyetbot/github-bot...",
     "deploy:memory-mcp": "bun run --filter @duyetbot/memory-mcp deploy && bun run config:memory-mcp",
+    "deploy:docs": "turbo run deploy --filter=@duyetbot/docs",
+    "build:docs": "turbo run build --filter=@duyetbot/docs",
     "config": "concurrently 'bun run config:telegram' 'bun run config:github' 'bun run config:shared-agents'",
     "config:telegram": "bun scripts/config.ts telegram",
     "config:github": "bun scripts/config.ts github",
