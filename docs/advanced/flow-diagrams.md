@@ -13,7 +13,7 @@ description: Complete message flow, hybrid classification, batch processing, dua
 └─────────────────────────────────────────────────────────────────┘
                              ↓
          ┌───────────────────────────────────────┐
-         │   WEBHOOK INGESTION (T+0-6ms)        │ 
+         │   WEBHOOK INGESTION (T+0-6ms)        │
          ├───────────────────────────────────────┤
          │ • Validate signature                  │
          │ • Parse JSON                          │
@@ -26,7 +26,7 @@ description: Complete message flow, hybrid classification, batch processing, dua
                   (User may see typing...)
                              ↓
          ┌───────────────────────────────────────┐
-         │   FIRE-AND-FORGET TO DO (T+6ms)      │ 
+         │   FIRE-AND-FORGET TO DO (T+6ms)      │
          ├───────────────────────────────────────┤
          │ • Platform Agent (DO) gets message    │
          │ • TelegramAgent.queueMessage()        │
@@ -36,47 +36,47 @@ description: Complete message flow, hybrid classification, batch processing, dua
          └───────────────────────────────────────┘
                              ↓
     ┌────────────────────────────────────────────────┐
-    │   BATCH WINDOW (T+6-506ms)                    │ 
+    │   BATCH WINDOW (T+6-506ms)                    │
     ├────────────────────────────────────────────────┤
-    │ • Collect new messages in pendingBatch        │ 
-    │ • New messages come in during this window     │ 
-    │ • No blocking, no queueing                    │ 
-    │ • Waiting for alarm to fire                   │ 
+    │ • Collect new messages in pendingBatch        │
+    │ • New messages come in during this window     │
+    │ • No blocking, no queueing                    │
+    │ • Waiting for alarm to fire                   │
     └────────────────────────────────────────────────┘
                              ↓
     ┌────────────────────────────────────────────────┐
-    │   BATCH ALARM FIRES (T+506ms)                 │ 
+    │   BATCH ALARM FIRES (T+506ms)                 │
     ├────────────────────────────────────────────────┤
-    │ 1. Check: activeBatch exists?                 │ 
-    │    YES → Skip (already processing)            │ 
-    │    NO  → Continue                             │ 
-    │                                               │ 
-    │ 2. Check: pendingBatch has messages?          │ 
-    │    NO  → Done (nothing to do)                 │ 
-    │    YES → Continue                             │ 
-    │                                               │ 
-    │ 3. Atomic promotion:                          │ 
-    │    activeBatch = pendingBatch                 │ 
-    │    pendingBatch = empty                       │ 
-    │    status = 'processing'                      │ 
+    │ 1. Check: activeBatch exists?                 │
+    │    YES → Skip (already processing)            │
+    │    NO  → Continue                             │
+    │                                               │
+    │ 2. Check: pendingBatch has messages?          │
+    │    NO  → Done (nothing to do)                 │
+    │    YES → Continue                             │
+    │                                               │
+    │ 3. Atomic promotion:                          │
+    │    activeBatch = pendingBatch                 │
+    │    pendingBatch = empty                       │
+    │    status = 'processing'                      │
     └────────────────────────────────────────────────┘
                              ↓
     ┌────────────────────────────────────────────────┐
-    │   PROCESS BATCH (T+507ms)                     │ 
+    │   PROCESS BATCH (T+507ms)                     │
     ├────────────────────────────────────────────────┤
-    │ 1. Combine all messages                       │ 
-    │    msg1\n---\nmsg2\n---\nmsg3                │  
-    │                                               │ 
-    │ 2. Send "Thinking 🧠" message                 │  
-    │    Get messageRef for edits                   │ 
-    │                                               │ 
-    │ 3. Start rotation loop (edit every 5s)       │  
-    │    Proves DO alive (heartbeat)                │ 
-    │                                               │ 
-    │ 4. Route decision:                            │ 
-    │    shouldRoute() checks config                │ 
-    │    → YES: Fire-and-forget to RouterAgent      │ 
-    │    → NO:  Direct chat() call                  │ 
+    │ 1. Combine all messages                       │
+    │    msg1\n---\nmsg2\n---\nmsg3                │
+    │                                               │
+    │ 2. Send "Thinking 🧠" message                 │
+    │    Get messageRef for edits                   │
+    │                                               │
+    │ 3. Start rotation loop (edit every 5s)       │
+    │    Proves DO alive (heartbeat)                │
+    │                                               │
+    │ 4. Route decision:                            │
+    │    shouldRoute() checks config                │
+    │    → YES: Fire-and-forget to RouterAgent      │
+    │    → NO:  Direct chat() call                  │
     └────────────────────────────────────────────────┘
                              ↓
            ┌─────────────────┴─────────────────┐
@@ -91,9 +91,9 @@ description: Complete message flow, hybrid classification, batch processing, dua
     │ • Direct call   │        │ • Phase 1: Pattern match │
     │ • 100-150 tokens│        │ • Phase 2: LLM (if need) │
     └────────┬────────┘        │ • Determine route target │
-             │                 └──────────────┬───────────┘        
-             │                                │                    
-             └────────────────┬───────────────┘                    
+             │                 └──────────────┬───────────┘
+             │                                │
+             └────────────────┬───────────────┘
                               ↓
            ┌──────────────────────────────────┐
            │ Dispatch to Specialized Agent    │
@@ -214,63 +214,63 @@ description: Complete message flow, hybrid classification, batch processing, dua
 ```
 USER RAPID MESSAGES
 T+0ms:    "What's the weather?"
-├─ pendingBatch.push(msg1)                           
-├─ Schedule alarm: 500ms from now                    
-└─ Return immediately                                
+├─ pendingBatch.push(msg1)
+├─ Schedule alarm: 500ms from now
+└─ Return immediately
 
 T+100ms:  "In New York?"
-├─ New message arrives                               
-├─ pendingBatch.push(msg2)                           
-├─ Alarm still scheduled                             
-└─ Return immediately                                
+├─ New message arrives
+├─ pendingBatch.push(msg2)
+├─ Alarm still scheduled
+└─ Return immediately
 
 T+200ms:  "Thanks"
-├─ New message arrives                               
-├─ pendingBatch.push(msg3)                           
-├─ Alarm still scheduled                             
-└─ Return immediately                                
+├─ New message arrives
+├─ pendingBatch.push(msg3)
+├─ Alarm still scheduled
+└─ Return immediately
 
 T+500ms:  [BATCH ALARM FIRES]
-├─ Check: activeBatch exists? NO                     
+├─ Check: activeBatch exists? NO
 ├─ Check: pendingBatch has messages? YES (3 messages)
-├─ Atomic promotion:                                 
-│  activeBatch = {                                   
-│    batchId: "batch_123",                           
-│    status: "processing",                           
-│    messages: [msg1, msg2, msg3],                   
-│    messageRef: null,                               
-│    lastHeartbeat: now()                            
-│  }                                                 
-├─ pendingBatch = { empty }                          
-└─ Start: processBatch(activeBatch)                  
+├─ Atomic promotion:
+│  activeBatch = {
+│    batchId: "batch_123",
+│    status: "processing",
+│    messages: [msg1, msg2, msg3],
+│    messageRef: null,
+│    lastHeartbeat: now()
+│  }
+├─ pendingBatch = { empty }
+└─ Start: processBatch(activeBatch)
 
 T+501ms:  COMBINE MESSAGES
-├─ Combined text:                                    
-│  "What's the weather?                              
-│   ---                                              
-│   In New York?                                     
-│   ---                                              
-│   Thanks"                                          
-├─ Send to single LLM call                           
-└─ Tokens: ~200 (not 450!)                           
+├─ Combined text:
+│  "What's the weather?
+│   ---
+│   In New York?
+│   ---
+│   Thanks"
+├─ Send to single LLM call
+└─ Tokens: ~200 (not 450!)
 
 T+502-5000ms: LLM PROCESSING
-├─ Rotation loop (every 5s):                         
-│  T+505: Edit "Thinking 🧠"                          
-│  T+510: Edit "Thinking 🧠 ."                        
-│  T+515: Edit "Thinking 🧠 . ."                      
-│  Updates activeBatch.lastHeartbeat                 
-├─ Heartbeat proves DO alive                         
-└─ No extra tokens used (edits)                      
+├─ Rotation loop (every 5s):
+│  T+505: Edit "Thinking 🧠"
+│  T+510: Edit "Thinking 🧠 ."
+│  T+515: Edit "Thinking 🧠 . ."
+│  Updates activeBatch.lastHeartbeat
+├─ Heartbeat proves DO alive
+└─ No extra tokens used (edits)
 
 T+5001ms: SEND RESPONSE
-├─ Edit thinking message with response               
-└─ activeBatch.status = "complete"                   
+├─ Edit thinking message with response
+└─ activeBatch.status = "complete"
 
 T+5002ms: CLEANUP
-├─ activeBatch = null                                
-├─ pendingBatch = empty                              
-└─ Ready for next batch                              
+├─ activeBatch = null
+├─ pendingBatch = empty
+└─ Ready for next batch
 
 RESULT: 3 messages = 1 LLM call = 200 tokens (vs 450)
         SAVINGS: 55% token reduction! 🎉
@@ -282,13 +282,13 @@ RESULT: 3 messages = 1 LLM call = 200 tokens (vs 450)
 
 ```
                   Query Arrives
-                       │                                
+                       │
                        ▼
             ┌─────────────────────┐
             │ Hybrid Classification│
             │  (See diagram 2)    │
             └──────────┬──────────┘
-                       │                                
+                       │
           Classification Result
             {
               type: string,
@@ -296,7 +296,7 @@ RESULT: 3 messages = 1 LLM call = 200 tokens (vs 450)
               complexity: string,
               requiresApproval: boolean
             }
-                       │                                
+                       │
         ┌──────────────┼──────────────┐
         │              │              │
         ▼              ▼              ▼
@@ -304,7 +304,7 @@ RESULT: 3 messages = 1 LLM call = 200 tokens (vs 450)
     ┌─────────────┐   ┌──────────┐  ┌────────────┐
     │   YES       │   │  HIGH    │  │  'duyet'   │
     └─────┬───────┘   └────┬─────┘  └──────┬─────┘
-          │                │               │            
+          │                │               │
           ▼                ▼               ▼
     ┌──────────────┐  ┌──────────────┐  ┌──────────────┐
     │ HITLAgent    │  │Orchestrator  │  │DuyetInfoAgent│
@@ -312,14 +312,14 @@ RESULT: 3 messages = 1 LLM call = 200 tokens (vs 450)
     │Confirmation  │  │Plan + Workers│  │MCP lookup    │
     │300-1K tokens │  │500-2K tokens │  │100-300 tok   │
     └──────────────┘  └──────────────┘  └──────────────┘
-          │                │               │            
+          │                │               │
     Approval Flow      Orchestrate       Info Return
-          │                │               │            
+          │                │               │
           ▼                ▼               ▼
        [HITL Dialog]  [Dispatch Workers] [MCP Call]
-          │                │               │            
-          └────────┬───────┴───────┬───────┘            
-                   │               │                    
+          │                │               │
+          └────────┬───────┴───────┬───────┘
+                   │               │
                    ▼               ▼
           ┌──────────────────────────────┐
           │   Send Response via Transport│
@@ -338,56 +338,56 @@ If none of above → SimpleAgent (50-150 tokens)
 │                INITIAL STATE                            │
 │  ├─ pendingBatch: empty                                 │
 │  └─ activeBatch: null                                   │
-└────────────────────┬────────────────────────────────────┘ 
-                     │                                      
+└────────────────────┬────────────────────────────────────┘
+                     │
                      ▼
        ┌─ Message 1 Arrives
        │  ├─ Add to pendingBatch
        │  ├─ Schedule alarm (500ms)
        │  └─ Status: COLLECTING
-       │                                                    
+       │
        ▼
 ┌─────────────────────────────────────────────────────────┐
 │                COLLECTING STATE                         │
 │  ├─ pendingBatch: {msg1}                                │
 │  │  └─ status: collecting                               │
-│  └─ activeBatch: null                                   │ 
-└────────────────────┬────────────────────────────────────┘ 
-                     │                                      
+│  └─ activeBatch: null                                   │
+└────────────────────┬────────────────────────────────────┘
+                     │
        ┌─ Message 2 Arrives (T+100ms)
-       │  ├─ Add to pendingBatch     
-       │  ├─ Alarm already scheduled 
+       │  ├─ Add to pendingBatch
+       │  ├─ Alarm already scheduled
        │  └─ Status: STILL COLLECTING
-       │                                                    
+       │
        ▼
 ┌─────────────────────────────────────────────────────────┐
 │                COLLECTING STATE                         │
 │  ├─ pendingBatch: {msg1, msg2}                          │
 │  │  └─ status: collecting                               │
-│  └─ activeBatch: null                                   │ 
-└────────────────────┬────────────────────────────────────┘ 
-                     │                                      
+│  └─ activeBatch: null                                   │
+└────────────────────┬────────────────────────────────────┘
+                     │
        ┌─ Message 3 Arrives (T+200ms)
-       │  ├─ Add to pendingBatch     
-       │  ├─ Alarm still pending     
+       │  ├─ Add to pendingBatch
+       │  ├─ Alarm still pending
        │  └─ Status: STILL COLLECTING
-       │                                                    
+       │
        ▼
 ┌─────────────────────────────────────────────────────────┐
 │                COLLECTING STATE                         │
 │  ├─ pendingBatch: {msg1, msg2, msg3}                    │
 │  │  └─ status: collecting                               │
-│  └─ activeBatch: null                                   │ 
-└────────────────────┬────────────────────────────────────┘ 
-                     │                                      
+│  └─ activeBatch: null                                   │
+└────────────────────┬────────────────────────────────────┘
+                     │
        ┌─ Alarm Fires (T+500ms)
        │  ├─ Check: activeBatch? NO
        │  ├─ Check: pendingBatch? YES
-       │  ├─ Atomic swap:      
+       │  ├─ Atomic swap:
        │  │  activeBatch = pendingBatch snapshot
        │  │  pendingBatch = empty
        │  └─ Status: PROCESSING
-       │                                                    
+       │
        ▼
 ┌──────────────────────────────────────────────────────────┐
 │           DUAL-BATCH STATE (PROCESSING)                  │
@@ -397,7 +397,7 @@ If none of above → SimpleAgent (50-150 tokens)
 │  └─ pendingBatch: empty                                  │
 │     └─ ready to collect new messages!                    │
 └──────────────────┬───────────────────────────────────────┘
-                   │                                        
+                   │
     ┌──────────────┤
     │              │
     ▼              ▼
@@ -425,7 +425,7 @@ immediately    processing
 │  ├─ Promote: activeBatch = pendingBatch                  │
 │  └─ pendingBatch = empty (reset)                         │
 └──────────────────┬───────────────────────────────────────┘
-                   │                                        
+                   │
                    ▼
         Resume processing with {msg4, msg5}
         User can proceed! (Automatic recovery)
@@ -439,11 +439,11 @@ immediately    processing
 SCENARIO: 100 Queries in One Day
 
 WITHOUT ROUTER
-─────────────────────────────────────           
+─────────────────────────────────────
 Every query:
   Classification: 300 tokens
   Response:       100 tokens
-  ────────────────────────────                  
+  ────────────────────────────
   Total/query:    400 tokens
 
 100 queries × 400 = 40,000 tokens/day
@@ -451,29 +451,29 @@ Cost: $0.12/day
 
 
 WITH ROUTER (Hybrid + Batching)
-─────────────────────────────────────           
+─────────────────────────────────────
 
 Simple Pattern Matches (80 queries):
   Classification: 0 tokens (pattern)
   Response:       50 tokens (simple)
-  ───────────────────────────                   
+  ───────────────────────────
   Subtotal:       4,000 tokens
 
 LLM Classification (15 queries):
   Classification: 300 tokens (LLM)
   Response:       100 tokens (simple)
-  ───────────────────────────                   
+  ───────────────────────────
   Subtotal:       6,000 tokens
 
 Complex Queries (5 queries):
   Classification: 0 tokens (routed)
   Response:       1,500 tokens (planning)
-  ───────────────────────────                   
+  ───────────────────────────
   Subtotal:       7,500 tokens
 
 Batching Savings (apply across all):
   3-5 messages = 1 call (55% overhead reduction)
-  ───────────────────────────                   
+  ───────────────────────────
   TOTAL REDUCTION: 20,000 tokens
 
 100 queries × 75 tokens (avg) = 7,500 tokens/day
@@ -481,10 +481,10 @@ Cost: $0.0225/day
 
 
 COMPARISON
-─────────────────────────────────────           
+─────────────────────────────────────
 Without Router:  40,000 tokens → $0.12
 With Router:     7,500 tokens  → $0.0225
-─────────────────────────────────────           
+─────────────────────────────────────
 SAVINGS:         32,500 tokens → $0.0975/day
 REDUCTION:       81% ✅
 ```
@@ -495,41 +495,41 @@ REDUCTION:       81% ✅
 
 ```
 CORRECT PATTERN ✅
-─────────────────────────────────────           
+─────────────────────────────────────
 
 User sends message
       ↓
 Webhook Handler
-      ├─ Validate (1ms)                         
-      ├─ Queue to DO (1ms)                      
+      ├─ Validate (1ms)
+      ├─ Queue to DO (1ms)
       │  agent.queueMessage(ctx).catch(() => {})
-      │  ^ Fire-and-forget pattern!             
-      └─ Return 200 OK (6ms total)              
+      │  ^ Fire-and-forget pattern!
+      └─ Return 200 OK (6ms total)
 
            ✅ Response sent to webhook
            [User sees "typing..." indicator]
 
 DO (Independent 30s timeout)
-      ├─ Batch window (500ms)                   
-      ├─ Process batch (1000-5000ms)            
-      ├─ Send response                          
-      └─ Cleanup                                
+      ├─ Batch window (500ms)
+      ├─ Process batch (1000-5000ms)
+      ├─ Send response
+      └─ Cleanup
            ✅ Message updated/sent
 
 RESULT: Webhook doesn't wait for LLM
 
 
 WRONG PATTERN ❌
-─────────────────────────────────────           
+─────────────────────────────────────
 
 User sends message
       ↓
 Webhook Handler
-      ├─ Validate (1ms)                         
-      ├─ Queue to DO (1ms)                      
-      ├─ waitUntil(agent.queueMessage(ctx))     
-      │  ^ Inherits webhook's 30s timeout!      
-      └─ Process batch... (waiting)             
+      ├─ Validate (1ms)
+      ├─ Queue to DO (1ms)
+      ├─ waitUntil(agent.queueMessage(ctx))
+      │  ^ Inherits webhook's 30s timeout!
+      └─ Process batch... (waiting)
 
 If batch takes >30s:
       Webhook times out ❌
@@ -553,7 +553,7 @@ fire-and-forget() means:
 
 ```
 Query Type          Pattern Match  Confidence  Token Cost
-──────────────────────────────────────────────────────── 
+────────────────────────────────────────────────────────
 Greeting            YES ✓          99%         0 tokens
   "hello"           /^hi|hello/i
   "hey there"
@@ -582,12 +582,12 @@ Semantic Query      NO ✗           15%         300 tokens
   "what are the     [Must use LLM]
    implications?"
 
-──────────────────────────────────────────────────────── 
+────────────────────────────────────────────────────────
 TOTALS PER 100 QUERIES:
 
 80 pattern matches × 0 tokens      = 0 tokens
 20 LLM classifications × 300 tokens = 6,000 tokens
-──────────────────────────────────────────────────────── 
+────────────────────────────────────────────────────────
 Classification total               = 6,000 tokens
 
 Cost without router                = 30,000 tokens
@@ -601,7 +601,7 @@ Savings                            = 22,500 tokens (75%)
 
 ```
 NORMAL PROCESSING (Happy Path)
-─────────────────────────────────────         
+─────────────────────────────────────
 T+500ms:  Batch starts
 T+505ms:  Heartbeat 1 ✓
 T+510ms:  Heartbeat 2 ✓
@@ -613,7 +613,7 @@ RESULT: ✅ Complete
 
 
 STUCK BATCH DETECTION & RECOVERY
-─────────────────────────────────────         
+─────────────────────────────────────
 T+500ms:   Batch starts
 T+505ms:   Heartbeat 1 ✓
 T+510ms:   Heartbeat 2 ✓
@@ -622,22 +622,22 @@ T+520ms:   LLM hangs (network issue)
 T+525ms:   No heartbeat for 25s
 T+530ms:   User sends new message
            queueMessage() called
-           ├─ Check activeBatch               
-           ├─ lastHeartbeat: T+515            
-           ├─ now: T+530                      
-           ├─ Stuck for: 15s (OK)             
-           └─ Continue normally               
+           ├─ Check activeBatch
+           ├─ lastHeartbeat: T+515
+           ├─ now: T+530
+           ├─ Stuck for: 15s (OK)
+           └─ Continue normally
 T+620ms:   Still stuck
 T+625ms:   User sends another message
            queueMessage() called
-           ├─ Check activeBatch               
-           ├─ lastHeartbeat: T+515            
-           ├─ now: T+625                      
-           ├─ Stuck for: 110s (TIMEOUT!)      
-           ├─ LOG: "Batch stuck >30s"         
-           ├─ Clear activeBatch = null        
-           ├─ Promote pendingBatch → active   
-           └─ Resume processing ✅             
+           ├─ Check activeBatch
+           ├─ lastHeartbeat: T+515
+           ├─ now: T+625
+           ├─ Stuck for: 110s (TIMEOUT!)
+           ├─ LOG: "Batch stuck >30s"
+           ├─ Clear activeBatch = null
+           ├─ Promote pendingBatch → active
+           └─ Resume processing ✅
 
 RESULT: User automatically recovers!
         No manual intervention needed
@@ -653,30 +653,30 @@ RESULT: User automatically recovers!
 ┌─────────────┐
 │ User Input  │
 └──────┬──────┘
-       │                                      
+       │
        ▼
 ┌─────────────────────────────────────┐
 │ 1. WEBHOOK (6ms)                    │
 │    ├─ Validate                      │
 │    ├─ Parse                         │
 │    └─ Fire-and-forget               │
-└──────┬──────────────────────────────┘       
-       │                                      
+└──────┬──────────────────────────────┘
+       │
        ▼ (Independent execution)
 ┌─────────────────────────────────────┐
 │ 2. BATCH QUEUE (500ms window)       │
 │    ├─ Collect messages              │
 │    ├─ No blocking                   │
 │    └─ Await alarm                   │
-└──────┬──────────────────────────────┘       
-       │                                      
+└──────┬──────────────────────────────┘
+       │
        ▼
 ┌─────────────────────────────────────┐
 │ 3. HYBRID CLASSIFICATION (200-500ms)│
 │    ├─ Pattern match (0 tokens)      │
 │    └─ LLM fallback (300 tokens)     │
-└──────┬──────────────────────────────┘       
-       │                                      
+└──────┬──────────────────────────────┘
+       │
        ▼
 ┌─────────────────────────────────────┐
 │ 4. AGENT DISPATCH                   │
@@ -684,19 +684,19 @@ RESULT: User automatically recovers!
 │    ├─ OrchestratorAgent (500-2K)    │
 │    ├─ HITLAgent (300-1K)            │
 │    └─ ... specialized agents        │
-└──────┬──────────────────────────────┘       
-       │                                      
+└──────┬──────────────────────────────┘
+       │
        ▼
 ┌─────────────────────────────────────┐
 │ 5. EXECUTE & RESPOND (1000-5000ms)  │
 │    ├─ Call LLM / tools              │
 │    ├─ Compile response              │
 │    └─ Send via transport            │
-└──────┬──────────────────────────────┘       
-       │                                      
+└──────┬──────────────────────────────┘
+       │
        ▼
 ┌─────────────────────────────────────┐
-│ ✅ DONE                             │ 
+│ ✅ DONE                             │
 │ User sees final response            │
 │ System ready for next batch         │
 └─────────────────────────────────────┘

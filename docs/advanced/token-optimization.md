@@ -33,24 +33,24 @@ Badge: **75% ✅**
 
 ```
                Query
-                │                
+                │
                 ▼
          ┌──────────────┐
          │   Hybrid?    │
          └──┬──────────┬┘
-            │          │         
+            │          │
       80% PATTERN   20% LLM
-            │          │         
+            │          │
             ▼          ▼
        SimpleAgent  Classify 300t
-      (50-150t)      │           
+      (50-150t)      │
                      ▼
                  ┌─────────────┐
                  │  Complex?   │
                  └──┬────────┬─┘
-                    │        │   
+                    │        │
                    NO       YES
-                    │        │   
+                    │        │
                     ▼        ▼
                 Simple   Orch
                 100t     1500t
@@ -65,8 +65,8 @@ Trim before LLM. From [`history.ts`](packages/chat-agent/src/history.ts:10).
 ```typescript
 // packages/chat-agent/src/history.ts
 export function trimHistory(messages: Message[], maxLength: 10): Message[] {
-  return messages.length > maxLength 
-    ? messages.slice(-maxLength) 
+  return messages.length > maxLength
+    ? messages.slice(-maxLength)
     : messages;
 }
 
