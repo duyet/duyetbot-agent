@@ -54,7 +54,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'This is <b>bold</b> and <i>italic</i> text';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -69,7 +69,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'HTML',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -83,7 +83,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'Here is some <code>console.log("hello")</code> code';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -97,7 +97,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'HTML',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -110,7 +110,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'Visit <a href="https://example.com">this link</a> for more info';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -124,7 +124,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'HTML',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -137,7 +137,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'This has <script>alert("xss")</script> and <div>unsupported</div> tags';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -157,7 +157,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'This is *bold* and _italic_ text';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -172,7 +172,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'MarkdownV2',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -186,7 +186,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'Here is some ```javascript\nconst x = 1;\nconsole.log(x);\n``` code';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -200,7 +200,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'MarkdownV2',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -213,7 +213,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'Special characters: _ * [ ] ( ) ~ ` > # + - = | { } . !';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -226,7 +226,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'MarkdownV2',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -246,7 +246,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'Visit [this link](https://example.com) for more info';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -260,7 +260,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'MarkdownV2',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -300,7 +300,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
         }
       };
 
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -366,7 +366,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'Complex: *bold* with _italic_ and `code` and [a link](https://example.com)';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -380,7 +380,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'HTML',
           maxResponseTime: 15000, // Slightly longer for complex formatting
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -393,7 +393,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'Nested: <b>Bold with <i>italic inside</i></b> and `code`';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -407,7 +407,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'HTML',
           maxResponseTime: 15000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -424,7 +424,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 • Third item with <a href="https://example.com">link</a>`;
 
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -438,7 +438,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'HTML',
           maxResponseTime: 15000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
@@ -454,7 +454,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
       // Create a message that's close to 4096 character limit
       const longMessage = 'A'.repeat(4080); // ~4080 chars
       const update = createMockUpdate(longMessage, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -479,7 +479,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
       const update = createMockUpdate(longFormattedMessage, {
         parseMode: 'HTML',
       });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(1); // Should be split
@@ -505,7 +505,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const malformedMessage = 'Broken HTML: <b>unclosed <i>mixed tags <code>';
       const update = createMockUpdate(malformedMessage, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -524,7 +524,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
       const update = createMockUpdate(longCodeBlock, {
         parseMode: 'MarkdownV2',
       });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -542,7 +542,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const unicodeMessage = 'Test with émojis 🎉 and Unicode: αβγδε и中文 العربية';
       const update = createMockUpdate(unicodeMessage, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { _responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -557,7 +557,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
           parseMode: 'HTML',
           maxResponseTime: 10000,
         },
-        responseTime
+        _responseTime
       );
 
       expect(validation.isValid).toBe(true);
