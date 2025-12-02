@@ -1,0 +1,62 @@
+{
+  "name": "@duyetbot/memory-mcp",
+  "version": "0.1.0",
+  "description": "MCP memory server for duyetbot-agent on Cloudflare Workers",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src",
+    "migrations"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "wrangler dev",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "deploy": "bun scripts/deploy.ts",
+    "deploy:staging": "wrangler deploy --env staging",
+    "deploy:production": "wrangler deploy",
+    "db:create": "wrangler d1 create duyetbot-memory",
+    "db:create:staging": "wrangler d1 create duyetbot-memory-staging",
+    "db:migrate": "wrangler d1 migrations apply duyetbot-memory",
+    "db:migrate:staging": "wrangler d1 migrations apply duyetbot-memory-staging --env staging",
+    "db:migrate:local": "wrangler d1 migrations apply duyetbot-memory --local",
+    "db:console": "wrangler d1 execute duyetbot-memory --command \"SELECT 1\"",
+    "logs": "wrangler tail duyetbot-memory"
+  },
+  "keywords": [
+    "mcp",
+    "memory",
+    "cloudflare",
+    "workers",
+    "duyetbot"
+  ],
+  "author": "duyet",
+  "license": "MIT",
+  "dependencies": {
+    "@cloudflare/workers-oauth-provider": "^0.1.0",
+    "@duyetbot/hono-middleware": "workspace:*",
+    "@modelcontextprotocol/sdk": "^1.23.0",
+    "agents": "catalog:",
+    "hono": "catalog:",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.5"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}

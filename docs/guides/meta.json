@@ -1,0 +1,20 @@
+{
+  "title": "Guides",
+  "pages": [
+    "cloudflare-first",
+    "env-setup",
+    "telegram-bot-setup",
+    "telegram-bot",
+    "github-bot-setup",
+    "github-bot",
+    "slack-setup",
+    "deploy",
+    "deployment",
+    "cloudflare-deploy",
+    "agent-server",
+    "build-custom-agent",
+    "custom-tools",
+    "custom-do",
+    "webhook"
+  ]
+}

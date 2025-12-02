@@ -1,0 +1,51 @@
+{
+  "name": "@duyetbot/providers",
+  "version": "0.1.0",
+  "description": "LLM provider implementations for duyetbot-agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./openrouter": {
+      "types": "./dist/openrouter.d.ts",
+      "import": "./dist/openrouter.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "llm",
+    "provider",
+    "claude",
+    "openai",
+    "openrouter",
+    "duyetbot"
+  ],
+  "author": "duyet",
+  "license": "MIT",
+  "dependencies": {
+    "@duyetbot/types": "workspace:*",
+    "@openrouter/sdk": "^0.1.27",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@duyetbot/chat-agent": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

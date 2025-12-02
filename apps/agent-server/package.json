@@ -1,0 +1,42 @@
+{
+  "name": "@duyetbot/agent-server",
+  "version": "0.1.0",
+  "description": "Long-running agent server with WebSocket support",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "bun run build.ts",
+    "dev": "bun --watch src/server.ts",
+    "start": "bun dist/server.js",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duyetbot/core": "workspace:*",
+    "@duyetbot/providers": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
+    "@hono/node-server": "^1.13.0",
+    "hono": "catalog:",
+    "ws": "^8.18.0",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:",
+    "@types/ws": "^8.5.13",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

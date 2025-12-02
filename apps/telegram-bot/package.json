@@ -1,0 +1,42 @@
+{
+  "name": "@duyetbot/telegram-bot",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "config": "bun ../../scripts/config.ts telegram",
+    "test": "bun run test:unit",
+    "test:unit": "vitest run --passWithNoTests",
+    "test:e2e": "vitest run -c vitest.config.e2e.ts",
+    "test:all": "bun run test:unit && bun run test:e2e",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/hono-middleware": "workspace:*",
+    "@duyetbot/mcp-servers": "workspace:*",
+    "@duyetbot/observability": "workspace:*",
+    "@duyetbot/prompts": "workspace:*",
+    "@duyetbot/providers": "workspace:*",
+    "agents": "catalog:",
+    "hono": "catalog:"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "^0.10.11",
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:",
+    "wrangler": "catalog:"
+  }
+}
