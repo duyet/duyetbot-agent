@@ -1,14 +1,9 @@
 ---
 title: Slack Setup
-description: Extend transport tutorial. Add Slack webhook + DO integration.
-sidebar_position: 1
-keywords: [slack, transport, integrations]
-slug: /advanced/integrations/slack-setup
+description: Extend transport tutorial. Add Slack webhook + DO integration. Platform abstraction pattern.
 ---
 
 <!-- i18n: en -->
-
-# Slack Setup ✅
 
 **TL;DR**: Extend Transport. Handle app_mention webhooks. Fire-and-forget to DO. Send/edit via Slack API.
 

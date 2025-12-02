@@ -1,4 +1,7 @@
-# Getting Started
+---
+title: Getting Started
+description: Installation, configuration, and setup guide. Clone, install, run dev server, CLI chat, tests, and GitHub Bot.
+---
 
 **Related:** [Use Cases](usecases.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](deploy.md)
 
@@ -52,7 +55,7 @@ All 443 tests should pass.
 
 Create a `.env` file in the root directory:
 
-```env
+```bash
 # LLM Provider (required)
 ANTHROPIC_API_KEY=sk-ant-...
 ANTHROPIC_BASE_URL=https://api.anthropic.com  # or Z.AI URL

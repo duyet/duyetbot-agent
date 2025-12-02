@@ -1,14 +1,9 @@
 ---
 title: Subagents
-desc: "Specialized patterns: researcher/codeReviewer/planner/git/github. Registry + filter tools/model/prompt."
-sidebar_position: 2
-keywords: [subagent,registry,predefined,delegation]
-slug: /api-reference/sdk/subagent
+description: "Specialized patterns: researcher/codeReviewer/planner/git/github. Registry + filter tools/model/prompt."
 ---
 
 <!-- i18n: en -->
-
-# Subagents ✅
 
 **TL;DR**: `createSubagent({name, tools, prompt})` → Delegate via `agents[]` in query(). Predefined: researcher etc.
 
@@ -67,35 +62,35 @@ Options: `createSubagentOptions(parentOpts, subagent, tools)`
 ## Delegation Flow
 
 ```
-┌──────────────┐
-│ Main Query   │
-└──────┬───────┘
-       │
-       ▼
+┌──────────────────┐
+│  Main Query      │
+└────────┬─────────┘
+         │
+         ▼
 ┌──────────────────┐
 │ Router           │
 │ classifies       │
-└──────┬───────────┘
-       │
-       ▼
+└────────┬─────────┘
+         │
+         ▼
 ┌──────────────────┐
 │ Subagent         │
 │ selected         │
-└──────┬───────────┘
-       │
-       ▼
+└────────┬─────────┘
+         │
+         ▼
 ┌──────────────────┐
 │ Filtered tools   │
 │ only             │
-└──────┬───────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Specialized          │
-│ model/prompt         │
-└──────┬────────────────┘
-       │
-       ▼
+└────────┬─────────┘
+         │
+         ▼
+┌──────────────────┐
+│ Specialized      │
+│ model/prompt     │
+└────────┬─────────┘
+         │
+         ▼
 ┌──────────────────┐
 │ Stream back      │
 └──────────────────┘

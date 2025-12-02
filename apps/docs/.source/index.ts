@@ -1,60 +1,563 @@
 // @ts-nocheck -- skip type checking
-import * as docs_55 from "../../../docs/reference/tables.md?collection=docs&hash=1764658259084"
-import * as docs_54 from "../../../docs/reference/schemas.md?collection=docs&hash=1764658259084"
-import * as docs_53 from "../../../docs/reference/router-cheatsheet.md?collection=docs&hash=1764658259084"
-import * as docs_52 from "../../../docs/reference/rate-limiting.md?collection=docs&hash=1764658259084"
-import * as docs_51 from "../../../docs/reference/query.md?collection=docs&hash=1764658259084"
-import * as docs_50 from "../../../docs/reference/hooks.md?collection=docs&hash=1764658259084"
-import * as docs_49 from "../../../docs/reference/hono-middleware.md?collection=docs&hash=1764658259084"
-import * as docs_48 from "../../../docs/reference/health.md?collection=docs&hash=1764658259084"
-import * as docs_47 from "../../../docs/reference/auth-middleware.md?collection=docs&hash=1764658259084"
-import * as docs_46 from "../../../docs/reference/api.md?collection=docs&hash=1764658259084"
-import * as docs_45 from "../../../docs/guides/webhook.md?collection=docs&hash=1764658259084"
-import * as docs_44 from "../../../docs/guides/telegram-bot.md?collection=docs&hash=1764658259084"
-import * as docs_43 from "../../../docs/guides/telegram-bot-setup.md?collection=docs&hash=1764658259084"
-import * as docs_42 from "../../../docs/guides/slack-setup.md?collection=docs&hash=1764658259084"
-import * as docs_41 from "../../../docs/guides/github-bot.md?collection=docs&hash=1764658259084"
-import * as docs_40 from "../../../docs/guides/github-bot-setup.md?collection=docs&hash=1764658259084"
-import * as docs_39 from "../../../docs/guides/env-setup.md?collection=docs&hash=1764658259084"
-import * as docs_38 from "../../../docs/guides/deployment.md?collection=docs&hash=1764658259084"
-import * as docs_37 from "../../../docs/guides/deploy.md?collection=docs&hash=1764658259084"
-import * as docs_36 from "../../../docs/guides/custom-tools.md?collection=docs&hash=1764658259084"
-import * as docs_35 from "../../../docs/guides/custom-do.md?collection=docs&hash=1764658259084"
-import * as docs_34 from "../../../docs/guides/cloudflare-first.md?collection=docs&hash=1764658259084"
-import * as docs_33 from "../../../docs/guides/cloudflare-deploy.md?collection=docs&hash=1764658259084"
-import * as docs_32 from "../../../docs/guides/build-custom-agent.md?collection=docs&hash=1764658259084"
-import * as docs_31 from "../../../docs/guides/agent-server.md?collection=docs&hash=1764658259084"
-import * as docs_30 from "../../../docs/community/troubleshooting.md?collection=docs&hash=1764658259084"
-import * as docs_29 from "../../../docs/community/readme-multiagent.md?collection=docs&hash=1764658259084"
-import * as docs_28 from "../../../docs/community/fork-pr.md?collection=docs&hash=1764658259084"
-import * as docs_27 from "../../../docs/community/feedback.md?collection=docs&hash=1764658259084"
-import * as docs_26 from "../../../docs/community/faqs.md?collection=docs&hash=1764658259084"
-import * as docs_25 from "../../../docs/community/contributing.md?collection=docs&hash=1764658259084"
-import * as docs_24 from "../../../docs/community/checklists.md?collection=docs&hash=1764658259084"
-import * as docs_23 from "../../../docs/concepts/transports.md?collection=docs&hash=1764658259084"
-import * as docs_22 from "../../../docs/concepts/tools.md?collection=docs&hash=1764658259084"
-import * as docs_21 from "../../../docs/concepts/subagent.md?collection=docs&hash=1764658259084"
-import * as docs_20 from "../../../docs/concepts/simple-agent.md?collection=docs&hash=1764658259084"
-import * as docs_19 from "../../../docs/concepts/router-agent.md?collection=docs&hash=1764658259084"
-import * as docs_18 from "../../../docs/concepts/orchestrator-agent.md?collection=docs&hash=1764658259084"
-import * as docs_17 from "../../../docs/concepts/memory-mcp.md?collection=docs&hash=1764658259084"
-import * as docs_16 from "../../../docs/concepts/hitl-integration.md?collection=docs&hash=1764658259084"
-import * as docs_15 from "../../../docs/concepts/durable-objects.md?collection=docs&hash=1764658259084"
-import * as docs_14 from "../../../docs/concepts/do-patterns.md?collection=docs&hash=1764658259084"
-import * as docs_13 from "../../../docs/concepts/do-limits.md?collection=docs&hash=1764658259084"
-import * as docs_12 from "../../../docs/concepts/batching-strategies.md?collection=docs&hash=1764658259084"
-import * as docs_11 from "../../../docs/concepts/batching-alarms.md?collection=docs&hash=1764658259084"
-import * as docs_10 from "../../../docs/concepts/batch-routing.md?collection=docs&hash=1764658259084"
-import * as docs_9 from "../../../docs/advanced/use-cases.md?collection=docs&hash=1764658259084"
-import * as docs_8 from "../../../docs/advanced/token-optimization.md?collection=docs&hash=1764658259084"
-import * as docs_7 from "../../../docs/advanced/token-optimization-guide.md?collection=docs&hash=1764658259084"
-import * as docs_6 from "../../../docs/advanced/flow-diagrams.md?collection=docs&hash=1764658259084"
-import * as docs_5 from "../../../docs/advanced/cloudflare-agents.md?collection=docs&hash=1764658259084"
-import * as docs_4 from "../../../docs/advanced/benchmarks.md?collection=docs&hash=1764658259084"
-import * as docs_3 from "../../../docs/index.md?collection=docs&hash=1764658259084"
-import * as docs_2 from "../../../docs/getting-started.md?collection=docs&hash=1764658259084"
-import * as docs_1 from "../../../docs/architecture.md?collection=docs&hash=1764658259084"
-import * as docs_0 from "../../../docs/README.md?collection=docs&hash=1764658259084"
-import { _runtime } from "fumadocs-mdx"
-import * as _source from "../source.config"
-export const docs = _runtime.docs<typeof _source.docs>([{ info: {"path":"README.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/README.md"}, data: docs_0 }, { info: {"path":"architecture.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/architecture.md"}, data: docs_1 }, { info: {"path":"getting-started.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/getting-started.md"}, data: docs_2 }, { info: {"path":"index.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/index.md"}, data: docs_3 }, { info: {"path":"advanced/benchmarks.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/advanced/benchmarks.md"}, data: docs_4 }, { info: {"path":"advanced/cloudflare-agents.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/advanced/cloudflare-agents.md"}, data: docs_5 }, { info: {"path":"advanced/flow-diagrams.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/advanced/flow-diagrams.md"}, data: docs_6 }, { info: {"path":"advanced/token-optimization-guide.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/advanced/token-optimization-guide.md"}, data: docs_7 }, { info: {"path":"advanced/token-optimization.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/advanced/token-optimization.md"}, data: docs_8 }, { info: {"path":"advanced/use-cases.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/advanced/use-cases.md"}, data: docs_9 }, { info: {"path":"concepts/batch-routing.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/batch-routing.md"}, data: docs_10 }, { info: {"path":"concepts/batching-alarms.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/batching-alarms.md"}, data: docs_11 }, { info: {"path":"concepts/batching-strategies.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/batching-strategies.md"}, data: docs_12 }, { info: {"path":"concepts/do-limits.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/do-limits.md"}, data: docs_13 }, { info: {"path":"concepts/do-patterns.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/do-patterns.md"}, data: docs_14 }, { info: {"path":"concepts/durable-objects.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/durable-objects.md"}, data: docs_15 }, { info: {"path":"concepts/hitl-integration.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/hitl-integration.md"}, data: docs_16 }, { info: {"path":"concepts/memory-mcp.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/memory-mcp.md"}, data: docs_17 }, { info: {"path":"concepts/orchestrator-agent.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/orchestrator-agent.md"}, data: docs_18 }, { info: {"path":"concepts/router-agent.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/router-agent.md"}, data: docs_19 }, { info: {"path":"concepts/simple-agent.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/simple-agent.md"}, data: docs_20 }, { info: {"path":"concepts/subagent.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/subagent.md"}, data: docs_21 }, { info: {"path":"concepts/tools.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/tools.md"}, data: docs_22 }, { info: {"path":"concepts/transports.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/transports.md"}, data: docs_23 }, { info: {"path":"community/checklists.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/checklists.md"}, data: docs_24 }, { info: {"path":"community/contributing.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/contributing.md"}, data: docs_25 }, { info: {"path":"community/faqs.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/faqs.md"}, data: docs_26 }, { info: {"path":"community/feedback.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/feedback.md"}, data: docs_27 }, { info: {"path":"community/fork-pr.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/fork-pr.md"}, data: docs_28 }, { info: {"path":"community/readme-multiagent.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/readme-multiagent.md"}, data: docs_29 }, { info: {"path":"community/troubleshooting.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/troubleshooting.md"}, data: docs_30 }, { info: {"path":"guides/agent-server.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/agent-server.md"}, data: docs_31 }, { info: {"path":"guides/build-custom-agent.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/build-custom-agent.md"}, data: docs_32 }, { info: {"path":"guides/cloudflare-deploy.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/cloudflare-deploy.md"}, data: docs_33 }, { info: {"path":"guides/cloudflare-first.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/cloudflare-first.md"}, data: docs_34 }, { info: {"path":"guides/custom-do.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/custom-do.md"}, data: docs_35 }, { info: {"path":"guides/custom-tools.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/custom-tools.md"}, data: docs_36 }, { info: {"path":"guides/deploy.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/deploy.md"}, data: docs_37 }, { info: {"path":"guides/deployment.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/deployment.md"}, data: docs_38 }, { info: {"path":"guides/env-setup.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/env-setup.md"}, data: docs_39 }, { info: {"path":"guides/github-bot-setup.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/github-bot-setup.md"}, data: docs_40 }, { info: {"path":"guides/github-bot.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/github-bot.md"}, data: docs_41 }, { info: {"path":"guides/slack-setup.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/slack-setup.md"}, data: docs_42 }, { info: {"path":"guides/telegram-bot-setup.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/telegram-bot-setup.md"}, data: docs_43 }, { info: {"path":"guides/telegram-bot.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/telegram-bot.md"}, data: docs_44 }, { info: {"path":"guides/webhook.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/webhook.md"}, data: docs_45 }, { info: {"path":"reference/api.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/api.md"}, data: docs_46 }, { info: {"path":"reference/auth-middleware.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/auth-middleware.md"}, data: docs_47 }, { info: {"path":"reference/health.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/health.md"}, data: docs_48 }, { info: {"path":"reference/hono-middleware.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/hono-middleware.md"}, data: docs_49 }, { info: {"path":"reference/hooks.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/hooks.md"}, data: docs_50 }, { info: {"path":"reference/query.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/query.md"}, data: docs_51 }, { info: {"path":"reference/rate-limiting.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/rate-limiting.md"}, data: docs_52 }, { info: {"path":"reference/router-cheatsheet.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/router-cheatsheet.md"}, data: docs_53 }, { info: {"path":"reference/schemas.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/schemas.md"}, data: docs_54 }, { info: {"path":"reference/tables.md","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/tables.md"}, data: docs_55 }], [{"info":{"path":"advanced/meta.json","absolutePath":"/Users/duet/project/duyetbot-agent/docs/advanced/meta.json"},"data":{"title":"Advanced","pages":["token-optimization","token-optimization-guide","benchmarks","flow-diagrams","cloudflare-agents","use-cases"]}}, {"info":{"path":"community/meta.json","absolutePath":"/Users/duet/project/duyetbot-agent/docs/community/meta.json"},"data":{"title":"Community","pages":["contributing","fork-pr","feedback","faqs","troubleshooting","checklists","readme-multiagent"]}}, {"info":{"path":"concepts/meta.json","absolutePath":"/Users/duet/project/duyetbot-agent/docs/concepts/meta.json"},"data":{"title":"Concepts","pages":["router-agent","simple-agent","orchestrator-agent","subagent","durable-objects","do-patterns","do-limits","transports","memory-mcp","tools","hitl-integration","batch-routing","batching-alarms","batching-strategies"]}}, {"info":{"path":"guides/meta.json","absolutePath":"/Users/duet/project/duyetbot-agent/docs/guides/meta.json"},"data":{"title":"Guides","pages":["cloudflare-first","env-setup","telegram-bot-setup","telegram-bot","github-bot-setup","github-bot","slack-setup","deploy","deployment","cloudflare-deploy","agent-server","build-custom-agent","custom-tools","custom-do","webhook"]}}, {"info":{"path":"reference/meta.json","absolutePath":"/Users/duet/project/duyetbot-agent/docs/reference/meta.json"},"data":{"title":"Reference","pages":["api","hono-middleware","query","schemas","tables","health","auth-middleware","rate-limiting","hooks","router-cheatsheet"]}}])
+
+import { _runtime } from 'fumadocs-mdx';
+import * as docs_4 from '../../../docs/advanced/benchmarks.md?collection=docs&hash=1764658259084';
+import * as docs_5 from '../../../docs/advanced/cloudflare-agents.md?collection=docs&hash=1764658259084';
+import * as docs_6 from '../../../docs/advanced/flow-diagrams.md?collection=docs&hash=1764658259084';
+import * as docs_8 from '../../../docs/advanced/token-optimization.md?collection=docs&hash=1764658259084';
+import * as docs_7 from '../../../docs/advanced/token-optimization-guide.md?collection=docs&hash=1764658259084';
+import * as docs_9 from '../../../docs/advanced/use-cases.md?collection=docs&hash=1764658259084';
+import * as docs_1 from '../../../docs/architecture.md?collection=docs&hash=1764658259084';
+import * as docs_10 from '../../../docs/community/checklists.md?collection=docs&hash=1764658259084';
+import * as docs_11 from '../../../docs/community/contributing.md?collection=docs&hash=1764658259084';
+import * as docs_12 from '../../../docs/community/faqs.md?collection=docs&hash=1764658259084';
+import * as docs_13 from '../../../docs/community/feedback.md?collection=docs&hash=1764658259084';
+import * as docs_14 from '../../../docs/community/fork-pr.md?collection=docs&hash=1764658259084';
+import * as docs_15 from '../../../docs/community/readme-multiagent.md?collection=docs&hash=1764658259084';
+import * as docs_16 from '../../../docs/community/troubleshooting.md?collection=docs&hash=1764658259084';
+import * as docs_17 from '../../../docs/concepts/batch-routing.md?collection=docs&hash=1764658259084';
+import * as docs_18 from '../../../docs/concepts/batching-alarms.md?collection=docs&hash=1764658259084';
+import * as docs_19 from '../../../docs/concepts/batching-strategies.md?collection=docs&hash=1764658259084';
+import * as docs_20 from '../../../docs/concepts/do-limits.md?collection=docs&hash=1764658259084';
+import * as docs_21 from '../../../docs/concepts/do-patterns.md?collection=docs&hash=1764658259084';
+import * as docs_22 from '../../../docs/concepts/durable-objects.md?collection=docs&hash=1764658259084';
+import * as docs_23 from '../../../docs/concepts/hitl-integration.md?collection=docs&hash=1764658259084';
+import * as docs_24 from '../../../docs/concepts/memory-mcp.md?collection=docs&hash=1764658259084';
+import * as docs_25 from '../../../docs/concepts/orchestrator-agent.md?collection=docs&hash=1764658259084';
+import * as docs_26 from '../../../docs/concepts/router-agent.md?collection=docs&hash=1764658259084';
+import * as docs_27 from '../../../docs/concepts/simple-agent.md?collection=docs&hash=1764658259084';
+import * as docs_28 from '../../../docs/concepts/subagent.md?collection=docs&hash=1764658259084';
+import * as docs_29 from '../../../docs/concepts/tools.md?collection=docs&hash=1764658259084';
+import * as docs_30 from '../../../docs/concepts/transports.md?collection=docs&hash=1764658259084';
+import * as docs_2 from '../../../docs/getting-started.md?collection=docs&hash=1764658259084';
+import * as docs_31 from '../../../docs/guides/agent-server.md?collection=docs&hash=1764658259084';
+import * as docs_32 from '../../../docs/guides/build-custom-agent.md?collection=docs&hash=1764658259084';
+import * as docs_33 from '../../../docs/guides/cloudflare-deploy.md?collection=docs&hash=1764658259084';
+import * as docs_34 from '../../../docs/guides/cloudflare-first.md?collection=docs&hash=1764658259084';
+import * as docs_35 from '../../../docs/guides/custom-do.md?collection=docs&hash=1764658259084';
+import * as docs_36 from '../../../docs/guides/custom-tools.md?collection=docs&hash=1764658259084';
+import * as docs_37 from '../../../docs/guides/deploy.md?collection=docs&hash=1764658259084';
+import * as docs_38 from '../../../docs/guides/deployment.md?collection=docs&hash=1764658259084';
+import * as docs_39 from '../../../docs/guides/env-setup.md?collection=docs&hash=1764658259084';
+import * as docs_41 from '../../../docs/guides/github-bot.md?collection=docs&hash=1764658259084';
+import * as docs_40 from '../../../docs/guides/github-bot-setup.md?collection=docs&hash=1764658259084';
+import * as docs_42 from '../../../docs/guides/slack-setup.md?collection=docs&hash=1764658259084';
+import * as docs_44 from '../../../docs/guides/telegram-bot.md?collection=docs&hash=1764658259084';
+import * as docs_43 from '../../../docs/guides/telegram-bot-setup.md?collection=docs&hash=1764658259084';
+import * as docs_45 from '../../../docs/guides/webhook.md?collection=docs&hash=1764658259084';
+import * as docs_3 from '../../../docs/index.md?collection=docs&hash=1764658259084';
+import * as docs_0 from '../../../docs/README.md?collection=docs&hash=1764658259084';
+import * as docs_46 from '../../../docs/reference/api.md?collection=docs&hash=1764658259084';
+import * as docs_47 from '../../../docs/reference/auth-middleware.md?collection=docs&hash=1764658259084';
+import * as docs_48 from '../../../docs/reference/health.md?collection=docs&hash=1764658259084';
+import * as docs_49 from '../../../docs/reference/hono-middleware.md?collection=docs&hash=1764658259084';
+import * as docs_50 from '../../../docs/reference/hooks.md?collection=docs&hash=1764658259084';
+import * as docs_51 from '../../../docs/reference/query.md?collection=docs&hash=1764658259084';
+import * as docs_52 from '../../../docs/reference/rate-limiting.md?collection=docs&hash=1764658259084';
+import * as docs_53 from '../../../docs/reference/router-cheatsheet.md?collection=docs&hash=1764658259084';
+import * as docs_54 from '../../../docs/reference/schemas.md?collection=docs&hash=1764658259084';
+import * as docs_55 from '../../../docs/reference/tables.md?collection=docs&hash=1764658259084';
+import * as _source from '../source.config';
+export const docs = _runtime.docs<typeof _source.docs>(
+  [
+    {
+      info: {
+        path: 'README.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/README.md',
+      },
+      data: docs_0,
+    },
+    {
+      info: {
+        path: 'architecture.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/architecture.md',
+      },
+      data: docs_1,
+    },
+    {
+      info: {
+        path: 'getting-started.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/getting-started.md',
+      },
+      data: docs_2,
+    },
+    {
+      info: { path: 'index.md', absolutePath: '/Users/duet/project/duyetbot-agent/docs/index.md' },
+      data: docs_3,
+    },
+    {
+      info: {
+        path: 'advanced/benchmarks.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/advanced/benchmarks.md',
+      },
+      data: docs_4,
+    },
+    {
+      info: {
+        path: 'advanced/cloudflare-agents.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/advanced/cloudflare-agents.md',
+      },
+      data: docs_5,
+    },
+    {
+      info: {
+        path: 'advanced/flow-diagrams.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/advanced/flow-diagrams.md',
+      },
+      data: docs_6,
+    },
+    {
+      info: {
+        path: 'advanced/token-optimization-guide.md',
+        absolutePath:
+          '/Users/duet/project/duyetbot-agent/docs/advanced/token-optimization-guide.md',
+      },
+      data: docs_7,
+    },
+    {
+      info: {
+        path: 'advanced/token-optimization.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/advanced/token-optimization.md',
+      },
+      data: docs_8,
+    },
+    {
+      info: {
+        path: 'advanced/use-cases.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/advanced/use-cases.md',
+      },
+      data: docs_9,
+    },
+    {
+      info: {
+        path: 'community/checklists.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/checklists.md',
+      },
+      data: docs_10,
+    },
+    {
+      info: {
+        path: 'community/contributing.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/contributing.md',
+      },
+      data: docs_11,
+    },
+    {
+      info: {
+        path: 'community/faqs.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/faqs.md',
+      },
+      data: docs_12,
+    },
+    {
+      info: {
+        path: 'community/feedback.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/feedback.md',
+      },
+      data: docs_13,
+    },
+    {
+      info: {
+        path: 'community/fork-pr.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/fork-pr.md',
+      },
+      data: docs_14,
+    },
+    {
+      info: {
+        path: 'community/readme-multiagent.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/readme-multiagent.md',
+      },
+      data: docs_15,
+    },
+    {
+      info: {
+        path: 'community/troubleshooting.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/troubleshooting.md',
+      },
+      data: docs_16,
+    },
+    {
+      info: {
+        path: 'concepts/batch-routing.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/batch-routing.md',
+      },
+      data: docs_17,
+    },
+    {
+      info: {
+        path: 'concepts/batching-alarms.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/batching-alarms.md',
+      },
+      data: docs_18,
+    },
+    {
+      info: {
+        path: 'concepts/batching-strategies.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/batching-strategies.md',
+      },
+      data: docs_19,
+    },
+    {
+      info: {
+        path: 'concepts/do-limits.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/do-limits.md',
+      },
+      data: docs_20,
+    },
+    {
+      info: {
+        path: 'concepts/do-patterns.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/do-patterns.md',
+      },
+      data: docs_21,
+    },
+    {
+      info: {
+        path: 'concepts/durable-objects.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/durable-objects.md',
+      },
+      data: docs_22,
+    },
+    {
+      info: {
+        path: 'concepts/hitl-integration.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/hitl-integration.md',
+      },
+      data: docs_23,
+    },
+    {
+      info: {
+        path: 'concepts/memory-mcp.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/memory-mcp.md',
+      },
+      data: docs_24,
+    },
+    {
+      info: {
+        path: 'concepts/orchestrator-agent.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/orchestrator-agent.md',
+      },
+      data: docs_25,
+    },
+    {
+      info: {
+        path: 'concepts/router-agent.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/router-agent.md',
+      },
+      data: docs_26,
+    },
+    {
+      info: {
+        path: 'concepts/simple-agent.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/simple-agent.md',
+      },
+      data: docs_27,
+    },
+    {
+      info: {
+        path: 'concepts/subagent.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/subagent.md',
+      },
+      data: docs_28,
+    },
+    {
+      info: {
+        path: 'concepts/tools.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/tools.md',
+      },
+      data: docs_29,
+    },
+    {
+      info: {
+        path: 'concepts/transports.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/transports.md',
+      },
+      data: docs_30,
+    },
+    {
+      info: {
+        path: 'guides/agent-server.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/agent-server.md',
+      },
+      data: docs_31,
+    },
+    {
+      info: {
+        path: 'guides/build-custom-agent.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/build-custom-agent.md',
+      },
+      data: docs_32,
+    },
+    {
+      info: {
+        path: 'guides/cloudflare-deploy.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/cloudflare-deploy.md',
+      },
+      data: docs_33,
+    },
+    {
+      info: {
+        path: 'guides/cloudflare-first.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/cloudflare-first.md',
+      },
+      data: docs_34,
+    },
+    {
+      info: {
+        path: 'guides/custom-do.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/custom-do.md',
+      },
+      data: docs_35,
+    },
+    {
+      info: {
+        path: 'guides/custom-tools.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/custom-tools.md',
+      },
+      data: docs_36,
+    },
+    {
+      info: {
+        path: 'guides/deploy.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/deploy.md',
+      },
+      data: docs_37,
+    },
+    {
+      info: {
+        path: 'guides/deployment.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/deployment.md',
+      },
+      data: docs_38,
+    },
+    {
+      info: {
+        path: 'guides/env-setup.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/env-setup.md',
+      },
+      data: docs_39,
+    },
+    {
+      info: {
+        path: 'guides/github-bot-setup.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/github-bot-setup.md',
+      },
+      data: docs_40,
+    },
+    {
+      info: {
+        path: 'guides/github-bot.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/github-bot.md',
+      },
+      data: docs_41,
+    },
+    {
+      info: {
+        path: 'guides/slack-setup.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/slack-setup.md',
+      },
+      data: docs_42,
+    },
+    {
+      info: {
+        path: 'guides/telegram-bot-setup.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/telegram-bot-setup.md',
+      },
+      data: docs_43,
+    },
+    {
+      info: {
+        path: 'guides/telegram-bot.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/telegram-bot.md',
+      },
+      data: docs_44,
+    },
+    {
+      info: {
+        path: 'guides/webhook.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/webhook.md',
+      },
+      data: docs_45,
+    },
+    {
+      info: {
+        path: 'reference/api.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/api.md',
+      },
+      data: docs_46,
+    },
+    {
+      info: {
+        path: 'reference/auth-middleware.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/auth-middleware.md',
+      },
+      data: docs_47,
+    },
+    {
+      info: {
+        path: 'reference/health.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/health.md',
+      },
+      data: docs_48,
+    },
+    {
+      info: {
+        path: 'reference/hono-middleware.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/hono-middleware.md',
+      },
+      data: docs_49,
+    },
+    {
+      info: {
+        path: 'reference/hooks.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/hooks.md',
+      },
+      data: docs_50,
+    },
+    {
+      info: {
+        path: 'reference/query.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/query.md',
+      },
+      data: docs_51,
+    },
+    {
+      info: {
+        path: 'reference/rate-limiting.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/rate-limiting.md',
+      },
+      data: docs_52,
+    },
+    {
+      info: {
+        path: 'reference/router-cheatsheet.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/router-cheatsheet.md',
+      },
+      data: docs_53,
+    },
+    {
+      info: {
+        path: 'reference/schemas.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/schemas.md',
+      },
+      data: docs_54,
+    },
+    {
+      info: {
+        path: 'reference/tables.md',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/tables.md',
+      },
+      data: docs_55,
+    },
+  ],
+  [
+    {
+      info: {
+        path: 'advanced/meta.json',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/advanced/meta.json',
+      },
+      data: {
+        title: 'Advanced',
+        pages: [
+          'token-optimization',
+          'token-optimization-guide',
+          'benchmarks',
+          'flow-diagrams',
+          'cloudflare-agents',
+          'use-cases',
+        ],
+      },
+    },
+    {
+      info: {
+        path: 'community/meta.json',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/community/meta.json',
+      },
+      data: {
+        title: 'Community',
+        pages: [
+          'contributing',
+          'fork-pr',
+          'feedback',
+          'faqs',
+          'troubleshooting',
+          'checklists',
+          'readme-multiagent',
+        ],
+      },
+    },
+    {
+      info: {
+        path: 'concepts/meta.json',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/concepts/meta.json',
+      },
+      data: {
+        title: 'Concepts',
+        pages: [
+          'router-agent',
+          'simple-agent',
+          'orchestrator-agent',
+          'subagent',
+          'durable-objects',
+          'do-patterns',
+          'do-limits',
+          'transports',
+          'memory-mcp',
+          'tools',
+          'hitl-integration',
+          'batch-routing',
+          'batching-alarms',
+          'batching-strategies',
+        ],
+      },
+    },
+    {
+      info: {
+        path: 'guides/meta.json',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/guides/meta.json',
+      },
+      data: {
+        title: 'Guides',
+        pages: [
+          'cloudflare-first',
+          'env-setup',
+          'telegram-bot-setup',
+          'telegram-bot',
+          'github-bot-setup',
+          'github-bot',
+          'slack-setup',
+          'deploy',
+          'deployment',
+          'cloudflare-deploy',
+          'agent-server',
+          'build-custom-agent',
+          'custom-tools',
+          'custom-do',
+          'webhook',
+        ],
+      },
+    },
+    {
+      info: {
+        path: 'reference/meta.json',
+        absolutePath: '/Users/duet/project/duyetbot-agent/docs/reference/meta.json',
+      },
+      data: {
+        title: 'Reference',
+        pages: [
+          'api',
+          'hono-middleware',
+          'query',
+          'schemas',
+          'tables',
+          'health',
+          'auth-middleware',
+          'rate-limiting',
+          'hooks',
+          'router-cheatsheet',
+        ],
+      },
+    },
+  ]
+);

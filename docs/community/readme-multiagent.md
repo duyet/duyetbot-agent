@@ -1,3 +1,8 @@
+---
+title: Multi-Agent Architecture
+description: Documentation hub covering hybrid router, token optimization, architecture overview, flow diagrams, and learning resources
+---
+
 # duyetbot-agent: Multi-Agent Architecture & Token Optimization
 
 ## 📚 Documentation Hub

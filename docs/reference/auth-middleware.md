@@ -1,14 +1,9 @@
 ---
 title: Auth Middleware
 description: Bearer, API-key, GitHub sig flows. Secure Hono routes with validation.
-sidebar_position: 1
-keywords: [auth, bearer, api-key, github-sig]
-slug: /advanced/security/auth-middleware
 ---
 
 <!-- i18n: en -->
-
-# Auth Middleware ✅
 
 **TL;DR**: Use `createAuth({type: 'bearer' | 'api-key'})`. Validate tokens. Return 401 on fail. GitHub sigs app-specific.
 

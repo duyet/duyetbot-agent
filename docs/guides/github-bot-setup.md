@@ -1,12 +1,7 @@
 ---
 title: GitHub Bot Setup
-desc: "GitHub App create. Config token/secret. Deploy. Test @duyetbot hello in issue. Bot active!"
-sidebar_position: 2.3
-keywords: [github, app, webhook, pat, token, secret, setup, mention]
-slug: guides/github-bot-setup
+description: GitHub App create. Config token/secret. Deploy. Test @duyetbot hello in issue. Bot active!
 ---
-
-# GitHub Bot Setup
 
 **TL;DR**: GitHub App → PAT/webhook secret → `bun scripts/config.ts github` → `bun run deploy:github` → `@duyetbot hi`!
 

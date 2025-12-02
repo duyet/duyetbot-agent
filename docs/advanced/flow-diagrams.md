@@ -1,3 +1,8 @@
+---
+title: Flow Diagrams
+description: Complete message flow, hybrid classification, batch processing, dual-batch state machine with ASCII visualizations
+---
+
 # duyetbot-agent: Flow Diagrams & Sequence Charts
 
 ## 1. Complete Message Processing Flow

@@ -1,14 +1,9 @@
 ---
 title: HITL Integration ✅
-desc: "State machine for tool confirmations. Approve/reject high-risk ops (bash/delete). Parse yes/no flows."
-sidebar_position: 11
-keywords: [hitl,confirmation,state-machine,risk-levels,tool-approval]
-slug: /guides/workflows/hitl-integration
+description: State machine for tool confirmations. Approve/reject high-risk ops (bash/delete). Parse yes/no flows.
 ---
 
 <!-- i18n: en -->
-
-# HITL Integration ✅
 
 **TL;DR**: Detect risky tools → Request confirm (yes/no). State machine: idle → awaiting → executing → done. 5min expiry.
 
@@ -42,36 +37,36 @@ export function determineRiskLevel(toolName: string, args?: Record<string, unkno
 ## State Machine
 
 ```
-         START
-           │
-           ▼
-    ┌─────────────┐
-    │   idle      │─────REQUEST_CONFIRMATION────┐
-    └─────────────┘                             │
-           ▲                                     ▼
-           │                        ┌──────────────────────┐
-           │                        │ awaiting_confirmation│
-           │                        └──────────────────────┘
-           │                          │              │
-           │              USER_APPROVED            USER_REJECTED/
-           │                │                       EXPIRED
-           │                ▼                          │
-           │         ┌──────────────┐                 │
-           │         │  executing   │                 │
-           │         └──────────────┘                 │
-           │            │         │                   │
-           │            │         │                   │
-           │    EXEC_COMPLETED EXEC_FAILED            │
-           │            │         │                   │
-           │            ▼         ▼                   │
-           │       ┌─────────┐  ┌──────┐              │
-           │       │completed│  │error │              │
-           │       └─────────┘  └──────┘              │
-           │            │         │                   │
-           │            │      RESET                  │
-           │            │         │                   │
-           │            ▼         ▼                   │
-           └────────────END─────────────────────────┘
+                START
+                  │
+                  ▼
+           ┌─────────────┐
+           │   idle      │────REQUEST_CONFIRMATION────┐
+           └─────────────┘                            │
+                  ▲                                    ▼
+                  │                     ┌──────────────────────┐
+                  │                     │ awaiting_confirmation│
+                  │                     └──────────────────────┘
+                  │                       │              │
+                  │           USER_APPROVED            USER_REJECTED/
+                  │               │                       EXPIRED
+                  │               ▼                          │
+                  │        ┌──────────────┐                 │
+                  │        │  executing   │                 │
+                  │        └──────────────┘                 │
+                  │           │         │                   │
+                  │           │         │                   │
+                  │   EXEC_COMPLETED EXEC_FAILED            │
+                  │           │         │                   │
+                  │           ▼         ▼                   │
+                  │      ┌─────────┐  ┌──────┐              │
+                  │      │completed│  │error │              │
+                  │      └─────────┘  └──────┘              │
+                  │           │         │                   │
+                  │           │      RESET                  │
+                  │           │         │                   │
+                  │           ▼         ▼                   │
+                  └──────────END─────────────────────────┘
 ```
 
 From [`state-machine.ts`](packages/chat-agent/src/hitl/state-machine.ts:38)

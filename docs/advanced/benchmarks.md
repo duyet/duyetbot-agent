@@ -1,14 +1,9 @@
 ---
 title: Benchmarks
 description: P50 latency/token costs. E2E/Vitest/Phase1 data. Routing 5s, batch 500ms, 75t/query.
-sidebar_position: 2
-keywords: [benchmarks, latency, p50, tokens]
-slug: /advanced/performance/benchmarks
 ---
 
 <!-- i18n: en -->
-
-# Benchmarks ✅
 
 **TL;DR**: P50 end-to-end: 5s response. 75 tokens/query. Batch saves 55%. From Vitest E2E + prod logs.
 
@@ -75,10 +70,10 @@ From [`PLAN.md`](PLAN.md:101) timings + [`apps/telegram-bot/src/__tests__/e2e/pe
      └────┬───┘
           │
           ▼
-  ┌─────────────────────┐
-  │ Edit Response       │
-  │ T5s ✅              │
-  └─────────────────────┘
+   ┌──────────────────┐
+   │ Edit Response    │
+   │ T5s ✅           │
+   └──────────────────┘
 ```
 
 Refs E2E perf tests.

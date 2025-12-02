@@ -1,14 +1,9 @@
 ---
 title: Custom MCP Tools
-desc: "Add MCP tool: Create in packages/tools/src/. Export index.ts. Register registry.ts. Test Vitest."
-sidebar_position: 2
-keywords: [extend, mcp, tools, custom, registry]
-slug: developer-hub/extend/custom-tools
+description: "Add MCP tool: Create in packages/tools/src/. Export index.ts. Register registry.ts. Test Vitest."
 ---
 
 <!-- i18n: en -->
-
-# Custom MCP Tools
 
 **TL;DR**: `packages/tools/src/my-tool.ts` → export `index.ts` → register `registry.ts`. `bun run test`. ✅ MCP live.
 

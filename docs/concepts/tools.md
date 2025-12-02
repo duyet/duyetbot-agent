@@ -1,14 +1,9 @@
 ---
 title: Tools
-desc: "MCP servers (github-mcp/duyet-mcp/memory-mcp). Platform filters (Telegram/GitHub). Registry auto-discovers/registers."
-sidebar_position: 6
-keywords: [tools, mcp-servers, platform-filters, registry, github-mcp, memory-mcp]
-slug: /core-concepts/tools
+description: MCP servers (github-mcp/duyet-mcp/memory-mcp). Platform filters (Telegram/GitHub). Registry auto-discovers/registers.
 ---
 
 <!-- i18n: en -->
-
-# Tools ✅
 
 **TL;DR**: MCP servers provide tools. Filtered by platform. Registry auto-registers. Agents call via SDK.
 

@@ -1,3 +1,8 @@
+---
+title: Hono Middleware Package
+description: Shared Hono utilities including logger, rate limiter, auth, error handler, and health routes
+---
+
 # @duyetbot/hono-middleware
 
 Shared Hono middleware and routes for Cloudflare Workers apps.
