@@ -5,7 +5,7 @@ description: Decomposes complex tasks into parallel worker steps. Plans, execute
 
 <!-- i18n: en -->
 
-**TL;DR**: Plans high-complexity tasks. Dispatches parallel Code/Research/GitHub Workers. Aggregates results. Router → Orchestrator → Workers.
+**TL;DR**: Plans high-complexity tasks. Dispatches parallel Code/Research/GitHub Workers. Aggregates results. Router -> Orchestrator -> Workers.
 
 ## Table of Contents
 - [Flow](#flow)
@@ -17,28 +17,28 @@ description: Decomposes complex tasks into parallel worker steps. Plans, execute
 ```
     Router Routes
    (high complexity)
-          │
-          ▼
+          |
+          v
   OrchestratorAgent
-          │
-          ▼
+          |
+          v
   Planner: LLM Plan
-          │
-          ▼
+          |
+          v
  Executor: Group Levels
-          │
-          ▼
+          |
+          v
  Parallel Workers
      Level 1
-          │
-          ▼
+          |
+          v
  Parallel Workers
      Level 2
-          │
-          ▼
+          |
+          v
  Aggregator: Synthesize
-          │
-          ▼
+          |
+          v
   Final Response
 ```
 
@@ -52,9 +52,9 @@ description: Decomposes complex tasks into parallel worker steps. Plans, execute
 | 1 | Deps L0 | CodeWorker | Review code after research |
 | 2 | Deps L1 | GitHubWorker | Comment on PR |
 
-**Planner** → [`orchestration/planner.ts`](packages/chat-agent/src/orchestration/planner.ts:99)
+**Planner** -> [`orchestration/planner.ts`](packages/chat-agent/src/orchestration/planner.ts:99)
 
-**Executor** → Levels via topological sort.
+**Executor** -> Levels via topological sort.
 
 ## Code Snippet
 
@@ -69,6 +69,6 @@ for (const group of stepGroups) {
 **Quiz**: Orchestrator vs Router?  
 A: Orchestrator executes multi-step; Router single dispatch ✅
 
-**Related**: [Workers →](../tools.md) | [Router →](./router-agent.md)
+**Related**: [Workers ->](../tools.md) | [Router ->](./router-agent.md)
 
-**Try**: `@duyetbot "Research React hooks, review code, comment PR"` → Orchestrator live!
+**Try**: `@duyetbot "Research React hooks, review code, comment PR"` -> Orchestrator live!
