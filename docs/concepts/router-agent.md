@@ -17,29 +17,29 @@ description: Hybrid pattern+LLM classifier routes queries across 8 agents. Insta
 RouterAgent uses two-phase classification:
 
 ```
-                 User Query
-                     │
-                     ▼
-             Pattern Match?
-            (10-50ms check)
-              │         │
-           YES│         │NO
-              │         ▼
-              │    LLM Classify
-              │    (200-500ms)
-              │         │
-              │         ▼
-              │    Classify result?
-              │  (type/category/complexity)
-              │         │
-         ┌────┼────┬────┼────┬────┬──────┬──────────┐
-         │    │    │    │    │    │      │          │
-      hi/help tool_ duyet research  high code/ research
-         │    confm │        │(med) complex github
-         │    │    │        │ ity │
-         ▼    ▼    ▼        ▼     ▼     ▼          ▼
-      Simple HITL Duyet LeadResearch Orchestr Orchestr
-      Agent Agent Agent    Worker    Agent    Agent
+                       User Query
+                           |
+                           v
+                   Pattern Match?
+                  (10-50ms check)
+                    |         |
+                 YES|         |NO
+                    |         v
+                    |    LLM Classify
+                    |    (200-500ms)
+                    |         |
+                    |         v
+                    |    Classify result?
+                    |  (type/category/complexity)
+                    |         |
+       +----+----+----+----+----+------+----------+
+       |    |    |    |    |    |      |          |
+    hi/help tool_ duyet research  high code/ research
+       |    confm |        |(med) complex github
+       |    |    |        | ity |
+       v    v    v        v     v     v          v
+    Simple HITL Duyet LeadResearch Orchestr Orchestr
+    Agent Agent Agent    Worker    Agent    Agent
 ```
 
 **Key**: Patterns hit 80% cases instantly. LLM fallback for semantics.
@@ -54,7 +54,7 @@ RouterAgent uses two-phase classification:
 | 4 | `research + medium/high` | lead-researcher-agent |
 | 5 | `complexity: high` | orchestrator-agent |
 | 6 | `simple + low` | simple-agent |
-| 7 | `code/research/github` | orchestrator-agent (→workers) |
+| 7 | `code/research/github` | orchestrator-agent (->workers) |
 
 ## Code Snippet
 
@@ -69,8 +69,8 @@ export function determineRouteTarget(classification: QueryClassification): Route
 **Quiz**: Router vs Simple?  
 A: Router classifies/routs; Simple answers directly ✅
 
-**Glossary**: [Hybrid Classify →](/core-concepts/agents/router-agent#hybrid-flow)
+**Glossary**: [Hybrid Classify ->](/core-concepts/agents/router-agent#hybrid-flow)
 
-**Related**: [Orchestrator →](./orchestrator-agent.md) | [Architecture →](../architecture.md)
+**Related**: [Orchestrator ->](./orchestrator-agent.md) | [Architecture ->](../architecture.md)
 
-**Try**: `@duyetbot classify "fix this code"` → See routing live!
+**Try**: `@duyetbot classify "fix this code"` -> See routing live!
