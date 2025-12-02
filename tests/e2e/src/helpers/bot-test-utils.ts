@@ -9,7 +9,7 @@
  */
 
 import { createTelegramBot, type TelegramBot } from '@duyetbot/telegram-bot';
-import type { Message, Update } from 'telegram-bot-api-types';
+import type { Update } from 'telegram-bot-api-types';
 import { getPerformanceThresholds, parseModeTestConfig } from './test-providers';
 
 /**
@@ -101,7 +101,7 @@ export function setupTelegramAPISpy(bot: TelegramBot): {
   const sentMessages: ExtractedMessage[] = [];
 
   // Spy on bot's sendMessage method
-  const originalSendMessage = bot.sendMessage;
+  const _originalSendMessage = bot.sendMessage;
   bot.sendMessage = async (chatId: number, text: string, options?: any) => {
     sentMessages.push({
       text,
