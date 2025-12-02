@@ -1,0 +1,429 @@
+import type { AppSource, CategoryStat, DailyMetric, ObservabilityEvent } from './types.js';
+
+/**
+ * D1 database interface (subset of Cloudflare D1Database).
+ */
+export interface D1Database {
+  prepare(query: string): D1PreparedStatement;
+  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
+}
+
+interface D1PreparedStatement {
+  bind(...values: unknown[]): D1PreparedStatement;
+  first<T = unknown>(colName?: string): Promise<T | null>;
+  run(): Promise<D1Result>;
+  all<T = unknown>(): Promise<D1Result<T>>;
+}
+
+interface D1Result<T = unknown> {
+  results?: T[];
+  success: boolean;
+  error?: string;
+  meta?: {
+    duration: number;
+    changes: number;
+    last_row_id: number;
+  };
+}
+
+/**
+ * Raw row from D1 events table.
+ */
+interface EventRow {
+  id: number;
+  event_id: string;
+  request_id: string | null;
+  app_source: string;
+  event_type: string;
+  user_id: string | null;
+  username: string | null;
+  chat_id: string | null;
+  repo: string | null;
+  triggered_at: number;
+  completed_at: number | null;
+  duration_ms: number | null;
+  status: string;
+  error_type: string | null;
+  error_message: string | null;
+  input_text: string | null;
+  response_text: string | null;
+  classification_type: string | null;
+  classification_category: string | null;
+  classification_complexity: string | null;
+  agents: string | null;
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  cached_tokens: number;
+  reasoning_tokens: number;
+  model: string | null;
+  metadata: string | null;
+  created_at: number;
+}
+
+/**
+ * Raw row from daily_metrics view.
+ */
+interface DailyMetricRow {
+  date: string;
+  app_source: string;
+  total_events: number;
+  successful: number;
+  failed: number;
+  avg_duration_ms: number;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+}
+
+/**
+ * Raw row from category_stats view.
+ */
+interface CategoryStatRow {
+  classification_category: string;
+  total: number;
+  avg_duration_ms: number;
+  total_tokens: number;
+}
+
+/**
+ * ObservabilityStorage handles D1 database operations for observability events.
+ */
+export class ObservabilityStorage {
+  constructor(private db: D1Database) {}
+
+  /**
+   * Write a completed event to the database.
+   */
+  async writeEvent(event: ObservabilityEvent): Promise<void> {
+    const stmt = this.db.prepare(`
+      INSERT INTO observability_events (
+        event_id, request_id, app_source, event_type,
+        user_id, username, chat_id, repo,
+        triggered_at, completed_at, duration_ms,
+        status, error_type, error_message,
+        input_text, response_text,
+        classification_type, classification_category, classification_complexity,
+        agents,
+        input_tokens, output_tokens, total_tokens, cached_tokens, reasoning_tokens,
+        model, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    await stmt
+      .bind(
+        event.eventId,
+        event.requestId ?? null,
+        event.appSource,
+        event.eventType,
+        event.userId ?? null,
+        event.username ?? null,
+        event.chatId ?? null,
+        event.repo ?? null,
+        event.triggeredAt,
+        event.completedAt ?? null,
+        event.durationMs ?? null,
+        event.status,
+        event.errorType ?? null,
+        event.errorMessage ?? null,
+        event.inputText ?? null,
+        event.responseText ?? null,
+        event.classification?.type ?? null,
+        event.classification?.category ?? null,
+        event.classification?.complexity ?? null,
+        JSON.stringify(event.agents),
+        event.inputTokens,
+        event.outputTokens,
+        event.totalTokens,
+        event.cachedTokens,
+        event.reasoningTokens,
+        event.model ?? null,
+        event.metadata ? JSON.stringify(event.metadata) : null
+      )
+      .run();
+  }
+
+  /**
+   * Write event with retry logic and exponential backoff.
+   * Returns success status instead of throwing, allowing callers to handle failures gracefully.
+   *
+   * @param event - The observability event to write
+   * @param maxRetries - Maximum number of retry attempts (default: 3)
+   * @returns Object with success status and optional error message
+   */
+  async writeEventWithRetry(
+    event: ObservabilityEvent,
+    maxRetries = 3
+  ): Promise<{ success: boolean; error?: string; attempts: number }> {
+    let lastError: Error | undefined;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        await this.writeEvent(event);
+        return { success: true, attempts: attempt };
+      } catch (err) {
+        lastError = err instanceof Error ? err : new Error(String(err));
+
+        // Don't retry on the last attempt
+        if (attempt < maxRetries) {
+          // Exponential backoff: 100ms, 200ms, 400ms
+          const delay = 100 * 2 ** (attempt - 1);
+          await new Promise((resolve) => setTimeout(resolve, delay));
+        }
+      }
+    }
+
+    return {
+      success: false,
+      error: lastError?.message ?? 'Unknown error',
+      attempts: maxRetries,
+    };
+  }
+
+  /**
+   * Get recent events ordered by triggered_at descending.
+   */
+  async getRecentEvents(limit = 50): Promise<ObservabilityEvent[]> {
+    const result = await this.db
+      .prepare(
+        `
+      SELECT * FROM observability_events
+      ORDER BY triggered_at DESC
+      LIMIT ?
+    `
+      )
+      .bind(limit)
+      .all<EventRow>();
+
+    return (result.results ?? []).map(this.rowToEvent);
+  }
+
+  /**
+   * Get events by app source.
+   */
+  async getEventsBySource(appSource: AppSource, limit = 50): Promise<ObservabilityEvent[]> {
+    const result = await this.db
+      .prepare(
+        `
+      SELECT * FROM observability_events
+      WHERE app_source = ?
+      ORDER BY triggered_at DESC
+      LIMIT ?
+    `
+      )
+      .bind(appSource, limit)
+      .all<EventRow>();
+
+    return (result.results ?? []).map(this.rowToEvent);
+  }
+
+  /**
+   * Get events by user ID.
+   */
+  async getEventsByUser(userId: string, limit = 50): Promise<ObservabilityEvent[]> {
+    const result = await this.db
+      .prepare(
+        `
+      SELECT * FROM observability_events
+      WHERE user_id = ?
+      ORDER BY triggered_at DESC
+      LIMIT ?
+    `
+      )
+      .bind(userId, limit)
+      .all<EventRow>();
+
+    return (result.results ?? []).map(this.rowToEvent);
+  }
+
+  /**
+   * Get error events from the last N hours.
+   */
+  async getRecentErrors(hours = 24, limit = 50): Promise<ObservabilityEvent[]> {
+    const cutoff = Date.now() - hours * 60 * 60 * 1000;
+    const result = await this.db
+      .prepare(
+        `
+      SELECT * FROM observability_events
+      WHERE status = 'error' AND triggered_at > ?
+      ORDER BY triggered_at DESC
+      LIMIT ?
+    `
+      )
+      .bind(cutoff, limit)
+      .all<EventRow>();
+
+    return (result.results ?? []).map(this.rowToEvent);
+  }
+
+  /**
+   * Get daily metrics for the last N days.
+   */
+  async getDailyMetrics(days = 7): Promise<DailyMetric[]> {
+    const result = await this.db
+      .prepare(
+        `
+      SELECT * FROM observability_daily_metrics
+      WHERE date >= date('now', '-' || ? || ' days')
+      ORDER BY date DESC
+    `
+      )
+      .bind(days)
+      .all<DailyMetricRow>();
+
+    return (result.results ?? []).map((row) => ({
+      date: row.date,
+      appSource: row.app_source as AppSource,
+      totalEvents: row.total_events,
+      successful: row.successful,
+      failed: row.failed,
+      avgDurationMs: row.avg_duration_ms,
+      totalTokens: row.total_tokens,
+      inputTokens: row.input_tokens,
+      outputTokens: row.output_tokens,
+    }));
+  }
+
+  /**
+   * Get category statistics for the last 7 days.
+   */
+  async getCategoryStats(): Promise<CategoryStat[]> {
+    const result = await this.db
+      .prepare('SELECT * FROM observability_category_stats')
+      .all<CategoryStatRow>();
+
+    return (result.results ?? []).map((row) => ({
+      classificationCategory: row.classification_category,
+      total: row.total,
+      avgDurationMs: row.avg_duration_ms,
+      totalTokens: row.total_tokens,
+    }));
+  }
+
+  /**
+   * Get total token usage for a time range.
+   */
+  async getTokenUsage(
+    startTime: number,
+    endTime: number
+  ): Promise<{
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    cachedTokens: number;
+    eventCount: number;
+  }> {
+    const result = await this.db
+      .prepare(
+        `
+      SELECT
+        COALESCE(SUM(input_tokens), 0) as input_tokens,
+        COALESCE(SUM(output_tokens), 0) as output_tokens,
+        COALESCE(SUM(total_tokens), 0) as total_tokens,
+        COALESCE(SUM(cached_tokens), 0) as cached_tokens,
+        COUNT(*) as event_count
+      FROM observability_events
+      WHERE triggered_at >= ? AND triggered_at <= ?
+    `
+      )
+      .bind(startTime, endTime)
+      .first<{
+        input_tokens: number;
+        output_tokens: number;
+        total_tokens: number;
+        cached_tokens: number;
+        event_count: number;
+      }>();
+
+    return {
+      inputTokens: result?.input_tokens ?? 0,
+      outputTokens: result?.output_tokens ?? 0,
+      totalTokens: result?.total_tokens ?? 0,
+      cachedTokens: result?.cached_tokens ?? 0,
+      eventCount: result?.event_count ?? 0,
+    };
+  }
+
+  /**
+   * Get a single event by ID.
+   */
+  async getEventById(eventId: string): Promise<ObservabilityEvent | null> {
+    const result = await this.db
+      .prepare('SELECT * FROM observability_events WHERE event_id = ?')
+      .bind(eventId)
+      .first<EventRow>();
+
+    return result ? this.rowToEvent(result) : null;
+  }
+
+  /**
+   * Convert a database row to an ObservabilityEvent.
+   * Handles exactOptionalPropertyTypes by conditionally adding optional fields.
+   */
+  private rowToEvent = (row: EventRow): ObservabilityEvent => {
+    const event: ObservabilityEvent = {
+      eventId: row.event_id,
+      appSource: row.app_source as AppSource,
+      eventType: row.event_type,
+      triggeredAt: row.triggered_at,
+      status: row.status as ObservabilityEvent['status'],
+      agents: row.agents ? JSON.parse(row.agents) : [],
+      inputTokens: row.input_tokens,
+      outputTokens: row.output_tokens,
+      totalTokens: row.total_tokens,
+      cachedTokens: row.cached_tokens,
+      reasoningTokens: row.reasoning_tokens,
+    };
+
+    // Conditionally add optional properties (exactOptionalPropertyTypes)
+    if (row.request_id !== null) {
+      event.requestId = row.request_id;
+    }
+    if (row.user_id !== null) {
+      event.userId = row.user_id;
+    }
+    if (row.username !== null) {
+      event.username = row.username;
+    }
+    if (row.chat_id !== null) {
+      event.chatId = row.chat_id;
+    }
+    if (row.repo !== null) {
+      event.repo = row.repo;
+    }
+    if (row.completed_at !== null) {
+      event.completedAt = row.completed_at;
+    }
+    if (row.duration_ms !== null) {
+      event.durationMs = row.duration_ms;
+    }
+    if (row.error_type !== null) {
+      event.errorType = row.error_type;
+    }
+    if (row.error_message !== null) {
+      event.errorMessage = row.error_message;
+    }
+    if (row.input_text !== null) {
+      event.inputText = row.input_text;
+    }
+    if (row.response_text !== null) {
+      event.responseText = row.response_text;
+    }
+    if (row.model !== null) {
+      event.model = row.model;
+    }
+    if (row.metadata !== null) {
+      event.metadata = JSON.parse(row.metadata);
+    }
+
+    if (row.classification_type && row.classification_category) {
+      event.classification = {
+        type: row.classification_type,
+        category: row.classification_category,
+        complexity: row.classification_complexity ?? 'unknown',
+      };
+    }
+
+    return event;
+  };
+}

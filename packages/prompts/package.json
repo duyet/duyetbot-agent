@@ -1,0 +1,25 @@
+{
+  "name": "@duyetbot/prompts",
+  "version": "0.1.0",
+  "main": "dist/index.js",
+  "devDependencies": {
+    "@duyetbot/config-vitest": "workspace:*",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "description": "Shared system prompts for duyetbot agents",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "type": "module",
+  "types": "dist/index.d.ts"
+}

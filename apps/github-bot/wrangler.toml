@@ -1,0 +1,89 @@
+name = "duyetbot-github"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[build]
+command = "bun run build"
+
+[ai]
+binding = "AI"
+
+[vars]
+ENVIRONMENT = "production"
+MODEL = "x-ai/grok-4.1-fast:free"
+AI_GATEWAY_NAME = "duyetbot"
+BOT_USERNAME = "duyetbot"
+GITHUB_ADMIN = "duyet"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[placement]
+mode = "smart"
+
+# Local Durable Object - GitHubAgent is app-specific
+[[durable_objects.bindings]]
+name = "GitHubAgent"
+class_name = "GitHubAgent"
+
+# Shared Durable Objects - from duyetbot-agents worker
+[[durable_objects.bindings]]
+name = "RouterAgent"
+class_name = "RouterAgent"
+script_name = "duyetbot-agents"
+
+[[durable_objects.bindings]]
+name = "SimpleAgent"
+class_name = "SimpleAgent"
+script_name = "duyetbot-agents"
+
+[[durable_objects.bindings]]
+name = "HITLAgent"
+class_name = "HITLAgent"
+script_name = "duyetbot-agents"
+
+[[durable_objects.bindings]]
+name = "OrchestratorAgent"
+class_name = "OrchestratorAgent"
+script_name = "duyetbot-agents"
+
+[[durable_objects.bindings]]
+name = "CodeWorker"
+class_name = "CodeWorker"
+script_name = "duyetbot-agents"
+
+[[durable_objects.bindings]]
+name = "ResearchWorker"
+class_name = "ResearchWorker"
+script_name = "duyetbot-agents"
+
+[[durable_objects.bindings]]
+name = "GitHubWorker"
+class_name = "GitHubWorker"
+script_name = "duyetbot-agents"
+
+[[durable_objects.bindings]]
+name = "DuyetInfoAgent"
+class_name = "DuyetInfoAgent"
+script_name = "duyetbot-agents"
+
+# Migrations for local DO only (shared DOs managed by duyetbot-agents)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["GitHubAgent"]
+
+# D1 Database binding for observability (schema owned by shared-agents)
+[[d1_databases]]
+binding = "OBSERVABILITY_DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
