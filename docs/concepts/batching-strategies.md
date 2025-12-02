@@ -55,40 +55,40 @@ From [`batch-types.ts`](packages/chat-agent/src/batch-types.ts:165):
 ```typescript
 // Check if ready to process
 if (shouldProcessImmediately(state, config)) {
-  // Promote pending → active
+  // Promote pending -> active
 }
 ```
 
 ## Decision Tree
 
 ```
-┌──────────┐
-│ New Msg  │
-└────┬─────┘
-     │
-     ▼
- ┌──────────────┐
- │ activeBatch? │
- └────┬──────┬──┘
-      │      │
-    Yes     No
-      │      │
-      ▼      ▼
- ┌──────────────┐  ┌──────────────────┐
- │ Stuck 30s?   │  │ Start pending    │
- └──┬────────┬──┘  │ Alarm 500ms      │
-    │        │     └────────┬─────────┘
-   Yes      No             │
-    │        │             ▼
-    ▼        ▼      ┌────────────────────────┐
- ┌────────┐ ┌──────────┐ │ onBatchAlarm:        │
- │ Clear  │ │ Add to   │ │ pending → active     │
- │ active │ │ pending  │ └────────┬─────────────┘
- └────────┘ └──────────┘          │
-                                  ▼
-                           ┌──────────────┐
-                           │ Process LLM  │
-                           └──────────────┘
++----------+
+| New Msg  |
++-----+----+
+      |
+      v
++--------------+
+| activeBatch? |
++-----+----+---+
+      |    |
+    Yes   No
+      |    |
+      v    v
++-----------+  +------------------+
+| Stuck 30s?|  | Start pending    |
++---+----+-+  | Alarm 500ms      |
+   Yes   No   +-------+----------+
+    |    |           |
+    v    v           v
+ +-----+ +-------+ +--------------+
+ |Clear| |Add to | | onBatchAlarm:|
+ |    | |pending| |pending->active
+ +-----+ +-------+ +-----------+---+
+                               |
+                               v
+                      +-----------+
+                      |Process LLM|
+                      +-----------+
 ```
 
 Integrates [`batching-alarms.md`](/core-concepts/batching-alarms).
@@ -102,7 +102,7 @@ B: Always retry
 C: Manual only
 
 ## Related
-- [DO Limits →](./do-limits.md)
-- [Token Opt →](/advanced/performance/token-optimization.md)
+- [DO Limits ->](./do-limits.md)
+- [Token Opt ->](/advanced/performance/token-optimization.md)
 
 Run `bun run deploy:telegram`. Send rapid msgs. Check logs for batch sizes!

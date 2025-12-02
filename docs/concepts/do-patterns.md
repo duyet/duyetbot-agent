@@ -19,26 +19,26 @@ From [`PLAN.md`](PLAN.md:43):
 
 ```
                 Telegram/GitHub Webhook
-                         │
-                         ▼
+                         |
+                         v
                   Platform Agent DO
-                         │
-                Memory MCP D1/KV ◀───┐
-                         │           │
-                         ▼           │
-                  RouterAgent        │
-              (Hybrid Classifier)    │
-                         │◀──────────┘
-          ┌────┬────────┼──────┬────────┐
-          │    │        │      │        │
-          ▼    ▼        ▼      ▼        ▼
+                         |
+                Memory MCP D1/KV ◀---+
+                         |           |
+                         v           |
+                  RouterAgent        |
+              (Hybrid Classifier)    |
+                         |◀----------+
+          +----+--------+------+--------+
+          |    |        |      |        |
+          v    v        v      v        v
        Simple HITL Orchestrator Duyet
        Agent  Agent  Agent      Info
-              │                Agent
-              │
-         ┌────┼────┬──────┐
-         │    │    │      │
-         ▼    ▼    ▼      ▼
+              |                Agent
+              |
+         +----+----+------+
+         |    |    |      |
+         v    v    v      v
        Code Research GitHub
        Worker Worker  Worker
 ```
@@ -80,6 +80,6 @@ A: All queries ✅
 
 **Pro Tip** ✅: 8 DOs scale globally, free idle.
 
-**CTA**: Study [`PLAN.md`](PLAN.md) → Extend!
+**CTA**: Study [`PLAN.md`](PLAN.md) -> Extend!
 
-**Next**: [Custom Tools →](../extend/custom-tools.md)
+**Next**: [Custom Tools ->](../extend/custom-tools.md)

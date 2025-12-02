@@ -5,7 +5,7 @@ description: "Specialized patterns: researcher/codeReviewer/planner/git/github. 
 
 <!-- i18n: en -->
 
-**TL;DR**: `createSubagent({name, tools, prompt})` → Delegate via `agents[]` in query(). Predefined: researcher etc.
+**TL;DR**: `createSubagent({name, tools, prompt})` -> Delegate via `agents[]` in query(). Predefined: researcher etc.
 
 ## Table of Contents
 - [Predefined](#predefined)
@@ -62,43 +62,43 @@ Options: `createSubagentOptions(parentOpts, subagent, tools)`
 ## Delegation Flow
 
 ```
-┌──────────────────┐
-│ Main Query       │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Router           │
-│ classifies       │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Subagent         │
-│ selected         │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Filtered tools   │
-│ only             │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Specialized      │
-│ model/prompt     │
-└────────┬─────────┘
-         │
-         ▼
-┌──────────────────┐
-│ Stream back      │
-└──────────────────┘
++---------------------+
+| Main Query          |
++----------+----------+
+           |
+           v
++---------------------+
+| Router              |
+| classifies          |
++----------+----------+
+           |
+           v
++---------------------+
+| Subagent            |
+| selected            |
++----------+----------+
+           |
+           v
++---------------------+
+| Filtered tools      |
+| only                |
++----------+----------+
+           |
+           v
++---------------------+
+| Specialized         |
+| model/prompt        |
++----------+----------+
+           |
+           v
++---------------------+
+| Stream back         |
++---------------------+
 ```
 
 **Quiz**: researcher tools?
 A: research/web_search ✅
 
-**Try**: `getPredefinedSubagent('researcher')` → Delegate!
+**Try**: `getPredefinedSubagent('researcher')` -> Delegate!
 
 **Related**: [Query ←](./query.md)

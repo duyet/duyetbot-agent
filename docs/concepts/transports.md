@@ -59,7 +59,7 @@ export const githubTransport: Transport<GitHubContext> = {
 | send | 4096-char split/Markdown | Comment on issue/PR |
 | edit | editMessageText | updateComment |
 | typing | sendChatAction | N/A |
-| parse | webhook → text/chatId | Payload → XML context |
+| parse | webhook -> text/chatId | Payload -> XML context |
 | LOC | ~50 | ~50 |
 
 **Reduces duplication 6x!**
@@ -67,6 +67,6 @@ export const githubTransport: Transport<GitHubContext> = {
 **Quiz**: Transports vs Agents?  
 A: Transports handle platform APIs; Agents contain logic ✅
 
-**Related**: [Router →](./router-agent.md) | [Deployment →](../deployment)
+**Related**: [Router ->](./router-agent.md) | [Deployment ->](../deployment)
 
-**Next**: [Memory MCP →](./memory-mcp.md)
+**Next**: [Memory MCP ->](./memory-mcp.md)
