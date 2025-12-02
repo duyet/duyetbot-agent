@@ -1,3 +1,3 @@
-import { DocsLayout } from 'fumadocs-ui/layout'
+import { DocsLayout } from 'fumadocs-ui/layout';
 
-export default DocsLayout
+export default DocsLayout;
