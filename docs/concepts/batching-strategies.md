@@ -80,15 +80,15 @@ if (shouldProcessImmediately(state, config)) {
     │        │     └────────┬─────────┘
    Yes      No             │
     │        │             ▼
-    ▼        ▼      ┌────────────────────┐
- ┌────────┐ ┌──────────────┐  │ onBatchAlarm:      │
- │ Clear  │ │ Add to       │  │ pending → active   │
- │ active │ │ pending      │  └────────┬───────────┘
- └────────┘ └──────────────┘           │
-                                       ▼
-                                 ┌──────────────┐
-                                 │ Process LLM  │
-                                 └──────────────┘
+    ▼        ▼      ┌────────────────────────┐
+ ┌────────┐ ┌──────────┐ │ onBatchAlarm:        │
+ │ Clear  │ │ Add to   │ │ pending → active     │
+ │ active │ │ pending  │ └────────┬─────────────┘
+ └────────┘ └──────────┘          │
+                                  ▼
+                           ┌──────────────┐
+                           │ Process LLM  │
+                           └──────────────┘
 ```
 
 Integrates [`batching-alarms.md`](/core-concepts/batching-alarms).

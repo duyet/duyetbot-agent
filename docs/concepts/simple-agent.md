@@ -27,10 +27,10 @@ description: Direct LLM responses for low-complexity queries. No tools. Leverage
            │      │
         Yes│      │No
            ▼      ▼
-      ┌─────────────┐  ┌─────────────┐
-      │ SimpleAgent │  │ Orchestrator│
-      └──────┬──────┘  │ /etc.       │
-             │         └─────────────┘
+      ┌─────────────┐  ┌──────────────┐
+      │ SimpleAgent │  │ Orchestrator │
+      └──────┬──────┘  │ /etc.        │
+             │         └──────────────┘
              ▼
       ┌──────────────────┐
       │ Load Parent      │

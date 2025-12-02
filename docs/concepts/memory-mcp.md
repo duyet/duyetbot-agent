@@ -16,17 +16,17 @@ description: "D1-backed persistent memory. Cross-session context. GitHub auth. M
 ## ERD
 
 ```
-        memory_users (1)
-            │
-            ├─o──── owns ────o─ memory_sessions (M)
-            │                       │
-            │                       ├─o──── contains ────o─ memory_messages (M)
-            │
-            └─o──── has ────o─ memory_session_tokens (M)
+            memory_users (1)
+                │
+                ├─o──── owns ────o─ memory_sessions (M)
+                │                        │
+                │                        ├─o──── contains ────o─ memory_messages (M)
+                │
+                └─o──── has ────o─ memory_session_tokens (M)
 
 
 TABLES:
-──────────────────────────────────────────────
+────────────────────────────────────────────────
 
 memory_users (PK: id)
   ├─ id (string, PK)

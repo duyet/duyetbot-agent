@@ -14,48 +14,48 @@ description: System design overview of duyetbot-agent's hybrid supervisor-worker
 ### Architecture Diagram
 
 ```
-┌───────────────────────────────────────────────────────────────────────────┐
-│                        Cloudflare Workers (Edge)                          │
-│                                                                           │
-│  ┌────────────────────────────────────────────────────────────────────┐   │
-│  │  HTTP Handlers (Webhook Entry Points)                              │   │
-│  │  ┌──────────────────┐  ┌──────────────────┐  ┌─────────────────┐   │   │
-│  │  │ Telegram Webhook │  │  GitHub Webhook  │  │  Health Routes  │   │   │
-│  │  │  /webhook POST   │  │  /webhook POST   │  │  /health /etc   │   │   │
-│  │  └────────┬─────────┘  └────────┬─────────┘  └─────────────────┘   │   │
-│  │           │                     │                                  │   │
-│  │           └─────────┬───────────┘                                  │   │
-│  │                     │                                              │   │
-│  │              Parse & Validate                                      │   │
-│  │         (auth, signature, dedup)                                   │   │
-│  │                     │                                              │   │
-│  │                     ▼                                              │   │
-│  │        ┌────────────────────────┐                                  │   │
-│  │        │  TelegramAgent (DO)    │     ┌───────────────────┐        │   │
-│  │        │  or GitHubAgent (DO)   │────→│ Shared Agents     │        │   │
-│  │        │                        │     │ via script_name   │        │   │
-│  │        │ • State Management     │     │ binding:          │        │   │
-│  │        │ • Message Queue        │     │ • RouterAgent     │        │   │
-│  │        │ • Batch Processing     │     │ • SimpleAgent     │        │   │
-│  │        │ • Heartbeat            │     │ • Orchestrator    │        │   │
-│  │        └────────────────────────┘     │ • HITLAgent       │        │   │
-│  │                                       │ • 4 Workers       │        │   │
-│  │                                       └───────────────────┘        │   │
-│  │                                                                    │   │
-│  │  ┌──────────────────────────────────────────────────────────────┐  │   │
-│  │  │  Memory MCP Server (D1 + KV)                                 │  │   │
-│  │  │  • Cross-session memory persistence                          │  │   │
-│  │  │  • User isolation                                            │  │   │
-│  │  │  • Semantic search (future: Vectorize)                       │  │   │
-│  │  └──────────────────────────────────────────────────────────────┘  │   │
-│  └────────────────────────────────────────────────────────────────────┘   │
-│                                                                           │
-│  External Integrations:                                                   │
-│  • Claude API (via Anthropic base URL)                                    │
-│  • GitHub API (webhooks + REST)                                           │
-│  • Telegram Bot API (webhooks + REST)                                     │
-│  • MCP Servers (duyet-mcp, github-mcp, etc.)                              │
-└───────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          Cloudflare Workers (Edge)                          │
+│                                                                             │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │  HTTP Handlers (Webhook Entry Points)                                │   │
+│  │  ┌──────────────────┐  ┌──────────────────┐  ┌─────────────────┐    │   │
+│  │  │ Telegram Webhook │  │  GitHub Webhook  │  │  Health Routes  │    │   │
+│  │  │  /webhook POST   │  │  /webhook POST   │  │  /health /etc   │    │   │
+│  │  └────────┬─────────┘  └────────┬─────────┘  └─────────────────┘    │   │
+│  │           │                     │                                    │   │
+│  │           └─────────┬───────────┘                                    │   │
+│  │                     │                                                │   │
+│  │              Parse & Validate                                        │   │
+│  │         (auth, signature, dedup)                                     │   │
+│  │                     │                                                │   │
+│  │                     ▼                                                │   │
+│  │        ┌────────────────────────┐                                    │   │
+│  │        │  TelegramAgent (DO)    │     ┌───────────────────┐          │   │
+│  │        │  or GitHubAgent (DO)   │────→│ Shared Agents     │          │   │
+│  │        │                        │     │ via script_name   │          │   │
+│  │        │ • State Management     │     │ binding:          │          │   │
+│  │        │ • Message Queue        │     │ • RouterAgent     │          │   │
+│  │        │ • Batch Processing     │     │ • SimpleAgent     │          │   │
+│  │        │ • Heartbeat            │     │ • Orchestrator    │          │   │
+│  │        └────────────────────────┘     │ • HITLAgent       │          │   │
+│  │                                       │ • 4 Workers       │          │   │
+│  │                                       └───────────────────┘          │   │
+│  │                                                                      │   │
+│  │  ┌────────────────────────────────────────────────────────────────┐ │   │
+│  │  │  Memory MCP Server (D1 + KV)                                   │ │   │
+│  │  │  • Cross-session memory persistence                            │ │   │
+│  │  │  • User isolation                                              │ │   │
+│  │  │  • Semantic search (future: Vectorize)                         │ │   │
+│  │  └────────────────────────────────────────────────────────────────┘ │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
+│                                                                             │
+│  External Integrations:                                                     │
+│  • Claude API (via Anthropic base URL)                                      │
+│  • GitHub API (webhooks + REST)                                             │
+│  • Telegram Bot API (webhooks + REST)                                       │
+│  • MCP Servers (duyet-mcp, github-mcp, etc.)                                │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Key Design Principles
@@ -230,39 +230,39 @@ agent.queueMessage(ctx).catch(() => {});
 ### 8 Durable Objects (All Deployed ✅)
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│               RouterAgent (Hybrid Classifier)                │
-│                                                              │
-│  Input: User query (from Telegram/GitHub)                   │
-│                                                              │
-│  ┌─ Phase 1: Pattern Match (10-50ms) ──────────────────┐   │
-│  │                                                      │   │
-│  │  Regex checks for quick route:                       │   │
-│  │  ├─ /^(hi|hello|hey)/i ────→ SimpleAgent            │   │
-│  │  ├─ /help|\?/i ────────────→ SimpleAgent            │   │
-│  │  ├─ /yes|no|approve/i ─────→ HITLAgent              │   │
-│  │  └─ No match? → Phase 2                             │   │
-│  │                                                      │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                      │                                       │
-│                      ▼                                       │
-│  ┌─ Phase 2: LLM Classification (200-500ms) ────────────┐   │
-│  │                                                      │   │
-│  │  Call Claude with classification prompt              │   │
-│  │  Analyze: type, category, complexity, approval      │   │
-│  │                                                      │   │
-│  │  Returns schema:                                     │   │
-│  │  {                                                   │   │
-│  │    type: "simple" | "complex",                       │   │
-│  │    category: "code" | "research" | "github" | ...,   │   │
-│  │    complexity: "low" | "medium" | "high",            │   │
-│  │    requiresHumanApproval: boolean,                   │   │
-│  │    reasoning: string                                 │   │
-│  │  }                                                   │   │
-│  │                                                      │   │
-│  └──────────────────────────────────────────────────────┘   │
-│                      │                                       │
-└──────────────────────┼───────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│                  RouterAgent (Hybrid Classifier)                 │
+│                                                                  │
+│  Input: User query (from Telegram/GitHub)                       │
+│                                                                  │
+│  ┌─ Phase 1: Pattern Match (10-50ms) ────────────────────────┐  │
+│  │                                                            │  │
+│  │  Regex checks for quick route:                             │  │
+│  │  ├─ /^(hi|hello|hey)/i ────→ SimpleAgent                  │  │
+│  │  ├─ /help|\?/i ────────────→ SimpleAgent                  │  │
+│  │  ├─ /yes|no|approve/i ─────→ HITLAgent                    │  │
+│  │  └─ No match? → Phase 2                                   │  │
+│  │                                                            │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                          │                                       │
+│                          ▼                                       │
+│  ┌─ Phase 2: LLM Classification (200-500ms) ──────────────────┐  │
+│  │                                                            │  │
+│  │  Call Claude with classification prompt                    │  │
+│  │  Analyze: type, category, complexity, approval            │  │
+│  │                                                            │  │
+│  │  Returns schema:                                           │  │
+│  │  {                                                         │  │
+│  │    type: "simple" | "complex",                             │  │
+│  │    category: "code" | "research" | "github" | ...,         │  │
+│  │    complexity: "low" | "medium" | "high",                  │  │
+│  │    requiresHumanApproval: boolean,                         │  │
+│  │    reasoning: string                                       │  │
+│  │  }                                                         │  │
+│  │                                                            │  │
+│  └────────────────────────────────────────────────────────────┘  │
+│                          │                                       │
+└──────────────────────────┼───────────────────────────────────────┘
                        │
               Determine Route Target
                        │
@@ -275,36 +275,36 @@ agent.queueMessage(ctx).catch(() => {});
                   Sensitive ops
 
 
-┌─ Route Determination Algorithm ───────────────────────────┐
-│                                                           │
-│  IMPORTANT: Router only dispatches to AGENTS.             │
-│  Workers are dispatched by OrchestratorAgent.             │
-│                                                           │
-│  if (type === 'tool_confirmation')                        │
-│    → return 'hitl-agent'                                  │
-│                                                           │
-│  if (requiresHumanApproval === true)                      │
-│    → return 'hitl-agent'                                  │
-│                                                           │
-│  if (category === 'duyet')                                │
-│    → return 'duyet-info-agent'                            │
-│                                                           │
-│  if (category === 'research' && complexity >= 'medium')   │
-│    → return 'lead-researcher-agent'                       │
-│                                                           │
-│  if (complexity === 'high')                               │
-│    → return 'orchestrator-agent'                          │
-│                                                           │
-│  if (type === 'simple' && complexity === 'low')           │
-│    → return 'simple-agent'                                │
-│                                                           │
-│  if (category === 'code' || 'research' || 'github')       │
-│    → return 'orchestrator-agent'  // dispatches workers   │
-│                                                           │
-│  default:                                                 │
-│    → return 'simple-agent'                                │
-│                                                           │
-└───────────────────────────────────────────────────────────┘
+┌─ Route Determination Algorithm ────────────────────────────────┐
+│                                                                │
+│  IMPORTANT: Router only dispatches to AGENTS.                 │
+│  Workers are dispatched by OrchestratorAgent.                 │
+│                                                                │
+│  if (type === 'tool_confirmation')                            │
+│    → return 'hitl-agent'                                      │
+│                                                                │
+│  if (requiresHumanApproval === true)                          │
+│    → return 'hitl-agent'                                      │
+│                                                                │
+│  if (category === 'duyet')                                    │
+│    → return 'duyet-info-agent'                                │
+│                                                                │
+│  if (category === 'research' && complexity >= 'medium')       │
+│    → return 'lead-researcher-agent'                           │
+│                                                                │
+│  if (complexity === 'high')                                   │
+│    → return 'orchestrator-agent'                              │
+│                                                                │
+│  if (type === 'simple' && complexity === 'low')               │
+│    → return 'simple-agent'                                    │
+│                                                                │
+│  if (category === 'code' || 'research' || 'github')           │
+│    → return 'orchestrator-agent'  // dispatches workers       │
+│                                                                │
+│  default:                                                     │
+│    → return 'simple-agent'                                    │
+│                                                                │
+└────────────────────────────────────────────────────────────────┘
 ```
 
 ### Agent vs Worker Distinction
@@ -350,29 +350,29 @@ They expect a `PlanStep` and return `WorkerResult`, not `AgentResult`.
 ### Dual-Batch Queue (The Heart of Reliability)
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│           State: Two-Batch Architecture                      │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│  pendingBatch: BatchState (mutable, always collecting)      │
-│  ├─ status: 'collecting'                                   │
-│  ├─ pendingMessages: PendingMessage[]                       │
-│  ├─ lastMessageAt: number                                   │
-│  └─ (New messages added here ALWAYS)                        │
-│                                                             │
-│  activeBatch: BatchState | null (immutable during process) │
-│  ├─ status: 'processing'                                   │
-│  ├─ pendingMessages: PendingMessage[] (snapshot)            │
-│  ├─ lastHeartbeat: number (updated every 5s)               │
-│  └─ messageRef: string (for thinking message edits)         │
-│                                                             │
-│  Why two batches?                                          │
-│  • pendingBatch never blocks new messages                  │
-│  • activeBatch processes atomically                        │
-│  • Stuck activeBatch won't block new input                 │
-│  • Recovery: promote pendingBatch → activeBatch            │
-│                                                             │
-└─────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────┐
+│             State: Two-Batch Architecture                     │
+├───────────────────────────────────────────────────────────────┤
+│                                                               │
+│  pendingBatch: BatchState (mutable, always collecting)        │
+│  ├─ status: 'collecting'                                     │
+│  ├─ pendingMessages: PendingMessage[]                         │
+│  ├─ lastMessageAt: number                                     │
+│  └─ (New messages added here ALWAYS)                          │
+│                                                               │
+│  activeBatch: BatchState | null (immutable during process)   │
+│  ├─ status: 'processing'                                     │
+│  ├─ pendingMessages: PendingMessage[] (snapshot)              │
+│  ├─ lastHeartbeat: number (updated every 5s)                 │
+│  └─ messageRef: string (for thinking message edits)           │
+│                                                               │
+│  Why two batches?                                            │
+│  • pendingBatch never blocks new messages                    │
+│  • activeBatch processes atomically                          │
+│  • Stuck activeBatch won't block new input                   │
+│  • Recovery: promote pendingBatch → activeBatch              │
+│                                                               │
+└───────────────────────────────────────────────────────────────┘
 ```
 
 ### Message Arrival to Processing
@@ -515,14 +515,14 @@ Foundation Layer
          ├─ Session manager
          └─ MCP client
 
-      └─ @duyetbot/chat-agent (2400+ LOC)
-         ├─ CloudflareChatAgent
-         ├─ RouterAgent + classifier
-         ├─ SimpleAgent, OrchestratorAgent
-         ├─ HITLAgent
-         ├─ 4 Workers (Code, Research, GitHub, DuyetInfo)
-         ├─ Batch processing logic
-         └─ Transport interface
+         └─ @duyetbot/chat-agent (2400+ LOC)
+            ├─ CloudflareChatAgent
+            ├─ RouterAgent + classifier
+            ├─ SimpleAgent, OrchestratorAgent
+            ├─ HITLAgent
+            ├─ 4 Workers (Code, Research, GitHub, DuyetInfo)
+            ├─ Batch processing logic
+            └─ Transport interface
 
 Application Layer
 ├─ apps/telegram-bot

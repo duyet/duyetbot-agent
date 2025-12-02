@@ -78,11 +78,11 @@ Auto-recovery: Clear `activeBatch`. Promote `pendingBatch`.
 └────────┬─────────────┘
          │
          ▼
-   ┌──────────────┐
-   │ Alarm 500ms? │
-   └────────┬─────┘
-            │
-            ▼
+    ┌──────────────┐
+    │ Alarm 500ms? │
+    └────────┬─────┘
+             │
+             ▼
 ┌──────────────────────┐
 │ activeBatch          │
 │ Process LLM          │
@@ -99,21 +99,21 @@ Auto-recovery: Clear `activeBatch`. Promote `pendingBatch`.
 │ Response Ready       │
 └──────────────────────┘
 
-┌──────────────┐
-│ New Msg      │
-└──────┬───────┘
-       │
-       ▼
-  ┌────────────────┐
-  │ Stuck?         │
-  │ 30s no beat?   │
-  └───┬──────┬─────┘
-      │ Yes  │ No
-      ▼      │
-  ┌────────────────┐
-  │ Clear active   │
-  │ Recover        │
-  └────────────────┘
+┌────────────────────┐
+│ New Msg            │
+└────────┬───────────┘
+         │
+         ▼
+    ┌────────────────┐
+    │ Stuck?         │
+    │ 30s no beat?   │
+    └───┬────────┬───┘
+        │ Yes    │ No
+        ▼        │
+    ┌────────────────┐
+    │ Clear active   │
+    │ Recover        │
+    └────────────────┘
 ```
 
 **Quiz**: Free tier alarms/day?

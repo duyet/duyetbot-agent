@@ -37,36 +37,36 @@ export function determineRiskLevel(toolName: string, args?: Record<string, unkno
 ## State Machine
 
 ```
-                START
-                  │
-                  ▼
-           ┌─────────────┐
-           │   idle      │────REQUEST_CONFIRMATION────┐
-           └─────────────┘                            │
-                  ▲                                    ▼
-                  │                     ┌──────────────────────┐
-                  │                     │ awaiting_confirmation│
-                  │                     └──────────────────────┘
-                  │                       │              │
-                  │           USER_APPROVED            USER_REJECTED/
-                  │               │                       EXPIRED
-                  │               ▼                          │
-                  │        ┌──────────────┐                 │
-                  │        │  executing   │                 │
-                  │        └──────────────┘                 │
-                  │           │         │                   │
-                  │           │         │                   │
-                  │   EXEC_COMPLETED EXEC_FAILED            │
-                  │           │         │                   │
-                  │           ▼         ▼                   │
-                  │      ┌─────────┐  ┌──────┐              │
-                  │      │completed│  │error │              │
-                  │      └─────────┘  └──────┘              │
-                  │           │         │                   │
-                  │           │      RESET                  │
-                  │           │         │                   │
-                  │           ▼         ▼                   │
-                  └──────────END─────────────────────────┘
+                         START
+                           │
+                           ▼
+                    ┌─────────────────┐
+                    │     idle        │──REQUEST_CONFIRMATION──┐
+                    └─────────────────┘                        │
+                           ▲                                   ▼
+                           │                ┌─────────────────────────┐
+                           │                │ awaiting_confirmation   │
+                           │                └─────────────────────────┘
+                           │                  │                   │
+                           │      USER_APPROVED                USER_REJECTED/
+                           │          │                           EXPIRED
+                           │          ▼                              │
+                           │   ┌──────────────┐                     │
+                           │   │  executing   │                     │
+                           │   └──────────────┘                     │
+                           │      │         │                       │
+                           │      │         │                       │
+                           │ EXEC_COMPLETED EXEC_FAILED             │
+                           │      │         │                       │
+                           │      ▼         ▼                       │
+                           │  ┌──────────┐ ┌──────────┐             │
+                           │  │completed │ │  error   │             │
+                           │  └──────────┘ └──────────┘             │
+                           │      │         │                       │
+                           │      │      RESET                      │
+                           │      │         │                       │
+                           │      ▼         ▼                       │
+                           └─────END───────────────────────────────┘
 ```
 
 From [`state-machine.ts`](packages/chat-agent/src/hitl/state-machine.ts:38)
