@@ -1,3 +1,8 @@
+---
+title: Token Optimization Guide
+description: Deep dive into hybrid classification, dual-batch queuing, and agent routing achieving 75% token reduction
+---
+
 # Token Optimization Guide: duyetbot-agent Hybrid Router
 
 ## Overview

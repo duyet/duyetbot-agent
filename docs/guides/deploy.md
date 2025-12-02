@@ -1,3 +1,8 @@
+---
+title: Deploy Reference
+description: Quick reference for deployment commands. Deploy all bots, Telegram only, GitHub only, shared agents. Secret management.
+---
+
 # Deployment Guide
 
 **Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [Contributing](contributing.md)

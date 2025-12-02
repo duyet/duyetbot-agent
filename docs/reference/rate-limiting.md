@@ -1,14 +1,9 @@
 ---
 title: Rate Limiting
 description: Middleware config. IP-based in-memory limits. Headers + 429 responses.
-sidebar_position: 2
-keywords: [rate-limit, middleware, quotas]
-slug: /advanced/security/rate-limiting
 ---
 
 <!-- i18n: en -->
-
-# Rate Limiting ✅
 
 **TL;DR**: Use `createRateLimiter({limit:100, window:60000})`. IP-keyed. In-memory store. Upgrade D1/KV for prod.
 

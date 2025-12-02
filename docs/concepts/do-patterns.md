@@ -1,14 +1,9 @@
 ---
 title: DO Patterns
-desc: "8 Durable Objects: Router/Simple/Orchestrator/HITL/Code/Research/GitHub/DuyetInfo. Bindings via script_name. StateDO watchdog."
-sidebar_position: 1
-keywords: [internals, do, durable-objects, patterns, bindings, agents]
-slug: developer-hub/internals/do-patterns
+description: "8 Durable Objects: Router/Simple/Orchestrator/HITL/Code/Research/GitHub/DuyetInfo. Bindings via script_name. StateDO watchdog."
 ---
 
 <!-- i18n: en -->
-
-# DO Patterns
 
 **TL;DR**: 8 DOs handle routing/execution. Shared via `script_name="duyetbot-agents"`. StateDO tracks sessions/heartbeats. ✅ Deployed.
 
@@ -23,28 +18,29 @@ slug: developer-hub/internals/do-patterns
 From [`PLAN.md`](PLAN.md:43):
 
 ```
-        Telegram/GitHub Webhook
-                 │
-                 ▼
-          Platform Agent DO
-                 │
-        Memory MCP D1/KV ◀──┤
-                 │         │
-                 ▼         │
-          RouterAgent      │
-      (Hybrid Classifier)  │
-                 │◀────────┘
-         ┌───┬───┼───────┬──────┐
-         │   │   │       │      │
-         ▼   ▼   ▼       ▼      ▼
-      Simple HITL Orch  Duyet  (other)
-      Agent Agent Agent Info
-              │  Agent
-         ┌────┼────┬──────┐
-         │    │    │      │
-         ▼    ▼    ▼      ▼
-       Code Res GitHub (Workers)
-       Worker Worker Worker
+             Telegram/GitHub Webhook
+                      │
+                      ▼
+               Platform Agent DO
+                      │
+             Memory MCP D1/KV ◀───┐
+                      │           │
+                      ▼           │
+               RouterAgent        │
+           (Hybrid Classifier)    │
+                      │◀──────────┘
+         ┌────┬───────┼─────┬──────┐
+         │    │       │     │      │
+         ▼    ▼       ▼     ▼      ▼
+      Simple HITL Orchestrator Duyet
+      Agent Agent Agent       Info
+             │               Agent
+             │
+        ┌────┼────┬──────┐
+        │    │    │      │
+        ▼    ▼    ▼      ▼
+      Code Research GitHub
+      Worker Worker  Worker
 ```
 
 ## 8 DOs Table

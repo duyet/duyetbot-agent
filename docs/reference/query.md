@@ -1,14 +1,9 @@
 ---
 title: sdk.query()
-desc: "Async generator for agent execution. Stream messages, tools, results. Options: model/tools/agents/abort."
-sidebar_position: 1
-keywords: [sdk,query,streaming,generator,tools,agents]
-slug: /api-reference/sdk/query
+description: "Async generator for agent execution. Stream messages, tools, results. Options: model/tools/agents/abort."
 ---
 
 <!-- i18n: en -->
-
-# sdk.query() ✅
 
 **TL;DR**: `for await (const msg of sdk.query("Hello", {tools}))` → Stream user/assistant/result. AbortController support.
 

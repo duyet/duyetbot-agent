@@ -1,4 +1,7 @@
-# API Reference
+---
+title: API Reference
+description: Complete endpoint documentation including authentication, user management, chat, webhooks, and MCP memory
+---
 
 **Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [Deployment](deploy.md)
 

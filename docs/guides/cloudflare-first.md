@@ -1,12 +1,7 @@
 ---
 title: Cloudflare First
-desc: "Deploy DO/D1 edges. Shared agents pattern. Zero-config scaling. Global low-latency."
-sidebar_position: 1.4
-keywords: [cloudflare, durable-objects, d1, bindings, script_name, shared-agents, edge]
-slug: getting-started/cloudflare-first
+description: Deploy DO/D1 edges. Shared agents pattern. Zero-config scaling. Global low-latency.
 ---
-
-# Cloudflare First
 
 **TL;DR**: `bun run deploy:shared-agents`. Deploys 8 DOs + D1. Binds via `script_name`. Edge everywhere.
 

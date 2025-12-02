@@ -1,4 +1,7 @@
-# Use Cases
+---
+title: Use Cases
+description: duyetbot as personal AI assistant for CLI, GitHub, Telegram, research, automation, and development workflows
+---
 
 **Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](deploy.md)
 

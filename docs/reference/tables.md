@@ -1,14 +1,9 @@
 ---
 title: D1 Tables & ERD
-desc: "memory_users/sessions/messages/tokens. Indexes for perf. Query examples (list/search/save)."
-sidebar_position: 2
-keywords: [d1,memory,schema,erd,migrations]
-slug: /api-reference/mcp-tools/tables
+description: memory_users/sessions/messages/tokens. Indexes for perf. Query examples (list/search/save).
 ---
 
 <!-- i18n: en -->
-
-# D1 Tables & ERD ✅
 
 **TL;DR**: memory_* prefixed. Users → Sessions → Messages. Indexes: session/timestamp/content.
 

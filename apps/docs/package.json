@@ -13,8 +13,9 @@
     "test:ui": "vitest --ui"
   },
   "dependencies": {
+    "@types/mdx": "^2.0.13",
     "fumadocs-core": "^14.7.7",
-    "fumadocs-mdx": "^11.4.1",
+    "fumadocs-mdx": "^14.0.4",
     "fumadocs-ui": "^14.7.7",
     "next": "^15.1.0",
     "react": "^19.0.0",

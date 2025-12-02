@@ -1,14 +1,9 @@
 ---
 title: Orchestrator Agent
-desc: "Decomposes complex tasks into parallel worker steps. Plans, executes, aggregates Code/Research/GitHub workers."
-sidebar_position: 3
-keywords: [orchestrator-agent, task-decomposition, parallel-workers, planner-executor, aggregation]
-slug: /core-concepts/agents/orchestrator-agent
+description: Decomposes complex tasks into parallel worker steps. Plans, executes, aggregates Code/Research/GitHub workers.
 ---
 
 <!-- i18n: en -->
-
-# Orchestrator Agent ✅
 
 **TL;DR**: Plans high-complexity tasks. Dispatches parallel Code/Research/GitHub Workers. Aggregates results. Router → Orchestrator → Workers.
 
@@ -20,31 +15,31 @@ slug: /core-concepts/agents/orchestrator-agent
 ## Flow
 
 ```
-     Router Routes
-    (high complexity)
-           │
-           ▼
-   OrchestratorAgent
-           │
-           ▼
-   Planner: LLM Plan
-           │
-           ▼
+    Router Routes
+   (high complexity)
+          │
+          ▼
+  OrchestratorAgent
+          │
+          ▼
+  Planner: LLM Plan
+          │
+          ▼
  Executor: Group Levels
-           │
-           ▼
-  Parallel Workers
-      Level 1
-           │
-           ▼
-  Parallel Workers
-      Level 2
-           │
-           ▼
+          │
+          ▼
+ Parallel Workers
+     Level 1
+          │
+          ▼
+ Parallel Workers
+     Level 2
+          │
+          ▼
  Aggregator: Synthesize
-           │
-           ▼
-   Final Response
+          │
+          ▼
+  Final Response
 ```
 
 **Key**: Dependency levels enable parallelism. Continues on worker errors.

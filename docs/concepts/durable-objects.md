@@ -1,14 +1,9 @@
 ---
 title: Durable Objects
-desc: "8 shared DOs (Router/Simple/Orchestrator/etc.). script_name bindings. Single deploy, multi-app reuse. SQLite state."
-sidebar_position: 8
-keywords: [durable-objects, do-bindings, script_name, shared-agents, stateful]
-slug: /core-concepts/durable-objects
+description: 8 shared DOs (Router/Simple/Orchestrator/etc.). script_name bindings. Single deploy, multi-app reuse. SQLite state.
 ---
 
 <!-- i18n: en -->
-
-# Durable Objects ✅
 
 **TL;DR**: 8 DOs shared via script_name bindings. Telegram/GitHub bots reference duyetbot-agents. Zero-dupe code. SQLite persistence.
 

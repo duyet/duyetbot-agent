@@ -1,3 +1,8 @@
+---
+title: Telegram Bot
+description: Deploy Telegram bot on Cloudflare Workers. Configure BotFather token, AI Gateway, webhook. Session persistence via Durable Objects.
+---
+
 # Telegram Bot Deployment
 
 **Back to:** [Deployment Overview](README.md)

@@ -1,14 +1,9 @@
 ---
 title: Git Hooks
-desc: Install pre-push hooks. Enforce Biome linting + Vitest tests. Cross-platform Bun script.
-sidebar_position: 2
-keywords: [hooks, pre-push, biome, vitest, lint, test]
-slug: developer-hub/contribute/hooks
+description: Install pre-push hooks. Enforce Biome linting + Vitest tests. Cross-platform Bun script.
 ---
 
 <!-- i18n: en -->
-
-# Git Hooks
 
 **TL;DR**: `bun scripts/install-hooks.ts`. Blocks push if `bun run check` or `bun run test` fails. ✅ Enforced.
 

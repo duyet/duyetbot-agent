@@ -1,12 +1,7 @@
 ---
 title: Environment Setup
-desc: "Configure secrets and env vars. Use `bun scripts/config.ts` for one-cmd setup. AI Gateway, Telegram, GitHub."
-sidebar_position: 1.1
-keywords: [env, secrets, config, ai-gateway, telegram-bot-token, github-token, wrangler]
-slug: getting-started/env-setup
+description: Configure secrets and env vars. Use `bun scripts/config.ts` for one-cmd setup. AI Gateway, Telegram, GitHub.
 ---
-
-# Environment Setup
 
 **TL;DR**: `bun install`. `bunx wrangler login`. `bun scripts/config.ts telegram` (prompts for tokens). Deploy!
 

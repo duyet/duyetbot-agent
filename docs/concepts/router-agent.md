@@ -1,14 +1,9 @@
 ---
 title: Router Agent
-desc: Hybrid pattern+LLM classifier routes queries across 8 agents. Instant patterns cover 80%. Semantic fallback.
-sidebar_position: 1
-keywords: [router-agent, hybrid-classify, routing, classifier, patterns, llm]
-slug: /core-concepts/agents/router-agent
+description: Hybrid pattern+LLM classifier routes queries across 8 agents. Instant patterns cover 80%. Semantic fallback.
 ---
 
 <!-- i18n: en -->
-
-# Router Agent ✅
 
 **TL;DR**: Analyzes queries with patterns (instant) then LLM. Routes to Simple/Orchestrator/HITL/etc. Saves 75% tokens via smart dispatch.
 
@@ -22,29 +17,29 @@ slug: /core-concepts/agents/router-agent
 RouterAgent uses two-phase classification:
 
 ```
-            User Query
-                │
-                ▼
-        Pattern Match?
-       (10-50ms check)
-         │         │
-      YES│         │NO
-         │         ▼
-         │    LLM Classify
-         │    (200-500ms)
-         │         │
-         │         ▼
-         │    Classify result?
-         │    (type/category/complexity)
-         │         │
-         ├────┬────┼────┬────┬──────┬─────────┐
-         │    │    │    │    │      │         │
-      hi/help│ tool_confm duyet research  high code/research
-         │    │    │          │(med/high) complexity github
-         │    │    │          │         │         │
-         ▼    ▼    ▼          ▼         ▼         ▼
+                 User Query
+                     │
+                     ▼
+             Pattern Match?
+            (10-50ms check)
+              │         │
+           YES│         │NO
+              │         ▼
+              │    LLM Classify
+              │    (200-500ms)
+              │         │
+              │         ▼
+              │    Classify result?
+              │  (type/category/complexity)
+              │         │
+         ┌────┼────┬────┼────┬────┬──────┬──────────┐
+         │    │    │    │    │    │      │          │
+      hi/help tool_ duyet research  high code/ research
+         │    confm │        │(med) complex github
+         │    │    │        │ ity │
+         ▼    ▼    ▼        ▼     ▼     ▼          ▼
       Simple HITL Duyet LeadResearch Orchestr Orchestr
-      Agent Agent Agent      Worker    Agent    Agent
+      Agent Agent Agent    Worker    Agent    Agent
 ```
 
 **Key**: Patterns hit 80% cases instantly. LLM fallback for semantics.
