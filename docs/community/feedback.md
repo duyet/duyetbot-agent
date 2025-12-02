@@ -1,14 +1,9 @@
 ---
 title: Feedback
-desc: "Share via GitHub Issues/Discussions. Discord soon. Contrib stories. Form link."
-sidebar_position: 3
-keywords: [feedback, discord, issues, discussions, contrib]
-slug: community/feedback
+description: Share via GitHub Issues/Discussions. Discord soon. Contrib stories. Form link.
 ---
 
 <!-- i18n: en -->
-
-# Feedback
 
 **TL;DR**: Issues: bugs/features. Discussions: Q&A. Discord: chat. Stories: your wins! ✅ Gap #2: contrib docs.
 

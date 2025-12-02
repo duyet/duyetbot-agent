@@ -1,14 +1,9 @@
 ---
 title: Troubleshooting
-desc: "Stuck batch? Auth fail? Decision trees for common Phase1 failures: alarms/heartbeats/auth middleware."
-sidebar_position: 1
-keywords: [troubleshoot, stuck, batch, auth, fail, alarm, heartbeat]
-slug: community/troubleshooting
+description: "Stuck batch? Auth fail? Decision trees for common Phase1 failures: alarms/heartbeats/auth middleware."
 ---
 
 <!-- i18n: en -->
-
-# Troubleshooting
 
 **TL;DR**: Stuck? Check heartbeats/alarms. Auth 401? Verify tokens. Decision trees below. ✅ Recover fast.
 

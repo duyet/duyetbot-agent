@@ -1,14 +1,9 @@
 ---
 title: MCP Tool Schemas
-desc: "Zod schemas for memory-mcp tools: authenticate/get/save/list/search. Input/output tables/examples."
-sidebar_position: 1
-keywords: [mcp,memory,zod,schema,authenticate]
-slug: /api-reference/mcp-tools/schemas
+description: "Zod schemas for memory-mcp tools: authenticate/get/save/list/search. Input/output tables/examples."
 ---
 
 <!-- i18n: en -->
-
-# MCP Tool Schemas ✅
 
 **TL;DR**: Zod-validated inputs. Auth → GitHub token → session. CRUD sessions/messages.
 

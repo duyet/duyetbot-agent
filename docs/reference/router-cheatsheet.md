@@ -1,3 +1,8 @@
+---
+title: Router Cheatsheet
+description: One-page quick reference for hybrid classification, token savings, routing rules, debugging, and key metrics
+---
+
 # Router Architecture: Quick Reference Cheatsheet
 
 ## 🎯 One-Minute Overview

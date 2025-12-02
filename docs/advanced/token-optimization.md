@@ -1,14 +1,9 @@
 ---
 title: Token Optimization
 description: 75% savings via routing, batching, trim. Pattern match + simple agents.
-sidebar_position: 1
-keywords: [tokens, optimization, routing, batch]
-slug: /advanced/performance/token-optimization
 ---
 
 <!-- i18n: en -->
-
-# Token Optimization ✅ 75% Savings
 
 **TL;DR**: Hybrid classify (80% patterns=0 tokens). Batch 3-5 msgs/call. Trim history. Route simple=150t vs orch=1500t.
 

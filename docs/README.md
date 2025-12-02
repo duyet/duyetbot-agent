@@ -1,4 +1,7 @@
-# Deployment Guide
+---
+title: Deployment
+description: Deploy GitHub Bot, Memory MCP, Telegram, or Agent Server. Platform comparison and quick start guide.
+---
 
 **Related:** [Getting Started](../getting-started.md) | [Architecture](../architecture.md) | [Contributing](../contributing.md)
 

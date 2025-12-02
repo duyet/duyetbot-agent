@@ -1,3 +1,8 @@
+---
+title: Agent Server
+description: Deploy long-running agent server with WebSocket streaming. Docker deployment, session lifecycle, health checks, MCP integration.
+---
+
 # Agent Server Deployment
 
 **Back to:** [Deployment Overview](README.md)
@@ -19,7 +24,7 @@ The Agent Server provides:
 
 ## Environment Variables
 
-```env
+```bash
 # LLM Provider
 ANTHROPIC_API_KEY=xxx
 ANTHROPIC_BASE_URL=https://api.anthropic.com

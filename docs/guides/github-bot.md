@@ -1,3 +1,8 @@
+---
+title: GitHub Bot
+description: Deploy GitHub bot as webhook handler on Cloudflare Workers. GitHub App setup, PAT token, webhook secret, PR/issue integration.
+---
+
 # GitHub Bot Deployment
 
 **Back to:** [Deployment Overview](README.md)

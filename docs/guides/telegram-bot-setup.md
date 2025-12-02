@@ -1,12 +1,7 @@
 ---
 title: Telegram Bot Setup
-desc: BotFather token. Config secrets. Deploy. Set webhook. Test "hi". Bot live!
-sidebar_position: 2.2
-keywords: [telegram, botfather, webhook, bot-token, setup, test]
-slug: guides/telegram-bot-setup
+description: BotFather token. Config secrets. Deploy. Set webhook. Test "hi". Bot live!
 ---
-
-# Telegram Bot Setup
 
 **TL;DR**: [@BotFather](https://t.me/botfather) → token → `bun scripts/config.ts telegram` → `bun run deploy:telegram` → webhook → "hi"!
 

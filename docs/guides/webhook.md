@@ -1,14 +1,9 @@
 ---
 title: Webhook Endpoint
-desc: "POST /webhook - GitHub/Telegram events. HMAC sig auth, raw body parse. Returns 200 OK fast."
-sidebar_position: 1
-keywords: [webhook,hono,github,telegram,signature]
-slug: /api-reference/hono-endpoints/webhook
+description: POST /webhook - GitHub/Telegram events. HMAC sig auth, raw body parse. Returns 200 OK fast.
 ---
 
 <!-- i18n: en -->
-
-# Webhook Endpoint
 
 **TL;DR**: POST /webhook handles platform events. Verify sig → parse → queue. Always 200 <6ms.
 

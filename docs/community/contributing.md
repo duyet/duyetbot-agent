@@ -1,4 +1,7 @@
-# Contributing
+---
+title: Contributing
+description: Guidelines for code contributions, development workflow, commit messages, and pull requests
+---
 
 **Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [API Reference](api.md)
 
