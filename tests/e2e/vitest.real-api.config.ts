@@ -1,4 +1,3 @@
-import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 // Base configuration extends the existing vitest.config.ts

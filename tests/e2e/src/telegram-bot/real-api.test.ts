@@ -11,7 +11,6 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createMockTelegramBot,
   createMockUpdate,
-  createTestScenarios,
   measureResponseTime,
   setupTelegramAPISpy,
   validateMessageResponse,
@@ -52,7 +51,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
 
   describe('Simple Message Responses', () => {
     it('should respond to "hi" with appropriate greeting', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const update = createMockUpdate('hi', { messageId: 1 });
       const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
@@ -79,7 +80,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
     });
 
     it('should respond to "hello" with contextual greeting', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const update = createMockUpdate('hello', { messageId: 2 });
       const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
@@ -103,7 +106,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
     });
 
     it('should respond to "help" with assistance information', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const update = createMockUpdate('help', { messageId: 3 });
       const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
@@ -129,7 +134,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
 
   describe('Message Context Processing', () => {
     it('should maintain conversation context across messages', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       apiSpy.clearMessages();
 
@@ -160,7 +167,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
     });
 
     it('should handle follow-up questions appropriately', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       apiSpy.clearMessages();
 
@@ -194,7 +203,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle empty messages gracefully', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const update = createMockUpdate('', { messageId: 8 });
       const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
@@ -221,7 +232,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
     });
 
     it('should handle very long messages without errors', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const longMessage = 'This is a very long message. '.repeat(100); // ~3000 chars
       const update = createMockUpdate(longMessage, { messageId: 9 });
@@ -239,7 +252,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
     });
 
     it('should handle special characters correctly', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const specialMessage = 'Test with emojis 🎉 and special chars: @#$%^&*()';
       const update = createMockUpdate(specialMessage, { messageId: 10 });
@@ -268,7 +283,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
 
   describe('Parse Mode Handling', () => {
     it('should use HTML parse mode by default', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const update = createMockUpdate('Show me some *bold* text', {
         messageId: 11,
@@ -283,7 +300,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
     });
 
     it('should handle message formatting correctly', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const update = createMockUpdate('Format this: *bold*, _italic_, `code`', {
         messageId: 12,
@@ -313,7 +332,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
 
   describe('Performance and Reliability', () => {
     it('should respond within acceptable time limits', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const simpleMessages = ['hi', 'hello', 'help'];
       const responseTimes: number[] = [];
@@ -344,7 +365,9 @@ describe('Telegram Bot - Real API E2E Tests', () => {
     });
 
     it('should handle concurrent requests appropriately', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       apiSpy.clearMessages();
 
@@ -355,14 +378,14 @@ describe('Telegram Bot - Real API E2E Tests', () => {
         return bot.handleUpdate(update);
       });
 
-      const results = await Promise.all(updatePromises);
+      const _results = await Promise.all(updatePromises);
       const sentMessages = apiSpy.getSentMessages();
 
       // Should respond to all requests
       expect(sentMessages.length).toBe(messages.length);
 
       // All responses should be valid
-      sentMessages.forEach((response, index) => {
+      sentMessages.forEach((response, _index) => {
         const validation = validateMessageResponse(response, {
           minLength: 5,
           maxLength: 1000,
