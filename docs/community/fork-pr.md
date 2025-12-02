@@ -71,4 +71,4 @@ A: `docs: update guide` ✅
 
 **CTA**: [Fork & PR now](https://github.com/duyet/duyetbot-agent/fork){{t('cta.fork')}}
 
-**Next**: [Git Hooks →](hooks.md)
+**Next**: [Git Hooks ->](hooks.md)

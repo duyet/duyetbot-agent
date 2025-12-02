@@ -5,7 +5,7 @@ description: "Add MCP tool: Create in packages/tools/src/. Export index.ts. Regi
 
 <!-- i18n: en -->
 
-**TL;DR**: `packages/tools/src/my-tool.ts` → export `index.ts` → register `registry.ts`. `bun run test`. ✅ MCP live.
+**TL;DR**: `packages/tools/src/my-tool.ts` -> export `index.ts` -> register `registry.ts`. `bun run test`. ✅ MCP live.
 
 ## Table of Contents
 - [Tutorial](#tutorial)
@@ -49,8 +49,8 @@ A: packages/tools/src/registry.ts ✅
 
 **Pro Tip** ✅: 10+ built-in tools.
 
-**CTA**: Build tool → [Fork/PR](https://github.com/duyet/duyetbot-agent/fork)
+**CTA**: Build tool -> [Fork/PR](https://github.com/duyet/duyetbot-agent/fork)
 
 **Contrib**: "Added X MCP tool via Y!"
 
-**Next**: [Custom DO →](custom-do.md)
+**Next**: [Custom DO ->](custom-do.md)

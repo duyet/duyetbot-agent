@@ -5,7 +5,7 @@ description: POST /webhook - GitHub/Telegram events. HMAC sig auth, raw body par
 
 <!-- i18n: en -->
 
-**TL;DR**: POST /webhook handles platform events. Verify sig → parse → queue. Always 200 <6ms.
+**TL;DR**: POST /webhook handles platform events. Verify sig -> parse -> queue. Always 200 <6ms.
 
 ## Table of Contents
 - [Request](#request)
@@ -64,7 +64,7 @@ if (!isUserAuthorized(env, userId)) {
 }
 ```
 
-**Quiz**: Sig fail → ?
+**Quiz**: Sig fail -> ?
 A: 401 + log warn ✅
 
 ## Integrate
@@ -73,6 +73,6 @@ A: 401 + log warn ✅
 app.post('/webhook', signatureMiddleware, parser, auth, agentHandler);
 ```
 
-**Deploy**: `bun run deploy:github` → GitHub webhook → Test sig!
+**Deploy**: `bun run deploy:github` -> GitHub webhook -> Test sig!
 
-**Related**: [Deployment](../deployment/github-bot.md) | [Health →](./health.md)
+**Related**: [Deployment](../deployment/github-bot.md) | [Health ->](./health.md)

@@ -26,7 +26,7 @@ Daily Savings:     $0.0675 per 100 queries (5x reduction)
 
 ## Architecture: Three-Tier Token Optimization
 
-### Tier 1: Hybrid Classification (Pattern → LLM)
+### Tier 1: Hybrid Classification (Pattern -> LLM)
 
 **Problem:** Every query classification costs 200-300 LLM tokens.
 
@@ -38,16 +38,16 @@ Daily Savings:     $0.0675 per 100 queries (5x reduction)
 // packages/chat-agent/src/routing/classifier.ts
 
 const QUICK_ROUTES = [
-  // Greetings → SimpleAgent (direct response)
+  // Greetings -> SimpleAgent (direct response)
   { pattern: /^(hi|hello|hey|greetings)/i, target: 'simple-agent' },
 
-  // Help → SimpleAgent (FAQ mode)
+  // Help -> SimpleAgent (FAQ mode)
   { pattern: /help|\?|how do i/i, target: 'simple-agent' },
 
-  // Approvals → HITLAgent (confirmation flow)
+  // Approvals -> HITLAgent (confirmation flow)
   { pattern: /^(yes|no|approve|reject|cancel)/i, target: 'hitl-agent' },
 
-  // Code-related → OrchestratorAgent (dispatch workers)
+  // Code-related -> OrchestratorAgent (dispatch workers)
   { pattern: /code|bug|fix|error|debug/i, target: 'orchestrator-agent' },
 ];
 
@@ -61,7 +61,7 @@ function hybridClassify(query: string, context: ClassificationContext): QueryCla
         complexity: 'low',
         confidence: 0.99,
         reasoning: `Matched pattern: ${rule.pattern.source}`,
-        skipLLM: true, // ← Token savings!
+        skipLLM: true, // <-- Token savings!
       };
     }
   }
@@ -113,9 +113,9 @@ Respond with JSON:
 
 ```typescript
 // User sends 3 quick messages
-T+0ms:    "What's the weather?"       → LLM call #1 (150 tokens)
-T+100ms:  "In New York?"              → LLM call #2 (200 tokens)
-T+200ms:  "Thanks"                    → LLM call #3 (100 tokens)
+T+0ms:    "What's the weather?"       -> LLM call #1 (150 tokens)
+T+100ms:  "In New York?"              -> LLM call #2 (200 tokens)
+T+200ms:  "Thanks"                    -> LLM call #3 (100 tokens)
 
 Total: 3 LLM calls = 450 tokens
 ```
@@ -321,7 +321,7 @@ export function determineRouteTarget(
   // Skip expensive agent if not needed
 
   if (classification.skipLLM) {
-    // Pattern matched → use simplest agent
+    // Pattern matched -> use simplest agent
     return 'simple-agent';
   }
 
@@ -405,7 +405,7 @@ async queueMessage(ctx: AgentContext) {
 100 Queries / Day
 
 Mechanism                          Savings    Details
-─────────────────────────────────────────────────────
+-----------------------------------------------------
 1. Hybrid Classification          60%        Pattern match 80% (0 tokens)
                                              LLM only 20% (300 tokens)
 
@@ -419,7 +419,7 @@ Mechanism                          Savings    Details
 
 5. Heartbeat Edits               5%         Edit not send (no LLM cost)
 
-──────────────────────────────────────────────────────
+------------------------------------------------------
 COMBINED SAVINGS                  ~75%       7,500 tokens vs 30,000
 ```
 

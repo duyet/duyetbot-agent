@@ -74,12 +74,12 @@ Imperative: Enable for all webhook routes.
 
 **Q**: Bearer header wrong?
 
-A: Slice(7), check startsWith('Bearer ') → 401 ✅  
+A: Slice(7), check startsWith('Bearer ') -> 401 ✅  
 B: Accept anyway  
 C: Use api-key fallback
 
 ## Related
-- [Rate Limiting →](./rate-limiting.md)
-- [Hono Middleware →](/docs/reference/hono-middleware)
+- [Rate Limiting ->](./rate-limiting.md)
+- [Hono Middleware ->](/docs/reference/hono-middleware)
 
 Run `bun test --filter auth`. Verify 401 responses!

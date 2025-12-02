@@ -261,7 +261,7 @@ duyetbot run "Summarize this meeting transcript"
 4. Ask about daily schedule
 
 ### PR Review Flow
-1. Open PR → @duyetbot auto-reviews
+1. Open PR -> @duyetbot auto-reviews
 2. @duyetbot suggests improvements
 3. Author addresses feedback
 4. @duyetbot approves and auto-merges

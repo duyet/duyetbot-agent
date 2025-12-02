@@ -359,27 +359,27 @@ The `apps/api` package is deprecated. Migrate to:
 
 ```
 packages/hono-middleware/
-├── src/
-│   ├── index.ts              # Main exports
-│   ├── factory.ts            # createBaseApp()
-│   ├── middleware/
-│   │   ├── index.ts
-│   │   ├── logger.ts
-│   │   ├── rate-limit.ts
-│   │   ├── auth.ts
-│   │   └── error-handler.ts
-│   ├── routes/
-│   │   ├── index.ts
-│   │   └── health.ts
-│   └── types.ts
-├── __tests__/
-│   ├── factory.test.ts
-│   ├── logger.test.ts
-│   ├── rate-limit.test.ts
-│   └── health.test.ts
-├── package.json
-├── tsconfig.json
-└── README.md
++-- src/
+|   +-- index.ts              # Main exports
+|   +-- factory.ts            # createBaseApp()
+|   +-- middleware/
+|   |   +-- index.ts
+|   |   +-- logger.ts
+|   |   +-- rate-limit.ts
+|   |   +-- auth.ts
+|   |   +-- error-handler.ts
+|   +-- routes/
+|   |   +-- index.ts
+|   |   +-- health.ts
+|   +-- types.ts
++-- __tests__/
+|   +-- factory.test.ts
+|   +-- logger.test.ts
+|   +-- rate-limit.test.ts
+|   +-- health.test.ts
++-- package.json
++-- tsconfig.json
++-- README.md
 ```
 
 ## Dependencies

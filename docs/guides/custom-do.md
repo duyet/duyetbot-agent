@@ -52,6 +52,6 @@ A: agentRegistry.register() ✅
 
 **Pro Tip** ✅: Priority 100 for HITL.
 
-**CTA**: Build agent → [Fork/PR](../contribute/fork-pr.md)
+**CTA**: Build agent -> [Fork/PR](../contribute/fork-pr.md)
 
-**Next**: [Troubleshooting →](../../../community/troubleshooting.md)
+**Next**: [Troubleshooting ->](../../../community/troubleshooting.md)

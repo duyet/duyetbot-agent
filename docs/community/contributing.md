@@ -135,16 +135,16 @@ When adding new features:
 
 ```
 packages/
-├── core/          # Agent core - session, MCP client
-├── providers/     # LLM adapters - add new providers here
-├── tools/         # Agent tools - add new tools here
-├── server/        # HTTP API - add new routes here
-├── cli/           # CLI commands - add new commands here
-├── memory-mcp/    # MCP server - session storage
-└── types/         # Shared types - add new types here
++-- core/          # Agent core - session, MCP client
++-- providers/     # LLM adapters - add new providers here
++-- tools/         # Agent tools - add new tools here
++-- server/        # HTTP API - add new routes here
++-- cli/           # CLI commands - add new commands here
++-- memory-mcp/    # MCP server - session storage
++-- types/         # Shared types - add new types here
 
 apps/
-└── github-bot/    # GitHub webhook handler
++-- github-bot/    # GitHub webhook handler
 ```
 
 ---
