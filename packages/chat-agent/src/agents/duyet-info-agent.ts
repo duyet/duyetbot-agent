@@ -172,6 +172,45 @@ interface CachedToolResult {
 }
 
 /**
+ * Execution timing breakdown for debug footer
+ */
+interface ExecutionTiming {
+  mcpConnectMs: number;
+  mcpConnectStatus: 'success' | 'timeout' | 'error' | 'skipped';
+  toolDiscoveryMs: number;
+  toolCount: number;
+  llmCallMs: number;
+  toolExecutionMs: number;
+  totalMs: number;
+}
+
+/**
+ * Timing tracker for execution phases
+ */
+class TimingTracker {
+  private timings: Map<string, { start: number; end?: number }> = new Map();
+
+  start(phase: string): void {
+    this.timings.set(phase, { start: Date.now() });
+  }
+
+  end(phase: string): number {
+    const timing = this.timings.get(phase);
+    if (timing) {
+      timing.end = Date.now();
+      return timing.end - timing.start;
+    }
+    return 0;
+  }
+
+  get(phase: string): number {
+    const timing = this.timings.get(phase);
+    if (!timing) return 0;
+    return (timing.end ?? Date.now()) - timing.start;
+  }
+}
+
+/**
  * Duyet Info Agent state (stateless - no conversation history)
  */
 export interface DuyetInfoAgentState {
@@ -283,6 +322,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
     };
 
     private _mcpInitialized = false;
+    private _mcpConnectStatus: 'success' | 'timeout' | 'error' | 'skipped' = 'skipped';
 
     /**
      * Handle state updates
@@ -340,9 +380,13 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         }
 
         this._mcpInitialized = true;
+        this._mcpConnectStatus = 'success';
       } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        this._mcpConnectStatus = errorMsg.includes('timeout') ? 'timeout' : 'error';
         logger.error('[DuyetInfoAgent] MCP connection failed', {
-          error: error instanceof Error ? error.message : String(error),
+          error: errorMsg,
+          status: this._mcpConnectStatus,
         });
         // Don't throw - we'll fall back to LLM-only execution
       }
@@ -575,10 +619,14 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
     }
 
     /**
-     * Build debug info from current tool stats
+     * Build debug info from current tool stats and timing
      * Builds object conditionally to satisfy exactOptionalPropertyTypes
      */
-    private buildDebugInfo(fallback = false, originalError?: string): AgentDebugInfo {
+    private buildDebugInfo(
+      fallback = false,
+      originalError?: string,
+      timing?: ExecutionTiming
+    ): AgentDebugInfo {
       // Build metadata object conditionally (exactOptionalPropertyTypes)
       const metadata: AgentDebugInfo['metadata'] = {};
 
@@ -605,6 +653,25 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
       }
       if (this.toolStats.lastToolError) {
         metadata.lastToolError = this.toolStats.lastToolError;
+      }
+
+      // Add timing breakdown for debug footer
+      if (timing) {
+        const statusSymbol =
+          timing.mcpConnectStatus === 'success'
+            ? '✓'
+            : timing.mcpConnectStatus === 'timeout'
+              ? '⏱'
+              : timing.mcpConnectStatus === 'error'
+                ? '✗'
+                : '○';
+        metadata.timing = {
+          mcpConnect: `${timing.mcpConnectMs}ms ${statusSymbol}`,
+          toolDiscovery: `${timing.toolCount} (${timing.toolDiscoveryMs}ms)`,
+          llmCall: `${(timing.llmCallMs / 1000).toFixed(1)}s`,
+          toolExecution: `${(timing.toolExecutionMs / 1000).toFixed(1)}s`,
+          total: `${(timing.totalMs / 1000).toFixed(1)}s`,
+        };
       }
 
       const debugInfo: AgentDebugInfo = {};
@@ -638,17 +705,25 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         executionTimeoutMs,
       });
 
+      // Create timing tracker for debug footer
+      const timing = new TimingTracker();
+      let executionTiming: ExecutionTiming | undefined;
+
       // Wrap execution with global timeout to prevent blockConcurrencyWhile timeout
       const executeWithTimeout = async (): Promise<AgentResult> => {
-        // Initialize MCP connection
+        // Initialize MCP connection with timing
+        timing.start('mcp');
         await this.initMcp();
+        const mcpConnectMs = timing.end('mcp');
 
         // Get LLM provider (pass context for platformConfig credentials)
         const env = (this as unknown as { env: TEnv }).env;
         const provider = config.createProvider(env, context);
 
-        // Get available tools (filtered)
+        // Get available tools (filtered) with timing
+        timing.start('tools');
         const tools = this._mcpInitialized ? this.getMcpTools() : [];
+        const toolDiscoveryMs = timing.end('tools');
 
         // Build messages (stateless - single query)
         // Generate platform-aware system prompt at runtime
@@ -658,9 +733,12 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           { role: 'user', content: query },
         ];
 
-        // Execute with tool loop
+        // Execute with tool loop - track LLM timing
+        timing.start('llm');
         let response = await provider.chat(messages, tools.length > 0 ? tools : undefined);
+        let llmCallMs = timing.end('llm');
         let iterations = 0;
+        let toolExecutionMs = 0;
 
         while (
           response.toolCalls &&
@@ -681,7 +759,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
             content: response.content || '',
           });
 
-          // Execute each tool call and add results
+          // Execute each tool call and add results - track tool execution time
+          timing.start('toolExec');
           for (const toolCall of response.toolCalls) {
             const result = await this.executeMcpTool(toolCall);
             messages.push({
@@ -691,12 +770,26 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
               content: result,
             });
           }
+          toolExecutionMs += timing.end('toolExec');
 
-          // Get next response
+          // Get next response - add to LLM timing
+          timing.start('llm');
           response = await provider.chat(messages, tools);
+          llmCallMs += timing.end('llm');
         }
 
         const durationMs = Date.now() - startTime;
+
+        // Build execution timing for debug footer
+        executionTiming = {
+          mcpConnectMs,
+          mcpConnectStatus: this._mcpConnectStatus,
+          toolDiscoveryMs,
+          toolCount: tools.length,
+          llmCallMs,
+          toolExecutionMs,
+          totalMs: durationMs,
+        };
 
         // Update state
         this.setState({
@@ -713,11 +806,12 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           toolIterations: iterations,
           responseLength: response.content.length,
           toolStats: this.toolStats,
+          timing: executionTiming,
         });
 
-        // Include debug info with tool stats
+        // Include debug info with tool stats and timing
         return AgentMixin.createResult(true, response.content, durationMs, {
-          debug: this.buildDebugInfo(),
+          debug: this.buildDebugInfo(false, undefined, executionTiming),
         });
       };
 
@@ -746,17 +840,29 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         if (isRecoverableError) {
           const fallbackMessage = getFallbackResponse(query);
 
+          // Build partial timing for fallback case
+          const fallbackTiming: ExecutionTiming = executionTiming ?? {
+            mcpConnectMs: timing.get('mcp'),
+            mcpConnectStatus: this._mcpConnectStatus,
+            toolDiscoveryMs: timing.get('tools'),
+            toolCount: 0,
+            llmCallMs: timing.get('llm'),
+            toolExecutionMs: timing.get('toolExec'),
+            totalMs: durationMs,
+          };
+
           logger.warn('[DuyetInfoAgent] Returning fallback due to error', {
             traceId,
             durationMs,
             error: errorMessage,
             fallback: true,
             toolStats: this.toolStats,
+            timing: fallbackTiming,
           });
 
-          // Return fallback as success with debug info including fallback status
+          // Return fallback as success with debug info including fallback status and timing
           return AgentMixin.createResult(true, fallbackMessage, durationMs, {
-            debug: this.buildDebugInfo(true, errorMessage),
+            debug: this.buildDebugInfo(true, errorMessage, fallbackTiming),
           });
         }
 
@@ -767,7 +873,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         });
 
         const errorResult = AgentMixin.createErrorResult(error, durationMs);
-        errorResult.debug = this.buildDebugInfo(false, errorMessage);
+        errorResult.debug = this.buildDebugInfo(false, errorMessage, executionTiming);
         return errorResult;
       }
     }

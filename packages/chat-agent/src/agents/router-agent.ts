@@ -25,6 +25,26 @@ import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js
 export type { ResponseTarget } from '../platform-response.js';
 
 /**
+ * Check if error is a Durable Object reset/timeout error
+ * These are retryable as the DO will be recreated on next request
+ */
+function isDurableObjectResetError(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return (
+    msg.includes('blockConcurrencyWhile') ||
+    msg.includes('Durable Object was reset') ||
+    (msg.includes('The Durable Object') && msg.includes('canceled'))
+  );
+}
+
+/**
+ * Sleep helper for retry backoff
+ */
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
  * Pending execution for fire-and-forget pattern
  */
 export interface PendingExecution {
@@ -428,11 +448,36 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
               env.DuyetInfoAgent,
               targetContext.chatId?.toString() || 'default'
             );
-            return (
-              agent as unknown as {
-                execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+
+            // Retry once on DO reset error (blockConcurrencyWhile timeout)
+            try {
+              return await (
+                agent as unknown as {
+                  execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+                }
+              ).execute(query, targetContext);
+            } catch (error) {
+              if (isDurableObjectResetError(error)) {
+                logger.warn('[RouterAgent] DO reset detected, retrying', {
+                  error: error instanceof Error ? error.message : String(error),
+                });
+                await sleep(100); // Brief backoff before retry
+                const result = await (
+                  agent as unknown as {
+                    execute: (q: string, c: AgentContext) => Promise<AgentResult>;
+                  }
+                ).execute(query, targetContext);
+                // Mark as retried in debug info
+                if (result.debug) {
+                  result.debug.metadata = {
+                    ...result.debug.metadata,
+                    retried: true,
+                  };
+                }
+                return result;
               }
-            ).execute(query, targetContext);
+              throw error;
+            }
           }
 
           default: {
