@@ -40,30 +40,30 @@ script_name = "duyetbot-agents"
 ```
 
 ```
-┌────────────────┐
-│ telegram-bot   │
-└────────┬───────┘
-         │
-         ▼
-┌──────────────────────────────────┐
-│ RouterAgent                      │
-│ script_name=duyetbot-agents      │
-└─────┬──────────────────────┬─────┘
-      │                      │
-      ▼                      ▼
-┌──────────────────┐  ┌────────────────────┐
-│ SimpleAgent      │  │ OrchestratorAgent  │
-└──────────────────┘  └────────────────────┘
++---------------------+
+| telegram-bot        |
++----------+----------+
+           |
+           v
++----+-------------------+----------+
+| RouterAgent                        |
+| script_name=duyetbot-agents        |
++----+-------------------+----------+
+     |                   |
+     v                   v
++-------------------+ +-------------------+
+| SimpleAgent       | | OrchestratorAgent |
++-------------------+ +-------------------+
 
-┌────────────────┐
-│ github-bot     │
-└────────┬───────┘
-         │
-         ▼
-┌──────────────────────────────────┐
-│ RouterAgent                      │
-│ script_name=duyetbot-agents      │
-└──────────────────────────────────┘
++---------------------+
+| github-bot          |
++----------+----------+
+           |
+           v
++--------------------------------------+
+| RouterAgent                          |
+| script_name=duyetbot-agents          |
++--------------------------------------+
 ```
 
 ## Pattern
@@ -82,6 +82,6 @@ export const RouterAgent = createRouterAgent<SharedEnv>({ ... });
 **Quiz**: script_name vs Local DO?  
 A: script_name shares cross-worker; Local app-only ✅
 
-**Related**: [Deployment →](../deployment) | [Batching →](./batching-alarms.md)
+**Related**: [Deployment ->](../deployment) | [Batching ->](./batching-alarms.md)
 
-**Deploy**: `bun run deploy:shared-agents` → All 8 DOs live!
+**Deploy**: `bun run deploy:shared-agents` -> All 8 DOs live!

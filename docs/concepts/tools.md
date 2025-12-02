@@ -21,7 +21,7 @@ description: MCP servers (github-mcp/duyet-mcp/memory-mcp). Platform filters (Te
 | duyet-mcp | Blog/CV/search | All | 🔄 Disabled (timeout) |
 | memory-mcp | authenticate/save/get/search/list_sessions | All | ✅ D1-backed |
 
-**Memory Tools**: See [Memory MCP →](./memory-mcp.md)
+**Memory Tools**: See [Memory MCP ->](./memory-mcp.md)
 
 ## Platform Filters
 
@@ -50,8 +50,8 @@ Dynamic tool list:
 **Quiz**: MCP vs Built-in Tools?  
 A: MCP external servers; Built-in local funcs ✅
 
-**Glossary**: [MCP →](https://modelcontextprotocol.io/)
+**Glossary**: [MCP ->](https://modelcontextprotocol.io/)
 
-**Related**: [Memory →](./memory-mcp.md) | [Transports →](./transports.md)
+**Related**: [Memory ->](./memory-mcp.md) | [Transports ->](./transports.md)
 
-**Try**: Deploy → Agents auto-use github-mcp tools!
+**Try**: Deploy -> Agents auto-use github-mcp tools!

@@ -15,39 +15,40 @@ description: Direct LLM responses for low-complexity queries. No tools. Leverage
 ## Flow
 
 ```
-┌─────────────────────┐
-│ Router Matches      │
-│ Pattern/LLM         │
-└──────────┬──────────┘
-           │
-           ▼
-       ┌──────────────┐
-       │ simple/low?  │
-       └───┬──────┬───┘
-           │      │
-        Yes│      │No
-           ▼      ▼
-      ┌─────────────┐  ┌──────────────┐
-      │ SimpleAgent │  │ Orchestrator │
-      └──────┬──────┘  │ /etc.        │
-             │         └──────────────┘
-             ▼
-      ┌──────────────────┐
-      │ Load Parent      │
-      │ History          │
-      └──────┬───────────┘
-             │
-             ▼
-      ┌──────────────────┐
-      │ LLM Chat         │
-      │ w/ webSearch?    │
-      └──────┬───────────┘
-             │
-             ▼
-      ┌──────────────────┐
-      │ Response         │
-      │ via Transport    │
-      └──────────────────┘
++-------------------------+
+| Router Matches          |
+| Pattern/LLM             |
++----------+--------------+
+           |
+           v
++---------------------+
+| simple/low?         |
++-----+--------+------+
+      |        |
+    Yes|       |No
+      v        v
++----------+  +----------+
+|Simple    |  |Orchestr  |
+|Agent     |  |/etc.     |
++-----+----+  +----------+
+      |
+      v
++-----+----------------+
+| Load Parent         |
+| History             |
++-----+----------------+
+      |
+      v
++-----+----------------+
+| LLM Chat            |
+| w/ webSearch?       |
++-----+----------------+
+      |
+      v
++---------------------+
+| Response            |
+| via Transport       |
++---------------------+
 ```
 
 **Key**: Stateless. History from parent CloudflareChatAgent. Web search via :online models.
@@ -78,6 +79,6 @@ async execute(query: string, context: AgentContext): Promise<AgentResult> {
 **Quiz**: Simple vs Router?  
 A: Simple executes; Router classifies ✅
 
-**Related**: [Router →](./router-agent.md) | [Transports →](../transports.md)
+**Related**: [Router ->](./router-agent.md) | [Transports ->](../transports.md)
 
-**Next**: Deploy & test: `bun run deploy:telegram` → "hi" → SimpleAgent!
+**Next**: Deploy & test: `bun run deploy:telegram` -> "hi" -> SimpleAgent!

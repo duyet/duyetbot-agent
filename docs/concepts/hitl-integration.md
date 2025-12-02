@@ -5,7 +5,7 @@ description: State machine for tool confirmations. Approve/reject high-risk ops 
 
 <!-- i18n: en -->
 
-**TL;DR**: Detect risky tools → Request confirm (yes/no). State machine: idle → awaiting → executing → done. 5min expiry.
+**TL;DR**: Detect risky tools -> Request confirm (yes/no). State machine: idle -> awaiting -> executing -> done. 5min expiry.
 
 ## Table of Contents
 - [Risk Detection](#risk-detection)
@@ -17,14 +17,14 @@ description: State machine for tool confirmations. Approve/reject high-risk ops 
 
 ## Risk Detection
 
-Auto-classify tools: low/medium/high. High-risk (bash/delete) → confirm.
+Auto-classify tools: low/medium/high. High-risk (bash/delete) -> confirm.
 
 From [`confirmation.ts`](packages/chat-agent/src/hitl/confirmation.ts:163)
 
 ```typescript
 export function determineRiskLevel(toolName: string, args?: Record<string, unknown>): RiskLevel {
-  // bash, delete, drop → 'high'
-  // read, get → 'low'
+  // bash, delete, drop -> 'high'
+  // read, get -> 'low'
 }
 ```
 
@@ -37,36 +37,36 @@ export function determineRiskLevel(toolName: string, args?: Record<string, unkno
 ## State Machine
 
 ```
-                         START
-                           │
-                           ▼
-                    ┌─────────────────┐
-                    │     idle        │──REQUEST_CONFIRMATION──┐
-                    └─────────────────┘                        │
-                           ▲                                   ▼
-                           │                ┌─────────────────────────┐
-                           │                │ awaiting_confirmation   │
-                           │                └─────────────────────────┘
-                           │                  │                   │
-                           │      USER_APPROVED                USER_REJECTED/
-                           │          │                           EXPIRED
-                           │          ▼                              │
-                           │   ┌──────────────┐                     │
-                           │   │  executing   │                     │
-                           │   └──────────────┘                     │
-                           │      │         │                       │
-                           │      │         │                       │
-                           │ EXEC_COMPLETED EXEC_FAILED             │
-                           │      │         │                       │
-                           │      ▼         ▼                       │
-                           │  ┌──────────┐ ┌──────────┐             │
-                           │  │completed │ │  error   │             │
-                           │  └──────────┘ └──────────┘             │
-                           │      │         │                       │
-                           │      │      RESET                      │
-                           │      │         │                       │
-                           │      ▼         ▼                       │
-                           └─────END───────────────────────────────┘
+START
+  |
+  v
++--------------------+
+|     idle           |---REQUEST_CONFIRMATION---+
++--------------------+                         |
+  ^                                            v
+  |            +------------------------------+
+  |            | awaiting_confirmation        |
+  |            +------------------------------+
+  |              |                         |
+  |    USER_APPROVED            USER_REJECTED/
+  |        |                         EXPIRED
+  |        v                            |
+  |    +-----------+                    |
+  |    | executing |                    |
+  |    +-----------+                    |
+  |       |       |                     |
+  |       |       |                     |
+  |EXEC_COMPLETED EXEC_FAILED           |
+  |       |       |                     |
+  |       v       v                     |
+  |   +-------+ +-------+               |
+  |   |complete|  error |               |
+  |   +-------+ +-------+               |
+  |       |       |                     |
+  |       |    RESET                    |
+  |       |       |                     |
+  |       v       v                     |
+  +---END---------+---------------------+
 ```
 
 From [`state-machine.ts`](packages/chat-agent/src/hitl/state-machine.ts:38)
@@ -80,8 +80,8 @@ export type HITLStatus = 'idle' | 'awaiting_confirmation' | 'executing' | 'compl
 Parse user reply:
 
 ```typescript
-// yes/ok/✅ → approve
-// no/cancel/❌ → reject
+// yes/ok/✅ -> approve
+// no/cancel/❌ -> reject
 parseConfirmationResponse("yes") // { action: 'approve' }
 ```
 
@@ -119,13 +119,13 @@ const result = await executeApprovedTools(approved, executor);
 | EXEC_TIMEOUT | 408 | Tool timeout (30s) |
 | CONF_EXPIRED | 410 | 5min expiry |
 
-**Quiz**: "no because risky" → ?
+**Quiz**: "no because risky" -> ?
 A: reject + reason ✅
 
 ## Try It
 
 1. `bun run deploy:telegram`
-2. Ask: "Delete all files" → See confirm!
-3. Reply "yes" → Executes (safely).
+2. Ask: "Delete all files" -> See confirm!
+3. Reply "yes" -> Executes (safely).
 
 **Related**: [Agents](../core-concepts/agents/) | [Tools](../core-concepts/tools.md)

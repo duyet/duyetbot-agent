@@ -17,41 +17,41 @@ description: "D1-backed persistent memory. Cross-session context. GitHub auth. M
 
 ```
             memory_users (1)
-                │
-                ├─o──── owns ────o─ memory_sessions (M)
-                │                        │
-                │                        ├─o──── contains ────o─ memory_messages (M)
-                │
-                └─o──── has ────o─ memory_session_tokens (M)
+                |
+                +-o---- owns ----o- memory_sessions (M)
+                |                        |
+                |                        +-o---- contains ----o- memory_messages (M)
+                |
+                +-o---- has ----o- memory_session_tokens (M)
 
 
 TABLES:
-────────────────────────────────────────────────
+------------------------------------------------
 
 memory_users (PK: id)
-  ├─ id (string, PK)
-  ├─ github_id (string, UK)
-  └─ github_login (string)
+  +- id (string, PK)
+  +- github_id (string, UK)
+  +- github_login (string)
 
 memory_sessions (PK: id, FK: user_id)
-  ├─ id (string, PK)
-  ├─ user_id (string, FK)
-  ├─ title (string)
-  ├─ state (string)
-  └─ metadata (json)
+  +- id (string, PK)
+  +- user_id (string, FK)
+  +- title (string)
+  +- state (string)
+  +- metadata (json)
 
 memory_messages (PK: id, FK: session_id)
-  ├─ id (int, PK)
-  ├─ session_id (string, FK)
-  ├─ role (string)
-  ├─ content (string)
-  ├─ timestamp (int)
-  └─ metadata (json)
+  +- id (int, PK)
+  +- session_id (string, FK)
+  +- role (string)
+  +- content (string)
+  +- timestamp (int)
+  +- metadata (json)
 
 memory_session_tokens (PK: token, FK: user_id)
-  ├─ token (string, PK)
-  ├─ user_id (string, FK)
-  └─ expires_at (int)
+  +- token (string, PK)
+  +- user_id (string, FK)
+  +- expires_at (int)
 ```
 
 **Key**: User-isolated. Tokens expire 7d. Messages searchable.
@@ -69,7 +69,7 @@ memory_session_tokens (PK: token, FK: user_id)
 ## Auth Flow
 
 1. Agent calls `authenticate(github_token)`
-2. Verify GitHub → Create user/session_token
+2. Verify GitHub -> Create user/session_token
 3. Use token for all ops
 
 ## Code Snippet
@@ -87,6 +87,6 @@ this.server.tool('save_memory', 'Save messages', {
 **Quiz**: Memory vs DO State?  
 A: Memory cross-session D1; DO per-convo state ✅
 
-**Related**: [Tools →](./tools.md) | [Architecture →](../architecture.md)
+**Related**: [Tools ->](./tools.md) | [Architecture ->](../architecture.md)
 
-**Next**: Authenticate → `@duyetbot save_memory [{"role":"user","content":"test"}]`
+**Next**: Authenticate -> `@duyetbot save_memory [{"role":"user","content":"test"}]`
