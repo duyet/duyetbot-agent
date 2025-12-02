@@ -1,7 +1,25 @@
 import type { ReactNode } from 'react';
 
-export function Card({ children }: { children: ReactNode }) {
-  return <div className="card">{children}</div>;
+// fumadocs-ui/components/card mock
+interface CardProps {
+  title?: string;
+  description?: string;
+  href?: string;
+  children?: ReactNode;
+}
+
+export function Card({ title, description, children }: CardProps) {
+  return (
+    <div className="card">
+      {title && <div className="card-title">{title}</div>}
+      {description && <div className="card-description">{description}</div>}
+      {children}
+    </div>
+  );
+}
+
+export function Cards({ children }: { children: ReactNode }) {
+  return <div className="cards">{children}</div>;
 }
 
 export function CardHeader({ children }: { children: ReactNode }) {

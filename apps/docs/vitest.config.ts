@@ -9,9 +9,8 @@ export default mergeConfig(
     plugins: [react()],
     resolve: {
       alias: {
-        'fumadocs-ui/provider/next': resolve(__dirname, 'src/__mocks__/fumadocs-provider.tsx'),
+        'fumadocs-ui/provider': resolve(__dirname, 'src/__mocks__/fumadocs-provider.tsx'),
         'fumadocs-ui/components/card': resolve(__dirname, 'src/__mocks__/fumadocs-card.tsx'),
-        'fumadocs-ui/components/button': resolve(__dirname, 'src/__mocks__/fumadocs-button.tsx'),
         'next/link': resolve(__dirname, 'src/__mocks__/next-link.tsx'),
       },
     },

@@ -7,9 +7,9 @@ describe('HomePage', () => {
   it('renders without crashing', () => {
     // Use server-side rendering to avoid jsdom issues
     const html = renderToString(createElement(Page));
-    expect(html).toContain('Duyetbot Agent');
+    expect(html).toContain('DUYETBOT AGENT');
     expect(html).toContain('Get Started');
-    expect(html).toContain('Quick Start');
     expect(html).toContain('Architecture');
+    expect(html).toContain('Autonomous AI agent');
   });
 });
