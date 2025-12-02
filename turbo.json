@@ -74,6 +74,12 @@
       "dependsOn": ["^build"],
       "outputs": ["out/**", ".next/**"],
       "inputs": ["app/**", "lib/**", "src/**", "*.config.*", "*.json"]
+    },
+    "@duyetbot/agent-server#build": {
+      "cache": false
+    },
+    "@duyetbot/agent-server#type-check": {
+      "cache": false
     }
   }
 }
