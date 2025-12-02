@@ -1,0 +1,4 @@
+out
+.next/
+.turbo/
+.env.*.local
