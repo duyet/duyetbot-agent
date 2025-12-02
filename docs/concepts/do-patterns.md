@@ -18,29 +18,29 @@ description: "8 Durable Objects: Router/Simple/Orchestrator/HITL/Code/Research/G
 From [`PLAN.md`](PLAN.md:43):
 
 ```
-             Telegram/GitHub Webhook
-                      │
-                      ▼
-               Platform Agent DO
-                      │
-             Memory MCP D1/KV ◀───┐
-                      │           │
-                      ▼           │
-               RouterAgent        │
-           (Hybrid Classifier)    │
-                      │◀──────────┘
-         ┌────┬───────┼─────┬──────┐
-         │    │       │     │      │
-         ▼    ▼       ▼     ▼      ▼
-      Simple HITL Orchestrator Duyet
-      Agent Agent Agent       Info
-             │               Agent
-             │
-        ┌────┼────┬──────┐
-        │    │    │      │
-        ▼    ▼    ▼      ▼
-      Code Research GitHub
-      Worker Worker  Worker
+                Telegram/GitHub Webhook
+                         │
+                         ▼
+                  Platform Agent DO
+                         │
+                Memory MCP D1/KV ◀───┐
+                         │           │
+                         ▼           │
+                  RouterAgent        │
+              (Hybrid Classifier)    │
+                         │◀──────────┘
+          ┌────┬────────┼──────┬────────┐
+          │    │        │      │        │
+          ▼    ▼        ▼      ▼        ▼
+       Simple HITL Orchestrator Duyet
+       Agent  Agent  Agent      Info
+              │                Agent
+              │
+         ┌────┼────┬──────┐
+         │    │    │      │
+         ▼    ▼    ▼      ▼
+       Code Research GitHub
+       Worker Worker  Worker
 ```
 
 ## 8 DOs Table
