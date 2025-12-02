@@ -28,35 +28,6 @@ bun run deploy:github    # GitHub only
 
 > **Full details**: See [docs/architecture.md](docs/architecture.md)
 
-### Two-Tier Agent System
-
-```
-Tier 1 (Cloudflare Workers)          Tier 2 (Container/Fly.io)
-├── telegram-bot (DO)                └── agent-server
-├── github-bot (DO)                      ├── Claude Agent SDK
-└── memory-mcp (D1+KV)                   ├── Filesystem access
-    Fast, serverless, stateful           └── Shell tools (git, bash)
-```
-
-### Multi-Agent Routing (Tier 1)
-
-Each bot deploys Durable Objects implementing [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
-
-```
-User Message → CloudflareChatAgent → RouterAgent (classifier)
-                                          │
-              ┌───────────────────────────┼──────────────────────┐
-              ↓                           ↓                      ↓
-        SimpleAgent              OrchestratorAgent         DuyetInfoAgent
-        (quick Q&A)              (task decomposition)      (personal info)
-                                          │
-                    ┌─────────────────────┼─────────────────────┐
-                    ↓                     ↓                     ↓
-              CodeWorker          ResearchWorker          GitHubWorker
-```
-
-**Note**: Router dispatches to **Agents** only. Workers are dispatched by OrchestratorAgent.
-
 ### Transport Layer Pattern
 
 Platform-agnostic messaging abstraction (~50 lines per app):
@@ -88,6 +59,7 @@ interface Transport<TContext> {
 | `apps/telegram-bot` | Workers + DO | Telegram chat interface |
 | `apps/github-bot` | Workers + DO | GitHub @mentions and webhooks |
 | `apps/memory-mcp` | Workers + D1 | Cross-session memory (MCP server) |
+| `apps/docs` | Cloudflare Pages | Docs page |
 | `apps/agent-server` | Container | Long-running agent with filesystem |
 
 ## Development Workflow
@@ -120,18 +92,6 @@ Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
 
 ## Configuration
 
-### Environment Variables
-
-```bash
-# Platform Tokens
-TELEGRAM_BOT_TOKEN=xxx
-GITHUB_TOKEN=ghp_xxx
-GITHUB_WEBHOOK_SECRET=xxx
-
-# Optional
-ROUTER_DEBUG=false  # Enable routing logs
-```
-
 ### Cloudflare Secrets
 
 ```bash
@@ -140,11 +100,7 @@ bun run config:telegram
 bun run config:github
 ```
 
-> **Deployment details**: See [docs/deployment.md](docs/deployment.md)
-
 ## Testing
-
-**746+ tests** across all packages:
 
 ```bash
 bun run test                              # All tests
@@ -152,25 +108,9 @@ bun run test --filter @duyetbot/core      # Specific package
 bun run test --filter @duyetbot/chat-agent # Routing tests (226)
 ```
 
-## Key Files
-
-| File | Purpose |
-|------|---------|
-| `packages/chat-agent/src/cloudflare-agent.ts` | Main Cloudflare agent (2400+ LOC) |
-| `packages/chat-agent/src/agents/router-agent.ts` | Query classification & routing |
-| `packages/chat-agent/src/routing/classifier.ts` | Hybrid classifier (pattern + LLM) |
-| `packages/core/src/sdk/query.ts` | SDK query execution |
-| `apps/*/src/transport.ts` | Platform-specific transports |
-
 ## Documentation
 
-| Document | Content |
-|----------|---------|
-| [docs/architecture.md](docs/architecture.md) | System design, routing flow, patterns |
-| [docs/deployment.md](docs/deployment.md) | Deployment commands and secrets |
-| [docs/getting-started.md](docs/getting-started.md) | Setup guide |
-| [docs/api.md](docs/api.md) | API reference |
-| [PLAN.md](PLAN.md) | Implementation roadmap |
+See docs/ folder.
 
 ## External References
 
@@ -178,3 +118,7 @@ bun run test --filter @duyetbot/chat-agent # Routing tests (226)
 - [Cloudflare Agents Patterns](https://developers.cloudflare.com/agents/patterns/)
 - [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
+
+# Note
+
+In PLAN mode, always plan and break down tasks for asking multiple agents (e.g., a senior agent for simple tasks or an agent leader for complex ones) to work in parallel and maximize efficiency as needed.
