@@ -40,26 +40,35 @@ Set webhook at [@BotFather](https://t.me/botfather). Ping bot!
 
 ## 🏗️ Phase 1 Architecture
 
-```mermaid
-graph TD
-    A[Telegram/GitHub Webhook] --> B[Platform Agent DO]
-    B --> C[RouterAgent<br/>Hybrid Classifier]
-    C --> D[SimpleAgent<br/>Quick Q&A]
-    C --> E[HITLAgent<br/>Approvals]
-    C --> F[OrchestratorAgent<br/>Decompose Tasks]
-    F --> G[CodeWorker]
-    F --> H[ResearchWorker]
-    F --> I[GitHubWorker]
-    C --> J[DuyetInfoAgent]
-    K[Memory MCP D1/KV] <--> B
-    K <--> C
-    L[Claude/OpenRouter] <--> D
-    L <--> E
-    L <--> F
-    L <--> G
-    L <--> H
-    L <--> I
-    L <--> J
+```
+        Telegram/GitHub Webhook
+                 │
+                 ▼
+          Platform Agent DO
+                 │
+     Memory MCP D1/KV ◀──┤
+            │            │
+            ▼            │
+       RouterAgent       │
+   (Hybrid Classifier)   │
+            │◀───────────┘
+         ┌──┼────┬──────┬──────┐
+         │  │    │      │      │
+         ▼  ▼    ▼      ▼      ▼
+      Simple HITL Orch Duyet (other)
+      Agent Agent Agent Info
+               │  Agent
+           ┌───┼────┬─────┐
+           │   │    │     │
+           ▼   ▼    ▼     ▼
+         Code Res GitHub (workers)
+         Worker Worker Worker
+
+    Claude/OpenRouter (LLM)
+           ▲
+           │ connected to all agents
+           ▼
+       D, E, F, G, H, I, J agents
 ```
 
 **8 Durable Objects.** Shared via `script_name` bindings.

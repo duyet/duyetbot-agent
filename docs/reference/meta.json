@@ -1,0 +1,15 @@
+{
+  "title": "Reference",
+  "pages": [
+    "api",
+    "hono-middleware",
+    "query",
+    "schemas",
+    "tables",
+    "health",
+    "auth-middleware",
+    "rate-limiting",
+    "hooks",
+    "router-cheatsheet"
+  ]
+}
