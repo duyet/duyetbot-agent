@@ -12,6 +12,7 @@ export default mergeConfig(
         'fumadocs-ui/provider': resolve(__dirname, 'src/__mocks__/fumadocs-provider.tsx'),
         'fumadocs-ui/components/card': resolve(__dirname, 'src/__mocks__/fumadocs-card.tsx'),
         'next/link': resolve(__dirname, 'src/__mocks__/next-link.tsx'),
+        'next/navigation': resolve(__dirname, 'src/__mocks__/next-navigation.tsx'),
       },
     },
     test: {
