@@ -16,7 +16,7 @@ export interface TelegramBotConfig {
  * Create a Telegram bot instance for testing
  */
 export async function createTelegramBot(config: TelegramBotConfig): Promise<TelegramBot> {
-  const { env, bindings } = config;
+  const { env: _env, bindings: _bindings } = config;
 
   // Create a mock bot instance with test configuration
   const bot: TelegramBot = {

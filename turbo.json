@@ -69,6 +69,11 @@
     "@duyetbot/github-bot#config": {
       "dependsOn": ["@duyetbot/shared-agents#config", "@duyetbot/github-bot#deploy"],
       "cache": false
+    },
+    "@duyetbot/docs#build": {
+      "dependsOn": ["^build"],
+      "outputs": ["out/**", ".next/**"],
+      "inputs": ["app/**", "lib/**", "src/**", "*.config.*", "*.json"]
     }
   }
 }
