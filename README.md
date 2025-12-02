@@ -92,8 +92,8 @@ apps/
 
 - **[Architecture](./docs/architecture.md)** - System design + routing flow
 - **[Getting Started](./docs/getting-started.md)** - Setup guide
-- **[API Reference](./docs/api.md)** - API endpoints
-- **[Deployment](./docs/deployment.md)** - Deploy guide
+- **[API Reference](./docs/reference/api.md)** - API endpoints
+- **[Deployment](./docs/guides/deployment.md)** - Deploy guide
 - **[PLAN.md](./PLAN.md)** - Roadmap + progress
 
 ## License
