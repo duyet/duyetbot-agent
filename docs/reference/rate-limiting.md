@@ -32,7 +32,7 @@ In-memory Map. Resets on window expiry.
 
 ```typescript
 // packages/hono-middleware/src/middleware/rate-limit.ts
-const store = new Map();  // key → {count, resetAt}
+const store = new Map();  // key -> {count, resetAt}
 
 const key = keyGenerator(c);  // cf-connecting-ip
 entry.count++;
@@ -70,6 +70,6 @@ B: count > limit
 C: Manual clear
 
 ## Related
-- [Auth Middleware →](./auth-middleware.md)
+- [Auth Middleware ->](./auth-middleware.md)
 
 Run `clearRateLimitStore()` in tests. Spam requests. See 429!

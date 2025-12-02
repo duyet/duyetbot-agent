@@ -16,7 +16,9 @@ interface ExtendedPageData {
 export default async function Page(props: PageProps<'/docs/[[...slug]]'>) {
   const params = await props.params;
   const page = source.getPage(params.slug);
-  if (!page) notFound();
+  if (!page) {
+    notFound();
+  }
 
   const data = page.data as ExtendedPageData;
   const MDX = data.body;
@@ -39,7 +41,9 @@ export async function generateStaticParams() {
 export async function generateMetadata(props: PageProps<'/docs/[[...slug]]'>): Promise<Metadata> {
   const params = await props.params;
   const page = source.getPage(params.slug);
-  if (!page) notFound();
+  if (!page) {
+    notFound();
+  }
 
   const data = page.data as ExtendedPageData;
   return {

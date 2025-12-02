@@ -46,6 +46,6 @@ A: Tests fail ✅
 
 **Pro Tip** ✅: Hooks ensure quality.
 
-**CTA**: `bun scripts/install-hooks.ts` → Push safely!
+**CTA**: `bun scripts/install-hooks.ts` -> Push safely!
 
-**Next**: [DO Patterns →](../internals/do-patterns.md)
+**Next**: [DO Patterns ->](../internals/do-patterns.md)

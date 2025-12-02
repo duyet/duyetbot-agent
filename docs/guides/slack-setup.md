@@ -78,16 +78,16 @@ Deploy: `bun run deploy:slack`.
 ## Integration Flow
 
 ```
-┌───────────────┐     ┌───────────────┐     ┌─────────────────┐
-│ Slack         │────→│ Webhook       │────→│ Parse +         │
-│ @mention      │     │ /events       │     │ queueMessage    │
-└───────────────┘     └───────────────┘     └────────┬────────┘
-                                                     │
-                                                     ▼
-┌───────────────┐     ┌───────────────┐     ┌─────────────────┐
-│ Process +     │←────│ SlackTransport│←────│ DO Alarm        │
-│ Edit Response │     │ "Thinking..." │     │ 500ms           │
-└───────────────┘     └───────────────┘     └─────────────────┘
++---------------+     +---------------+     +-----------------+
+| Slack         |----->| Webhook       |----->| Parse +         |
+| @mention      |     | /events       |     | queueMessage    |
++---------------+     +---------------+     +--------+--------+
+                                                     |
+                                                     v
++---------------+     +---------------+     +-----------------+
+| Process +     |←----| SlackTransport|←----| DO Alarm        |
+| Edit Response |     | "Thinking..." |     | 500ms           |
++---------------+     +---------------+     +-----------------+
 ```
 
 Matches core transports.
@@ -101,6 +101,6 @@ B: Await full process
 C: 202 Accepted
 
 ## Related
-- [Core Transports →](/core-concepts/transports.md)
+- [Core Transports ->](/core-concepts/transports.md)
 
 Create Slack app. Subscribe events. Test mentions!

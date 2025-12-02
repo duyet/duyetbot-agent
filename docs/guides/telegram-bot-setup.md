@@ -3,7 +3,7 @@ title: Telegram Bot Setup
 description: BotFather token. Config secrets. Deploy. Set webhook. Test "hi". Bot live!
 ---
 
-**TL;DR**: [@BotFather](https://t.me/botfather) → token → `bun scripts/config.ts telegram` → `bun run deploy:telegram` → webhook → "hi"!
+**TL;DR**: [@BotFather](https://t.me/botfather) -> token -> `bun scripts/config.ts telegram` -> `bun run deploy:telegram` -> webhook -> "hi"!
 
 Chat interface ready. 2 mins.
 
@@ -26,7 +26,7 @@ bun run deploy:telegram
 
 ## 🌐 Step 3: Webhook
 
-BotFather → `/setwebhook` → `https://YOUR_WORKER.workers.dev/webhook`
+BotFather -> `/setwebhook` -> `https://YOUR_WORKER.workers.dev/webhook`
 
 Or API:
 ```bash
@@ -36,7 +36,7 @@ curl -X POST https://api.telegram.org/bot$TOKEN/setWebhook?url=https://YOUR_WORK
 ## 🧪 Step 4: Test
 
 Message bot: `hi`
-**Expect**: "Thinking 🧠" → Greeting.
+**Expect**: "Thinking 🧠" -> Greeting.
 
 ## 📋 Checklist
 
@@ -53,24 +53,24 @@ A: BotFather `/setwebhook` ✅
 
 ```
 User Message
-     │
-     ▼
+     |
+     v
 Webhook POST
-     │
-     ▼
+     |
+     v
 TelegramAgent DO
-     │
-     ▼
+     |
+     v
 RouterAgent
-     │
-     ▼
+     |
+     v
 Response
-     │
-     ▼
+     |
+     v
 Edit Message
 ```
 
 ## 🚀 Next
 
-[GitHub Setup →](/guides/github-bot-setup)  
+[GitHub Setup ->](/guides/github-bot-setup)  
 **Setup now**: Get token from BotFather! {{t('telegram.ready')}}

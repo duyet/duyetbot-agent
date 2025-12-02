@@ -5,7 +5,7 @@ description: memory_users/sessions/messages/tokens. Indexes for perf. Query exam
 
 <!-- i18n: en -->
 
-**TL;DR**: memory_* prefixed. Users → Sessions → Messages. Indexes: session/timestamp/content.
+**TL;DR**: memory_* prefixed. Users -> Sessions -> Messages. Indexes: session/timestamp/content.
 
 ## Table of Contents
 - [ERD](#erd)
@@ -18,32 +18,32 @@ description: memory_users/sessions/messages/tokens. Indexes for perf. Query exam
 From migrations [`0001_initial_schema.sql`](apps/memory-mcp/migrations/0001_initial_schema.sql:5), [`0004_rename_with_prefix.sql`](apps/memory-mcp/migrations/0004_rename_with_prefix.sql:7)
 
 ```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                              ENTITY RELATIONSHIPS                            │
-└─────────────────────────────────────────────────────────────────────────────┘
++-----------------------------------------------------------------------------+
+|                              ENTITY RELATIONSHIPS                            |
++-----------------------------------------------------------------------------+
 
-┌─────────────────────┐       ┌─────────────────────┐       ┌─────────────────────┐
-│    memory_users     │       │   memory_sessions   │       │   memory_messages   │
-├─────────────────────┤       ├─────────────────────┤       ├─────────────────────┤
-│ id          TEXT PK │──┐    │ id          TEXT PK │──┐    │ id       INTEGER PK │
-│ github_id   TEXT UK │  │    │ user_id     TEXT FK │  │    │ session_id  TEXT FK │
-│ github_login   TEXT │  │    │ title          TEXT │  │    │ role           TEXT │
-│ created_at INTEGER  │  │    │ state          TEXT │  │    │ content        TEXT │
-└─────────────────────┘  │    │ created_at INTEGER  │  │    │ timestamp   INTEGER │
-                         │    │ metadata       TEXT │  │    │ metadata       TEXT │
-                         │    └─────────────────────┘  │    └─────────────────────┘
-                         │              ▲              │              ▲
-                         │              │              │              │
-                         └──────────────┘              └──────────────┘
++---------------------+       +---------------------+       +---------------------+
+|    memory_users     |       |   memory_sessions   |       |   memory_messages   |
++---------------------+       +---------------------+       +---------------------+
+| id          TEXT PK |--+    | id          TEXT PK |--+    | id       INTEGER PK |
+| github_id   TEXT UK |  |    | user_id     TEXT FK |  |    | session_id  TEXT FK |
+| github_login   TEXT |  |    | title          TEXT |  |    | role           TEXT |
+| created_at INTEGER  |  |    | state          TEXT |  |    | content        TEXT |
++---------------------+  |    | created_at INTEGER  |  |    | timestamp   INTEGER |
+                         |    | metadata       TEXT |  |    | metadata       TEXT |
+                         |    +---------------------+  |    +---------------------+
+                         |              ^              |              ^
+                         |              |              |              |
+                         +--------------+              +--------------+
                               owns (1:N)                    has (1:N)
 
-┌─────────────────────────┐
-│  memory_session_tokens  │
-├─────────────────────────┤
-│ token         TEXT PK   │
-│ user_id       TEXT FK   │◀─── memory_users.id (1:N owns)
-│ expires_at    INTEGER   │
-└─────────────────────────┘
++-------------------------+
+|  memory_session_tokens  |
++-------------------------+
+| token         TEXT PK   |
+| user_id       TEXT FK   |◀--- memory_users.id (1:N owns)
+| expires_at    INTEGER   |
++-------------------------+
 ```
 
 ## Tables
@@ -112,7 +112,7 @@ ORDER BY timestamp;
 ```
 
 **Quiz**: FK cascade delete?
-A: Sessions → Messages ✅
+A: Sessions -> Messages ✅
 
 **Migrate**: `wrangler d1 migrations apply memory-mcp`
 

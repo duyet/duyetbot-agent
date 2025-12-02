@@ -51,5 +51,5 @@ A: `bun run deploy` ✅
 
 ## 🚀 Next
 
-[Checklists →](/getting-started/checklists)  
+[Checklists ->](/getting-started/checklists)  
 **Deploy now**: `bun run deploy:telegram`! {{t('deploy.live')}}
