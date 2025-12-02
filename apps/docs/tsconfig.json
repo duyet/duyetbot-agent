@@ -20,7 +20,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./*"],
-      "@/.source": ["./.source/index"]
+      "@/.source/*": ["./.source/*"]
     },
     "target": "ES2017"
   },

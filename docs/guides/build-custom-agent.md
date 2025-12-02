@@ -1,12 +1,7 @@
 ---
 title: Build Custom Agent
-desc: End-to-end tutorial. Extend base agent. Add DO binding. Deploy. Test. Your agent live!
-sidebar_position: 2.1
-keywords: [custom-agent, tutorial, extend-agent, durable-object, wrangler-binding, deploy-test]
-slug: guides/build-custom-agent
+description: End-to-end tutorial. Extend base agent. Add DO binding. Deploy. Test. Your agent live!
 ---
-
-# Build Custom Agent
 
 **TL;DR**: Extend `BaseAgent`. Add class/bind in `shared-agents`. `bun run deploy:shared-agents`. Test via Telegram!
 

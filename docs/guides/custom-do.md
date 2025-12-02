@@ -1,14 +1,9 @@
 ---
 title: Custom Agent DO
-desc: "Extend BaseAgent. Implement handle(). Self-register via agentRegistry.register(). Import agents/index.ts."
-sidebar_position: 3
-keywords: [extend, agent, do, custom, registry, base-agent]
-slug: developer-hub/extend/custom-do
+description: Extend BaseAgent. Implement handle(). Self-register via agentRegistry.register(). Import agents/index.ts.
 ---
 
 <!-- i18n: en -->
-
-# Custom Agent DO
 
 **TL;DR**: `class MyAgent extends Agent<MyEnv, MyState>`. `handle(ctx)`. `agentRegistry.register({name:'my-agent',...})`. Import `agents/index.ts`. ✅ Routed.
 

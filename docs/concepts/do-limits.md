@@ -1,14 +1,9 @@
 ---
 title: DO Limits & Alarms
 description: Cloudflare DO quotas, alarms, heartbeats. Scale reliably with monitoring.
-sidebar_position: 1
-keywords: [do-quotas, alarms, heartbeats, scaling]
-slug: /advanced/scaling/do-limits
 ---
 
 <!-- i18n: en -->
-
-# DO Limits & Alarms ✅
 
 **TL;DR**: Track quotas daily. Schedule alarms wisely. Rotate heartbeats. Recover stuck batches automatically.
 
@@ -77,17 +72,17 @@ Auto-recovery: Clear `activeBatch`. Promote `pendingBatch`.
 └────────┬─────────┘
          │
          ▼
-┌─────────────────────┐
-│ pendingBatch        │
-│ Non-blocking        │
-└────────┬────────────┘
+┌──────────────────────┐
+│ pendingBatch         │
+│ Non-blocking         │
+└────────┬─────────────┘
          │
          ▼
-     ┌──────────────┐
-     │ Alarm 500ms? │
-     └────────┬─────┘
-              │
-              ▼
+   ┌──────────────┐
+   │ Alarm 500ms? │
+   └────────┬─────┘
+            │
+            ▼
 ┌──────────────────────┐
 │ activeBatch          │
 │ Process LLM          │
@@ -109,16 +104,16 @@ Auto-recovery: Clear `activeBatch`. Promote `pendingBatch`.
 └──────┬───────┘
        │
        ▼
-   ┌──────────────┐
-   │ Stuck?       │
-   │ 30s no beat? │
-   └────┬──────┬──┘
-        │ Yes  │
-        ▼      │
-   ┌──────────────┐
-   │ Clear active │
-   │ Recover      │
-   └──────────────┘
+  ┌────────────────┐
+  │ Stuck?         │
+  │ 30s no beat?   │
+  └───┬──────┬─────┘
+      │ Yes  │ No
+      ▼      │
+  ┌────────────────┐
+  │ Clear active   │
+  │ Recover        │
+  └────────────────┘
 ```
 
 **Quiz**: Free tier alarms/day?

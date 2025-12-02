@@ -1,3 +1,8 @@
+---
+title: Deployment Overview
+description: Deploy GitHub Bot, Memory MCP, Telegram, or Agent Server. Platform comparison and quick start guide.
+---
+
 # Deployment
 
 Quick reference for deploying duyetbot-agent components.

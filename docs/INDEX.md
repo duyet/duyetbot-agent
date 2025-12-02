@@ -1,9 +1,6 @@
 ---
 title: Home
-desc: Autonomous edge AI agents across CLI, Telegram, GitHub. Deploy in 30s. Persistent memory. Multi-LLM.
-sidebar_position: 1
-keywords: [duyetbot, agent, cloudflare, durable-objects, mcp, bun, telegram, github, cli]
-slug: /
+description: Autonomous edge AI agents across CLI, Telegram, GitHub. Deploy in 30s. Persistent memory. Multi-LLM.
 ---
 
 # duyetbot-agent

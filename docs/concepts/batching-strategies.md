@@ -1,14 +1,9 @@
 ---
 title: Batching Strategies
 description: Optimize window, trim history, cap maxMsgs. Reduce LLM calls 55%.
-sidebar_position: 2
-keywords: [batching, trim-history, window-opt]
-slug: /advanced/scaling/batching-strategies
 ---
 
 <!-- i18n: en -->
-
-# Batching Strategies ✅
 
 **TL;DR**: Set windowMs:500. Trim history to 10 msgs. Cap maxMessages:10. Recover stuck via heartbeats.
 
@@ -79,17 +74,17 @@ if (shouldProcessImmediately(state, config)) {
     Yes     No
       │      │
       ▼      ▼
- ┌──────────────┐  ┌──────────────┐
- │ Stuck 30s?   │  │ Start pending│
- └──┬────────┬──┘  │ Alarm 500ms  │
-    │        │     └────────┬─────┘
-   Yes      No            │
-    │        │            ▼
-    ▼        ▼      ┌──────────────┐
- ┌────────┐ ┌─────────────┐   │ onBatchAlarm:  │
- │ Clear  │ │ Add to      │   │ pending → active
- │ active │ │ pending     │   └────────┬─────┘
- └────────┘ └─────────────┘            │
+ ┌──────────────┐  ┌──────────────────┐
+ │ Stuck 30s?   │  │ Start pending    │
+ └──┬────────┬──┘  │ Alarm 500ms      │
+    │        │     └────────┬─────────┘
+   Yes      No             │
+    │        │             ▼
+    ▼        ▼      ┌────────────────────┐
+ ┌────────┐ ┌──────────────┐  │ onBatchAlarm:      │
+ │ Clear  │ │ Add to       │  │ pending → active   │
+ │ active │ │ pending      │  └────────┬───────────┘
+ └────────┘ └──────────────┘           │
                                        ▼
                                  ┌──────────────┐
                                  │ Process LLM  │

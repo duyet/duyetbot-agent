@@ -1,14 +1,9 @@
 ---
 title: Batch Routing ✅
-desc: "Queue pendingBatch 500ms → activeBatch alarms. Dedup, heartbeats, 30s stuck auto-recovery."
-sidebar_position: 10
-keywords: [batching, alarms, dual-batch, dedup, stuck-recovery]
-slug: /guides/workflows/batch-routing
+description: Queue pendingBatch 500ms → activeBatch alarms. Dedup, heartbeats, 30s stuck auto-recovery.
 ---
 
 <!-- i18n: en -->
-
-# Batch Routing ✅
 
 **TL;DR**: pendingBatch collects (non-blocking). 500ms alarm fires → activeBatch processes. 5s heartbeats. 30s no-heartbeat → recover.
 
@@ -41,8 +36,8 @@ activeBatch=       └────┬────┘
 pending            Add to pending
 pending=empty            │
     │                    │
-    ▼                    │
-processBatch()◄──────────┘
+    ▼◄───────────────────┘
+processBatch()
     │
     ▼
 5s Heartbeat Loop

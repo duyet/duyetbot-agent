@@ -1,12 +1,7 @@
 ---
 title: Checklists
-desc: "Pre/post-deploy checklists. Verify setup, test bots, monitor. Never miss a step."
-sidebar_position: 1.3
-keywords: [checklist, verify, test, deploy-check, webhook-test, e2e]
-slug: getting-started/checklists
+description: Pre/post-deploy checklists. Verify setup, test bots, monitor. Never miss a step.
 ---
-
-# Checklists
 
 **TL;DR**: Tick pre-deploy → deploy → post-deploy. Test CLI/Telegram/GitHub. All green? ✅ Live!
 

@@ -1,12 +1,7 @@
 ---
 title: Cloudflare Deploy
-desc: One-command deploys. `bun run deploy` for all. Wrangler + Docker alts. Zero-config scaling.
-sidebar_position: 1.2
-keywords: [deploy, wrangler, cloudflare, docker, bun-run-deploy, turbo]
-slug: getting-started/cloudflare-deploy
+description: One-command deploys. `bun run deploy` for all. Wrangler + Docker alts. Zero-config scaling.
 ---
-
-# Cloudflare Deploy
 
 **TL;DR**: `bun run deploy` deploys everything. Or `bun run deploy:telegram`. Scales globally. Free idle.
 

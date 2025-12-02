@@ -1,14 +1,9 @@
 ---
 title: Health Checks
-desc: "GET /health, /live, /ready. K8s probes + full status (name/version/timestamp)."
-sidebar_position: 2
-keywords: [health,liveness,readiness,k8s,hono]
-slug: /api-reference/hono-endpoints/health
+description: GET /health, /live, /ready. K8s probes + full status (name/version/timestamp).
 ---
 
 <!-- i18n: en -->
-
-# Health Checks
 
 **TL;DR**: Standard probes. /health full info. Always 200 on healthy.
 

@@ -1,14 +1,9 @@
 ---
 title: FAQs
-desc: "Deploy? Docker? LLM rates? Memory? Accordion answers from deployment/PLAN.md."
-sidebar_position: 2
-keywords: [faq, deploy, docker, llm, rates, memory, d1]
-slug: community/faqs
+description: Deploy? Docker? LLM rates? Memory? Accordion answers from deployment/PLAN.md.
 ---
 
 <!-- i18n: en -->
-
-# FAQs
 
 **TL;DR**: Deploy: `bun run deploy`. No Docker (Cloudflare Workers). LLM: OpenRouter via AI Gateway. Memory: D1/KV. ✅ Edge-first.
 

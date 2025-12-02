@@ -1,14 +1,9 @@
 ---
 title: Fork & PR
-desc: "Fork repo. Create feat/fix branch. Semantic commits. Run checks/tests. Push. Open PR. Sign CLA."
-sidebar_position: 1
-keywords: [contribute, fork, pr, cla, git, semantic]
-slug: developer-hub/contribute/fork-pr
+description: Fork repo. Create feat/fix branch. Semantic commits. Run checks/tests. Push. Open PR. Sign CLA.
 ---
 
 <!-- i18n: en -->
-
-# Fork & PR
 
 **TL;DR**: Fork duyetbot-agent. `git checkout -b feat/my-feature`. `bun run check && bun run test`. Semantic commit. Push. PR. ✅ CLA auto.
 

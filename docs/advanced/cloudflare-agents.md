@@ -1,4 +1,7 @@
-# Cloudflare Agents Deployment
+---
+title: Cloudflare Agents Deployment
+description: Deploy duyetbot-agent to Cloudflare Agents with Durable Objects, SQLite, and WebSocket hibernation
+---
 
 **Back to:** [Deployment Overview](README.md)
 

@@ -1,14 +1,9 @@
 ---
 title: Batching & Alarms
-desc: "Dual-batch prevents blocking. 500ms window collects msgs. 5s heartbeat rotations. 30s stuck → auto-recovery."
-sidebar_position: 7
-keywords: [batching, alarms, dual-batch, heartbeat, stuck-detection, recovery]
-slug: /core-concepts/batching-alarms
+description: Dual-batch prevents blocking. 500ms window collects msgs. 5s heartbeat rotations. 30s stuck → auto-recovery.
 ---
 
 <!-- i18n: en -->
-
-# Batching & Alarms ✅
 
 **TL;DR**: pendingBatch collects (non-blocking). 500ms alarm → activeBatch processes. 5s heartbeats. 30s no-beat → recover.
 
@@ -21,60 +16,60 @@ slug: /core-concepts/batching-alarms
 ## Dual-Batch
 
 ```
-┌───────────────┐
-│ Webhook Msg   │
-└───────┬───────┘
-        │
-        ▼
-┌─────────────────────┐
-│ pendingBatch        │
-│ collecting          │
-└───────┬─────────────┘
-        │
-        ▼
-    ┌─────────────────┐
-    │ 500ms Alarm?    │
-    └─────┬───────┬───┘
-          │ Fire  │
-          ▼       │ No
-    ┌──────────────────┐    (stays pending)
-    │ activeBatch =    │
-    │ pending          │
-    │ pending = empty  │
-    └──────┬───────────┘
+┌────────────────┐
+│ Webhook Msg    │
+└────────┬───────┘
+         │
+         ▼
+┌──────────────────────┐
+│ pendingBatch         │
+│ collecting           │
+└────────┬─────────────┘
+         │
+         ▼
+  ┌────────────────┐
+  │ 500ms Alarm?   │
+  └────┬────────┬──┘
+       │ Fire   │ No
+       ▼        │ (stays pending)
+  ┌───────────────────┐
+  │ activeBatch =     │
+  │ pending           │
+  │ pending = empty   │
+  └────────┬──────────┘
            │
            ▼
-    ┌─────────────────┐
-    │ processBatch()  │
-    └──────┬──────────┘
+  ┌────────────────┐
+  │ processBatch() │
+  └────────┬───────┘
            │
            ▼
-    ┌──────────────────────┐
-    │ 5s Heartbeat Loop    │
-    │ Edit "Thinking..."   │
-    └──────┬───────────────┘
+  ┌──────────────────────┐
+  │ 5s Heartbeat Loop    │
+  │ Edit "Thinking..."   │
+  └────────┬─────────────┘
            │
            ▼
-    ┌──────────────────────┐
-    │ Response Ready       │
-    │ Edit Final           │
-    └──────────────────────┘
+  ┌──────────────────────┐
+  │ Response Ready       │
+  │ Edit Final           │
+  └──────────────────────┘
 
 ┌──────────────┐
 │ New Msg      │
 └──────┬───────┘
        │
        ▼
-   ┌──────────────────┐
-   │ active stale?    │
-   │ 30s no heartbeat?│
-   └───┬──────────┬───┘
-       │ Yes      │ No
-       ▼          │
-  ┌─────────────────────┐
-  │ Clear active        │
-  │ pending → active    │
-  └─────────────────────┘
+  ┌────────────────────┐
+  │ active stale?      │
+  │ 30s no heartbeat?  │
+  └───┬────────────┬───┘
+      │ Yes        │ No
+      ▼            │
+┌──────────────────────┐
+│ Clear active         │
+│ pending → active     │
+└──────────────────────┘
 ```
 
 ## Timings

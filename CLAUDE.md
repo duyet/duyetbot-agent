@@ -122,3 +122,5 @@ See docs/ folder.
 # Note
 
 In PLAN mode, always plan and break down tasks for asking multiple agents (e.g., a senior agent for simple tasks or an agent leader for complex ones) to work in parallel and maximize efficiency as needed.
+
+Prefer to use Linux bash commands instead instead of read the file content directly to the context (for lint verify format, lint, ...) refer using grep/find/awk/sed/etc ... if possible.

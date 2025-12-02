@@ -1,14 +1,9 @@
 ---
 title: Simple Agent
-desc: Direct LLM responses for low-complexity queries. No tools. Leverages parent history. Web search optional.
-sidebar_position: 2
-keywords: [simple-agent, llm-direct, low-complexity, stateless, web-search]
-slug: /core-concepts/agents/simple-agent
+description: Direct LLM responses for low-complexity queries. No tools. Leverages parent history. Web search optional.
 ---
 
 <!-- i18n: en -->
-
-# Simple Agent ✅
 
 **TL;DR**: Answers greetings/general knowledge directly via LLM. Fast, no tools/orchestration. Fallback for 80% queries.
 
@@ -32,10 +27,10 @@ slug: /core-concepts/agents/simple-agent
            │      │
         Yes│      │No
            ▼      ▼
-      ┌─────────────┐  ┌────────────────┐
-      │ SimpleAgent │  │ Orchestrator/  │
-      └──────┬──────┘  │ etc.           │
-             │         └────────────────┘
+      ┌─────────────┐  ┌─────────────┐
+      │ SimpleAgent │  │ Orchestrator│
+      └──────┬──────┘  │ /etc.       │
+             │         └─────────────┘
              ▼
       ┌──────────────────┐
       │ Load Parent      │

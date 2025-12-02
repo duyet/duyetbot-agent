@@ -1,14 +1,9 @@
 ---
 title: Transports
-desc: "Platform abstraction layer. Telegram/GitHub-specific send/edit/typing/parse. 50 LOC per platform. Reuses 2400+ agent LOC."
-sidebar_position: 4
-keywords: [transports, abstraction, telegram, github, send-edit, parse-context]
-slug: /core-concepts/transports
+description: Platform abstraction layer. Telegram/GitHub-specific send/edit/typing/parse. 50 LOC per platform. Reuses 2400+ agent LOC.
 ---
 
 <!-- i18n: en -->
-
-# Transports ✅
 
 **TL;DR**: Abstracts platform APIs. Agents call `transport.send()`. Handles Telegram 4096-char splits, GitHub comments/reactions.
 
