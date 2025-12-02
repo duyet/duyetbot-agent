@@ -5,7 +5,7 @@ description: "Zod schemas for memory-mcp tools: authenticate/get/save/list/searc
 
 <!-- i18n: en -->
 
-**TL;DR**: Zod-validated inputs. Auth → GitHub token → session. CRUD sessions/messages.
+**TL;DR**: Zod-validated inputs. Auth -> GitHub token -> session. CRUD sessions/messages.
 
 ## Table of Contents
 - [authenticate](#authenticate)
@@ -37,7 +37,7 @@ const authenticateSchema = z.object({
 
 ```json
 {"github_token": "ghp_ABC123"}
-// → {"user_id": "user_123", "session_token": "sess_XYZ", "expires_at": 1735689600000}
+// -> {"user_id": "user_123", "session_token": "sess_XYZ", "expires_at": 1735689600000}
 ```
 
 ## get-memory [`get-memory.ts`](apps/memory-mcp/src/tools/get-memory.ts:5)
@@ -83,35 +83,35 @@ const authenticateSchema = z.object({
 ## Auth Flow
 
 ```
-┌──────────┐
-│ Client   │
-└────┬─────┘
-     │
-     ▼
-┌───────────────────────┐
-│ authenticate          │
-│ (github_token)        │
-└─────────┬─────────────┘
-          │
-          ▼
-┌──────────────────────┐
-│ Create session_token │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ get/save/list/search │
-└──────────┬───────────┘
-           │
-           ▼
-┌──────────────────────┐
-│ memory_* tables      │
-└──────────────────────┘
++----------+
+| Client   |
++----+-----+
+     |
+     v
++-----------------------+
+| authenticate          |
+| (github_token)        |
++---------+-------------+
+          |
+          v
++----------------------+
+| Create session_token |
++----------+-----------+
+           |
+           v
++----------------------+
+| get/save/list/search |
++----------+-----------+
+           |
+           v
++----------------------+
+| memory_* tables      |
++----------------------+
 ```
 
-**Quiz**: No token? → ?
+**Quiz**: No token? -> ?
 A: Error: token required ✅
 
-**Use**: Connect MCP → `use_mcp_tool('memory-mcp', 'authenticate', {...})`
+**Use**: Connect MCP -> `use_mcp_tool('memory-mcp', 'authenticate', {...})`
 
-**Related**: [Tables →](./tables.md)
+**Related**: [Tables ->](./tables.md)

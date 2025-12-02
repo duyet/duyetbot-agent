@@ -3,8 +3,6 @@ title: Multi-Agent Architecture
 description: Documentation hub covering hybrid router, token optimization, architecture overview, flow diagrams, and learning resources
 ---
 
-# duyetbot-agent: Multi-Agent Architecture & Token Optimization
-
 ## 📚 Documentation Hub
 
 This directory contains comprehensive documentation on the multi-agent routing system and token optimization strategies.
@@ -67,9 +65,9 @@ Every query classification costs 200-300 LLM tokens, adding up quickly across th
 ### Real Impact (1000 queries/day)
 
 ```
-Without Router:  300,000 tokens/day  → $0.90/day   → $328/year
-With Router:     75,000 tokens/day   → $0.225/day  → $82/year
-Savings:         75% reduction       → $0.675/day  → $246/year ✅
+Without Router:  300,000 tokens/day  -> $0.90/day   -> $328/year
+With Router:     75,000 tokens/day   -> $0.225/day  -> $82/year
+Savings:         75% reduction       -> $0.675/day  -> $246/year ✅
 ```
 
 ---
@@ -80,22 +78,22 @@ Savings:         75% reduction       → $0.675/day  → $246/year ✅
 
 ```
 TIER 1: Cloudflare Workers (Edge)
-├─ Telegram Bot (Durable Object)
-├─ GitHub Bot (Durable Object)
-├─ Shared Agents Pool:
-│  ├─ RouterAgent (Hybrid Classifier)
-│  ├─ SimpleAgent (Direct LLM)
-│  ├─ OrchestratorAgent (Planning)
-│  ├─ HITLAgent (Confirmation)
-│  ├─ LeadResearcherAgent (Research)
-│  └─ DuyetInfoAgent (Personal Info)
-└─ Memory MCP (D1 + KV)
++- Telegram Bot (Durable Object)
++- GitHub Bot (Durable Object)
++- Shared Agents Pool:
+|  +- RouterAgent (Hybrid Classifier)
+|  +- SimpleAgent (Direct LLM)
+|  +- OrchestratorAgent (Planning)
+|  +- HITLAgent (Confirmation)
+|  +- LeadResearcherAgent (Research)
+|  +- DuyetInfoAgent (Personal Info)
++- Memory MCP (D1 + KV)
 
 TIER 2: (Future) Container/Fly.io
-└─ Long-running agent with filesystem access
++- Long-running agent with filesystem access
 ```
 
-### Message Flow (6ms → 5s)
+### Message Flow (6ms -> 5s)
 
 ```
 Webhook (6ms)
@@ -104,7 +102,7 @@ Platform Agent (DO)
     ↓
 Batch Queue (500ms window)
     ↓
-Hybrid Classification (Pattern → LLM)
+Hybrid Classification (Pattern -> LLM)
     ↓
 Specialized Agent (Simple/Orchestrator/etc)
     ↓
@@ -119,15 +117,15 @@ Response to User (5s typical)
 
 ```
 Query: "Hello!"
-├─ Pattern match: /^(hi|hello)/i → YES ✓
-├─ Tokens: 0 (skip LLM)
-└─ Route: SimpleAgent
++- Pattern match: /^(hi|hello)/i -> YES ✓
++- Tokens: 0 (skip LLM)
++- Route: SimpleAgent
 
 Query: "What are implications of quantum computing?"
-├─ Pattern match: [all rules] → NO
-├─ LLM classification: 300 tokens
-├─ Analysis: complexity=high, category=research
-└─ Route: LeadResearcherAgent
++- Pattern match: [all rules] -> NO
++- LLM classification: 300 tokens
++- Analysis: complexity=high, category=research
++- Route: LeadResearcherAgent
 ```
 
 **Result:** 80% of queries cost 0 tokens, 20% cost 300 tokens = **60% savings**
@@ -136,14 +134,14 @@ Query: "What are implications of quantum computing?"
 
 ```
 Without batching:
-  T+0ms:   msg1 → LLM call (150 tokens)
-  T+100ms: msg2 → LLM call (200 tokens)
-  T+200ms: msg3 → LLM call (100 tokens)
+  T+0ms:   msg1 -> LLM call (150 tokens)
+  T+100ms: msg2 -> LLM call (200 tokens)
+  T+200ms: msg3 -> LLM call (100 tokens)
   Total: 450 tokens (3 calls)
 
 With dual-batch (500ms window):
   T+0-500ms:  Collect msg1, msg2, msg3
-  T+506ms:    Combine → single LLM call (200 tokens)
+  T+506ms:    Combine -> single LLM call (200 tokens)
   Total: 200 tokens (1 call)
 
 Result: 55% savings!
@@ -156,16 +154,16 @@ Workers (stateless executors) are only called by **OrchestratorAgent**.
 
 ```
 Router Dispatch Targets (Agents):
-├─ SimpleAgent       (50-150 tokens)   → Direct LLM
-├─ OrchestratorAgent (500-2000 tokens) → Plan + dispatch workers
-├─ HITLAgent         (300-1000 tokens) → Confirmation
-├─ LeadResearcherAgent (1000-3000 tokens) → Parallel research
-└─ DuyetInfoAgent    (100-300 tokens)  → MCP info
++- SimpleAgent       (50-150 tokens)   -> Direct LLM
++- OrchestratorAgent (500-2000 tokens) -> Plan + dispatch workers
++- HITLAgent         (300-1000 tokens) -> Confirmation
++- LeadResearcherAgent (1000-3000 tokens) -> Parallel research
++- DuyetInfoAgent    (100-300 tokens)  -> MCP info
 
 Workers (Dispatched by Orchestrator):
-├─ CodeWorker        → Code analysis/generation
-├─ ResearchWorker    → Web search synthesis
-└─ GitHubWorker      → GitHub API operations
++- CodeWorker        -> Code analysis/generation
++- ResearchWorker    -> Web search synthesis
++- GitHubWorker      -> GitHub API operations
 ```
 
 ---
@@ -177,10 +175,10 @@ Workers (Dispatched by Orchestrator):
 ```typescript
 // Phase 1: Pattern Match (10-50ms, zero tokens)
 const patterns = [
-  /^(hi|hello|hey)/i,           // → SimpleAgent
-  /help|\?/i,                   // → SimpleAgent
-  /yes|no|approve/i,            // → HITLAgent
-  /code|bug|fix/i,              // → OrchestratorAgent
+  /^(hi|hello|hey)/i,           // -> SimpleAgent
+  /help|\?/i,                   // -> SimpleAgent
+  /yes|no|approve/i,            // -> HITLAgent
+  /code|bug|fix/i,              // -> OrchestratorAgent
 ];
 
 // If no match, Phase 2:
@@ -195,14 +193,14 @@ const classification = await llmClassify(query);
 
 ```typescript
 // Without batching: 3 messages = 3 LLM calls
-queueMessage(msg1); // → LLM call #1
-queueMessage(msg2); // → LLM call #2
-queueMessage(msg3); // → LLM call #3
+queueMessage(msg1); // -> LLM call #1
+queueMessage(msg2); // -> LLM call #2
+queueMessage(msg3); // -> LLM call #3
 
 // With batching: 3 messages = 1 LLM call (500ms window)
-queueMessage(msg1); // → pendingBatch
-queueMessage(msg2); // → pendingBatch
-queueMessage(msg3); // → pendingBatch
+queueMessage(msg1); // -> pendingBatch
+queueMessage(msg2); // -> pendingBatch
+queueMessage(msg3); // -> pendingBatch
 // After 500ms: combine & process once
 ```
 
@@ -215,14 +213,14 @@ SimpleAgent (Direct LLM):
   No planning
   No tool setup
   Single LLM call
-  → 100-150 tokens
+  -> 100-150 tokens
 
 OrchestratorAgent (Full Process):
   Planning phase
   Tool selection
   Worker dispatch
   Result aggregation
-  → 500-2000 tokens
+  -> 500-2000 tokens
 ```
 
 **Token Savings:** Route 70% of queries to SimpleAgent = **40% reduction per agent call**
@@ -340,9 +338,9 @@ const flags: RoutingFlags = {
 ### Tuning Batch Window
 
 ```
-100ms   → Real-time chat (fewer token savings)
-500ms   → Balanced (recommended - default)
-1000ms  → Batch processing (best token savings)
+100ms   -> Real-time chat (fewer token savings)
+500ms   -> Balanced (recommended - default)
+1000ms  -> Batch processing (best token savings)
 ```
 
 ---
@@ -363,7 +361,7 @@ Pattern matches (80):    0 tokens × 80 = 0
 LLM classify (15):       300 × 15      = 4,500
 Complex (5):             1,500 × 5     = 7,500
 Batching savings:        -4,500
-────────────────────────────────────────
+----------------------------------------
 Total:                   7,500 tokens
 Cost: $0.0225/day
 ```
@@ -426,15 +424,15 @@ A: Enable logging with `ROUTER_DEBUG=true` and track metrics in `logger.info()` 
 
 ### Documentation Issues?
 Check the relevant file:
-- Architecture questions → `architecture.md`
-- Token savings questions → `token-optimization-guide.md`
-- Flow/timing questions → `FLOW-DIAGRAMS.md`
-- Quick lookup → `ROUTER-CHEATSHEET.md`
+- Architecture questions -> `architecture.md`
+- Token savings questions -> `token-optimization-guide.md`
+- Flow/timing questions -> `FLOW-DIAGRAMS.md`
+- Quick lookup -> `ROUTER-CHEATSHEET.md`
 
 ### Code Questions?
-- Router implementation → `packages/chat-agent/src/agents/router-agent.ts`
-- Classifier logic → `packages/chat-agent/src/routing/classifier.ts`
-- Tests → `packages/chat-agent/test/routing.test.ts`
+- Router implementation -> `packages/chat-agent/src/agents/router-agent.ts`
+- Classifier logic -> `packages/chat-agent/src/routing/classifier.ts`
+- Tests -> `packages/chat-agent/test/routing.test.ts`
 
 ### Need a Specific Example?
 - See `token-optimization-guide.md` for code snippets

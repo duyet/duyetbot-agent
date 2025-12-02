@@ -18,58 +18,53 @@ description: Dual-batch prevents blocking. 500ms window collects msgs. 5s heartb
 ```
 +---------------------+
 | Webhook Msg         |
-+----------+----------+
++---------------------+
            |
            v
 +------------------------+
 | pendingBatch           |
-| collecting             |
-+----------+-------------+
-           |
-           v
-+----------+----------+---+
-| 500ms Alarm?            |
-+----------+----------+---+
-           | Fire    | No
-           v         | (stays pending)
+| - collecting           |
+| - msg1, msg2...        |
 +------------------------+
-| activeBatch =          |
-| pending                |
-| pending = empty        |
-+----------+-------------+
            |
            v
-+----------------------+
-| processBatch()       |
-+----------+-----------+
-           |
-           v
-+------------------------+
-| 5s Heartbeat Loop      |
-| Edit "Thinking..."     |
-+----------+-------------+
-           |
-           v
-+------------------------+
-| Response Ready         |
-| Edit Final             |
-+------------------------+
-
-+---------------------+
-| New Msg             |
-+----------+----------+
-           |
-           v
++--------------------+-----+
+| 500ms Alarm Fires?  | No  |
 +----------+----------+-----+
-| active stale?             |
-| 30s no heartbeat?         |
-+----------+----------+-----+
-           | Yes     | No
-           v         |
-+--------------------------+
-| Clear active             |
-| pending -> active        |
-+--------------------------+
+           | Yes             |
+           v                 |
++------------------------+   |
+| activeBatch = pending |   |
+| pendingBatch = empty  |   |
++------------------------+   |
+           |                 |
+           v                 |
++----------------------+     |
+| processBatch()       |     |
++----------------------+     |
+           |                 |
+           v                 |
++------------------------+   |
+| 5s Heartbeat Loop     |   |
+| Edit "Thinking..."    |   |
++------------------------+   |
+                            |
+                            v
++------------------------+   |
+| Response Ready         |   |
+| Edit Final Response    |   |
++------------------------+   |
+           |                 |
+           v                 |
++----------+----------+-----+ |
+| New Msg? | Check Stuck?    |
++----------+----------+-----+ |
+           | No      | Yes  | |
+           v         v      | |
+      Process Normally  Recover |
+                            | |
+                            v |
+                      Ready!   |
 ```
 
 ## Timings

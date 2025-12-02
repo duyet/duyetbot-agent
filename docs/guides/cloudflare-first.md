@@ -22,21 +22,21 @@ From [`wrangler.toml`](apps/shared-agents/[`wrangler.toml`](apps/shared-agents/w
 
 ```
 telegram-bot                github-bot                shared-agents
-   │                           │                          │
-   ├─── TelegramAgent DO(L)     │                          │
-   │                            │                          │
-   ├─► RouterAgent DO ◄─────────┼──────────────────────────┤
-   │   (script_name)            │                          │
-   │                        GitHubAgent DO(L)             │
-   └─► SimpleAgent DO ◄─────────┤                          │
-       (script_name)            │                          │
-                                │                    ┌─────┴──────┬────────┬────────┬─────────┐
-                                │                    │            │        │        │         │
-                                │                    ▼            ▼        ▼        ▼         ▼
-                                │              Orchestrator   CodeWorker  Res    GitHub   DuyetInfo
-                                │              Agent           (remote)  Worker  Worker   Agent
-                                │
-                                └──── D1 (OBSERVABILITY_DB)
+   |                           |                          |
+   +--- TelegramAgent DO(L)     |                          |
+   |                            |                          |
+   +-► RouterAgent DO ◄---------+--------------------------+
+   |   (script_name)            |                          |
+   |                        GitHubAgent DO(L)             |
+   +-► SimpleAgent DO ◄---------+                          |
+       (script_name)            |                          |
+                                |                    +-----+------+--------+--------+---------+
+                                |                    |            |        |        |         |
+                                |                    v            v        v        v         v
+                                |              Orchestrator   CodeWorker  Res    GitHub   DuyetInfo
+                                |              Agent           (remote)  Worker  Worker   Agent
+                                |
+                                +---- D1 (OBSERVABILITY_DB)
 ```
 
 **One deploy scales all bots.**
@@ -54,5 +54,5 @@ A: `script_name` ✅
 
 ## 🚀 Next
 
-[Build Agent →](/guides/build-custom-agent)  
+[Build Agent ->](/guides/build-custom-agent)  
 **Deploy edges**: `bun run deploy:shared-agents`! {{t('cf.edges_ready')}}

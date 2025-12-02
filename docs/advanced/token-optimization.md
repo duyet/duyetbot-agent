@@ -33,25 +33,25 @@ Badge: **75% ✅**
 
 ```
                Query
-                │
-                ▼
-         ┌──────────────┐
-         │   Hybrid?    │
-         └──┬──────────┬┘
-            │          │
+                |
+                v
+         +--------------+
+         |   Hybrid?    |
+         +--+----------++
+            |          |
       80% PATTERN   20% LLM
-            │          │
-            ▼          ▼
+            |          |
+            v          v
        SimpleAgent  Classify 300t
-      (50-150t)      │
-                     ▼
-                 ┌─────────────┐
-                 │  Complex?   │
-                 └──┬────────┬─┘
-                    │        │
+      (50-150t)      |
+                     v
+                 +-------------+
+                 |  Complex?   |
+                 +--+--------+-+
+                    |        |
                    NO       YES
-                    │        │
-                    ▼        ▼
+                    |        |
+                    v        v
                 Simple   Orch
                 100t     1500t
 ```
@@ -86,6 +86,6 @@ B: 300 (LLM classify)
 C: 1500 (orchestrator)
 
 ## Related
-- [Benchmarks →](./benchmarks.md)
+- [Benchmarks ->](./benchmarks.md)
 
 Measure tokens: Add `tokensUsed` logs. Optimize patterns!

@@ -20,7 +20,7 @@ From [`PLAN.md`](PLAN.md:101) timings + [`apps/telegram-bot/src/__tests__/e2e/pe
 
 | Phase          | P50    | P95    | Notes |
 |----------------|--------|--------|-------|
-| Webhook → DO   | 6ms    | 20ms   | Fire-and-forget |
+| Webhook -> DO   | 6ms    | 20ms   | Fire-and-forget |
 | Batch Alarm    | 500ms  | 1s     | Window |
 | Routing        | 300ms  | 2s     | Hybrid classify |
 | LLM Simple     | 2s     | 5s     | Direct |
@@ -41,39 +41,39 @@ From [`PLAN.md`](PLAN.md:101) timings + [`apps/telegram-bot/src/__tests__/e2e/pe
 ## Perf Flow
 
 ```
-       ┌─────────────┐
-       │ Webhook T0  │
-       └──────┬──────┘
-              │
-              ▼
-       ┌────────────────┐
-       │ Alarm T500ms   │
-       └──────┬─────────┘
-              │
-              ▼
-       ┌────────────────┐
-       │ Classify T300ms│
-       └──────┬─────────┘
-              │
-              ▼
-          ┌─────────────┐
-          │ Simple?     │
-          └────┬────┬───┘
-               │    │
-           Yes │    │ No
-               ▼    ▼
-          ┌──────┐  ┌──────┐
-          │ LLM  │  │ Orch │
-          │ 2s   │  │ 4s   │
-          └──┬───┘  └──┬───┘
-             │        │
-             └────┬───┘
-                  │
-                  ▼
-          ┌──────────────────┐
-          │ Edit Response    │
-          │ T5s ✅           │
-          └──────────────────┘
+       +-----------+
+       |Webhook T0 |
+       +-----+-----+
+             |
+             v
+       +-----------+
+       |Alarm T500ms|
+       +-----+-----+
+             |
+             v
+       +-----------+
+       |Classify300m|
+       +-----+-----+
+             |
+             v
+          +---------+
+          |Simple?  |
+          +---+---+-+
+              |   |
+          Yes |   | No
+              v   v
+          +----+ +----+
+          |LLM | |Orch |
+          | 2s | | 4s |
+          +--+-+ +-+--+
+             |   |
+             +---+
+               |
+               v
+          +----------+
+          |Edit Resp  |
+          |T5s OK     |
+          +----------+
 ```
 
 Refs E2E perf tests.
@@ -103,6 +103,6 @@ B: 0%
 C: 75%
 
 ## Related
-- [Token Opt →](./token-optimization.md)
+- [Token Opt ->](./token-optimization.md)
 
 Deploy + `wrangler tail`. Benchmark your queries!
