@@ -33,24 +33,24 @@ Badge: **75% ✅**
 
 ```
                Query
-                │
+                │                
                 ▼
          ┌──────────────┐
          │   Hybrid?    │
          └──┬──────────┬┘
-            │          │
+            │          │         
       80% PATTERN   20% LLM
-            │          │
+            │          │         
             ▼          ▼
        SimpleAgent  Classify 300t
-      (50-150t)      │
+      (50-150t)      │           
                      ▼
                  ┌─────────────┐
                  │  Complex?   │
                  └──┬────────┬─┘
-                    │        │
+                    │        │   
                    NO       YES
-                    │        │
+                    │        │   
                     ▼        ▼
                 Simple   Orch
                 100t     1500t

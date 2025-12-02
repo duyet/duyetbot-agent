@@ -63,7 +63,7 @@ Options: `createSubagentOptions(parentOpts, subagent, tools)`
 
 ```
 ┌──────────────────┐
-│  Main Query      │
+│ Main Query       │
 └────────┬─────────┘
          │
          ▼

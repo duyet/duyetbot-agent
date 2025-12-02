@@ -405,7 +405,7 @@ async queueMessage(ctx: AgentContext) {
 100 Queries / Day
 
 Mechanism                          Savings    Details
-─────────────────────────────────────────────────────
+─────────────────────────────────────────────────────                     
 1. Hybrid Classification          60%        Pattern match 80% (0 tokens)
                                              LLM only 20% (300 tokens)
 
@@ -419,7 +419,7 @@ Mechanism                          Savings    Details
 
 5. Heartbeat Edits               5%         Edit not send (no LLM cost)
 
-──────────────────────────────────────────────────────
+──────────────────────────────────────────────────────                    
 COMBINED SAVINGS                  ~75%       7,500 tokens vs 30,000
 ```
 
