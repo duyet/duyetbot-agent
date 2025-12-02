@@ -209,14 +209,23 @@ app.post(
           // Ignore if we can't send the error message
         });
     } finally {
-      // Write observability event to D1 (fire-and-forget)
+      // Write observability event to D1 with retry logic
       if (collector && storage) {
-        storage.writeEvent(collector.toEvent()).catch((err) => {
+        const result = await storage.writeEventWithRetry(collector.toEvent());
+        if (result.success) {
+          logger.info(`[${requestId}] [OBSERVABILITY] Event written`, {
+            requestId,
+            eventId: collector.getEventId(),
+            attempts: result.attempts,
+          });
+        } else {
           logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
             requestId,
-            error: err instanceof Error ? err.message : String(err),
+            eventId: collector.getEventId(),
+            error: result.error,
+            attempts: result.attempts,
           });
-        });
+        }
       }
     }
 

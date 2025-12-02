@@ -49,8 +49,10 @@
   "author": "duyet",
   "license": "MIT",
   "devDependencies": {
+    "@ai-sdk/ui-utils": "^1.2.11",
     "@biomejs/biome": "^2.1.2",
     "concurrently": "^9.2.1",
+    "secure-json-parse": "^4.1.0",
     "turbo": "^2.0.0",
     "wrangler": "^4.51.0"
   },

@@ -6,6 +6,13 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import {
+  type AppSource,
+  EventCollector,
+  type D1Database as ObsD1Database,
+  type DebugContext as ObsDebugContext,
+  ObservabilityStorage,
+} from '@duyetbot/observability';
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -1121,6 +1128,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * @throws Error if transport is not configured
      */
     async handle(ctx: TContext): Promise<void> {
+      const handleStartTime = Date.now();
+
       logger.info(`[CloudflareAgent][HANDLE] Starting handle (${JSON.stringify(ctx)}`);
 
       if (!transport) {
@@ -1314,6 +1323,60 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Call afterHandle hook (for command responses)
         if (hooks?.afterHandle) {
           await hooks.afterHandle(ctx, response);
+        }
+
+        // Write observability completion event (if OBSERVABILITY_DB is available)
+        const env = (this as unknown as { env: TEnv }).env;
+        const envWithObs = env as unknown as {
+          OBSERVABILITY_DB?: unknown;
+          MODEL?: string;
+        };
+        if (envWithObs.OBSERVABILITY_DB && stepTracker) {
+          try {
+            const storage = new ObservabilityStorage(envWithObs.OBSERVABILITY_DB as ObsD1Database);
+            const appSource = `${routerConfig?.platform || 'api'}-do` as AppSource;
+            const reqId = input.metadata?.requestId as string | undefined;
+            const collector = new EventCollector({
+              eventId: crypto.randomUUID(),
+              appSource,
+              eventType: 'completion',
+              triggeredAt: handleStartTime,
+              ...(reqId && { requestId: reqId }),
+            });
+
+            // Set user context (filter out undefined values for exactOptionalPropertyTypes)
+            const userCtx: {
+              userId?: string;
+              username?: string;
+              chatId?: string;
+            } = {};
+            if (input.userId !== undefined) {
+              userCtx.userId = input.userId.toString();
+            }
+            if (input.username) {
+              userCtx.username = input.username;
+            }
+            if (input.chatId !== undefined) {
+              userCtx.chatId = input.chatId.toString();
+            }
+            collector.setContext(userCtx);
+
+            // Set from debugContext (has classification, agents, tokens)
+            collector.setFromDebugContext(stepTracker.getDebugContext() as ObsDebugContext);
+            collector.setInput(chatMessage);
+            collector.setModel(envWithObs.MODEL || 'unknown');
+            collector.complete({ status: 'success', responseText: response });
+
+            await storage.writeEventWithRetry(collector.toEvent());
+            logger.info('[CloudflareAgent][OBSERVABILITY] Completion event written', {
+              eventId: collector.getEventId(),
+              appSource,
+            });
+          } catch (obsError) {
+            logger.error('[CloudflareAgent][OBSERVABILITY] Failed to write event', {
+              error: obsError instanceof Error ? obsError.message : String(obsError),
+            });
+          }
         }
       } catch (error) {
         // Stop step tracker if still running
@@ -1726,6 +1789,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * - pendingBatch continues collecting new messages independently
      */
     private async processBatch(): Promise<void> {
+      const batchStartTime = Date.now();
       const batch = this.state.activeBatch;
       if (!batch || batch.pendingMessages.length === 0) {
         return;
@@ -1880,6 +1944,23 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         });
       }
 
+      // Create step tracker for observability (used in fallback chat paths)
+      let batchStepTracker: StepProgressTracker | undefined;
+      if (transport.edit) {
+        batchStepTracker = new StepProgressTracker(
+          async (message) => {
+            try {
+              await transport.edit!(ctx, messageRef, message);
+            } catch (err) {
+              logger.error(`[CloudflareAgent][BATCH][STEP] Edit failed: ${err}`);
+            }
+          },
+          {
+            rotationInterval: config.thinkingRotationInterval ?? 5000,
+          }
+        );
+      }
+
       try {
         let response: string;
 
@@ -1979,10 +2060,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           logger.info(
             '[CloudflareAgent][BATCH] Fire-and-forget scheduling failed, falling back to chat()'
           );
-          response = await this.chat(combinedText);
+          response = await this.chat(combinedText, batchStepTracker);
         } else {
           // Routing disabled - use direct chat
-          response = await this.chat(combinedText);
+          response = await this.chat(combinedText, batchStepTracker);
         }
 
         rotator.stop();
@@ -2002,8 +2083,64 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         if (hooks?.afterHandle) {
           await hooks.afterHandle(ctx, response);
         }
+
+        // Write observability completion event for batch (if OBSERVABILITY_DB is available)
+        const env = (this as unknown as { env: TEnv }).env;
+        const envWithObs = env as unknown as {
+          OBSERVABILITY_DB?: unknown;
+          MODEL?: string;
+        };
+        if (envWithObs.OBSERVABILITY_DB && batchStepTracker) {
+          try {
+            const storage = new ObservabilityStorage(envWithObs.OBSERVABILITY_DB as ObsD1Database);
+            const appSource = `${routerConfig?.platform || 'api'}-do` as AppSource;
+            const batchReqId = batch.batchId;
+            const collector = new EventCollector({
+              eventId: crypto.randomUUID(),
+              appSource,
+              eventType: 'batch-completion',
+              triggeredAt: batchStartTime,
+              ...(batchReqId && { requestId: batchReqId }),
+            });
+
+            // Set user context from first message (filter out undefined for exactOptionalPropertyTypes)
+            const batchUserCtx: {
+              userId?: string;
+              username?: string;
+              chatId?: string;
+            } = {};
+            if (firstMessage?.userId !== undefined) {
+              batchUserCtx.userId = firstMessage.userId.toString();
+            }
+            if (firstMessage?.username) {
+              batchUserCtx.username = firstMessage.username;
+            }
+            if (firstMessage?.chatId !== undefined) {
+              batchUserCtx.chatId = firstMessage.chatId.toString();
+            }
+            collector.setContext(batchUserCtx);
+
+            // Set from debugContext (has classification, agents, tokens)
+            collector.setFromDebugContext(batchStepTracker.getDebugContext() as ObsDebugContext);
+            collector.setInput(combinedText);
+            collector.setModel(envWithObs.MODEL || 'unknown');
+            collector.complete({ status: 'success', responseText: response });
+
+            await storage.writeEventWithRetry(collector.toEvent());
+            logger.info('[CloudflareAgent][BATCH][OBSERVABILITY] Completion event written', {
+              eventId: collector.getEventId(),
+              appSource,
+              batchId: batch.batchId,
+            });
+          } catch (obsError) {
+            logger.error('[CloudflareAgent][BATCH][OBSERVABILITY] Failed to write event', {
+              error: obsError instanceof Error ? obsError.message : String(obsError),
+            });
+          }
+        }
       } finally {
         rotator.stop();
+        batchStepTracker?.destroy();
       }
     }
 

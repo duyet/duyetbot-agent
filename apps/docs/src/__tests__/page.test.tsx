@@ -8,7 +8,7 @@ describe('HomePage', () => {
     // Use server-side rendering to avoid jsdom issues
     const html = renderToString(createElement(Page));
     expect(html).toContain('@duyetbot');
-    expect(html).toContain('You are absolutely right!');
+    expect(html).toContain('Understand Architecture');
     expect(html).toContain('System Architecture');
   });
 });

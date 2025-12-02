@@ -9,6 +9,7 @@
  * duyetbot-agents worker via script_name in wrangler.toml.
  */
 
+import type { D1Database } from '@cloudflare/workers-types';
 import type { RouterAgentEnv, TelegramPlatformConfig } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
@@ -31,6 +32,8 @@ import { type TelegramContext, telegramTransport } from './transport.js';
 interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   // Common config (from wrangler.toml [vars])
   ENVIRONMENT?: string;
+  // Observability
+  OBSERVABILITY_DB?: D1Database;
   // Telegram-specific
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
