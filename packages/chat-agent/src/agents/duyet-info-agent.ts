@@ -11,7 +11,6 @@
 import { logger } from '@duyetbot/hono-middleware';
 import { getDuyetInfoPrompt, platformToOutputFormat } from '@duyetbot/prompts';
 import { Agent, type Connection } from 'agents';
-import type { MCPServerConnection } from '../cloudflare-agent.js';
 import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
 import {
   type AgentContext,
@@ -80,9 +79,9 @@ agentRegistry.register({
 /**
  * Duyet MCP server connection details
  */
-const DUYET_MCP_SERVER: MCPServerConnection = {
+const DUYET_MCP_SERVER = {
   name: 'duyet-mcp',
-  url: 'https://mcp.duyet.net/sse',
+  url: 'https://mcp.duyet.net/mcp',
 };
 
 /**
@@ -300,11 +299,11 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 ): DuyetInfoAgentClass<TEnv> {
   const debug = config.debug ?? false;
   // Reduced timeouts to fit within Cloudflare's 30s blockConcurrencyWhile limit
-  // Time budget: MCP 5s + LLM ~12s + tools 5s + buffer 3s = 25s
-  // With only 1 iteration, we avoid the 3x15s = 45s problem
+  // Time budget: MCP 5s + LLM ~10s + tools 5s = 20s (safe margin under 18s timeout)
+  // With HTTP Streamable transport, MCP connection is faster and more reliable
   const connectionTimeoutMs = config.connectionTimeoutMs ?? 5000; // 5s MCP connection
   const toolTimeoutMs = config.toolTimeoutMs ?? 5000; // 5s per-tool (was 8s)
-  const executionTimeoutMs = config.executionTimeoutMs ?? 20000; // 20s global timeout (was 25s)
+  const executionTimeoutMs = config.executionTimeoutMs ?? 18000; // 18s global timeout - safe margin under 30s limit
   const resultCacheTtlMs = config.resultCacheTtlMs ?? 180000; // 3 min cache
   const maxToolIterations = config.maxToolIterations ?? 1; // 1 iteration only (was 3)
   const maxTools = config.maxTools ?? 10;
@@ -323,6 +322,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
     private _mcpInitialized = false;
     private _mcpConnectStatus: 'success' | 'timeout' | 'error' | 'skipped' = 'skipped';
+    private _mcpServerId: string | undefined;
 
     /**
      * Handle state updates
@@ -339,8 +339,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
     /**
      * Initialize MCP connection
-     * Uses the new addMcpServer() API (agents SDK v0.2.24+) which handles
-     * registration, connection, and discovery in one call
+     * Uses mcp.connect() for direct connection without addMcpServer overhead.
+     * Stores the returned server ID for use in tool calls.
      */
     async initMcp(): Promise<void> {
       if (this._mcpInitialized) {
@@ -354,14 +354,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           });
         }
 
-        // Use the new addMcpServer() API which combines registerServer() + connectToServer()
-        // This is the recommended approach for agents SDK v0.2.24+
-        const addPromise = this.addMcpServer(
-          DUYET_MCP_SERVER.name,
-          DUYET_MCP_SERVER.url,
-          '', // callbackHost - empty string for non-OAuth servers
-          '' // agentsPrefix - empty string uses default
-        );
+        // Use mcp.connect() for direct connection without addMcpServer overhead
+        // This is more efficient and avoids blockConcurrencyWhile timeout issues
+        const connectPromise = this.mcp.connect(DUYET_MCP_SERVER.url);
 
         // Add timeout to prevent hanging connections
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -371,11 +366,12 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           );
         });
 
-        const result = await Promise.race([addPromise, timeoutPromise]);
+        const { id } = await Promise.race([connectPromise, timeoutPromise]);
+        this._mcpServerId = id;
 
         if (debug) {
           logger.info('[DuyetInfoAgent] MCP connected successfully', {
-            id: result.id,
+            id: this._mcpServerId,
           });
         }
 
@@ -538,7 +534,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
         // Execute with timeout using Promise.race
         const resultPromise = this.mcp.callTool({
-          serverId: DUYET_MCP_SERVER.name,
+          serverId: this._mcpServerId!,
           name: toolCall.name,
           arguments: args,
         });
