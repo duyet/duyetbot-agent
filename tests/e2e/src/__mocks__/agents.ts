@@ -36,10 +36,7 @@ export interface Connection {
 }
 
 // Mock getAgentByName
-export function getAgentByName<TAgent>(
-  namespace: AgentNamespace<TAgent>,
-  name: string,
-): TAgent {
+export function getAgentByName<TAgent>(namespace: AgentNamespace<TAgent>, name: string): TAgent {
   const id = namespace.idFromName(name);
   return namespace.get(id);
 }
