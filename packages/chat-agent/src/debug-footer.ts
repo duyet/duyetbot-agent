@@ -228,17 +228,27 @@ function formatMetadata(
   metadata?: DebugMetadata,
   escapeFn: (text: string) => string = escapeHtml
 ): string {
-  if (!metadata) return '';
+  if (!metadata) {
+    return '';
+  }
 
   const lines: string[] = [];
 
   // Timing line - prefixed with └─ to show it belongs to the target agent
   if (metadata.timing) {
     const parts: string[] = [];
-    if (metadata.timing.mcpConnect) parts.push(`MCP: ${metadata.timing.mcpConnect}`);
-    if (metadata.timing.toolDiscovery) parts.push(`Tools: ${metadata.timing.toolDiscovery}`);
-    if (metadata.timing.llmCall) parts.push(`LLM: ${metadata.timing.llmCall}`);
-    if (metadata.timing.toolExecution) parts.push(`Exec: ${metadata.timing.toolExecution}`);
+    if (metadata.timing.mcpConnect) {
+      parts.push(`MCP: ${metadata.timing.mcpConnect}`);
+    }
+    if (metadata.timing.toolDiscovery) {
+      parts.push(`Tools: ${metadata.timing.toolDiscovery}`);
+    }
+    if (metadata.timing.llmCall) {
+      parts.push(`LLM: ${metadata.timing.llmCall}`);
+    }
+    if (metadata.timing.toolExecution) {
+      parts.push(`Exec: ${metadata.timing.toolExecution}`);
+    }
     if (parts.length > 0) {
       lines.push(`   └─ ⏱️ ${escapeFn(parts.join(' | '))}`);
     }
@@ -254,7 +264,7 @@ function formatMetadata(
     lines.push(`   └─ ⚠️ ${escapeFn(metadata.lastToolError)}`);
   }
 
-  return lines.length > 0 ? '\n' + lines.join('\n') : '';
+  return lines.length > 0 ? `\n${lines.join('\n')}` : '';
 }
 
 /**
