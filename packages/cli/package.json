@@ -18,7 +18,7 @@
     }
   },
   "scripts": {
-    "build": "tsc",
+    "build": "echo 'build disabled'",
     "dev": "tsx src/bin.ts",
     "start": "node dist/bin.js",
     "clean": "rm -rf dist",

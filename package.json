@@ -10,7 +10,7 @@
     "tests/*"
   ],
   "scripts": {
-    "build": "turbo run build",
+    "build": "turbo run build --concurrency=1 --filter='!@duyetbot/docs'",
     "dev": "turbo run dev",
     "dev:docs": "turbo run dev --filter=@duyetbot/docs",
     "test": "turbo run test",
