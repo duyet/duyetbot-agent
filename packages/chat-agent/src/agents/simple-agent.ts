@@ -11,6 +11,14 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type Connection } from 'agents';
+import type { ExecutionStep } from '../execution-state.js';
+import type { PlatformEnv, ResponseTarget } from '../platform-response.js';
+import {
+  generateProgressMessage,
+  sendPlatformResponse,
+  sendProgressMessage,
+  sendProgressUpdate,
+} from '../platform-response.js';
 import type { ChatOptions, LLMProvider, Message } from '../types.js';
 import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
 import { agentRegistry } from './registry.js';
@@ -68,15 +76,34 @@ export interface SimpleAgentState {
   updatedAt: number;
   /** Number of queries executed (for analytics) */
   queriesExecuted: number;
+  /** Current async execution (for alarm handler) */
+  currentExecution?:
+    | {
+        /** Unique execution ID: simple:${platform}:${userId}:${messageId} */
+        executionId: string;
+        /** Original user query */
+        query: string;
+        /** Agent context for execution */
+        context: AgentContext;
+        /** Response target for platform response delivery */
+        responseTarget: ResponseTarget;
+        /** Progress message ID for editing (Telegram) */
+        progressMessageId: number | undefined;
+        /** Execution start timestamp */
+        startTime: number;
+        /** Current execution step */
+        step: ExecutionStep;
+      }
+    | undefined;
 }
 
 /**
  * Environment bindings for simple agent
+ * Extends PlatformEnv to access bot tokens for platform response delivery.
  * Note: Actual env fields depend on the provider (OpenRouterProviderEnv, etc.)
  * This interface is kept minimal - extend with provider-specific env in your app
  */
-// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extend with provider env
-export interface SimpleAgentEnv {}
+export interface SimpleAgentEnv extends PlatformEnv {}
 
 /**
  * Web search configuration for SimpleAgent
@@ -273,6 +300,150 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
           durationMs,
         });
         return AgentMixin.createErrorResult(error, durationMs);
+      }
+    }
+
+    /**
+     * Start async execution with unique ID pattern: simple:${platform}:${userId}:${messageId}
+     *
+     * Uses Agent SDK's setState() for state management (not raw ctx.storage).
+     * Follows DuyetInfoAgent pattern for alarm-based execution.
+     *
+     * @param query - User query to execute
+     * @param context - Agent context with user/chat info
+     * @param responseTarget - Platform-specific response target (built by caller)
+     * @returns Unique execution ID
+     */
+    async startExecution(
+      query: string,
+      context: AgentContext,
+      responseTarget: ResponseTarget
+    ): Promise<string> {
+      // Generate unique ID at message level: simple:platform:userId:messageId
+      const platform = context.platform || 'api';
+      const userId = context.userId || 'unknown';
+      const messageId = responseTarget.messageRef?.messageId || Date.now();
+      const executionId = `simple:${platform}:${userId}:${messageId}`;
+
+      const env = (this as unknown as { env: TEnv }).env;
+      const startTime = Date.now();
+
+      AgentMixin.log('SimpleAgent', 'Starting async execution', {
+        executionId,
+        platform,
+        userId,
+        queryLength: query.length,
+      });
+
+      // Send initial progress message
+      const progressText = generateProgressMessage('init', query, {
+        mcpConnected: false,
+        toolCount: 0,
+        toolsExecuted: [],
+        llmCalls: 0,
+        startTime,
+      });
+
+      let progressMessageId: number | undefined;
+      try {
+        const msgId = await sendProgressMessage(env, responseTarget, progressText);
+        progressMessageId = msgId ?? undefined;
+      } catch (err) {
+        logger.warn('[SimpleAgent] Failed to send progress message', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      // Store execution state using setState (Agent SDK pattern)
+      this.setState({
+        ...this.state,
+        currentExecution: {
+          executionId,
+          query,
+          context,
+          responseTarget,
+          progressMessageId,
+          startTime,
+          step: 'init' as ExecutionStep,
+        },
+      });
+
+      // Schedule alarm (100ms delay to allow state persistence)
+      await this.schedule(100, 'onExecutionAlarm', { executionId });
+      return executionId;
+    }
+
+    /**
+     * Alarm handler for async execution
+     *
+     * Executes the LLM call and sends the final response to the platform.
+     * Uses Agent SDK's setState() to clear execution state after completion.
+     */
+    async onExecutionAlarm(alarmData: { executionId: string }): Promise<void> {
+      const execution = this.state.currentExecution;
+
+      if (!execution || execution.executionId !== alarmData.executionId) {
+        logger.warn('[SimpleAgent] Execution not found or ID mismatch', {
+          executionId: alarmData.executionId,
+          hasExecution: !!execution,
+        });
+        return;
+      }
+
+      const env = (this as unknown as { env: TEnv }).env;
+      const { query, context, responseTarget, progressMessageId, startTime } = execution;
+
+      try {
+        // Update progress to llm_calling
+        if (progressMessageId) {
+          const progressText = generateProgressMessage('llm_calling', query, {
+            mcpConnected: false,
+            toolCount: 0,
+            toolsExecuted: [],
+            llmCalls: 1,
+            startTime,
+          });
+          await sendProgressUpdate(
+            env,
+            { ...responseTarget, messageRef: { messageId: progressMessageId } },
+            progressText
+          );
+        }
+
+        // Execute the query
+        const result = await this.execute(query, context);
+        const finalResponse = result.content || 'No response generated.';
+
+        // Send final response
+        await sendPlatformResponse(env, responseTarget, finalResponse);
+
+        AgentMixin.log('SimpleAgent', 'Async execution completed', {
+          executionId: execution.executionId,
+          durationMs: Date.now() - startTime,
+        });
+
+        // Clear execution state
+        this.setState({
+          ...this.state,
+          currentExecution: undefined,
+          queriesExecuted: this.state.queriesExecuted + 1,
+          updatedAt: Date.now(),
+        });
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+
+        AgentMixin.logError('SimpleAgent', 'Async execution failed', error, {
+          executionId: execution.executionId,
+        });
+
+        await sendPlatformResponse(env, responseTarget, `Error: ${errorMsg}`);
+
+        // Clear execution state on error
+        this.setState({
+          ...this.state,
+          currentExecution: undefined,
+          updatedAt: Date.now(),
+        });
       }
     }
 
