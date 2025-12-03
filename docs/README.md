@@ -12,7 +12,6 @@ description: Deploy GitHub Bot, Memory MCP, Telegram, or Agent Server. Platform 
 | **GitHub Bot** | [github-bot.md](github-bot.md) | Yes | Webhook handler for @mentions, PR reviews |
 | **Memory MCP** | [memory-mcp.md](memory-mcp.md) | No | Cloudflare Workers - session persistence |
 | **Telegram Bot** | [telegram-bot.md](telegram-bot.md) | No | Chat interface via Telegram |
-| **Agent Server** | [agent-server.md](agent-server.md) | No | Long-running server with WebSocket |
 | **Cloudflare Agents** | [cloudflare-agents.md](cloudflare-agents.md) | No | Stateful serverless agents on Cloudflare |
 
 ## Quick Start

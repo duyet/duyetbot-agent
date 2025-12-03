@@ -26,6 +26,7 @@
   },
   "devDependencies": {
     "@duyetbot/config-vitest": "workspace:*",
+    "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

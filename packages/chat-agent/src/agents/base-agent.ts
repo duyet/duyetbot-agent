@@ -184,6 +184,16 @@ export interface AgentDebugInfo {
     toolErrors?: number;
     /** Last tool error message (truncated) */
     lastToolError?: string;
+    /** Execution timing breakdown for debug footer */
+    timing?: {
+      mcpConnect?: string;
+      toolDiscovery?: string;
+      llmCall?: string;
+      toolExecution?: string;
+      total?: string;
+    };
+    /** Whether this was a retry after DO reset */
+    retried?: boolean;
   };
 }
 
@@ -207,6 +217,12 @@ export interface AgentResult {
   nextAction: 'await_confirmation' | 'continue' | 'complete' | undefined;
   /** Debug information for admin users */
   debug?: AgentDebugInfo;
+  /**
+   * Whether response delivery has been delegated to a child agent.
+   * When true, the caller should NOT send a response as the child agent
+   * will handle response delivery via its own alarm handler.
+   */
+  delegated?: boolean;
 }
 
 /**

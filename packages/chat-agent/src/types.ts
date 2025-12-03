@@ -184,6 +184,16 @@ export interface DebugMetadata {
   lastToolError?: string;
   /** Aggregated token usage for entire request */
   tokenUsage?: TokenUsage;
+  /** Execution timing breakdown for debug footer */
+  timing?: {
+    mcpConnect?: string; // "150ms (success)" or "5000ms (timeout)"
+    toolDiscovery?: string; // "50ms (8)"
+    llmCall?: string; // "3200ms"
+    toolExecution?: string; // "1500ms"
+    total?: string; // "4900ms"
+  };
+  /** Whether this was a retry after DO reset */
+  retried?: boolean;
 }
 
 /**

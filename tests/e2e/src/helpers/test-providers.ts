@@ -26,6 +26,13 @@ export function shouldUseRealAPI(): boolean {
 }
 
 /**
+ * Alias for shouldUseRealAPI - used in test files
+ */
+export function isRealAPITestingAvailable(): boolean {
+  return shouldUseRealAPI();
+}
+
+/**
  * Creates provider configuration for testing
  */
 export function createTestProviderConfig(): TestProviderConfig {
@@ -54,6 +61,14 @@ export function createTestProviderConfig(): TestProviderConfig {
  * Creates an OpenRouter provider instance for testing
  */
 export function createTestProvider() {
+  return getTestProvider();
+}
+
+/**
+ * Gets a test provider instance for LLM testing
+ * Returns null if real API is not available
+ */
+export function getTestProvider() {
   const config = createTestProviderConfig();
 
   if (!config.useRealAPI) {

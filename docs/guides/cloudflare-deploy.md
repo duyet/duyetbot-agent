@@ -22,16 +22,6 @@ bun run deploy:memory-mcp   # D1 memory
 
 **✅ Live in 60s!** Global edge network.
 
-## 🐳 Docker Alt (Heavy Compute)
-
-For agent-server (Tier 2 future):
-
-```bash
-docker-compose up -d agent-server
-```
-
-Ports: 3000 (HTTP), 8080 (WS). See [`docker-compose.yml`](docker-compose.yml).
-
 ## 📋 Prerequisites ✅
 
 - [ ] Env setup: [← Env Setup](/getting-started/env-setup)

@@ -120,9 +120,6 @@ pnpm run dev --filter @duyetbot/cli
 
 # GitHub Bot only
 pnpm run dev --filter @duyetbot/github-bot
-
-# Server only
-pnpm run dev --filter @duyetbot/agent-server
 ```
 
 ### Code Quality
@@ -169,16 +166,13 @@ duyetbot-agent/
 ├── apps/
 │   ├── github-bot/        # GitHub App webhook handler
 │   ├── telegram-bot/      # Telegram bot
-│   ├── memory-mcp/        # MCP memory server (Cloudflare Workers)
-│   └── agent-server/      # Long-running agent server
+│   └── memory-mcp/        # MCP memory server (Cloudflare Workers)
 ├── packages/
 │   ├── cli/               # Command-line interface
 │   ├── core/              # Agent core logic
 │   ├── providers/         # LLM provider adapters
 │   ├── tools/             # Tool implementations
 │   └── types/             # Shared TypeScript types
-├── infrastructure/
-│   └── docker/            # Dockerfiles
 ├── docs/                  # Documentation
 ├── PLAN.md                # Development roadmap
 └── CLAUDE.md              # Claude Code instructions

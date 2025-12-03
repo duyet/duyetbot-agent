@@ -60,7 +60,6 @@ interface Transport<TContext> {
 | `apps/github-bot` | Workers + DO | GitHub @mentions and webhooks |
 | `apps/memory-mcp` | Workers + D1 | Cross-session memory (MCP server) |
 | `apps/docs` | Cloudflare Pages | Docs page |
-| `apps/agent-server` | Container | Long-running agent with filesystem |
 
 ## Development Workflow
 
