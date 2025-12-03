@@ -311,6 +311,255 @@ async function sendGitHubResponse(
 }
 
 /**
+ * Send typing indicator to Telegram
+ *
+ * Sends a "typing" chat action to show the user that the bot is processing.
+ * This indicator auto-expires after 5 seconds, so should be refreshed during long operations.
+ *
+ * @param env - Environment with platform tokens
+ * @param target - Target information (chatId, botToken)
+ */
+export async function sendTypingIndicator(
+  env: PlatformEnv,
+  target: Pick<ResponseTarget, 'chatId' | 'botToken' | 'platform'>
+): Promise<void> {
+  if (target.platform !== 'telegram') {
+    // Only Telegram supports typing indicators
+    return;
+  }
+
+  const token = target.botToken || env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    logger.warn('[sendTypingIndicator] No Telegram bot token available');
+    return;
+  }
+
+  const url = `https://api.telegram.org/bot${token}/sendChatAction`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: target.chatId,
+        action: 'typing',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.warn('[sendTypingIndicator] Telegram API warning', {
+        status: response.status,
+        error: errorText,
+      });
+    }
+  } catch (error) {
+    // Don't throw on typing indicator errors - they're non-critical
+    logger.warn('[sendTypingIndicator] Failed to send typing indicator', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/**
+ * Send a new progress message to Telegram
+ *
+ * Creates a new message showing execution progress. Returns the message ID
+ * for subsequent edits via sendProgressUpdate().
+ *
+ * @param env - Environment with platform tokens
+ * @param target - Target information (chatId, botToken)
+ * @param text - Initial progress message text
+ * @returns Message ID for editing, or null if failed
+ */
+export async function sendProgressMessage(
+  env: PlatformEnv,
+  target: Pick<ResponseTarget, 'chatId' | 'botToken' | 'platform'>,
+  text: string
+): Promise<number | null> {
+  if (target.platform !== 'telegram') {
+    // Only Telegram supports progress messages for now
+    return null;
+  }
+
+  const token = target.botToken || env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    logger.warn('[sendProgressMessage] No Telegram bot token available');
+    return null;
+  }
+
+  const url = `https://api.telegram.org/bot${token}/sendMessage`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: target.chatId,
+        text,
+        parse_mode: 'HTML',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error('[sendProgressMessage] Telegram API error', {
+        status: response.status,
+        error: errorText,
+      });
+      return null;
+    }
+
+    const result = (await response.json()) as {
+      ok: boolean;
+      result?: { message_id: number };
+    };
+    return result.result?.message_id ?? null;
+  } catch (error) {
+    logger.error('[sendProgressMessage] Failed to send progress message', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return null;
+  }
+}
+
+/**
+ * Update an existing progress message
+ *
+ * Edits an existing message with new progress text.
+ *
+ * @param env - Environment with platform tokens
+ * @param target - Target information (chatId, botToken, messageRef)
+ * @param text - Updated progress message text
+ */
+export async function sendProgressUpdate(
+  env: PlatformEnv,
+  target: ResponseTarget,
+  text: string
+): Promise<void> {
+  if (target.platform !== 'telegram') {
+    return;
+  }
+
+  const token = target.botToken || env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    logger.warn('[sendProgressUpdate] No Telegram bot token available');
+    return;
+  }
+
+  const url = `https://api.telegram.org/bot${token}/editMessageText`;
+
+  try {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: target.chatId,
+        message_id: target.messageRef.messageId,
+        text,
+        parse_mode: 'HTML',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+
+      // "message is not modified" is not a real error
+      if (response.status === 400 && errorText.includes('message is not modified')) {
+        return;
+      }
+
+      logger.warn('[sendProgressUpdate] Telegram API warning', {
+        status: response.status,
+        error: errorText,
+      });
+    }
+  } catch (error) {
+    logger.warn('[sendProgressUpdate] Failed to update progress message', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+/**
+ * Generate progress message text for a given execution step
+ *
+ * Creates a formatted progress message showing:
+ * - Current step with emoji indicator
+ * - Completed steps with checkmarks
+ * - Elapsed time
+ *
+ * @param step - Current execution step
+ * @param query - Original query (truncated for display)
+ * @param progress - Additional progress data
+ * @returns Formatted progress message
+ */
+export function generateProgressMessage(
+  step: 'init' | 'mcp_connecting' | 'llm_calling' | 'tool_executing' | 'responding' | 'completed',
+  query: string,
+  progress: {
+    mcpConnected: boolean;
+    toolCount: number;
+    toolsExecuted: string[];
+    llmCalls: number;
+    startTime: number;
+  }
+): string {
+  const elapsed = ((Date.now() - progress.startTime) / 1000).toFixed(1);
+  const truncatedQuery = query.length > 30 ? `${query.slice(0, 30)}...` : query;
+
+  const lines: string[] = [];
+  const divider = '━'.repeat(35);
+
+  // Header
+  lines.push(`⏳ Processing: "${truncatedQuery}"`);
+  lines.push(divider);
+
+  // Step indicator with emoji
+  switch (step) {
+    case 'init':
+      lines.push('🚀 Starting...');
+      break;
+    case 'mcp_connecting':
+      lines.push('🔗 Connecting to knowledge base...');
+      break;
+    case 'llm_calling':
+      lines.push('🤖 Analyzing request...');
+      if (progress.mcpConnected) {
+        lines.push('✓ Knowledge base connected');
+      }
+      break;
+    case 'tool_executing': {
+      const currentTool = progress.toolsExecuted[progress.toolsExecuted.length - 1] || 'preparing';
+      lines.push(`🔧 Running: ${currentTool}`);
+      if (progress.mcpConnected) {
+        lines.push('✓ MCP connected');
+      }
+      if (progress.llmCalls > 0) {
+        lines.push('✓ LLM analyzed');
+      }
+      if (progress.toolsExecuted.length > 1) {
+        lines.push(`✓ Tools: ${progress.toolsExecuted.length - 1} completed`);
+      }
+      break;
+    }
+    case 'responding':
+      lines.push('📝 Preparing response...');
+      lines.push(`✓ ${progress.toolsExecuted.length} tools completed`);
+      break;
+    case 'completed':
+      lines.push('✅ Done!');
+      break;
+  }
+
+  // Footer with timing
+  lines.push('');
+  lines.push(`⏱ ${elapsed}s`);
+
+  return lines.join('\n');
+}
+
+/**
  * Format debug footer for GitHub (Markdown format)
  *
  * Uses <details> for collapsible debug info similar to Telegram's HTML format.

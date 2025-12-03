@@ -305,6 +305,20 @@ export {
 } from './workers/index.js';
 
 // =============================================================================
+// Platform Response (Fire-and-Forget Response Delivery)
+// =============================================================================
+
+export {
+  generateProgressMessage,
+  type PlatformEnv,
+  type ResponseTarget as PlatformResponseTarget,
+  sendPlatformResponse,
+  sendProgressMessage,
+  sendProgressUpdate,
+  sendTypingIndicator,
+} from './platform-response.js';
+
+// =============================================================================
 // State Management DO (Observability & Watchdog)
 // =============================================================================
 

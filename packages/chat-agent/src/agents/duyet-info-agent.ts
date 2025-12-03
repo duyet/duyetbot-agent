@@ -11,7 +11,16 @@
 import { logger } from '@duyetbot/hono-middleware';
 import { getDuyetInfoPrompt, platformToOutputFormat } from '@duyetbot/prompts';
 import { Agent, type Connection } from 'agents';
-import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
+import {
+  generateProgressMessage,
+  type PlatformEnv,
+  type ResponseTarget,
+  sendPlatformResponse,
+  sendProgressMessage,
+  sendProgressUpdate,
+  sendTypingIndicator,
+} from '../platform-response.js';
+import type { DebugContext, LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
 import {
   type AgentContext,
   type AgentDebugInfo,
@@ -204,9 +213,44 @@ class TimingTracker {
 
   get(phase: string): number {
     const timing = this.timings.get(phase);
-    if (!timing) return 0;
+    if (!timing) {
+      return 0;
+    }
     return (timing.end ?? Date.now()) - timing.start;
   }
+}
+
+/**
+ * Execution state for alarm-based state machine
+ */
+export type ExecutionStep =
+  | 'init'
+  | 'mcp_connecting'
+  | 'llm_calling'
+  | 'tool_executing'
+  | 'responding'
+  | 'completed';
+
+/**
+ * Progress tracking during execution
+ */
+interface ExecutionProgress {
+  /** Current execution step */
+  step: ExecutionStep;
+  /** Query being processed */
+  query: string;
+  /** MCP server ID if connected */
+  mcpServerId: string | undefined;
+  /** Tools available */
+  toolCount: number;
+  /** LLM response from last call */
+  lastLlmResponse: { content: string; toolCalls: ToolCall[] | undefined } | undefined;
+  /** Tool results from executed tools */
+  toolResults: Array<{ toolName: string; result: string }>;
+  /** Current iteration count */
+  iteration: number;
+  /** Start time of execution */
+  startTime: number;
 }
 
 /**
@@ -229,15 +273,27 @@ export interface DuyetInfoAgentState {
   lastExecutedAt: number | undefined;
   /** Cached tool execution results (for blog data) */
   cachedToolResults: Record<string, CachedToolResult> | undefined;
+  /** Current execution progress (for alarm handler) */
+  currentExecution:
+    | {
+        executionId: string;
+        progress: ExecutionProgress;
+        context: AgentContext;
+        /** Response target for sending progress updates and final response */
+        responseTarget: ResponseTarget;
+        /** Message ID for progress updates (allows editing existing message) */
+        progressMessageId: number | undefined;
+      }
+    | undefined;
 }
 
 /**
  * Environment bindings for Duyet Info Agent
+ * Extends PlatformEnv for progress message delivery
  * Note: Actual env fields depend on the provider (OpenRouterProviderEnv, etc.)
  * This interface is kept minimal - extend with provider-specific env in your app
  */
-// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extend with provider env
-export interface DuyetInfoAgentEnv {}
+export interface DuyetInfoAgentEnv extends PlatformEnv {}
 
 /**
  * Configuration for Duyet Info Agent
@@ -318,6 +374,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
       queriesExecuted: 0,
       lastExecutedAt: undefined,
       cachedToolResults: undefined,
+      currentExecution: undefined,
     };
 
     private _mcpInitialized = false;
@@ -682,6 +739,544 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
       }
 
       return debugInfo;
+    }
+
+    /**
+     * Start execution using alarm-based state machine
+     * Schedules the initial step and returns immediately
+     */
+    async startExecution(query: string, context: AgentContext): Promise<string> {
+      const executionId = AgentMixin.generateId('exec');
+      const traceId = context.traceId ?? AgentMixin.generateId('trace');
+      const env = (this as unknown as { env: TEnv }).env;
+
+      // Reset tool stats for this execution
+      this.resetToolStats();
+
+      AgentMixin.log('DuyetInfoAgent', 'Starting async execution', {
+        executionId,
+        traceId,
+        queryLength: query.length,
+      });
+
+      // Build response target from context for progress updates
+      // Note: botToken comes from env, not platformConfig
+      const responseTarget: ResponseTarget = {
+        platform: (context.platform as 'telegram' | 'github') || 'telegram',
+        chatId: String(context.chatId ?? ''),
+        messageRef: { messageId: 0 }, // Will be updated when progress message is sent
+        ...(env.TELEGRAM_BOT_TOKEN ? { botToken: env.TELEGRAM_BOT_TOKEN } : {}),
+        ...(context.username ? { username: context.username } : {}),
+        ...(context.platformConfig ? { platformConfig: context.platformConfig } : {}),
+      };
+
+      // Initialize execution state
+      const initialProgress: ExecutionProgress = {
+        step: 'init',
+        query,
+        mcpServerId: undefined,
+        toolCount: 0,
+        lastLlmResponse: undefined,
+        toolResults: [],
+        iteration: 0,
+        startTime: Date.now(),
+      };
+
+      // Send initial typing indicator (fire-and-forget)
+      sendTypingIndicator(env, responseTarget).catch((err) => {
+        logger.warn('[DuyetInfoAgent] Failed to send typing indicator', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      });
+
+      // Send initial progress message (fire-and-forget, capture message ID)
+      let progressMessageId: number | undefined;
+      const progressText = generateProgressMessage('init', query, {
+        mcpConnected: false,
+        toolCount: 0,
+        toolsExecuted: [],
+        llmCalls: 0,
+        startTime: initialProgress.startTime,
+      });
+
+      try {
+        const msgId = await sendProgressMessage(env, responseTarget, progressText);
+        progressMessageId = msgId ?? undefined;
+      } catch (err) {
+        logger.warn('[DuyetInfoAgent] Failed to send progress message', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      // Update state with current execution
+      this.setState({
+        ...this.state,
+        agentId: this.state.agentId || traceId,
+        currentExecution: {
+          executionId,
+          progress: initialProgress,
+          context,
+          responseTarget,
+          progressMessageId,
+        },
+      });
+
+      // Schedule first step (1 second delay to allow state persistence)
+      await this.schedule(1, 'onExecutionAlarm', { executionId });
+
+      return executionId;
+    }
+
+    /**
+     * State machine alarm handler
+     * Executes one step of the execution pipeline
+     */
+    async onExecutionAlarm(data: { executionId: string }): Promise<void> {
+      const execution = this.state.currentExecution;
+
+      if (!execution || execution.executionId !== data.executionId) {
+        logger.warn('[DuyetInfoAgent] Execution not found or ID mismatch', {
+          executionId: data.executionId,
+          hasExecution: !!execution,
+        });
+        return;
+      }
+
+      const progress = execution.progress;
+      const context = execution.context;
+      const env = (this as unknown as { env: TEnv }).env;
+      const { responseTarget, progressMessageId } = execution;
+
+      try {
+        // Send typing indicator to keep Telegram indicator active (fire-and-forget)
+        sendTypingIndicator(env, responseTarget).catch((err) => {
+          logger.warn('[DuyetInfoAgent] Failed to send typing indicator', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+
+        // Process the current step
+        const nextProgress = await this.processStep(progress, context);
+
+        // Send progress update if we have a message to edit (fire-and-forget)
+        const progressText = generateProgressMessage(nextProgress.step, nextProgress.query, {
+          mcpConnected: !!nextProgress.mcpServerId,
+          toolCount: nextProgress.toolCount,
+          toolsExecuted: nextProgress.toolResults.map((r) => r.toolName),
+          llmCalls: nextProgress.iteration,
+          startTime: nextProgress.startTime,
+        });
+
+        if (progressMessageId) {
+          const targetWithMsgId: ResponseTarget = {
+            ...responseTarget,
+            messageRef: { messageId: progressMessageId },
+          };
+          sendProgressUpdate(env, targetWithMsgId, progressText).catch((err) => {
+            logger.warn('[DuyetInfoAgent] Failed to update progress message', {
+              error: err instanceof Error ? err.message : String(err),
+            });
+          });
+        }
+
+        // Update state with new progress
+        this.setState({
+          ...this.state,
+          currentExecution: {
+            ...execution,
+            progress: nextProgress,
+          },
+        });
+
+        // Schedule next step if not completed
+        if (nextProgress.step !== 'completed') {
+          await this.schedule(1, 'onExecutionAlarm', {
+            executionId: data.executionId,
+          });
+        } else {
+          // Execution complete - clean up
+          this.setState({
+            ...this.state,
+            queriesExecuted: this.state.queriesExecuted + 1,
+            lastExecutedAt: Date.now(),
+            updatedAt: Date.now(),
+            currentExecution: undefined,
+          });
+
+          const durationMs = Date.now() - progress.startTime;
+          AgentMixin.log('DuyetInfoAgent', 'Execution completed', {
+            executionId: data.executionId,
+            durationMs,
+            iteration: nextProgress.iteration,
+            toolCount: nextProgress.toolResults.length,
+          });
+        }
+      } catch (error) {
+        logger.error('[DuyetInfoAgent] Execution error in alarm', {
+          executionId: data.executionId,
+          step: progress.step,
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        // Clean up on error
+        this.setState({
+          ...this.state,
+          currentExecution: undefined,
+        });
+      }
+    }
+
+    /**
+     * Process one step of the state machine
+     */
+    private async processStep(
+      state: ExecutionProgress,
+      context: AgentContext
+    ): Promise<ExecutionProgress> {
+      switch (state.step) {
+        case 'init':
+          return this.stepInit(state, context);
+        case 'mcp_connecting':
+          return this.stepMcpConnect(state, context);
+        case 'llm_calling':
+          return this.stepLlmCall(state, context);
+        case 'tool_executing':
+          return this.stepToolExecute(state, context);
+        case 'responding':
+          return this.stepRespond(state, context);
+        case 'completed':
+          return state;
+        default:
+          throw new Error(`Unknown step: ${state.step}`);
+      }
+    }
+
+    /**
+     * Step 1: Initialize execution state
+     */
+    private async stepInit(
+      state: ExecutionProgress,
+      _context: AgentContext
+    ): Promise<ExecutionProgress> {
+      if (debug) {
+        logger.info('[DuyetInfoAgent] Step: init', {
+          query: state.query.slice(0, 50),
+        });
+      }
+
+      return {
+        ...state,
+        step: 'mcp_connecting',
+        mcpServerId: state.mcpServerId,
+      };
+    }
+
+    /**
+     * Step 2: Connect to MCP server
+     */
+    private async stepMcpConnect(
+      state: ExecutionProgress,
+      _context: AgentContext
+    ): Promise<ExecutionProgress> {
+      if (debug) {
+        logger.info('[DuyetInfoAgent] Step: mcp_connecting', {
+          query: state.query.slice(0, 50),
+        });
+      }
+
+      try {
+        // Initialize MCP connection
+        await this.initMcp();
+
+        // Store MCP server ID in progress
+        const mcpServerId = this._mcpServerId;
+
+        return {
+          ...state,
+          step: 'llm_calling',
+          mcpServerId,
+        };
+      } catch (error) {
+        logger.error('[DuyetInfoAgent] MCP connection failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        // Continue without MCP
+        return {
+          ...state,
+          step: 'llm_calling',
+          mcpServerId: undefined,
+        };
+      }
+    }
+
+    /**
+     * Step 3: Call LLM with query and available tools
+     */
+    private async stepLlmCall(
+      state: ExecutionProgress,
+      context: AgentContext
+    ): Promise<ExecutionProgress> {
+      if (debug) {
+        logger.info('[DuyetInfoAgent] Step: llm_calling', {
+          query: state.query.slice(0, 50),
+          iteration: state.iteration,
+        });
+      }
+
+      try {
+        // Get LLM provider
+        const env = (this as unknown as { env: TEnv }).env;
+        const provider = config.createProvider(env, context);
+
+        // Get available tools (filtered)
+        const tools = this._mcpInitialized ? this.getMcpTools() : [];
+
+        // Build messages
+        const systemPrompt = getSystemPrompt(context.platform);
+        const messages: LLMMessage[] = [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: state.query },
+        ];
+
+        // Add previous tool results if this is a subsequent call
+        if (state.iteration > 0 && state.lastLlmResponse) {
+          messages.push({
+            role: 'assistant',
+            content: state.lastLlmResponse.content || '',
+          });
+
+          for (const toolResult of state.toolResults) {
+            messages.push({
+              role: 'tool',
+              tool_call_id: `call_${Math.random().toString(36).slice(2)}`,
+              name: toolResult.toolName,
+              content: toolResult.result,
+            });
+          }
+        }
+
+        // Call LLM
+        const response = await provider.chat(messages, tools.length > 0 ? tools : undefined);
+
+        // Decide next step
+        const hasToolCalls =
+          response.toolCalls &&
+          response.toolCalls.length > 0 &&
+          state.iteration < maxToolIterations;
+        const nextStep = hasToolCalls ? 'tool_executing' : 'responding';
+
+        if (debug) {
+          logger.info('[DuyetInfoAgent] LLM response', {
+            hasToolCalls,
+            toolCount: response.toolCalls?.length ?? 0,
+            nextStep,
+          });
+        }
+
+        return {
+          ...state,
+          step: nextStep,
+          lastLlmResponse: {
+            content: response.content || '',
+            toolCalls: response.toolCalls,
+          },
+          toolCount: tools.length,
+          iteration: state.iteration + 1,
+          mcpServerId: state.mcpServerId,
+        };
+      } catch (error) {
+        logger.error('[DuyetInfoAgent] LLM call failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        // Move to responding (will use fallback)
+        return {
+          ...state,
+          step: 'responding',
+          mcpServerId: state.mcpServerId,
+        };
+      }
+    }
+
+    /**
+     * Step 4: Execute one tool from the LLM's tool calls
+     */
+    private async stepToolExecute(
+      state: ExecutionProgress,
+      _context: AgentContext
+    ): Promise<ExecutionProgress> {
+      if (!state.lastLlmResponse?.toolCalls || state.lastLlmResponse.toolCalls.length === 0) {
+        // No more tools to execute, move to responding
+        return {
+          ...state,
+          step: 'responding',
+          mcpServerId: state.mcpServerId,
+        };
+      }
+
+      if (debug) {
+        logger.info('[DuyetInfoAgent] Step: tool_executing', {
+          toolCount: state.lastLlmResponse.toolCalls.length,
+          executedCount: state.toolResults.length,
+        });
+      }
+
+      try {
+        // Get the first tool that hasn't been executed yet
+        const toolCall = state.lastLlmResponse!.toolCalls![0];
+        if (!toolCall) {
+          throw new Error('Tool call is missing');
+        }
+        const toolResult = await this.executeMcpTool(toolCall);
+
+        // Add to results and remove from pending
+        const updatedToolResults = [
+          ...state.toolResults,
+          { toolName: toolCall.name, result: toolResult },
+        ];
+        const remainingToolCalls = state.lastLlmResponse!.toolCalls!.slice(1);
+
+        if (debug) {
+          logger.info('[DuyetInfoAgent] Tool executed', {
+            toolName: toolCall.name,
+            remaining: remainingToolCalls.length,
+          });
+        }
+
+        // Decide next step
+        const nextStep = remainingToolCalls.length > 0 ? 'tool_executing' : 'llm_calling';
+
+        return {
+          ...state,
+          step: nextStep,
+          toolResults: updatedToolResults,
+          lastLlmResponse: state.lastLlmResponse
+            ? {
+                ...state.lastLlmResponse,
+                toolCalls: remainingToolCalls,
+              }
+            : { content: '', toolCalls: remainingToolCalls },
+          mcpServerId: state.mcpServerId,
+        };
+      } catch (error) {
+        logger.error('[DuyetInfoAgent] Tool execution failed', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        // Move to responding on tool error
+        return {
+          ...state,
+          step: 'responding',
+          mcpServerId: state.mcpServerId,
+        };
+      }
+    }
+
+    /**
+     * Step 5: Prepare and send final response
+     */
+    private async stepRespond(
+      state: ExecutionProgress,
+      _context: AgentContext
+    ): Promise<ExecutionProgress> {
+      if (debug) {
+        logger.info('[DuyetInfoAgent] Step: responding', {
+          hasLlmResponse: !!state.lastLlmResponse,
+        });
+      }
+
+      // Get execution state for response target
+      const execution = this.state.currentExecution;
+      if (!execution) {
+        logger.error('[DuyetInfoAgent] No execution state in stepRespond');
+        return { ...state, step: 'completed', mcpServerId: state.mcpServerId };
+      }
+
+      const env = (this as unknown as { env: TEnv }).env;
+      const { responseTarget, progressMessageId } = execution;
+      const durationMs = Date.now() - state.startTime;
+
+      // Build final response content
+      let responseContent: string;
+      const isFallback = !state.lastLlmResponse?.content;
+      if (state.lastLlmResponse?.content) {
+        responseContent = state.lastLlmResponse.content;
+      } else {
+        // Fallback if no LLM response
+        responseContent = getFallbackResponse(state.query);
+      }
+
+      // Build DebugContext for sendPlatformResponse (with routingFlow format)
+      // Use conditional spreading to satisfy exactOptionalPropertyTypes
+      const toolsUsed = state.toolResults.map((r) => r.toolName);
+      const routingEntry: DebugContext['routingFlow'][0] = {
+        agent: 'duyet-info-agent',
+        durationMs,
+        status: 'completed',
+        ...(toolsUsed.length > 0 ? { tools: toolsUsed, toolChain: toolsUsed } : {}),
+      };
+
+      // Build metadata conditionally
+      const metadata: DebugContext['metadata'] = {};
+      if (isFallback) {
+        metadata.fallback = true;
+      }
+      if (this.toolStats.cacheHits > 0) {
+        metadata.cacheHits = this.toolStats.cacheHits;
+      }
+      if (this.toolStats.cacheMisses > 0) {
+        metadata.cacheMisses = this.toolStats.cacheMisses;
+      }
+      if (this.toolStats.toolTimeouts > 0) {
+        metadata.toolTimeouts = this.toolStats.toolTimeouts;
+      }
+
+      const debugContext: DebugContext = {
+        routingFlow: [routingEntry],
+        totalDurationMs: durationMs,
+        ...(Object.keys(metadata).length > 0 ? { metadata } : {}),
+      };
+
+      // Delete progress message first (fire-and-forget)
+      if (progressMessageId && responseTarget.botToken) {
+        const deleteUrl = `https://api.telegram.org/bot${responseTarget.botToken}/deleteMessage`;
+        fetch(deleteUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: responseTarget.chatId,
+            message_id: progressMessageId,
+          }),
+        }).catch((err) => {
+          logger.warn('[DuyetInfoAgent] Failed to delete progress message', {
+            error: err instanceof Error ? err.message : String(err),
+          });
+        });
+      }
+
+      // Send final response via platform transport
+      try {
+        await sendPlatformResponse(env, responseTarget, responseContent, debugContext);
+
+        if (debug) {
+          logger.info('[DuyetInfoAgent] Final response sent', {
+            responseLength: responseContent.length,
+            durationMs,
+            deletedProgressMsg: !!progressMessageId,
+          });
+        }
+      } catch (err) {
+        logger.error('[DuyetInfoAgent] Failed to send final response', {
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+
+      return {
+        ...state,
+        step: 'completed',
+        mcpServerId: state.mcpServerId,
+      };
     }
 
     /**
