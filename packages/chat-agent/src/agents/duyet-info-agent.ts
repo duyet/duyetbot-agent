@@ -16,7 +16,6 @@ import {
   type PlatformEnv,
   type ResponseTarget,
   sendPlatformResponse,
-  sendProgressMessage,
   sendProgressUpdate,
   sendTypingIndicator,
 } from '../platform-response.js';
@@ -744,11 +743,28 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
     /**
      * Start execution using alarm-based state machine
      * Schedules the initial step and returns immediately
+     *
+     * @param query - User query to execute
+     * @param context - Agent context with user/chat info
+     * @param responseTarget - Platform-specific response target (built by RouterAgent)
+     * @returns Unique execution ID
      */
-    async startExecution(query: string, context: AgentContext): Promise<string> {
+    async startExecution(
+      query: string,
+      context: AgentContext,
+      responseTarget: ResponseTarget
+    ): Promise<string> {
       const executionId = AgentMixin.generateId('exec');
       const traceId = context.traceId ?? AgentMixin.generateId('trace');
       const env = (this as unknown as { env: TEnv }).env;
+
+      // Clear any stale execution before starting new one
+      if (this.state.currentExecution) {
+        logger.warn('[DuyetInfoAgent] Clearing stale execution', {
+          staleId: this.state.currentExecution.executionId,
+          newId: executionId,
+        });
+      }
 
       // Reset tool stats for this execution
       this.resetToolStats();
@@ -757,18 +773,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         executionId,
         traceId,
         queryLength: query.length,
+        existingMessageId: responseTarget.messageRef?.messageId,
       });
-
-      // Build response target from context for progress updates
-      // Note: botToken comes from env, not platformConfig
-      const responseTarget: ResponseTarget = {
-        platform: (context.platform as 'telegram' | 'github') || 'telegram',
-        chatId: String(context.chatId ?? ''),
-        messageRef: { messageId: 0 }, // Will be updated when progress message is sent
-        ...(env.TELEGRAM_BOT_TOKEN ? { botToken: env.TELEGRAM_BOT_TOKEN } : {}),
-        ...(context.username ? { username: context.username } : {}),
-        ...(context.platformConfig ? { platformConfig: context.platformConfig } : {}),
-      };
 
       // Initialize execution state
       const initialProgress: ExecutionProgress = {
@@ -789,8 +795,9 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         });
       });
 
-      // Send initial progress message (fire-and-forget, capture message ID)
-      let progressMessageId: number | undefined;
+      // Update existing progress message (created by CloudflareAgent)
+      // instead of sending a new one - this enables rolling updates on a single message
+      const progressMessageId = responseTarget.messageRef?.messageId;
       const progressText = generateProgressMessage('init', query, {
         mcpConnected: false,
         toolCount: 0,
@@ -799,13 +806,15 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         startTime: initialProgress.startTime,
       });
 
-      try {
-        const msgId = await sendProgressMessage(env, responseTarget, progressText);
-        progressMessageId = msgId ?? undefined;
-      } catch (err) {
-        logger.warn('[DuyetInfoAgent] Failed to send progress message', {
-          error: err instanceof Error ? err.message : String(err),
-        });
+      if (progressMessageId && progressMessageId > 0) {
+        try {
+          await sendProgressUpdate(env, responseTarget, progressText);
+        } catch (err) {
+          logger.warn('[DuyetInfoAgent] Failed to update progress message', {
+            error: err instanceof Error ? err.message : String(err),
+            messageId: progressMessageId,
+          });
+        }
       }
 
       // Update state with current execution

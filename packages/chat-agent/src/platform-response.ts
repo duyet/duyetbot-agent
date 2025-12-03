@@ -73,6 +73,20 @@ function normalizeUsername(username: string): string {
 }
 
 /**
+ * Escape special characters for Telegram MarkdownV2 format
+ *
+ * In MarkdownV2, these characters must be escaped with backslash:
+ * _ * [ ] ( ) ~ ` > # + - = | { } . !
+ *
+ * @see https://core.telegram.org/bots/api#markdownv2-style
+ */
+function escapeMarkdownV2(text: string): string {
+  // Characters that must be escaped: _ * [ ] ( ) ~ ` > # + - = | { } . !
+  // Note: backslash itself must be escaped first
+  return text.replace(/([_*[\]()~`>#+=|{}.!\-\\])/g, '\\$1');
+}
+
+/**
  * Check if current user is admin
  */
 function isAdminUser(target: ResponseTarget): boolean {
@@ -164,13 +178,17 @@ async function sendTelegramResponse(
     throw new Error('No Telegram bot token available');
   }
 
+  // Escape text for MarkdownV2 mode to avoid parse errors
+  // Characters like ! - . etc must be escaped
+  const escapedText = parseMode === 'MarkdownV2' ? escapeMarkdownV2(text) : text;
+
   // Truncate text to Telegram's message limit with indicator
   const TELEGRAM_LIMIT = 4096;
   const TRUNCATION_SUFFIX = '\n\n[...truncated]';
   const truncatedText =
-    text.length > TELEGRAM_LIMIT
-      ? text.slice(0, TELEGRAM_LIMIT - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX
-      : text;
+    escapedText.length > TELEGRAM_LIMIT
+      ? escapedText.slice(0, TELEGRAM_LIMIT - TRUNCATION_SUFFIX.length) + TRUNCATION_SUFFIX
+      : escapedText;
 
   const url = `https://api.telegram.org/bot${token}/editMessageText`;
 
