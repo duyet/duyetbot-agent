@@ -84,8 +84,7 @@ apps/
 ├── telegram-bot    # Telegram interface + TelegramAgent DO
 ├── github-bot      # GitHub webhook + GitHubAgent DO
 ├── shared-agents   # 8 shared DOs (Router, Simple, HITL, etc.)
-├── memory-mcp      # Memory persistence (D1 + KV)
-└── agent-server    # Heavy compute (future: Claude Agent SDK)
+└── memory-mcp      # Memory persistence (D1 + KV)
 ```
 
 ## Documentation

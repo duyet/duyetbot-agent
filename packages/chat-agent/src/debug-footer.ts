@@ -221,8 +221,8 @@ function formatRoutingFlow(debugContext: DebugContext): string {
 }
 
 /**
- * Format metadata - simplified to only show error messages (HTML version)
- * Removed cache/timeout/err counts as they're redundant with error message
+ * Format metadata - displays timing info with tree-style prefix
+ * Uses └─ prefix to visually connect info to the parent agent
  */
 function formatMetadata(
   metadata?: DebugMetadata,
@@ -232,12 +232,39 @@ function formatMetadata(
     return '';
   }
 
-  // Only show error message on separate line if present
-  if (metadata.lastToolError) {
-    return `\n⚠️ ${escapeFn(metadata.lastToolError)}`;
+  const lines: string[] = [];
+
+  // Timing line - prefixed with └─ to show it belongs to the target agent
+  if (metadata.timing) {
+    const parts: string[] = [];
+    if (metadata.timing.mcpConnect) {
+      parts.push(`MCP: ${metadata.timing.mcpConnect}`);
+    }
+    if (metadata.timing.toolDiscovery) {
+      parts.push(`Tools: ${metadata.timing.toolDiscovery}`);
+    }
+    if (metadata.timing.llmCall) {
+      parts.push(`LLM: ${metadata.timing.llmCall}`);
+    }
+    if (metadata.timing.toolExecution) {
+      parts.push(`Exec: ${metadata.timing.toolExecution}`);
+    }
+    if (parts.length > 0) {
+      lines.push(`   └─ ⏱️ ${escapeFn(parts.join(' | '))}`);
+    }
   }
 
-  return '';
+  // Retry indicator - also prefixed
+  if (metadata.retried) {
+    lines.push(`   └─ 🔄 Retried after DO reset`);
+  }
+
+  // Error message - also prefixed
+  if (metadata.lastToolError) {
+    lines.push(`   └─ ⚠️ ${escapeFn(metadata.lastToolError)}`);
+  }
+
+  return lines.length > 0 ? `\n${lines.join('\n')}` : '';
 }
 
 /**

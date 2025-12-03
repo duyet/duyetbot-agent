@@ -12,14 +12,10 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      // Agent server package
+      // Mock Cloudflare-specific modules
       {
-        find: /^@duyetbot\/agent-server\/(.*)$/,
-        replacement: resolve(__dirname, '../../apps/agent-server/src/$1.ts'),
-      },
-      {
-        find: '@duyetbot/agent-server',
-        replacement: resolve(__dirname, '../../apps/agent-server/src/index.ts'),
+        find: 'agents',
+        replacement: resolve(__dirname, './src/__mocks__/agents.ts'),
       },
       // Memory MCP package
       {
