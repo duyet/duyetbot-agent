@@ -201,8 +201,16 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
     /**
      * Route a query to the appropriate handler
+     *
+     * @param query - The user query to route
+     * @param context - Agent context with platform/user info
+     * @param responseTarget - Optional response target for fire-and-forget flow (contains messageId for edits)
      */
-    async route(query: string, context: AgentContext): Promise<AgentResult> {
+    async route(
+      query: string,
+      context: AgentContext,
+      responseTarget?: ResponseTarget,
+    ): Promise<AgentResult> {
       const startTime = Date.now();
       const traceId = context.traceId ?? AgentMixin.generateId("trace");
 
@@ -302,12 +310,13 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           durationMs,
         });
 
-        // Route to target agent
+        // Route to target agent (pass responseTarget for message editing if available)
         const result = await this.dispatchToTarget(
           target,
           query,
           context,
           classification,
+          responseTarget,
         );
 
         // Log successful routing outcome
@@ -364,6 +373,11 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      * - hitl-agent: Human-in-the-loop
      * - duyet-info-agent: Personal info queries
      *
+     * @param target - Target agent to dispatch to
+     * @param query - User query
+     * @param context - Agent context
+     * @param classification - Query classification
+     * @param existingResponseTarget - Optional response target from caller (contains correct messageId for edits)
      * @see https://developers.cloudflare.com/agents/patterns/
      */
     private async dispatchToTarget(
@@ -371,6 +385,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       query: string,
       context: AgentContext,
       classification: QueryClassification,
+      existingResponseTarget?: ResponseTarget,
     ): Promise<AgentResult> {
       const startTime = Date.now();
       const env = (this as unknown as { env: TEnv }).env;
@@ -394,20 +409,17 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             }
           : targetContextBase;
 
-      // Build response target for alarm-based agents
+      // Use existing responseTarget if provided (from fire-and-forget flow with correct messageId),
+      // otherwise build a fallback for direct route() calls
       const envWithTokens = env as unknown as {
         TELEGRAM_BOT_TOKEN?: string;
         GITHUB_TOKEN?: string;
       };
 
-      const responseTargetBase: ResponseTarget = {
+      const responseTarget: ResponseTarget = existingResponseTarget ?? {
         platform: (context.platform as "telegram" | "github") || "telegram",
         chatId: String(context.chatId ?? ""),
-        messageRef: { messageId: 0 }, // Will be updated when progress message is sent
-      };
-
-      const responseTarget: ResponseTarget = {
-        ...responseTargetBase,
+        messageRef: { messageId: 0 }, // Fallback for direct route() calls
         ...(envWithTokens.TELEGRAM_BOT_TOKEN
           ? { botToken: envWithTokens.TELEGRAM_BOT_TOKEN }
           : {}),
@@ -454,10 +466,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
               }
             ).startExecution(query, targetContext, responseTarget);
             // Return immediately - agent will handle response via alarm
+            // Set delegated=true to prevent RouterAgent from sending response
             return AgentMixin.createResult(
               true,
-              "Dispatched to simple-agent",
+              undefined,
               Date.now() - startTime,
+              {
+                delegated: true,
+              },
             );
           }
 
@@ -519,6 +535,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
                 query,
                 targetContext,
                 classification,
+                existingResponseTarget,
               );
             }
             const agent = await getAgentByName(
@@ -552,14 +569,22 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             try {
               await (
                 agent as unknown as {
-                  startExecution: (q: string, c: AgentContext) => Promise<void>;
+                  startExecution: (
+                    q: string,
+                    c: AgentContext,
+                    r: ResponseTarget,
+                  ) => Promise<void>;
                 }
-              ).startExecution(query, targetContext);
+              ).startExecution(query, targetContext, responseTarget);
               // Return immediately - agent will handle response via alarm
+              // Set delegated=true to prevent RouterAgent from sending response
               return AgentMixin.createResult(
                 true,
-                "Dispatched to duyet-info-agent",
+                undefined,
                 Date.now() - startTime,
+                {
+                  delegated: true,
+                },
               );
             } catch (error) {
               if (isDurableObjectResetError(error)) {
@@ -576,14 +601,19 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
                     startExecution: (
                       q: string,
                       c: AgentContext,
+                      r: ResponseTarget,
                     ) => Promise<void>;
                   }
-                ).startExecution(query, targetContext);
+                ).startExecution(query, targetContext, responseTarget);
                 // Return immediately - agent will handle response via alarm
+                // Set delegated=true to prevent RouterAgent from sending response
                 return AgentMixin.createResult(
                   true,
-                  "Dispatched to duyet-info-agent (retried)",
+                  undefined,
                   Date.now() - startTime,
+                  {
+                    delegated: true,
+                  },
                 );
               }
               throw error;
@@ -784,7 +814,22 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         });
 
         // Do the actual routing + LLM work (full 30s budget available)
-        const result = await this.route(execution.query, execution.context);
+        // Pass responseTarget so child agents can edit the correct message
+        const result = await this.route(
+          execution.query,
+          execution.context,
+          execution.responseTarget,
+        );
+
+        // If response was delegated to a child agent, skip sending response here
+        // The child agent will handle response delivery via its own alarm handler
+        if (result.delegated) {
+          AgentMixin.log("RouterAgent", "Response delegated to child agent", {
+            executionId: data.executionId,
+            durationMs: Date.now() - startTime,
+          });
+          return;
+        }
 
         // Get the latest classification and routing info from state (populated by route())
         const classification = this.state.lastClassification;

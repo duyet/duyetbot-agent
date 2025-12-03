@@ -16,7 +16,6 @@ import type { PlatformEnv, ResponseTarget } from '../platform-response.js';
 import {
   generateProgressMessage,
   sendPlatformResponse,
-  sendProgressMessage,
   sendProgressUpdate,
 } from '../platform-response.js';
 import type { ChatOptions, LLMProvider, Message } from '../types.js';
@@ -325,6 +324,14 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
       const messageId = responseTarget.messageRef?.messageId || Date.now();
       const executionId = `simple:${platform}:${userId}:${messageId}`;
 
+      // Clear any stale execution before starting new one
+      if (this.state.currentExecution) {
+        logger.warn('[SimpleAgent] Clearing stale execution', {
+          staleId: this.state.currentExecution.executionId,
+          newId: executionId,
+        });
+      }
+
       const env = (this as unknown as { env: TEnv }).env;
       const startTime = Date.now();
 
@@ -333,9 +340,11 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
         platform,
         userId,
         queryLength: query.length,
+        existingMessageId: responseTarget.messageRef?.messageId,
       });
 
-      // Send initial progress message
+      // Update existing progress message (created by CloudflareAgent)
+      // instead of sending a new one - this enables rolling updates on a single message
       const progressText = generateProgressMessage('init', query, {
         mcpConnected: false,
         toolCount: 0,
@@ -344,14 +353,17 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
         startTime,
       });
 
-      let progressMessageId: number | undefined;
-      try {
-        const msgId = await sendProgressMessage(env, responseTarget, progressText);
-        progressMessageId = msgId ?? undefined;
-      } catch (err) {
-        logger.warn('[SimpleAgent] Failed to send progress message', {
-          error: err instanceof Error ? err.message : String(err),
-        });
+      // Use existing message ID from responseTarget (set by CloudflareAgent)
+      const progressMessageId = responseTarget.messageRef?.messageId;
+      if (progressMessageId && progressMessageId > 0) {
+        try {
+          await sendProgressUpdate(env, responseTarget, progressText);
+        } catch (err) {
+          logger.warn('[SimpleAgent] Failed to update progress message', {
+            error: err instanceof Error ? err.message : String(err),
+            messageId: progressMessageId,
+          });
+        }
       }
 
       // Store execution state using setState (Agent SDK pattern)

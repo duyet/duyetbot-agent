@@ -217,6 +217,12 @@ export interface AgentResult {
   nextAction: 'await_confirmation' | 'continue' | 'complete' | undefined;
   /** Debug information for admin users */
   debug?: AgentDebugInfo;
+  /**
+   * Whether response delivery has been delegated to a child agent.
+   * When true, the caller should NOT send a response as the child agent
+   * will handle response delivery via its own alarm handler.
+   */
+  delegated?: boolean;
 }
 
 /**
