@@ -536,10 +536,7 @@ Application Layer
 |  +- MCP server (D1 + KV)
 |
 +- apps/shared-agents
-|  +- Shared DO pool (RouterAgent, etc.)
-|
-+- apps/agent-server
-   +- Long-running agent (future)
+   +- Shared DO pool (RouterAgent, etc.)
 
 Support Packages
 +- @duyetbot/cli
@@ -565,10 +562,10 @@ Support Packages
              v
       @duyetbot/chat-agent
              v
-    +---+---+---+---+
-    |   |   |   |   |
-telegram github memo agent
- -bot  -bot  -mcp -server
+    +---+---+---+
+    |   |   |   |
+telegram github memo
+ -bot  -bot  -mcp
 ```
 
 ### Package Responsibilities
@@ -1034,29 +1031,6 @@ logger.error('[LLM] Call failed', {
 ---
 
 ## Future Architecture
-
-### Tier 2: Long-Running Agent (Planned)
-
-```
-Cloud Provider: Cloudflare Sandbox / Fly.io / Custom
-Runtime: Node.js/Bun + Linux environment
-
-Use Cases:
-+- Full filesystem access (git clone, file ops)
-+- Shell tools (bash, git, gh CLI, ripgrep)
-+- Long-running tasks (5-30 minutes)
-+- Triggered by Tier 1 via Cloudflare Workflows
-
-Integration:
-+- Tier 1 detects complex task
-+- Creates Cloudflare Workflow
-+- Provisions compute resource
-+- Tier 2 executes with full SDK
-+- Results stream back to user
-+- Resource auto-cleanup on completion
-
-Status: PLANNED (not yet implemented)
-```
 
 ### Vector Memory (Planned)
 

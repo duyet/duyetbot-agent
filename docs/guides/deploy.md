@@ -14,7 +14,6 @@ description: Quick reference for deployment commands. Deploy all bots, Telegram 
 | **GitHub Bot** | [deployment/github-bot.md](deployment/github-bot.md) | Yes | Webhook handler for @mentions, PR reviews |
 | **Memory MCP** | [deployment/memory-mcp.md](deployment/memory-mcp.md) | No | Cloudflare Workers - session persistence |
 | **Telegram Bot** | [deployment/telegram-bot.md](deployment/telegram-bot.md) | No | Chat interface via Telegram |
-| **Agent Server** | [deployment/agent-server.md](deployment/agent-server.md) | No | Long-running server with WebSocket |
 | **Cloudflare Agents** | [deployment/cloudflare-agents.md](deployment/cloudflare-agents.md) | No | Stateful serverless agents on Cloudflare |
 
 ## Quick Start
