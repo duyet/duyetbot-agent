@@ -8,6 +8,7 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
+    "types": ["node", "@cloudflare/workers-types"],
     "paths": {}
   },
   "include": ["src/**/*"],
