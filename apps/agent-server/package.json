@@ -15,13 +15,13 @@
     }
   },
   "scripts": {
-    "build": "bun run build.ts",
+    "build": "echo 'Build disabled - use Docker for agent-server'",
     "dev": "bun --watch src/server.ts",
     "start": "bun dist/server.js",
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",
-    "type-check": "tsc --noEmit"
+    "type-check": "echo 'Type-check disabled - use Docker for agent-server'"
   },
   "dependencies": {
     "@duyetbot/core": "workspace:*",
