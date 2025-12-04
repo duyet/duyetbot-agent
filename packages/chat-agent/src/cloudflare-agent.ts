@@ -13,6 +13,7 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { type D1Database, ObservabilityStorage } from '@duyetbot/observability';
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -415,6 +416,67 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      */
     private getPlatform(): Platform {
       return (routerConfig?.platform as Platform) || 'api';
+    }
+
+    /**
+     * Update observability event on batch completion (fire-and-forget)
+     *
+     * Updates the D1 observability event that was created at webhook receipt.
+     * This records the actual agent execution result (success/error).
+     *
+     * @param requestIds - Request IDs from batch messages (used as event IDs)
+     * @param completion - Completion data to update
+     */
+    private updateObservability(
+      requestIds: string[],
+      completion: {
+        status: 'success' | 'error';
+        durationMs: number;
+        responseText?: string;
+        errorMessage?: string;
+      }
+    ): void {
+      const env = (this as unknown as { env: TEnv }).env as unknown as {
+        OBSERVABILITY_DB?: D1Database;
+      };
+
+      if (!env.OBSERVABILITY_DB) {
+        return;
+      }
+
+      const storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
+      const completedAt = Date.now();
+
+      // Fire-and-forget: update all events for this batch
+      for (const requestId of requestIds) {
+        void (async () => {
+          try {
+            // Build completion object conditionally for exactOptionalPropertyTypes
+            const updateData: Parameters<typeof storage.updateEventCompletion>[1] = {
+              status: completion.status,
+              completedAt,
+              durationMs: completion.durationMs,
+            };
+            if (completion.responseText !== undefined) {
+              updateData.responseText = completion.responseText;
+            }
+            if (completion.errorMessage !== undefined) {
+              updateData.errorMessage = completion.errorMessage;
+            }
+
+            await storage.updateEventCompletion(requestId, updateData);
+            logger.debug('[CloudflareAgent][OBSERVABILITY] Event updated', {
+              requestId,
+              status: completion.status,
+            });
+          } catch (err) {
+            logger.warn('[CloudflareAgent][OBSERVABILITY] Update failed', {
+              requestId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        })();
+      }
     }
 
     /**
@@ -1927,13 +1989,26 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           this.state.userId?.toString() ||
           activeBatch.batchId ||
           '';
+        const durationMs = Date.now() - this._batchStartTime;
         const completeParams: CompleteBatchParams = {
           sessionId: completedSessionId,
           batchId: activeBatch.batchId || '',
           success: true,
-          durationMs: Date.now() - this._batchStartTime,
+          durationMs,
         };
         this.reportToStateDO('completeBatch', completeParams);
+
+        // Update observability: batch completed successfully
+        // Extract requestIds from pending messages (used as eventIds)
+        const requestIds = activeBatch.pendingMessages
+          .map((m) => m.requestId)
+          .filter((id): id is string => !!id);
+        if (requestIds.length > 0) {
+          this.updateObservability(requestIds, {
+            status: 'success',
+            durationMs,
+          });
+        }
 
         // Check if new messages arrived during processing
         const currentPendingBatch = this.state.pendingBatch;
@@ -2029,14 +2104,29 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             this.state.userId?.toString() ||
             activeBatchState?.batchId ||
             '';
+          const failedDurationMs = Date.now() - this._batchStartTime;
           const failedParams: CompleteBatchParams = {
             sessionId: failedSessionId,
             batchId: activeBatchState?.batchId || '',
             success: false,
-            durationMs: Date.now() - this._batchStartTime,
+            durationMs: failedDurationMs,
             error: errorInfo.message,
           };
           this.reportToStateDO('completeBatch', failedParams);
+
+          // Update observability: batch failed
+          if (activeBatchState) {
+            const failedRequestIds = activeBatchState.pendingMessages
+              .map((m) => m.requestId)
+              .filter((id): id is string => !!id);
+            if (failedRequestIds.length > 0) {
+              this.updateObservability(failedRequestIds, {
+                status: 'error',
+                durationMs: failedDurationMs,
+                errorMessage: errorInfo.message,
+              });
+            }
+          }
 
           // If pendingBatch has messages, schedule processing
           if (this.state.pendingBatch?.pendingMessages.length) {

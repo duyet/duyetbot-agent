@@ -25,6 +25,22 @@ export interface BaseState {
 // ============================================================================
 
 /**
+ * D1 Database binding type (Cloudflare D1)
+ *
+ * This is a minimal interface matching Cloudflare Workers D1 binding.
+ * Full type comes from @cloudflare/workers-types in worker apps.
+ */
+export interface D1DatabaseBinding {
+  prepare(query: string): {
+    bind(...values: unknown[]): {
+      run(): Promise<{ success: boolean; meta: { changes: number } }>;
+      first<T>(): Promise<T | null>;
+      all<T>(): Promise<{ results: T[] }>;
+    };
+  };
+}
+
+/**
  * Minimal base environment bindings common to all agents
  * Specific agent environments extend this to add platform-specific bindings
  *
@@ -44,6 +60,11 @@ export interface BaseEnv {
   CLOUDFLARE_AI_GATEWAY_NAME?: string;
   /** API key for Cloudflare AI Gateway (BYOK) */
   CLOUDFLARE_AI_GATEWAY_KEY?: string;
+  /**
+   * D1 database for observability events (optional)
+   * When present, agents can write completion events to D1
+   */
+  OBSERVABILITY_DB?: D1DatabaseBinding;
 }
 
 // ============================================================================

@@ -54,13 +54,14 @@ app.post(
     const requestId = crypto.randomUUID().slice(0, 8);
 
     // Initialize observability collector (same pattern as github-bot)
+    // Use requestId as eventId so agents can update the same event on completion
     let collector: EventCollector | null = null;
     let storage: ObservabilityStorage | null = null;
 
     if (env.OBSERVABILITY_DB) {
       storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
       collector = new EventCollector({
-        eventId: crypto.randomUUID(),
+        eventId: requestId, // Use requestId as eventId for agent correlation
         appSource: 'telegram-webhook',
         eventType: 'message',
         triggeredAt: startTime,
@@ -214,9 +215,11 @@ app.post(
               durationMs: Date.now() - startTime,
             });
 
-            // Write observability event on success (fire-and-forget)
+            // Write observability event with 'processing' status (fire-and-forget)
+            // Agent will update this event to 'success' or 'error' when execution completes
+            // This tracks "message received and queued" - actual completion tracked by agent
             if (collector && storage) {
-              collector.complete({ status: 'success' });
+              // Keep status as 'processing' - agent will update on completion
               storage.writeEvent(collector.toEvent()).catch((err) => {
                 logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
                   requestId,
@@ -233,7 +236,7 @@ app.post(
               durationMs: Date.now() - startTime,
             });
 
-            // Write observability event on error (fire-and-forget)
+            // Write observability event as error - RPC failed, agent never received message
             if (collector && storage) {
               collector.complete({
                 status: 'error',
