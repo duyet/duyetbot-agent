@@ -104,7 +104,7 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
       text: ctx.query,
       userId: ctx.userId,
       chatId: ctx.chatId,
-      username: ctx.username,
+      ...(ctx.username && { username: ctx.username }),
       messageRef: ctx.userMessageId,
     });
 
@@ -169,7 +169,7 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
         text: ctx.query,
         userId: ctx.userId,
         chatId: ctx.chatId,
-        username: ctx.username,
+        ...(ctx.username && { username: ctx.username }),
         messageRef: ctx.userMessageId,
       });
 
@@ -216,7 +216,7 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
         text: ctx.query,
         userId: ctx.userId,
         chatId: ctx.chatId,
-        username: ctx.username,
+        ...(ctx.username && { username: ctx.username }),
         messageRef: ctx.userMessageId,
       });
 
