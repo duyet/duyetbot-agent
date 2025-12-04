@@ -50,6 +50,7 @@ export {
   formatDebugFooter,
   formatDebugFooterMarkdownV2,
   formatProgressiveDebugFooter,
+  smartEscapeMarkdownV2,
 } from './debug-footer.js';
 // Factory
 export { createAgent } from './factory.js';

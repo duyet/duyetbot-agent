@@ -11,6 +11,11 @@
   ],
   "scripts": {
     "build": "turbo run build",
+    "build:safety-kernel": "turbo run build --filter=@duyetbot/safety-kernel",
+    "build:shared-agents": "turbo run build --filter=@duyetbot/shared-agents",
+    "build:telegram": "turbo run build --filter=@duyetbot/telegram-bot...",
+    "build:github": "turbo run build --filter=@duyetbot/github-bot...",
+    "build:memory-mcp": "turbo run build --filter=@duyetbot/memory-mcp...",
     "dev": "turbo run dev",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",

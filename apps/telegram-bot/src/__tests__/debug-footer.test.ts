@@ -224,27 +224,33 @@ describe('debug-footer', () => {
         expect(result.parseMode).toBe('MarkdownV2');
       });
 
-      it('escapes all text for MarkdownV2', () => {
+      it('smart escapes text for MarkdownV2 preserving formatting', () => {
         const ctx = createMockContext({
           isAdmin: false,
           parseMode: 'MarkdownV2',
         });
 
-        // All text should be escaped for MarkdownV2
+        // Smart escaping: escapes special chars in plain text but preserves markdown formatting
         const patterns = [
+          // Plain text with special chars gets escaped
           { input: '🔄 Thinking...', expected: '🔄 Thinking\\.\\.\\.' },
           { input: '🔄 Loading...', expected: '🔄 Loading\\.\\.\\.' },
           { input: '🤔 Analyzing...', expected: '🤔 Analyzing\\.\\.\\.' },
           { input: '📊 Processing (50%)', expected: '📊 Processing \\(50%\\)' },
           { input: '✅ Done!', expected: '✅ Done\\!' },
           { input: '⚠️ Warning!', expected: '⚠️ Warning\\!' },
-          // Text-only loading indicators (no emoji prefix)
-          { input: 'Simmering...', expected: 'Simmering\\.\\.\\.' },
-          { input: 'Thinking...', expected: 'Thinking\\.\\.\\.' },
-          { input: 'Still thinking...', expected: 'Still thinking\\.\\.\\.' },
-          // Regular messages
           { input: 'Hello world!', expected: 'Hello world\\!' },
-          { input: 'Test (value)', expected: 'Test \\(value\\)' },
+          // MarkdownV2 formatting is preserved
+          { input: '*bold* text', expected: '*bold* text' },
+          { input: '_italic_ text', expected: '_italic_ text' },
+          { input: '~strikethrough~', expected: '~strikethrough~' },
+          // Links are preserved (smart escape recognizes them)
+          {
+            input: '[link](https://example.com)',
+            expected: '[link](https://example.com)',
+          },
+          // Code is preserved
+          { input: '`code`', expected: '`code`' },
         ];
 
         for (const { input, expected } of patterns) {
@@ -253,15 +259,15 @@ describe('debug-footer', () => {
         }
       });
 
-      it('escapes long responses for MarkdownV2', () => {
+      it('escapes special chars in plain text for MarkdownV2', () => {
         const ctx = createMockContext({
           isAdmin: false,
           parseMode: 'MarkdownV2',
         });
 
-        // All text is escaped regardless of length
+        // Plain text with dots and other special chars gets escaped
         const longResponse =
-          'Here is a detailed explanation. The dots in this sentence ARE escaped now.';
+          'Here is a detailed explanation. The dots in this sentence ARE escaped.';
         const result = prepareMessageWithDebug(longResponse, ctx);
         expect(result.text).toContain('\\.'); // Dots should be escaped
       });

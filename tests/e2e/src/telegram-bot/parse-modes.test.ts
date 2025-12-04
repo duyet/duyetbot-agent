@@ -137,7 +137,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
       const message = 'This has <script>alert("xss")</script> and <div>unsupported</div> tags';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -424,7 +424,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 • Third item with <a href="https://example.com">link</a>`;
 
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -454,7 +454,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
       // Create a message that's close to 4096 character limit
       const longMessage = 'A'.repeat(4080); // ~4080 chars
       const update = createMockUpdate(longMessage, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -479,7 +479,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
       const update = createMockUpdate(longFormattedMessage, {
         parseMode: 'HTML',
       });
-      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(1); // Should be split

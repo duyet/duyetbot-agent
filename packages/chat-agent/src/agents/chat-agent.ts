@@ -74,7 +74,7 @@ export interface ChatAgentConfig {
  * @deprecated Use RouterAgentMethods instead
  */
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
-export type ChatAgentMethods = {};
+export type ChatAgentMethods = Record<string, never>;
 
 /**
  * Type for ChatAgent class

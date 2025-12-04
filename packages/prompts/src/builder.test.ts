@@ -255,7 +255,7 @@ describe('OutputFormat', () => {
       const prompt = createPrompt().withOutputFormat('telegram-markdown').withGuidelines().build();
 
       expect(prompt).toContain('<platform>telegram</platform>');
-      expect(prompt).toContain('*bold*');
+      expect(prompt).toContain('*bold text*');
       expect(prompt).toContain('MarkdownV2');
       expect(prompt).not.toContain('<b>bold</b>');
     });
@@ -289,7 +289,7 @@ describe('OutputFormat', () => {
     it('should return MarkdownV2 guidelines for telegram-markdown', () => {
       const section = guidelinesSection('telegram-markdown');
 
-      expect(section).toContain('*bold*');
+      expect(section).toContain('*bold text*');
       expect(section).toContain('MarkdownV2');
       expect(section).toContain('Keep responses concise');
     });
@@ -336,7 +336,7 @@ describe('OutputFormat', () => {
     it('should accept telegram-markdown format', () => {
       const prompt = getTelegramPrompt({ outputFormat: 'telegram-markdown' });
 
-      expect(prompt).toContain('*bold*');
+      expect(prompt).toContain('*bold text*');
       expect(prompt).toContain('MarkdownV2');
       expect(prompt).not.toContain('<b>bold</b>');
     });

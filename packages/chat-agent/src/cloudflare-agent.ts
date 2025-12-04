@@ -1093,7 +1093,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      */
     private recordStage(stage: MessageStage, metadata?: Record<string, unknown>): void {
       const batch = this.state.activeBatch as EnhancedBatchState | undefined;
-      if (!batch) return;
+      if (!batch) {
+        return;
+      }
 
       const transition: StageTransition = {
         stage,
@@ -1119,7 +1121,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      */
     private async notifyUserOfFailure(batch: EnhancedBatchState, error: unknown): Promise<void> {
       const firstMessage = batch.pendingMessages[0];
-      if (!transport || !firstMessage) return;
+      if (!transport || !firstMessage) {
+        return;
+      }
 
       try {
         const ctx = firstMessage.originalContext as TContext;

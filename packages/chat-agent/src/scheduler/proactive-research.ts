@@ -231,7 +231,9 @@ export async function fetchHackerNewsStories(url: string, limit = 30): Promise<H
       const batchResults = await Promise.all(
         batch.map(async (id) => {
           const itemResponse = await fetch(`https://hacker-news.firebaseio.com/v0/item/${id}.json`);
-          if (!itemResponse.ok) return null;
+          if (!itemResponse.ok) {
+            return null;
+          }
           return (await itemResponse.json()) as HNItem;
         })
       );
@@ -265,10 +267,14 @@ export function processHackerNewsStories(
 
   for (const story of stories) {
     // Skip already seen
-    if (seenIds.has(story.id)) continue;
+    if (seenIds.has(story.id)) {
+      continue;
+    }
 
     // Skip non-stories or items without URLs
-    if (story.type !== 'story' || !story.url) continue;
+    if (story.type !== 'story' || !story.url) {
+      continue;
+    }
 
     // Calculate relevance
     const { score, reason } = calculateRelevance(story.title, tasteFilter);
@@ -351,7 +357,9 @@ export async function executeResearchTask(payload: ResearchTaskPayload): Promise
   // Process each source
   for (const sourceId of payload.sources) {
     const source = DEFAULT_RESEARCH_SOURCES.find((s) => s.id === sourceId);
-    if (!source || !source.enabled) continue;
+    if (!source || !source.enabled) {
+      continue;
+    }
 
     if (source.type === 'hackernews') {
       const stories = await fetchHackerNewsStories(source.url);

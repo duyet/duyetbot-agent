@@ -14,11 +14,12 @@ import {
   formatDebugFooterMarkdownV2 as coreFormatDebugFooterMarkdownV2,
   escapeHtml,
   escapeMarkdownV2,
+  smartEscapeMarkdownV2,
 } from '@duyetbot/chat-agent/debug-footer';
 import type { TelegramContext } from './transport.js';
 
 // Re-export escape functions directly (no wrapper needed)
-export { escapeHtml, escapeMarkdownV2 };
+export { escapeHtml, escapeMarkdownV2, smartEscapeMarkdownV2 };
 
 /**
  * Format debug context as expandable blockquote footer (admin only)
@@ -45,7 +46,9 @@ export function formatDebugFooter(ctx: TelegramContext): string | null {
  * Prepare message with optional debug footer for sending
  *
  * Returns the message text and parse mode based on context configuration.
- * Escapes text appropriately for the target parse mode.
+ * For HTML mode, escapes HTML entities.
+ * For MarkdownV2 mode, uses smart escaping that preserves formatting syntax
+ * (links, bold, italic, code blocks) while escaping special chars in plain text.
  * Admin users with debug context get an expandable footer appended.
  */
 export function prepareMessageWithDebug(
@@ -55,8 +58,9 @@ export function prepareMessageWithDebug(
   const debugFooter = formatDebugFooter(ctx);
 
   // Use MarkdownV2 parse mode if configured
+  // Smart escape preserves formatting syntax while escaping special chars
   if (ctx.parseMode === 'MarkdownV2') {
-    const escapedText = escapeMarkdownV2(text);
+    const escapedText = smartEscapeMarkdownV2(text);
     return {
       text: debugFooter ? escapedText + debugFooter : escapedText,
       parseMode: 'MarkdownV2',
