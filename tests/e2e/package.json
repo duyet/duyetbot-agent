@@ -8,12 +8,10 @@
     "test:watch": "vitest",
     "test:cli": "vitest run src/cli",
     "test:api": "vitest run src/api",
-    "test:agent": "vitest run src/agent-server",
     "test:memory": "vitest run src/memory-mcp",
     "test:telegram": "vitest run src/telegram-bot"
   },
   "devDependencies": {
-    "@duyetbot/agent-server": "workspace:*",
     "@duyetbot/cli": "workspace:*",
     "@duyetbot/core": "workspace:*",
     "@duyetbot/memory-mcp": "workspace:*",

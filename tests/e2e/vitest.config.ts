@@ -23,10 +23,6 @@ export default defineConfig({
         find: /^@duyetbot\/agent-server\/(.*)$/,
         replacement: resolve(__dirname, '../../apps/agent-server/src/$1.ts'),
       },
-      {
-        find: '@duyetbot/agent-server',
-        replacement: resolve(__dirname, '../../apps/agent-server/src/index.ts'),
-      },
       // Memory MCP package
       {
         find: /^@duyetbot\/memory-mcp\/(.*)$/,
