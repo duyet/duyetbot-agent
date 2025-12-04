@@ -31,6 +31,10 @@ export interface TelegramUpdate {
     chat: {
       /** Unique chat identifier */
       id: number;
+      /** Type of chat: private, group, supergroup, or channel */
+      type?: 'private' | 'group' | 'supergroup' | 'channel';
+      /** Title of the chat (for groups, supergroups, and channels) */
+      title?: string;
     };
     /** Message text content */
     text?: string;
@@ -42,6 +46,8 @@ export interface TelegramUpdate {
       from?: {
         /** Unique user identifier */
         id: number;
+        /** True if this user is a bot */
+        is_bot?: boolean;
         /** Username without @ prefix */
         username?: string;
         /** User's first name */
@@ -80,6 +86,18 @@ export interface WebhookContext {
   quotedText?: string;
   /** Username of the quoted message sender */
   quotedUsername?: string;
+  /** Chat type: private, group, supergroup, or channel */
+  chatType: 'private' | 'group' | 'supergroup' | 'channel';
+  /** Title of the chat (for groups, supergroups, and channels) */
+  chatTitle?: string;
+  /** Whether this message is from a group or supergroup */
+  isGroupChat: boolean;
+  /** Whether the bot was mentioned in this message */
+  hasBotMention: boolean;
+  /** Whether this message is a reply to the bot's message */
+  isReplyToBot: boolean;
+  /** Extracted task text (message with @mention removed, if present) */
+  task?: string;
 }
 
 /**
@@ -93,6 +111,8 @@ export interface Env {
   TELEGRAM_ALLOWED_USERS?: string;
   /** Telegram Bot API token */
   TELEGRAM_BOT_TOKEN: string;
+  /** Bot username for mention detection (without @, default: 'duyetbot') */
+  BOT_USERNAME?: string;
 }
 
 /**

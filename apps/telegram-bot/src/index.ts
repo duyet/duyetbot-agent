@@ -81,10 +81,19 @@ app.post(
 
     // Check if we should skip processing
     if (c.get('skipProcessing')) {
-      const reason = c.get('unauthorized') ? 'unauthorized' : 'skip_flag';
+      // Determine skip reason for logging
+      let reason = 'skip_flag';
+      if (c.get('unauthorized')) {
+        reason = 'unauthorized';
+      } else if (webhookCtx?.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReplyToBot) {
+        reason = 'group_not_mentioned';
+      }
+
       logger.info(`[${requestId}] [WEBHOOK] Skipping`, {
         requestId,
         reason,
+        chatType: webhookCtx?.chatType,
+        isGroupChat: webhookCtx?.isGroupChat,
         durationMs: Date.now() - startTime,
       });
 
@@ -163,8 +172,11 @@ app.post(
       const agent = getChatAgent(env.TelegramAgent, agentId);
 
       // Create ParsedInput for agent
+      // Use extracted task text if bot was mentioned (removes @mention prefix)
+      const messageText = webhookCtx.task ?? ctx.text;
+
       const parsedInput: ParsedInput = {
-        text: ctx.text,
+        text: messageText,
         userId: ctx.userId,
         chatId: ctx.chatId,
         username: ctx.username,
@@ -179,6 +191,11 @@ app.post(
           isAdmin: ctx.isAdmin,
           quotedText: webhookCtx.quotedText,
           quotedUsername: webhookCtx.quotedUsername,
+          chatType: webhookCtx.chatType,
+          chatTitle: webhookCtx.chatTitle,
+          isGroupChat: webhookCtx.isGroupChat,
+          hasBotMention: webhookCtx.hasBotMention,
+          isReplyToBot: webhookCtx.isReplyToBot,
         },
       };
 
