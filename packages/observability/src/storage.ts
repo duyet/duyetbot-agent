@@ -320,6 +320,78 @@ export class ObservabilityStorage {
   }
 
   /**
+   * Update an existing event with completion data.
+   *
+   * Used by agents to update events that were created at webhook receipt.
+   * This allows the actual agent execution results to be recorded.
+   *
+   * @param eventId - The event ID to update
+   * @param completion - Completion data including status, response, tokens, etc.
+   * @returns True if the event was updated, false if not found
+   */
+  async updateEventCompletion(
+    eventId: string,
+    completion: {
+      status: 'success' | 'error';
+      completedAt: number;
+      durationMs: number;
+      responseText?: string;
+      errorType?: string;
+      errorMessage?: string;
+      classification?: { type: string; category: string; complexity: string };
+      agents?: ObservabilityEvent['agents'];
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+      cachedTokens?: number;
+      reasoningTokens?: number;
+    }
+  ): Promise<boolean> {
+    const stmt = this.db.prepare(`
+      UPDATE observability_events SET
+        status = ?,
+        completed_at = ?,
+        duration_ms = ?,
+        response_text = COALESCE(?, response_text),
+        error_type = COALESCE(?, error_type),
+        error_message = COALESCE(?, error_message),
+        classification_type = COALESCE(?, classification_type),
+        classification_category = COALESCE(?, classification_category),
+        classification_complexity = COALESCE(?, classification_complexity),
+        agents = COALESCE(?, agents),
+        input_tokens = COALESCE(?, input_tokens),
+        output_tokens = COALESCE(?, output_tokens),
+        total_tokens = COALESCE(?, total_tokens),
+        cached_tokens = COALESCE(?, cached_tokens),
+        reasoning_tokens = COALESCE(?, reasoning_tokens)
+      WHERE event_id = ?
+    `);
+
+    const result = await stmt
+      .bind(
+        completion.status,
+        completion.completedAt,
+        completion.durationMs,
+        completion.responseText ?? null,
+        completion.errorType ?? null,
+        completion.errorMessage ?? null,
+        completion.classification?.type ?? null,
+        completion.classification?.category ?? null,
+        completion.classification?.complexity ?? null,
+        completion.agents ? JSON.stringify(completion.agents) : null,
+        completion.inputTokens ?? null,
+        completion.outputTokens ?? null,
+        completion.totalTokens ?? null,
+        completion.cachedTokens ?? null,
+        completion.reasoningTokens ?? null,
+        eventId
+      )
+      .run();
+
+    return (result.meta?.changes ?? 0) > 0;
+  }
+
+  /**
    * Convert a database row to an ObservabilityEvent.
    * Handles exactOptionalPropertyTypes by conditionally adding optional fields.
    */

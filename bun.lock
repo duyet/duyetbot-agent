@@ -112,6 +112,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@duyetbot/hono-middleware": "workspace:*",
+        "@duyetbot/observability": "workspace:*",
         "@duyetbot/prompts": "workspace:*",
         "@duyetbot/types": "workspace:*",
         "zod": "^3.24.0",
