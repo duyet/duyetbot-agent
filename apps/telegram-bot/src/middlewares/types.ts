@@ -94,6 +94,8 @@ export interface WebhookContext {
   isGroupChat: boolean;
   /** Whether the bot was mentioned in this message */
   hasBotMention: boolean;
+  /** Whether this message is a reply to any message */
+  isReply: boolean;
   /** Whether this message is a reply to the bot's message */
   isReplyToBot: boolean;
   /** Extracted task text (message with @mention removed, if present) */

@@ -259,7 +259,7 @@ describe('extractWebhookContext', () => {
     });
   });
 
-  describe('reply to bot detection', () => {
+  describe('reply detection', () => {
     it('detects reply to bot message', () => {
       const replyToBot: NonNullable<TelegramUpdate['message']> = {
         ...baseMessage,
@@ -279,6 +279,7 @@ describe('extractWebhookContext', () => {
 
       const result = extractWebhookContext(replyToBot);
 
+      expect(result.isReply).toBe(true);
       expect(result.isReplyToBot).toBe(true);
     });
 
@@ -302,7 +303,7 @@ describe('extractWebhookContext', () => {
       expect(result.isReplyToBot).toBe(true);
     });
 
-    it('returns false for reply to non-bot user', () => {
+    it('detects reply to non-bot user (isReply true, isReplyToBot false)', () => {
       const replyToHuman: NonNullable<TelegramUpdate['message']> = {
         ...baseMessage,
         reply_to_message: {
@@ -319,21 +320,23 @@ describe('extractWebhookContext', () => {
 
       const result = extractWebhookContext(replyToHuman);
 
+      expect(result.isReply).toBe(true);
       expect(result.isReplyToBot).toBe(false);
     });
 
-    it('returns false when no reply_to_message', () => {
+    it('returns false for both isReply and isReplyToBot when no reply_to_message', () => {
       const result = extractWebhookContext(baseMessage);
 
+      expect(result.isReply).toBe(false);
       expect(result.isReplyToBot).toBe(false);
     });
 
-    it('returns false when reply_to_message has no from', () => {
+    it('isReply true but isReplyToBot false when reply_to_message has no from', () => {
       const replyNoFrom: NonNullable<TelegramUpdate['message']> = {
         ...baseMessage,
         reply_to_message: {
           message_id: 100,
-          // No from field (edge case)
+          // No from field (edge case - system messages)
           text: 'Some message',
           date: 1700000000,
         },
@@ -341,6 +344,7 @@ describe('extractWebhookContext', () => {
 
       const result = extractWebhookContext(replyNoFrom);
 
+      expect(result.isReply).toBe(true);
       expect(result.isReplyToBot).toBe(false);
     });
   });
@@ -368,6 +372,7 @@ describe('extractWebhookContext', () => {
 
       expect(result.isGroupChat).toBe(true);
       expect(result.hasBotMention).toBe(false);
+      expect(result.isReply).toBe(false);
       expect(result.isReplyToBot).toBe(false);
     });
 
@@ -405,7 +410,33 @@ describe('extractWebhookContext', () => {
 
       expect(result.isGroupChat).toBe(true);
       expect(result.hasBotMention).toBe(false);
+      expect(result.isReply).toBe(true);
       expect(result.isReplyToBot).toBe(true);
+    });
+
+    it('group message replying to human user has correct flags (isReply triggers processing)', () => {
+      const replyToHuman: NonNullable<TelegramUpdate['message']> = {
+        ...groupMessage,
+        text: 'I agree with this',
+        reply_to_message: {
+          message_id: 100,
+          from: {
+            id: 99999,
+            username: 'humanuser',
+            first_name: 'Human',
+          },
+          text: 'Some human message',
+          date: 1700000000,
+        },
+      };
+
+      const result = extractWebhookContext(replyToHuman);
+
+      expect(result.isGroupChat).toBe(true);
+      expect(result.hasBotMention).toBe(false);
+      expect(result.isReply).toBe(true);
+      expect(result.isReplyToBot).toBe(false);
+      // This should trigger processing because isReply is true
     });
 
     it('supergroup has same behavior as group', () => {
