@@ -342,6 +342,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _mcpInitialized = false;
     private _processing = false;
     private _batchStartTime = 0; // Track batch start time for duration calculation
+    private _lastResponse: string | undefined; // Capture response for observability
 
     // ============================================
     // State DO Reporting (Fire-and-Forget)
@@ -2008,10 +2009,17 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           .map((m) => m.eventId)
           .filter((id): id is string => !!id);
         if (eventIds.length > 0) {
-          this.updateObservability(eventIds, {
+          // Build completion object conditionally (exactOptionalPropertyTypes)
+          const completionData: Parameters<typeof this.updateObservability>[1] = {
             status: 'success',
             durationMs,
-          });
+          };
+          if (this._lastResponse !== undefined) {
+            completionData.responseText = this._lastResponse;
+          }
+          this.updateObservability(eventIds, completionData);
+          // Clear captured response after use
+          this._lastResponse = undefined;
         }
 
         // Check if new messages arrived during processing
@@ -2461,6 +2469,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         if (hooks?.afterHandle) {
           await hooks.afterHandle(ctx, response);
         }
+
+        // Capture response for observability (used by onBatchAlarm)
+        this._lastResponse = response;
       } finally {
         rotator.stop();
       }
