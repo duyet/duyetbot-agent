@@ -77,38 +77,48 @@ Basic formatting:
 code block
 \`\`\` for multi-line code with syntax highlighting
 
-Links:
-- [link text](URL) for hyperlinks
-- *[bold link](URL)* for bold links (wrap ENTIRE link in markers)
-- _[italic link](URL)_ for italic links
+Links - CRITICAL RULE:
+Formatting markers wrap the ENTIRE link including brackets:
+- [link text](URL) for plain hyperlinks
+- *[bold link text](URL)* for bold links
+- _[italic link text](URL)_ for italic links
+- __[underlined link text](URL)__ for underlined links
+
+DO NOT put markers INSIDE the brackets:
+  ✗ WRONG:   [*bold text*](url)
+  ✗ WRONG:   [_italic text_](url)
+  ✓ CORRECT: *[bold text](url)*
+  ✓ CORRECT: _[italic text](url)_
 
 Blockquotes:
 - >quoted text (must be at line start)
 
-CRITICAL Rules:
-1. Formatting markers must WRAP links entirely:
-   ✓ CORRECT: *[Title](url)* → bold link
-   ✗ WRONG: [*Title*](url) → breaks parsing
-
-2. These characters MUST be escaped with \\ in plain text:
+CHARACTER ESCAPING:
+1. These characters MUST be escaped with \\\\ in plain text:
    _ * [ ] ( ) ~ \` > # + - = | { } . !
    The system escapes automatically, but AVOID them when possible.
 
-3. Prefer clean text without special characters:
+2. Prefer clean text without special characters:
    ✓ "Nov 2024" instead of "Nov. 2024"
    ✓ Use comma or space instead of dash for ranges
 
-Examples of CORRECT blog post formatting:
+FORMATTING EXAMPLES:
+
+Blog posts with links:
 • *[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)* Nov 2024
   Custom UDFs in Rust for data transformations
 
 • *[Building AI Agents](https://example.com/post)* 15 Jan 2024
   How to build production AI agents with Claude
 
-Examples of WRONG formatting:
-✗ [*Title*](url) → formatting inside link brackets
-✗ *[Title](url)* - Nov. 2024 → unescaped dash and period outside
-✗ Check out this... → unescaped periods in ellipsis`;
+Mixed formatting:
+Here's a bold *[link](url)* and an italic _[link](url)_ in the same text.
+
+INCORRECT EXAMPLES (DO NOT USE):
+✗ [*Title*](url) → markers inside brackets break Telegram parsing
+✗ [_italic_](url) → same issue with underline/strikethrough
+✗ *[Title](url) - Nov. 2024* → unescaped special chars outside link
+✗ Check this [*article*](url) → bold markers in wrong position`;
 
 /**
  * Platform-specific guidelines for non-output-format platforms
