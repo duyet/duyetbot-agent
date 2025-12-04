@@ -56,7 +56,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       }
 
       const update = createMockUpdate('hi', { messageId: 1 });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -85,7 +85,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       }
 
       const update = createMockUpdate('hello', { messageId: 2 });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -111,7 +111,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       }
 
       const update = createMockUpdate('help', { messageId: 3 });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -146,7 +146,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
 
       // Second message that references context
       const update2 = createMockUpdate('What is my name?', { messageId: 5 });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update2));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update2));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThanOrEqual(2);
@@ -181,7 +181,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       const update2 = createMockUpdate('What time is it there?', {
         messageId: 7,
       });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update2));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update2));
 
       const sentMessages = apiSpy.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -208,7 +208,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       }
 
       const update = createMockUpdate('', { messageId: 8 });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       // Should either not respond or provide helpful message
@@ -239,7 +239,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       const longMessage = 'This is a very long message. '.repeat(100); // ~3000 chars
       const update = createMockUpdate(longMessage, { messageId: 9 });
 
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -259,7 +259,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       const specialMessage = 'Test with emojis 🎉 and special chars: @#$%^&*()';
       const update = createMockUpdate(specialMessage, { messageId: 10 });
 
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -307,7 +307,7 @@ describe('Telegram Bot - Real API E2E Tests', () => {
       const update = createMockUpdate('Format this: *bold*, _italic_, `code`', {
         messageId: 12,
       });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
