@@ -118,7 +118,7 @@ describe('StepProgressTracker', () => {
       });
 
       // Should show both steps
-      const lastCall = mockOnUpdate.mock.calls[0][0];
+      const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
       expect(lastCall).toContain('📡 Router → SimpleAgent');
       expect(lastCall).toContain('✅ get_posts returned');
     });
@@ -130,7 +130,7 @@ describe('StepProgressTracker', () => {
       await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
 
       // Should show completed routing + current tool running
-      const lastCall = mockOnUpdate.mock.calls[0][0];
+      const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
       expect(lastCall).toContain('📡 Router → SimpleAgent');
       expect(lastCall).toContain('⚙️ get_posts running. ...');
     });

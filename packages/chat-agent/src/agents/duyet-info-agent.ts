@@ -13,10 +13,11 @@
 import { logger } from '@duyetbot/hono-middleware';
 import { getDuyetInfoPrompt, platformToOutputFormat } from '@duyetbot/prompts';
 import { Agent, type Connection } from 'agents';
-import { type AgentResult, BaseAgent, type BaseState } from '../base/index.js';
+import { type AgentDebugInfo, type AgentResult, BaseAgent, type BaseState } from '../base/index.js';
 import type { MCPServerConnection } from '../cloudflare-agent.js';
 import type { ExecutionContext } from '../execution/context.js';
-import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
+import type { LLMMessage, OpenAITool, ToolCall } from '../types.js';
 import { agentRegistry } from './registry.js';
 
 // =============================================================================
@@ -200,8 +201,8 @@ export interface DuyetInfoAgentEnv {}
  * Configuration for Duyet Info Agent
  */
 export interface DuyetInfoAgentConfig<TEnv extends DuyetInfoAgentEnv> {
-  /** Function to create LLM provider from env and optional execution context */
-  createProvider: (env: TEnv, context?: ExecutionContext) => LLMProvider;
+  /** Function to create agent provider from env */
+  createProvider: (env: TEnv) => AgentProvider;
   /** Maximum tools to expose to LLM (default: 10) */
   maxTools?: number;
   /** MCP connection timeout in ms (default: 5000) - reduced to fit 30s budget */
@@ -645,9 +646,10 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         // Initialize MCP connection
         await this.initMcp();
 
-        // Get LLM provider (pass context for provider-specific configuration)
+        // Get agent provider and set it
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env, ctx);
+        const provider = config.createProvider(env);
+        this.setProvider(provider);
 
         // Get available tools (filtered)
         const tools = this._mcpInitialized ? this.getMcpTools() : [];
@@ -660,8 +662,11 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           { role: 'user', content: ctx.query },
         ];
 
-        // Execute with tool loop
-        let response = await provider.chat(messages, tools.length > 0 ? tools : undefined);
+        // Execute with tool loop (tools in options for AgentProvider.chat signature)
+        let response = await provider.chat(
+          messages,
+          tools.length > 0 ? { tools } : undefined
+        );
         let iterations = 0;
 
         while (
@@ -695,8 +700,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
             });
           }
 
-          // Get next response
-          response = await provider.chat(messages, tools);
+          // Get next response (tools in options for AgentProvider.chat signature)
+          response = await provider.chat(messages, { tools });
         }
 
         const durationMs = Date.now() - startTime;

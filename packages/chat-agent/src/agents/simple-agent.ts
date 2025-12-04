@@ -16,11 +16,13 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { Agent } from 'agents';
 import { BaseAgent } from '../base/base-agent.js';
 import type { AgentResult, BaseEnv, BaseState } from '../base/index.js';
 import { createErrorResult, createSuccessResult } from '../base/index.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
 import type { ExecutionContext } from '../execution/context.js';
-import type { ChatOptions, LLMProvider, Message } from '../types.js';
+import type { ChatOptions, Message } from '../types.js';
 import { agentRegistry } from './registry.js';
 
 // =============================================================================
@@ -96,8 +98,8 @@ export interface WebSearchConfig {
  * Configuration for simple agent
  */
 export interface SimpleAgentConfig<TEnv extends SimpleAgentEnv> {
-  /** Function to create LLM provider from env */
-  createProvider: (env: TEnv) => LLMProvider;
+  /** Function to create agent provider from env */
+  createProvider: (env: TEnv) => AgentProvider;
   /** System prompt for the agent */
   systemPrompt: string;
   /** Maximum messages in history */
@@ -118,6 +120,15 @@ export interface SimpleAgentConfig<TEnv extends SimpleAgentEnv> {
 }
 
 /**
+ * Type for SimpleAgent class
+ */
+export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<TEnv, SimpleAgentState> & {
+  new (
+    ...args: ConstructorParameters<typeof Agent<TEnv, SimpleAgentState>>
+  ): Agent<TEnv, SimpleAgentState>;
+};
+
+/**
  * Create a Simple Agent class
  *
  * Extends BaseAgent to provide:
@@ -135,7 +146,9 @@ export interface SimpleAgentConfig<TEnv extends SimpleAgentEnv> {
  * });
  * ```
  */
-export function createSimpleAgent<TEnv extends SimpleAgentEnv>(config: SimpleAgentConfig<TEnv>) {
+export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
+  config: SimpleAgentConfig<TEnv>
+): SimpleAgentClass<TEnv> {
   const maxHistory = config.maxHistory ?? 20;
   const debug = config.debug ?? false;
 
@@ -254,7 +267,9 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(config: SimpleAge
         await this.respond(ctx, response.content);
 
         return createSuccessResult(response.content, durationMs, {
-          tokensUsed: response.usage?.totalTokens,
+          ...(response.usage?.totalTokens !== undefined && {
+            tokensUsed: response.usage.totalTokens,
+          }),
         });
       } catch (error) {
         const durationMs = Date.now() - startTime;
@@ -281,10 +296,20 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(config: SimpleAge
           });
         }
 
-        return createErrorResult(error, durationMs);
+        return createErrorResult(
+          error instanceof Error ? error : new Error(String(error)),
+          durationMs
+        );
       }
     }
   };
 
   return AgentClass;
 }
+
+/**
+ * Type for simple agent instance
+ */
+export type SimpleAgentInstance<TEnv extends SimpleAgentEnv> = InstanceType<
+  ReturnType<typeof createSimpleAgent<TEnv>>
+>;

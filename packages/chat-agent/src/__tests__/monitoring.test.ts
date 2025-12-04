@@ -21,10 +21,11 @@ describe('Routing Monitoring', () => {
       query: 'What is TypeScript?',
       classification: {
         type: 'simple',
-        category: 'question',
+        category: 'general',
         complexity: 'low',
         confidence: 0.9,
         reasoning: 'Simple question about a programming language',
+        requiresHumanApproval: false,
       },
       routedTo: 'simple-agent' as RouteTarget,
       timestamp: Date.now() - 5000,
@@ -33,11 +34,12 @@ describe('Routing Monitoring', () => {
     {
       query: 'Create a complex web application',
       classification: {
-        type: 'task',
+        type: 'complex',
         category: 'code',
         complexity: 'high',
         confidence: 0.85,
         reasoning: 'Complex task requiring multiple steps',
+        requiresHumanApproval: false,
       },
       routedTo: 'orchestrator-agent' as RouteTarget,
       timestamp: Date.now() - 3000,
@@ -46,11 +48,12 @@ describe('Routing Monitoring', () => {
     {
       query: 'Delete production database',
       classification: {
-        type: 'task',
+        type: 'complex',
         category: 'code',
         complexity: 'high',
         confidence: 0.7,
         reasoning: 'Destructive operation requiring approval',
+        requiresHumanApproval: true,
       },
       routedTo: 'hitl-agent' as RouteTarget,
       timestamp: Date.now() - 1000,
@@ -111,9 +114,9 @@ describe('Routing Monitoring', () => {
       expect(stats.byTarget['hitl-agent']).toBe(1);
 
       expect(stats.byType.simple).toBe(1);
-      expect(stats.byType.task).toBe(2);
+      expect(stats.byType.complex).toBe(2);
 
-      expect(stats.byCategory.question).toBe(1);
+      expect(stats.byCategory.general).toBe(1);
       expect(stats.byCategory.code).toBe(2);
 
       expect(stats.byComplexity.low).toBe(1);
@@ -143,9 +146,11 @@ describe('Routing Monitoring', () => {
           query: `query ${i}`,
           classification: {
             type: 'simple',
-            category: 'question',
+            category: 'general',
             complexity: 'low',
             confidence: 0.9,
+            reasoning: 'Test query',
+            requiresHumanApproval: false,
           },
           routedTo: 'simple-agent' as RouteTarget,
           timestamp: Date.now(),
@@ -178,9 +183,11 @@ describe('Routing Monitoring', () => {
           query: 'high confidence',
           classification: {
             type: 'simple',
-            category: 'question',
+            category: 'general',
             complexity: 'low',
             confidence: 0.95,
+            reasoning: 'High confidence query',
+            requiresHumanApproval: false,
           },
           routedTo: 'simple-agent' as RouteTarget,
           timestamp: Date.now(),
@@ -190,9 +197,11 @@ describe('Routing Monitoring', () => {
           query: 'medium confidence',
           classification: {
             type: 'simple',
-            category: 'question',
+            category: 'general',
             complexity: 'low',
             confidence: 0.65,
+            reasoning: 'Medium confidence query',
+            requiresHumanApproval: false,
           },
           routedTo: 'simple-agent' as RouteTarget,
           timestamp: Date.now(),
@@ -202,9 +211,11 @@ describe('Routing Monitoring', () => {
           query: 'low confidence',
           classification: {
             type: 'simple',
-            category: 'question',
+            category: 'general',
             complexity: 'low',
             confidence: 0.4,
+            reasoning: 'Low confidence query',
+            requiresHumanApproval: false,
           },
           routedTo: 'simple-agent' as RouteTarget,
           timestamp: Date.now(),
@@ -279,9 +290,11 @@ describe('Routing Monitoring', () => {
           query: 'Query with "quotes" in it',
           classification: {
             type: 'simple',
-            category: 'question',
+            category: 'general',
             complexity: 'low',
             confidence: 0.9,
+            reasoning: 'Query with quotes',
+            requiresHumanApproval: false,
           },
           routedTo: 'simple-agent' as RouteTarget,
           timestamp: Date.now(),
@@ -303,7 +316,7 @@ describe('Routing Monitoring', () => {
       expect(columns[0]).toMatch(/^\d{4}-\d{2}-\d{2}T/); // timestamp
       expect(columns[1]).toContain('What is TypeScript?'); // query (in quotes)
       expect(columns[2]).toBe('simple'); // type
-      expect(columns[3]).toBe('question'); // category
+      expect(columns[3]).toBe('general'); // category
       expect(columns[4]).toBe('low'); // complexity
       expect(columns[5]).toBe('0.90'); // confidence
       expect(columns[6]).toBe('simple-agent'); // routedTo

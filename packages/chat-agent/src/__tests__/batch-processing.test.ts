@@ -27,20 +27,12 @@ const createMockTransport = () => {
         text: ctx.text,
         userId: ctx.userId,
         chatId: ctx.chatId,
-        metadata: ctx.metadata,
+        ...(ctx.metadata !== undefined && { metadata: ctx.metadata }),
       })
     ),
   };
   return transport;
 };
-
-// Mock LLM provider
-const createMockProvider = () => ({
-  chat: vi.fn().mockResolvedValue({
-    content: 'LLM response',
-    toolCalls: undefined,
-  }),
-});
 
 // Minimal mock for testing batch state logic without DO runtime
 interface MockAgentState {
@@ -56,7 +48,6 @@ interface MockAgentState {
 
 describe('batch-processing', () => {
   let mockTransport: ReturnType<typeof createMockTransport>;
-  let _mockProvider: ReturnType<typeof createMockProvider>;
   let state: MockAgentState;
   let scheduledAlarms: Array<{
     delaySeconds: number;
@@ -129,12 +120,14 @@ describe('batch-processing', () => {
       });
     }
 
-    return { queued: true, batchId: batch.batchId ?? undefined };
+    if (batch.batchId) {
+      return { queued: true, batchId: batch.batchId };
+    }
+    return { queued: true };
   };
 
   beforeEach(() => {
     mockTransport = createMockTransport();
-    _mockProvider = createMockProvider();
     state = {
       messages: [],
       createdAt: Date.now(),
@@ -161,9 +154,9 @@ describe('batch-processing', () => {
 
       expect(result.queued).toBe(true);
       expect(result.batchId).toBeDefined();
-      expect(state.pendingBatch?.status).toBe('collecting');
-      expect(state.pendingBatch?.pendingMessages).toHaveLength(1);
-      expect(state.pendingBatch?.pendingMessages[0].text).toBe('hello');
+      expect(state.pendingBatch!.status).toBe('collecting');
+      expect(state.pendingBatch!.pendingMessages).toHaveLength(1);
+      expect(state.pendingBatch!.pendingMessages[0]!.text).toBe('hello');
     });
 
     it('queues multiple messages in same batch', async () => {
@@ -181,9 +174,9 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.pendingBatch?.pendingMessages).toHaveLength(2);
-      expect(state.pendingBatch?.pendingMessages[0].text).toBe('first');
-      expect(state.pendingBatch?.pendingMessages[1].text).toBe('second');
+      expect(state.pendingBatch!.pendingMessages).toHaveLength(2);
+      expect(state.pendingBatch!.pendingMessages[0]!.text).toBe('first');
+      expect(state.pendingBatch!.pendingMessages[1]!.text).toBe('second');
     });
 
     it('rejects duplicate requestId', async () => {
@@ -202,7 +195,7 @@ describe('batch-processing', () => {
       });
 
       expect(result.queued).toBe(false);
-      expect(state.pendingBatch?.pendingMessages).toHaveLength(1);
+      expect(state.pendingBatch!.pendingMessages).toHaveLength(1);
     });
 
     it('schedules alarm with immediate delay for first message', async () => {
@@ -214,8 +207,8 @@ describe('batch-processing', () => {
       });
 
       expect(scheduledAlarms).toHaveLength(1);
-      expect(scheduledAlarms[0].delaySeconds).toBe(0.001); // First message processes immediately
-      expect(scheduledAlarms[0].handler).toBe('onBatchAlarm');
+      expect(scheduledAlarms[0]!.delaySeconds).toBe(0.001); // First message processes immediately
+      expect(scheduledAlarms[0]!.handler).toBe('onBatchAlarm');
     });
 
     it('schedules subsequent messages with batch window delay', async () => {
@@ -228,7 +221,7 @@ describe('batch-processing', () => {
       });
 
       expect(scheduledAlarms).toHaveLength(1);
-      expect(scheduledAlarms[0].delaySeconds).toBe(0.001);
+      expect(scheduledAlarms[0]!.delaySeconds).toBe(0.001);
 
       // Second message: batch window delay
       await queueMessage({
@@ -239,7 +232,7 @@ describe('batch-processing', () => {
       });
 
       expect(scheduledAlarms).toHaveLength(2);
-      expect(scheduledAlarms[1].delaySeconds).toBe(DEFAULT_BATCH_CONFIG.windowMs / 1000);
+      expect(scheduledAlarms[1]!.delaySeconds).toBe(DEFAULT_BATCH_CONFIG.windowMs / 1000);
     });
 
     it('resets alarm on each new message (deprecated behavior)', async () => {
@@ -273,7 +266,7 @@ describe('batch-processing', () => {
       }
 
       // Last alarm should be immediate (0.001 seconds)
-      const lastAlarm = scheduledAlarms[scheduledAlarms.length - 1];
+      const lastAlarm = scheduledAlarms[scheduledAlarms.length - 1]!;
       expect(lastAlarm.delaySeconds).toBe(0.001);
     });
 
@@ -285,8 +278,8 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.pendingBatch?.pendingMessages[0].userId).toBe(888);
-      expect(state.pendingBatch?.pendingMessages[0].chatId).toBe(999);
+      expect(state.pendingBatch!.pendingMessages[0]!.userId).toBe(888);
+      expect(state.pendingBatch!.pendingMessages[0]!.chatId).toBe(999);
     });
 
     it('generates requestId if not provided', async () => {
@@ -296,8 +289,8 @@ describe('batch-processing', () => {
         text: 'hello',
       });
 
-      expect(state.pendingBatch?.pendingMessages[0].requestId).toBeDefined();
-      expect(state.pendingBatch?.pendingMessages[0].requestId.length).toBeGreaterThan(0);
+      expect(state.pendingBatch!.pendingMessages[0]!.requestId).toBeDefined();
+      expect(state.pendingBatch!.pendingMessages[0]!.requestId.length).toBeGreaterThan(0);
     });
   });
 
@@ -317,7 +310,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.pendingBatch?.status).toBe('collecting');
+      expect(state.pendingBatch!.status).toBe('collecting');
     });
 
     it('stays in collecting state for additional messages', async () => {
@@ -335,7 +328,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.pendingBatch?.status).toBe('collecting');
+      expect(state.pendingBatch!.status).toBe('collecting');
     });
 
     it('sets batchStartedAt on first message only', async () => {
@@ -348,7 +341,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      const firstBatchStartedAt = state.pendingBatch?.batchStartedAt;
+      const firstBatchStartedAt = state.pendingBatch!.batchStartedAt;
       expect(firstBatchStartedAt).toBeGreaterThanOrEqual(beforeQueue);
 
       // Wait a bit and add another message
@@ -362,7 +355,7 @@ describe('batch-processing', () => {
       });
 
       // batchStartedAt should not change
-      expect(state.pendingBatch?.batchStartedAt).toBe(firstBatchStartedAt);
+      expect(state.pendingBatch!.batchStartedAt).toBe(firstBatchStartedAt);
     });
 
     it('updates lastMessageAt on each message', async () => {
@@ -373,7 +366,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      const firstLastMessageAt = state.pendingBatch?.lastMessageAt;
+      const firstLastMessageAt = state.pendingBatch!.lastMessageAt;
 
       await new Promise((r) => setTimeout(r, 10));
 
@@ -384,7 +377,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.pendingBatch?.lastMessageAt).toBeGreaterThan(firstLastMessageAt!);
+      expect(state.pendingBatch!.lastMessageAt).toBeGreaterThan(firstLastMessageAt);
     });
   });
 
@@ -400,10 +393,10 @@ describe('batch-processing', () => {
         });
       }
 
-      expect(state.pendingBatch?.pendingMessages).toHaveLength(10);
+      expect(state.pendingBatch!.pendingMessages).toHaveLength(10);
 
       // Check that immediate processing was triggered
-      const lastAlarm = scheduledAlarms[scheduledAlarms.length - 1];
+      const lastAlarm = scheduledAlarms[scheduledAlarms.length - 1]!;
       expect(lastAlarm.delaySeconds).toBe(0.001);
     });
 
@@ -419,11 +412,11 @@ describe('batch-processing', () => {
       }
 
       // First message gets immediate processing (0.001s)
-      expect(scheduledAlarms[0].delaySeconds).toBe(0.001);
+      expect(scheduledAlarms[0]!.delaySeconds).toBe(0.001);
 
       // Subsequent messages get normal window delay
       for (let i = 1; i < scheduledAlarms.length; i++) {
-        expect(scheduledAlarms[i].delaySeconds).toBe(DEFAULT_BATCH_CONFIG.windowMs / 1000);
+        expect(scheduledAlarms[i]!.delaySeconds).toBe(DEFAULT_BATCH_CONFIG.windowMs / 1000);
       }
     });
   });
@@ -503,7 +496,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(scheduledAlarms[0].handler).toBe('onBatchAlarm');
+      expect(scheduledAlarms[0]!.handler).toBe('onBatchAlarm');
     });
 
     it('passes batchId in alarm data', async () => {
@@ -514,7 +507,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(scheduledAlarms[0].data).toEqual({ batchId: result.batchId });
+      expect(scheduledAlarms[0]!.data).toEqual({ batchId: result.batchId });
     });
 
     it('uses immediate delay for first message', async () => {
@@ -526,7 +519,7 @@ describe('batch-processing', () => {
       });
 
       // First message processes immediately
-      expect(scheduledAlarms[0].delaySeconds).toBe(0.001);
+      expect(scheduledAlarms[0]!.delaySeconds).toBe(0.001);
     });
 
     it('uses 0.001s delay for immediate processing', async () => {
@@ -540,7 +533,7 @@ describe('batch-processing', () => {
         });
       }
 
-      const lastAlarm = scheduledAlarms[scheduledAlarms.length - 1];
+      const lastAlarm = scheduledAlarms[scheduledAlarms.length - 1]!;
       expect(lastAlarm.delaySeconds).toBe(0.001);
     });
   });
@@ -555,7 +548,7 @@ describe('batch-processing', () => {
       });
 
       // Reset state to simulate new batch
-      state.pendingBatch = undefined;
+      delete state.pendingBatch;
 
       const result2 = await queueMessage({
         chatId: 123,
@@ -610,7 +603,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.pendingBatch?.pendingMessages[0].text).toBe('hello world');
+      expect(state.pendingBatch!.pendingMessages[0]!.text).toBe('hello world');
     });
 
     it('extracts userId from parsed context', async () => {
@@ -621,7 +614,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.pendingBatch?.pendingMessages[0].userId).toBe(999);
+      expect(state.pendingBatch!.pendingMessages[0]!.userId).toBe(999);
     });
 
     it('extracts chatId from parsed context', async () => {
@@ -632,7 +625,7 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.pendingBatch?.pendingMessages[0].chatId).toBe(777);
+      expect(state.pendingBatch!.pendingMessages[0]!.chatId).toBe(777);
     });
   });
 
@@ -667,9 +660,9 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req2' },
       });
 
-      expect(state.pendingBatch?.pendingMessages).toHaveLength(2);
-      expect(state.pendingBatch?.pendingMessages[0].text).toBe('/clear');
-      expect(state.pendingBatch?.pendingMessages[1].text).toBe('hello');
+      expect(state.pendingBatch!.pendingMessages).toHaveLength(2);
+      expect(state.pendingBatch!.pendingMessages[0]!.text).toBe('/clear');
+      expect(state.pendingBatch!.pendingMessages[1]!.text).toBe('hello');
     });
 
     it('creates batch with /clear as first message', async () => {
@@ -680,9 +673,9 @@ describe('batch-processing', () => {
         metadata: { requestId: 'req1' },
       });
 
-      expect(state.pendingBatch?.status).toBe('collecting');
-      expect(state.pendingBatch?.pendingMessages).toHaveLength(1);
-      expect(state.pendingBatch?.pendingMessages[0].text).toBe('/clear');
+      expect(state.pendingBatch!.status).toBe('collecting');
+      expect(state.pendingBatch!.pendingMessages).toHaveLength(1);
+      expect(state.pendingBatch!.pendingMessages[0]!.text).toBe('/clear');
     });
 
     it('handles /clear with newline-combined text', async () => {

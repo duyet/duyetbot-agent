@@ -10,7 +10,15 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
-import { type AgentResult, type BaseState, createBaseState } from '../base/index.js';
+import {
+  type AgentResult,
+  BaseAgent,
+  type BaseEnv,
+  type BaseState,
+  createBaseState,
+  createErrorResult,
+  createSuccessResult,
+} from '../base/index.js';
 import type { AgentProvider, ExecutionContext } from '../execution/index.js';
 import { type ResponseTarget, sendPlatformResponse } from '../platform-response.js';
 import {
@@ -22,7 +30,6 @@ import {
   type RouteTarget,
 } from '../routing/index.js';
 import type { DebugContext } from '../types.js';
-import { BaseAgent } from './base-agent.js';
 
 // Re-export ResponseTarget for consumers
 export type { ResponseTarget } from '../platform-response.js';
@@ -75,7 +82,7 @@ export interface RouterAgentState extends BaseState {
  * should be provided by the concrete environment type (e.g., from OpenRouterProviderEnv).
  * This interface only includes shared agent bindings.
  */
-export interface RouterAgentEnv {
+export interface RouterAgentEnv extends BaseEnv {
   /**
    * Agent bindings - these are optional since not all may be deployed.
    *
@@ -97,7 +104,7 @@ export interface RouterAgentEnv {
  * Configuration for router agent
  */
 export interface RouterAgentConfig<TEnv extends RouterAgentEnv> {
-  /** Function to create LLM provider from env */
+  /** Function to create agent provider from env */
   createProvider: (env: TEnv) => AgentProvider;
   /** Maximum routing history to keep */
   maxHistory?: number;
@@ -163,9 +170,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(_state: RouterAgentState, source: 'server' | Connection): void {
+    override onStateUpdate(_state: RouterAgentState, _source: 'server' | Connection): void {
       if (debug) {
-        logger.info('[RouterAgent] State updated', { source });
+        logger.info('[RouterAgent] State updated', {});
       }
     }
 
@@ -340,8 +347,10 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       const env = (this as unknown as { env: TEnv }).env;
       const provider = config.createProvider(env);
 
-      // Build classifier config
-      const classifierConfig: ClassifierConfig = { provider };
+      // Build classifier config (AgentProvider is compatible with LLMProvider)
+      const classifierConfig: ClassifierConfig = {
+        provider: provider as unknown as any,
+      };
       if (config.customClassificationPrompt) {
         classifierConfig.customPrompt = config.customClassificationPrompt;
       }
@@ -521,18 +530,16 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           { role: 'user', content: ctx.query },
         ]);
 
-        return {
-          success: true,
-          content: response.content,
-          durationMs: Date.now() - startTime,
-          tokensUsed: response.usage?.totalTokens,
-        };
+        return createSuccessResult(response.content, Date.now() - startTime, {
+          ...(response.usage?.totalTokens !== undefined && {
+            tokensUsed: response.usage.totalTokens,
+          }),
+        });
       } catch (error) {
-        return {
-          success: false,
-          error: error instanceof Error ? error.message : String(error),
-          durationMs: Date.now() - startTime,
-        };
+        return createErrorResult(
+          error instanceof Error ? error.message : String(error),
+          Date.now() - startTime
+        );
       }
     }
 
@@ -722,7 +729,17 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
         // Add workers from orchestrator debug info (if any)
         if (result.debug?.workers && result.debug.workers.length > 0) {
-          debugContext.workers = result.debug.workers;
+          debugContext.workers = result.debug.workers.map((w) => ({
+            name: w.name,
+            durationMs: w.durationMs,
+            status:
+              w.status === 'success'
+                ? ('completed' as const)
+                : w.status === 'failed'
+                  ? ('error' as const)
+                  : ('error' as const),
+            error: w.error,
+          }));
         }
 
         // Add metadata from agent debug info (fallback, cache, timeout)

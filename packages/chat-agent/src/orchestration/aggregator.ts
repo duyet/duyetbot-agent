@@ -9,6 +9,7 @@
  */
 
 import { AgentMixin } from '../agents/base-agent.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
 import type { ExecutionPlan } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
 import type { ExecutionResult } from './executor.js';
@@ -17,8 +18,8 @@ import type { ExecutionResult } from './executor.js';
  * Aggregator configuration
  */
 export interface AggregatorConfig {
-  /** LLM provider for synthesis */
-  provider: LLMProvider;
+  /** LLM/Agent provider for synthesis */
+  provider: LLMProvider | AgentProvider;
   /** Maximum tokens for aggregation response */
   maxTokens?: number;
   /** Enable detailed logging */

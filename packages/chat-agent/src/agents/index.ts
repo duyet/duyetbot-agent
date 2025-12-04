@@ -121,7 +121,9 @@ export {
 // Simple agent
 export {
   createSimpleAgent,
+  type SimpleAgentClass,
   type SimpleAgentConfig,
   type SimpleAgentEnv,
+  type SimpleAgentInstance,
   type SimpleAgentState,
 } from './simple-agent.js';
