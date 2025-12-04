@@ -175,7 +175,7 @@ export function recordAgentSpan(
   debug.agentChain.push({
     agent,
     spanId,
-    parentSpanId,
+    ...(parentSpanId && { parentSpanId }),
     durationMs,
     timestamp: Date.now(),
   });
@@ -229,7 +229,7 @@ export function createExecutionContext(input: ParsedInput, platform?: string): E
     platform: (platform || 'api') as Platform,
     userId: input.userId,
     chatId: input.chatId,
-    username: input.username,
+    ...(input.username && { username: input.username }),
     userMessageId: input.messageRef || 0,
     provider: 'claude',
     model: 'claude-3-5-sonnet-20241022',
