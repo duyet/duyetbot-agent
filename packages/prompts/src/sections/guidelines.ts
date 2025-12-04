@@ -64,9 +64,10 @@ Do NOT use Markdown syntax (*bold*, _italic_, \`code\`) - use HTML tags only.`;
  * @see https://core.telegram.org/bots/api#markdownv2-style
  */
 const TELEGRAM_MARKDOWNV2_FORMAT = `
+<telegram_markdownv2>
 Format responses using Telegram MarkdownV2 syntax:
 
-Basic formatting:
+<basic_formatting>
 - *bold text* for emphasis
 - _italic text_ for titles or terms
 - __underline__ for underlined text
@@ -76,24 +77,39 @@ Basic formatting:
 - \`\`\`python
 code block
 \`\`\` for multi-line code with syntax highlighting
+</basic_formatting>
 
-Links - CRITICAL RULE:
-Formatting markers wrap the ENTIRE link including brackets:
+<links>
+<critical_rule>
+Formatting markers wrap the ENTIRE link including brackets and URL.
+NEVER put markers inside the square brackets.
+
+CORRECT FORMAT (markers wrap entire link):
 - [link text](URL) for plain hyperlinks
 - *[bold link text](URL)* for bold links
 - _[italic link text](URL)_ for italic links
 - __[underlined link text](URL)__ for underlined links
 
-DO NOT put markers INSIDE the brackets:
-  ✗ WRONG:   [*bold text*](url)
-  ✗ WRONG:   [_italic text_](url)
-  ✓ CORRECT: *[bold text](url)*
-  ✓ CORRECT: _[italic text](url)_
+WRONG FORMAT (markers inside brackets - breaks parsing):
+✗ [*bold text*](url) ← DO NOT USE
+✗ [_italic text_](url) ← DO NOT USE
+✗ [__underline__](url) ← DO NOT USE
+✗ [~strikethrough~](url) ← DO NOT USE
 
-Blockquotes:
-- >quoted text (must be at line start)
+CORRECT vs WRONG side-by-side:
+  ✗ WRONG:   [*Title*](url)
+  ✓ CORRECT: *[Title](url)*
 
-CHARACTER ESCAPING:
+  ✗ WRONG:   [_Article_](url)
+  ✓ CORRECT: _[Article](url)_
+</critical_rule>
+</links>
+
+<blockquotes>
+>quoted text (must be at line start)
+</blockquotes>
+
+<character_escaping>
 1. These characters MUST be escaped with \\\\ in plain text:
    _ * [ ] ( ) ~ \` > # + - = | { } . !
    The system escapes automatically, but AVOID them when possible.
@@ -101,24 +117,37 @@ CHARACTER ESCAPING:
 2. Prefer clean text without special characters:
    ✓ "Nov 2024" instead of "Nov. 2024"
    ✓ Use comma or space instead of dash for ranges
+</character_escaping>
 
-FORMATTING EXAMPLES:
+<examples>
 
-Blog posts with links:
+<blog_posts>
+Blog posts with correctly formatted bold links:
 • *[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)* Nov 2024
   Custom UDFs in Rust for data transformations
 
 • *[Building AI Agents](https://example.com/post)* 15 Jan 2024
   How to build production AI agents with Claude
+</blog_posts>
 
-Mixed formatting:
+<mixed_formatting>
+Links with surrounding text:
+Check out this *[awesome article](url)* for more details.
 Here's a bold *[link](url)* and an italic _[link](url)_ in the same text.
+</mixed_formatting>
 
-INCORRECT EXAMPLES (DO NOT USE):
-✗ [*Title*](url) → markers inside brackets break Telegram parsing
-✗ [_italic_](url) → same issue with underline/strikethrough
+<wrong_examples>
+DO NOT USE THESE (they break Telegram parsing):
+✗ [*Title*](url) → markers inside brackets
+✗ [_italic_](url) → markers inside brackets
+✗ [__underline__](url) → markers inside brackets
 ✗ *[Title](url) - Nov. 2024* → unescaped special chars outside link
-✗ Check this [*article*](url) → bold markers in wrong position`;
+✗ Check this [*article*](url) → bold markers in wrong position
+</wrong_examples>
+
+</examples>
+
+</telegram_markdownv2>`;
 
 /**
  * Platform-specific guidelines for non-output-format platforms
