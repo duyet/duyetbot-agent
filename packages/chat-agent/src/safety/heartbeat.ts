@@ -62,7 +62,7 @@ export interface HeartbeatEnv {
  * 3. At the end of successful batch processing
  *
  * @param env - Environment with HEARTBEAT_KV binding
- * @param workerName - Name of the worker ('duyetbot-telegram', 'duyetbot-github', 'duyetbot-agents')
+ * @param workerName - Name of the worker ('duyetbot-telegram', 'duyetbot-github', 'duyetbot-shared-agents')
  * @param metadata - Optional metadata about current processing state
  */
 export async function emitHeartbeat(
@@ -79,7 +79,7 @@ export async function emitHeartbeat(
   const keyMap: Record<string, string> = {
     'duyetbot-telegram': HEARTBEAT_KEYS.TELEGRAM,
     'duyetbot-github': HEARTBEAT_KEYS.GITHUB,
-    'duyetbot-agents': HEARTBEAT_KEYS.SHARED_AGENTS,
+    'duyetbot-shared-agents': HEARTBEAT_KEYS.SHARED_AGENTS,
   };
 
   const heartbeatKey = keyMap[workerName];

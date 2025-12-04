@@ -138,7 +138,7 @@ export async function recordHeartbeat(
   const keyMap: Record<string, string> = {
     'duyetbot-telegram': KV_KEYS.HEARTBEAT_TELEGRAM,
     'duyetbot-github': KV_KEYS.HEARTBEAT_GITHUB,
-    'duyetbot-agents': KV_KEYS.HEARTBEAT_SHARED,
+    'duyetbot-shared-agents': KV_KEYS.HEARTBEAT_SHARED,
   };
 
   const heartbeatKey = keyMap[workerName];
@@ -170,7 +170,7 @@ export async function recordDeployment(
   const keyMap: Record<string, string> = {
     'duyetbot-telegram': KV_KEYS.DEPLOYMENT_TELEGRAM,
     'duyetbot-github': KV_KEYS.DEPLOYMENT_GITHUB,
-    'duyetbot-agents': KV_KEYS.DEPLOYMENT_SHARED,
+    'duyetbot-shared-agents': KV_KEYS.DEPLOYMENT_SHARED,
   };
 
   const deploymentKey = keyMap[workerName];
