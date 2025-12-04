@@ -77,6 +77,9 @@ export function extractWebhookContext(
   // Detect bot mention in message text
   const hasBotMention = hasMention(text, botUsername);
 
+  // Check if this message is a reply to any message
+  const isReply = !!replyTo;
+
   // Check if this is a reply to the bot's previous message
   const replyToUsername = replyTo?.from?.username?.toLowerCase();
   const isReplyToBot = replyToUsername === botUsername.toLowerCase();
@@ -98,6 +101,7 @@ export function extractWebhookContext(
     chatTitle: message.chat.title,
     isGroupChat,
     hasBotMention,
+    isReply,
     isReplyToBot,
     task,
   };
@@ -151,9 +155,12 @@ export function createTelegramParserMiddleware(): MiddlewareHandler<{
 
     logger.info('[WEBHOOK] Message received', JSON.parse(JSON.stringify(webhookCtx)));
 
-    // In group chats: only process if bot is mentioned or message is a reply to bot
-    if (webhookCtx.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReplyToBot) {
-      logger.debug('[PARSE] Skipping group message without mention or reply to bot', {
+    // In group chats: only process if bot is mentioned OR message is a reply (to anyone)
+    // This allows users to engage with the bot by:
+    // 1. Mentioning @bot in their message
+    // 2. Replying to any message (including bot's previous responses or other users' messages)
+    if (webhookCtx.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReply) {
+      logger.debug('[PARSE] Skipping group message without mention or reply', {
         chatId: webhookCtx.chatId,
         chatType: webhookCtx.chatType,
         chatTitle: webhookCtx.chatTitle,

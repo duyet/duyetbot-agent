@@ -85,8 +85,8 @@ app.post(
       let reason = 'skip_flag';
       if (c.get('unauthorized')) {
         reason = 'unauthorized';
-      } else if (webhookCtx?.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReplyToBot) {
-        reason = 'group_not_mentioned';
+      } else if (webhookCtx?.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReply) {
+        reason = 'group_not_mentioned_or_reply';
       }
 
       logger.info(`[${requestId}] [WEBHOOK] Skipping`, {
@@ -195,6 +195,7 @@ app.post(
           chatTitle: webhookCtx.chatTitle,
           isGroupChat: webhookCtx.isGroupChat,
           hasBotMention: webhookCtx.hasBotMention,
+          isReply: webhookCtx.isReply,
           isReplyToBot: webhookCtx.isReplyToBot,
         },
       };
