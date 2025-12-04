@@ -7,6 +7,8 @@
 // Core agent
 export { ChatAgent } from './agent.js';
 // Batch types (alarm-based processing)
+// DEPRECATED: Legacy module for backward compatibility with cloudflare-agent.ts
+// Use ExecutionContext and AgentProvider from './execution/' for new implementations.
 export {
   type BatchConfig,
   type BatchState,
@@ -22,6 +24,9 @@ export {
   shouldProcessImmediately,
 } from './batch-types.js';
 // Cloudflare Durable Object wrapper
+// DEPRECATED: Legacy module for backward compatibility during migration to new agent architecture
+// Use createChatAgent() from './agents/chat-agent.js' for new implementations.
+// MCPServerConnection is still exported for use by mcp-worker but will be refactored separately.
 export {
   type CloudflareAgentConfig,
   type CloudflareAgentState,
@@ -172,14 +177,31 @@ export {
   type RouterAgentInstance,
   type RouterAgentMethods,
   type RouterAgentState,
-  type SimpleAgentClass,
   type SimpleAgentConfig,
   type SimpleAgentEnv,
-  type SimpleAgentInstance,
-  type SimpleAgentMethods,
   type SimpleAgentState,
   type TelegramPlatformConfig,
 } from './agents/index.js';
+// Execution Context
+export {
+  type AgentProvider,
+  type AgentSpan,
+  addDebugError,
+  addDebugWarning,
+  createDebugAccumulator,
+  createProviderContext,
+  createSpanId,
+  createTraceId,
+  type DebugAccumulator,
+  type DebugToolCall,
+  type ExecutionContext,
+  type ExtendedAgentProvider,
+  type ParsedInputOptions,
+  type Platform,
+  type ProviderExecutionContext,
+  recordAgentSpan,
+  recordToolCall,
+} from './execution/index.js';
 // Feature Flags
 export {
   type FeatureFlagEnv,
@@ -309,9 +331,13 @@ export {
 // =============================================================================
 
 // State DO
+// DEPRECATED: Legacy observability module during migration to ExecutionContext-based design
+// Use createDebugAccumulator() and ExecutionContext from './execution/' for new implementations.
 export { StateDO, type StateDOEnv } from './agents/state-do.js';
 
 // State types
+// DEPRECATED: Legacy types for backward compatibility with cloudflare-agent.ts and state-do.ts
+// Use ExecutionContext, DebugAccumulator, and AgentSpan from './execution/' for new implementations.
 export {
   type AgentMetrics,
   type AggregatedMetrics,

@@ -1,8 +1,12 @@
 /**
  * Types for message batching and alarm-based processing
  *
+ * DEPRECATED: This module is part of the legacy architecture.
+ * Legacy implementation kept for backward compatibility with cloudflare-agent.ts.
+ *
  * This module defines types for combining rapid-fire messages within
  * a time window into a single LLM input, using Cloudflare Durable Object Alarms.
+ * The new architecture uses ExecutionContext and AgentProvider for request handling.
  */
 
 /**
