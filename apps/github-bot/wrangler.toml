@@ -40,42 +40,42 @@ class_name = "GitHubAgent"
 [[durable_objects.bindings]]
 name = "RouterAgent"
 class_name = "RouterAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "SimpleAgent"
 class_name = "SimpleAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "HITLAgent"
 class_name = "HITLAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "OrchestratorAgent"
 class_name = "OrchestratorAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "CodeWorker"
 class_name = "CodeWorker"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "ResearchWorker"
 class_name = "ResearchWorker"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "GitHubWorker"
 class_name = "GitHubWorker"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 # Migrations for local DO only (shared DOs managed by duyetbot-agents)
 [[migrations]]
