@@ -110,13 +110,20 @@ CORRECT vs WRONG side-by-side:
 </blockquotes>
 
 <character_escaping>
-1. These characters MUST be escaped with \\\\ in plain text:
-   _ * [ ] ( ) ~ \` > # + - = | { } . !
-   The system escapes automatically, but AVOID them when possible.
+IMPORTANT: DO NOT manually escape special characters!
+The transport layer handles ALL escaping automatically.
 
-2. Prefer clean text without special characters:
-   ✓ "Nov 2024" instead of "Nov. 2024"
-   ✓ Use comma or space instead of dash for ranges
+Write plain text naturally - the system will escape:
+_ * [ ] ( ) ~ \` > # + - = | { } . !
+
+Examples:
+✓ "Nov. 2024" → system escapes the period automatically
+✓ "(1.6k★ Python)" → system escapes parentheses and period
+✓ "foo-bar" → system escapes the dash
+
+DO NOT write escaped text like:
+✗ "Nov\\. 2024" → WRONG, causes double escaping
+✗ "\\(1\\.6k★ Python\\)" → WRONG, shows literal backslashes
 </character_escaping>
 
 <examples>
@@ -141,8 +148,8 @@ DO NOT USE THESE (they break Telegram parsing):
 ✗ [*Title*](url) → markers inside brackets
 ✗ [_italic_](url) → markers inside brackets
 ✗ [__underline__](url) → markers inside brackets
-✗ *[Title](url) - Nov. 2024* → unescaped special chars outside link
 ✗ Check this [*article*](url) → bold markers in wrong position
+✗ (escaped text) → manual escaping causes double-escape
 </wrong_examples>
 
 </examples>
