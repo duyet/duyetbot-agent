@@ -36,13 +36,13 @@ describe('createThinkingRotator', () => {
     });
 
     // Advance time and flush promises for async callback
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B']);
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B', 'C']);
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B', 'C', 'A']);
 
     rotator.stop();
@@ -55,7 +55,7 @@ describe('createThinkingRotator', () => {
     });
 
     rotator.start((msg) => messages.push(msg));
-    await vi.advanceTimersByTimeAsync(10000);
+    await vi.advanceTimersByTime(10000);
 
     expect(messages).toEqual([]);
   });
@@ -69,9 +69,9 @@ describe('createThinkingRotator', () => {
     });
 
     rotator.start((msg) => messages.push(msg));
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     rotator.stop();
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTime(5000);
 
     expect(messages).toEqual(['B']);
   });
@@ -91,10 +91,10 @@ describe('createThinkingRotator', () => {
 
     rotator.start((msg) => messages.push(msg));
 
-    await vi.advanceTimersByTimeAsync(4999);
+    await vi.advanceTimersByTime(4999);
     expect(messages).toEqual([]);
 
-    await vi.advanceTimersByTimeAsync(1);
+    await vi.advanceTimersByTime(1);
     expect(messages).toEqual(['B']);
 
     rotator.stop();
@@ -111,7 +111,7 @@ describe('createThinkingRotator', () => {
     rotator.start((msg) => messages.push(msg));
     rotator.start((msg) => messages.push(msg)); // Should be ignored
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B']); // Only one message, not two
 
     rotator.stop();
@@ -150,11 +150,11 @@ describe('createThinkingRotator', () => {
     });
 
     // First rotation: wait for interval + async callback
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTime(1100);
     expect(messages).toEqual(['B']);
 
     // Second rotation should only start after first completes
-    await vi.advanceTimersByTimeAsync(1100);
+    await vi.advanceTimersByTime(1100);
     expect(messages).toEqual(['B', 'C']);
 
     rotator.stop();
@@ -180,11 +180,11 @@ describe('createThinkingRotator', () => {
     });
 
     // First rotation should fail but continue
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(errorSpy).toHaveBeenCalledWith('[ROTATOR] Callback failed:', expect.any(Error));
 
     // Second rotation should succeed
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['C']);
 
     rotator.stop();
