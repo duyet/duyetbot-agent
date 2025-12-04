@@ -50,18 +50,20 @@ app.post(
     const env = c.env;
     const startTime = Date.now();
 
-    // Generate request ID for trace correlation across webhook and DO invocations
-    const requestId = crypto.randomUUID().slice(0, 8);
+    // Generate IDs for trace correlation across webhook and DO invocations
+    // - eventId: Full UUID for D1 uniqueness (passed to agent for correlation)
+    // - requestId: Short ID for log readability
+    const eventId = crypto.randomUUID();
+    const requestId = eventId.slice(0, 8);
 
     // Initialize observability collector (same pattern as github-bot)
-    // Use requestId as eventId so agents can update the same event on completion
     let collector: EventCollector | null = null;
     let storage: ObservabilityStorage | null = null;
 
     if (env.OBSERVABILITY_DB) {
       storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
       collector = new EventCollector({
-        eventId: requestId, // Use requestId as eventId for agent correlation
+        eventId, // Full UUID for D1 uniqueness
         appSource: 'telegram-webhook',
         eventType: 'message',
         triggeredAt: startTime,
@@ -186,6 +188,7 @@ app.post(
         metadata: {
           platform: 'telegram',
           requestId,
+          eventId, // Full UUID for D1 observability correlation
           startTime: ctx.startTime,
           adminUsername: ctx.adminUsername,
           parseMode: ctx.parseMode,

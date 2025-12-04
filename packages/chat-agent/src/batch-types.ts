@@ -58,8 +58,13 @@ export interface PendingMessage<TContext = unknown> {
   text: string;
   /** Timestamp when message was received */
   timestamp: number;
-  /** Request ID for deduplication */
+  /** Request ID for deduplication (short, for logging) */
   requestId: string;
+  /**
+   * Event ID for D1 observability correlation (full UUID)
+   * Used to update the observability event when batch completes
+   */
+  eventId?: string;
   /** User ID who sent the message */
   userId?: string | number;
   /** Chat/conversation ID */
