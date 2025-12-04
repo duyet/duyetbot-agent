@@ -29,6 +29,13 @@ export const USERS = {
     first_name: 'Stranger',
     username: 'stranger',
   },
+  /** Bot user (for testing replies to bot messages) */
+  bot: {
+    id: 987654321,
+    is_bot: true,
+    first_name: 'DuyetBot',
+    username: 'duyetbot',
+  },
 } as const;
 
 /**
@@ -47,6 +54,12 @@ export const CHATS = {
     id: -100123456789,
     type: 'group' as const,
     title: 'Test Group',
+  },
+  /** Supergroup chat (larger groups with additional features) */
+  supergroup: {
+    id: -1001234567890,
+    type: 'supergroup' as const,
+    title: 'Test Supergroup',
   },
 } as const;
 
@@ -99,6 +112,8 @@ export interface CreateUpdateOptions {
     /** Text content of the quoted message */
     text?: string;
   };
+  /** Shorthand: reply to a bot message (sets replyTo with bot user) */
+  replyToBot?: boolean;
 }
 
 let updateCounter = 1000;
@@ -124,6 +139,7 @@ export function createUpdate(options: CreateUpdateOptions): TelegramUpdate {
     messageId = messageCounter++,
     updateId = updateCounter++,
     replyTo,
+    replyToBot,
   } = options;
 
   const selectedUser = USERS[user];
@@ -145,6 +161,14 @@ export function createUpdate(options: CreateUpdateOptions): TelegramUpdate {
       from: quotedUser,
       text: replyTo.text,
       date: Math.floor(Date.now() / 1000) - 60, // 1 minute ago
+    };
+  } else if (replyToBot) {
+    // Shorthand for replying to bot's previous message
+    message.reply_to_message = {
+      message_id: messageCounter++,
+      from: USERS.bot,
+      text: 'Previous bot response',
+      date: Math.floor(Date.now() / 1000) - 60,
     };
   }
 

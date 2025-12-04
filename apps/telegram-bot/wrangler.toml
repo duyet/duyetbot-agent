@@ -13,6 +13,7 @@ AI_GATEWAY_NAME = "duyetbot"
 TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
 TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
 TELEGRAM_PARSE_MODE = "MarkdownV2" # Response format: 'HTML' or 'MarkdownV2' (default)
+BOT_USERNAME = "duyetbot" # Bot username for @mention detection in groups
 
 [observability]
 enabled = true
