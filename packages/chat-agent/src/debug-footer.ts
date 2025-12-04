@@ -483,11 +483,24 @@ function formatWorkers(workers?: WorkerDebugInfo[]): string {
 }
 
 /**
+ * Format tool chain for display
+ * Shows the ordered list of tools called: search, calculator, get_posts
+ */
+function formatToolChain(toolChain?: string[]): string {
+  if (!toolChain || toolChain.length === 0) {
+    return '';
+  }
+  return `🔧 Tools: ${toolChain.join(', ')}`;
+}
+
+/**
  * Format routing flow in new format:
  * router-agent (0.4s, 500↓/100↑) → [classification] → target-agent (3.77s, 1.2k↓/0.5k↑)
+ *   🔧 Tools: search, calculator
  *
  * New format places classification between router and target agent
  * for clearer flow visualization. Token usage is shown per-step.
+ * Tools used by the target agent are shown below the main flow.
  */
 function formatRoutingFlow(debugContext: DebugContext): string {
   const { routingFlow, routerDurationMs, classification } = debugContext;
@@ -510,6 +523,7 @@ function formatRoutingFlow(debugContext: DebugContext): string {
 
   // Build target agent part with timing, tokens, and status
   let targetPart = '';
+  let toolsLine = '';
   if (targetStep) {
     targetPart = formatAgentTiming(
       targetStep.agent,
@@ -517,6 +531,8 @@ function formatRoutingFlow(debugContext: DebugContext): string {
       targetStep.status,
       targetStep.tokenUsage
     );
+    // Add tools used by target agent
+    toolsLine = formatToolChain(targetStep.toolChain);
   }
 
   // Combine: router (time, tokens) → [classification] → target (time, tokens)
@@ -528,7 +544,10 @@ function formatRoutingFlow(debugContext: DebugContext): string {
     parts.push(targetPart);
   }
 
-  return parts.join(' → ');
+  const mainFlow = parts.join(' → ');
+
+  // Add tools line if present
+  return toolsLine ? `${mainFlow}\n   ${toolsLine}` : mainFlow;
 }
 
 /**

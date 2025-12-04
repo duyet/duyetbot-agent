@@ -143,6 +143,9 @@ export class StepProgressTracker {
     routingFlow: [],
   };
 
+  /** Track tools used by the current agent */
+  private currentAgentTools: string[] = [];
+
   /** Router start time for measuring classification duration */
   private routerStartTime: number | undefined;
 
@@ -274,6 +277,10 @@ export class StepProgressTracker {
         (this.targetAgentStartTime ? Date.now() - this.targetAgentStartTime : undefined);
       if (duration !== undefined) {
         targetStep.durationMs = duration;
+      }
+      // Add toolChain to the target step
+      if (this.currentAgentTools.length > 0) {
+        targetStep.toolChain = [...this.currentAgentTools];
       }
     }
 
@@ -449,12 +456,18 @@ export class StepProgressTracker {
       case 'routing':
         this.executionPath.push(`routing:${event.agentName}`);
         this.completedSteps.push(`📡 Router → ${event.agentName}`);
+        // Reset tools list for the new agent
+        this.currentAgentTools = [];
         await this.update();
         break;
 
       case 'tool_start':
         this.executionPath.push(`tool:${event.toolName}:start`);
         this.currentPrefix = `⚙️ ${event.toolName} running`;
+        // Track this tool for the current agent
+        if (event.toolName && !this.currentAgentTools.includes(event.toolName)) {
+          this.currentAgentTools.push(event.toolName);
+        }
         await this.startRotation();
         break;
 

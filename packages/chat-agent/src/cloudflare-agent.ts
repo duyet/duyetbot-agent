@@ -1398,6 +1398,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // Edit thinking message with actual response
           if (transport.edit) {
             try {
+              // Update context with final debug info before sending
+              const ctxWithDebug = ctx as unknown as {
+                debugContext?: unknown;
+              };
+              if (stepTracker) {
+                ctxWithDebug.debugContext = stepTracker.getDebugContext();
+              }
+
               logger.info(`[CloudflareAgent][HANDLE] Editing final response: ${response}`);
               await transport.edit(ctx, messageRef, response);
             } catch (editError) {
@@ -1405,10 +1413,27 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               logger.error(
                 `[CloudflareAgent][HANDLE] Edit failed, sending new message: ${editError}`
               );
+
+              // Set debug context for fallback send too
+              const ctxWithDebug = ctx as unknown as {
+                debugContext?: unknown;
+              };
+              if (stepTracker) {
+                ctxWithDebug.debugContext = stepTracker.getDebugContext();
+              }
+
               await transport.send(ctx, response);
             }
           } else {
             // Transport doesn't support edit, send new message
+            // Set debug context here too
+            const ctxWithDebug = ctx as unknown as {
+              debugContext?: unknown;
+            };
+            if (stepTracker) {
+              ctxWithDebug.debugContext = stepTracker.getDebugContext();
+            }
+
             await transport.send(ctx, response);
           }
         }
