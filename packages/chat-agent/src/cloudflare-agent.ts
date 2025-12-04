@@ -424,11 +424,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Updates the D1 observability event that was created at webhook receipt.
      * This records the actual agent execution result (success/error).
      *
-     * @param requestIds - Request IDs from batch messages (used as event IDs)
+     * @param eventIds - Event IDs (full UUIDs) from batch messages for D1 correlation
      * @param completion - Completion data to update
      */
     private updateObservability(
-      requestIds: string[],
+      eventIds: string[],
       completion: {
         status: 'success' | 'error';
         durationMs: number;
@@ -448,7 +448,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const completedAt = Date.now();
 
       // Fire-and-forget: update all events for this batch
-      for (const requestId of requestIds) {
+      for (const eventId of eventIds) {
         void (async () => {
           try {
             // Build completion object conditionally for exactOptionalPropertyTypes
@@ -464,14 +464,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               updateData.errorMessage = completion.errorMessage;
             }
 
-            await storage.updateEventCompletion(requestId, updateData);
+            await storage.updateEventCompletion(eventId, updateData);
             logger.debug('[CloudflareAgent][OBSERVABILITY] Event updated', {
-              requestId,
+              eventId,
               status: completion.status,
             });
           } catch (err) {
             logger.warn('[CloudflareAgent][OBSERVABILITY] Update failed', {
-              requestId,
+              eventId,
               error: err instanceof Error ? err.message : String(err),
             });
           }
@@ -1603,11 +1603,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         return { queued: false };
       }
 
+      // Extract eventId from metadata for observability correlation
+      const eventId = input.metadata?.eventId as string | undefined;
+
       // Create pending message with original context for transport operations
       const pendingMessage: PendingMessage<TContext> = {
         text: input.text,
         timestamp: now,
         requestId,
+        ...(eventId && { eventId }), // Full UUID for D1 observability
         userId: input.userId,
         chatId: input.chatId,
         ...(input.username && { username: input.username }),
@@ -1999,12 +2003,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         this.reportToStateDO('completeBatch', completeParams);
 
         // Update observability: batch completed successfully
-        // Extract requestIds from pending messages (used as eventIds)
-        const requestIds = activeBatch.pendingMessages
-          .map((m) => m.requestId)
+        // Extract eventIds from pending messages (full UUIDs for D1 correlation)
+        const eventIds = activeBatch.pendingMessages
+          .map((m) => m.eventId)
           .filter((id): id is string => !!id);
-        if (requestIds.length > 0) {
-          this.updateObservability(requestIds, {
+        if (eventIds.length > 0) {
+          this.updateObservability(eventIds, {
             status: 'success',
             durationMs,
           });
@@ -2116,11 +2120,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
           // Update observability: batch failed
           if (activeBatchState) {
-            const failedRequestIds = activeBatchState.pendingMessages
-              .map((m) => m.requestId)
+            const failedEventIds = activeBatchState.pendingMessages
+              .map((m) => m.eventId)
               .filter((id): id is string => !!id);
-            if (failedRequestIds.length > 0) {
-              this.updateObservability(failedRequestIds, {
+            if (failedEventIds.length > 0) {
+              this.updateObservability(failedEventIds, {
                 status: 'error',
                 durationMs: failedDurationMs,
                 errorMessage: errorInfo.message,
