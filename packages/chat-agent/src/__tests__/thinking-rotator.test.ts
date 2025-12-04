@@ -196,6 +196,77 @@ describe('createThinkingRotator', () => {
     rotator.stop();
     errorSpy.mockRestore();
   });
+
+  it('should wait for in-flight callback with waitForPending', async () => {
+    const events: string[] = [];
+    const rotator = createThinkingRotator({
+      messages: ['A', 'B'],
+      interval: 1000,
+      random: false,
+    });
+
+    // Simulate async callback with delay (like network request)
+    rotator.start(async (msg) => {
+      events.push(`start:${msg}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      events.push(`end:${msg}`);
+    });
+
+    // Trigger rotation
+    await vi.advanceTimersByTime(1000);
+    events.push('rotator:stop');
+    rotator.stop();
+
+    // At this point, callback is in-flight (started but not completed)
+    expect(events).toEqual(['start:B', 'rotator:stop']);
+
+    // waitForPending should block until callback completes
+    const waitPromise = rotator.waitForPending();
+    await vi.advanceTimersByTime(500); // Advance for the async callback's setTimeout
+    await waitPromise;
+
+    expect(events).toEqual(['start:B', 'rotator:stop', 'end:B']);
+  });
+
+  it('should resolve immediately if no pending callback', async () => {
+    const rotator = createThinkingRotator({
+      messages: ['A', 'B'],
+      interval: 1000,
+      random: false,
+    });
+
+    // Not started yet - should resolve immediately
+    await rotator.waitForPending();
+
+    rotator.start((_msg) => {
+      // Sync callback - no pending promise
+    });
+
+    // No rotation triggered yet
+    rotator.stop();
+    await rotator.waitForPending(); // Should resolve immediately
+  });
+
+  it('should not call onMessage if stopped before callback executes', async () => {
+    const messages: string[] = [];
+    const rotator = createThinkingRotator({
+      messages: ['A', 'B'],
+      interval: 1000,
+      random: false,
+    });
+
+    rotator.start((msg) => {
+      messages.push(msg);
+    });
+
+    // Stop before the timer fires
+    rotator.stop();
+
+    // Advance time - callback should not execute
+    await vi.advanceTimersByTime(2000);
+
+    expect(messages).toEqual([]);
+  });
 });
 
 describe('getDefaultThinkingMessages', () => {
