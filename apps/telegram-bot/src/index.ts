@@ -8,6 +8,11 @@
 import type { ParsedInput } from '@duyetbot/chat-agent';
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
+import {
+  EventCollector,
+  type ObservabilityEnv,
+  ObservabilityStorage,
+} from '@duyetbot/observability';
 import { type Env, TelegramAgent } from './agent.js';
 import { handleAdminCommand } from './commands/admin.js';
 import {
@@ -16,8 +21,8 @@ import {
 } from './middlewares/index.js';
 import { createTelegramContext, telegramTransport } from './transport.js';
 
-// Extend Env with agent bindings
-type EnvWithAgent = Env;
+// Extend Env with agent bindings and observability
+type EnvWithAgent = Env & ObservabilityEnv;
 
 // Re-export local agent for Durable Object binding
 // Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
@@ -47,6 +52,22 @@ app.post(
 
     // Generate request ID for trace correlation across webhook and DO invocations
     const requestId = crypto.randomUUID().slice(0, 8);
+
+    // Initialize observability collector (same pattern as github-bot)
+    let collector: EventCollector | null = null;
+    let storage: ObservabilityStorage | null = null;
+
+    if (env.OBSERVABILITY_DB) {
+      storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
+      collector = new EventCollector({
+        eventId: crypto.randomUUID(),
+        appSource: 'telegram-webhook',
+        eventType: 'message',
+        triggeredAt: startTime,
+        requestId,
+      });
+      collector.markProcessing();
+    }
 
     // Log incoming webhook (webhookCtx is set by parser middleware)
     const webhookCtx = c.get('webhookContext');
@@ -99,6 +120,17 @@ app.post(
       requestId,
       env.TELEGRAM_PARSE_MODE
     );
+
+    // Set observability context (user info for event tracking)
+    // TriggerContext expects string types, but TelegramContext has number for userId/chatId
+    if (collector) {
+      collector.setContext({
+        userId: String(ctx.userId),
+        username: ctx.username,
+        chatId: String(ctx.chatId),
+      });
+      collector.setInput(ctx.text);
+    }
 
     // Check for admin commands
     if (ctx.text.startsWith('/')) {
@@ -159,6 +191,17 @@ app.post(
               batchId: result.batchId,
               durationMs: Date.now() - startTime,
             });
+
+            // Write observability event on success (fire-and-forget)
+            if (collector && storage) {
+              collector.complete({ status: 'success' });
+              storage.writeEvent(collector.toEvent()).catch((err) => {
+                logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                  requestId,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              });
+            }
           } catch (error) {
             // RPC failure only (rare) - DO is unreachable
             logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
@@ -167,6 +210,20 @@ app.post(
               error: error instanceof Error ? error.message : String(error),
               durationMs: Date.now() - startTime,
             });
+
+            // Write observability event on error (fire-and-forget)
+            if (collector && storage) {
+              collector.complete({
+                status: 'error',
+                error: error instanceof Error ? error : new Error(String(error)),
+              });
+              storage.writeEvent(collector.toEvent()).catch((err) => {
+                logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                  requestId,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              });
+            }
           }
         })()
       );
