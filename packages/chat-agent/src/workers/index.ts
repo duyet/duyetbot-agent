@@ -3,6 +3,8 @@
  *
  * Specialized workers for the orchestration system.
  * Workers are lightweight executors that handle specific task domains.
+ *
+ * @see sub-agent-protocol.ts for multi-model orchestration patterns
  */
 
 // Base worker
@@ -19,7 +21,6 @@ export {
   type WorkerMethods,
   type WorkerType,
 } from './base-worker.js';
-
 // Code worker
 export {
   type CodeTaskType,
@@ -44,3 +45,17 @@ export {
   type ResearchWorkerConfig,
   type ResearchWorkerEnv,
 } from './research-worker.js';
+// Sub-agent protocol (multi-model orchestration)
+export {
+  createContextGatheringStep,
+  createSubAgentWorkerAdapter,
+  defaultWorkerRegistry,
+  type HealthCheckResult,
+  type SubAgentCapability,
+  type SubAgentMetadata,
+  type SubAgentWorker,
+  type SubAgentWorkerResult,
+  validateReplanningRequest,
+  WorkerRegistry,
+  type WorkerRegistryEntry,
+} from './sub-agent-protocol.js';

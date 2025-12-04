@@ -23,6 +23,7 @@
     "prepare-hooks": "bash scripts/install-hooks.sh",
     "prepare": "bash scripts/install-hooks.sh || true",
     "deploy": "turbo run deploy config",
+    "deploy:safety-kernel": "turbo run deploy config --filter=@duyetbot/safety-kernel",
     "deploy:shared-agents": "turbo run deploy config --filter=@duyetbot/shared-agents",
     "deploy:telegram": "turbo run deploy config --filter=@duyetbot/telegram-bot...",
     "deploy:github": "turbo run deploy config --filter=@duyetbot/github-bot...",

@@ -67,6 +67,7 @@ agentRegistry.register({
 
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import type { AgentResult, BaseEnv, WorkerInfo } from '../base/base-types.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
 import {
   type AggregationResult,
   type AggregatorConfig,
@@ -81,7 +82,6 @@ import {
   type WorkerDispatcher,
 } from '../orchestration/index.js';
 import type { ExecutionPlan, WorkerResult } from '../routing/schemas.js';
-import type { AgentProvider } from '../execution/agent-provider.js';
 import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
 
 /**

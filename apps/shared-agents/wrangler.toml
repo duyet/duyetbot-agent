@@ -59,6 +59,11 @@ class_name = "DuyetInfoAgent"
 name = "StateDO"
 class_name = "StateDO"
 
+# Agentic Scheduler DO for task scheduling with energy budget
+[[durable_objects.bindings]]
+name = "SchedulerObject"
+class_name = "SchedulerObject"
+
 # Migrations for SQLite state persistence
 [[migrations]]
 tag = "v1"
@@ -69,6 +74,11 @@ new_sqlite_classes = ["RouterAgent", "SimpleAgent", "HITLAgent", "OrchestratorAg
 tag = "v2"
 new_sqlite_classes = ["StateDO"]
 
+# Migration for SchedulerObject (new in v3)
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["SchedulerObject"]
+
 # D1 Database for observability events
 # Schema owner: shared-agents (migrations in ./migrations/)
 # Used by: telegram-bot, github-bot (via cross-binding)
@@ -77,3 +87,9 @@ binding = "OBSERVABILITY_DB"
 database_name = "duyetbot"
 database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
 migrations_dir = "migrations"
+
+# KV namespace for safety kernel heartbeat
+# This is shared with duyetbot-safety-kernel for dead man's switch
+[[kv_namespaces]]
+binding = "HEARTBEAT_KV"
+id = "f86303f7fa3a45dd986c0c6bf835c8e1"

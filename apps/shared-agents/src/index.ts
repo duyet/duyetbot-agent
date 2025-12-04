@@ -141,6 +141,22 @@ export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> = createDuyetInfoAge
 export const StateDO = StateDOClass;
 
 /**
+ * SchedulerObject for agentic task scheduling
+ *
+ * Implements the "Wake Up" pattern from Software 2.0 design:
+ * - Priority queue with deadline-based urgency scoring
+ * - Hybrid energy budget (tokens + compute time)
+ * - Quiet hours for background work
+ * - Critical task bypass
+ *
+ * Used for:
+ * - ProactiveResearcher (HN scanning, ArXiv)
+ * - Scheduled maintenance tasks
+ * - Deferred work from main agents
+ */
+export { SchedulerObject } from './scheduler-object.js';
+
+/**
  * Worker fetch handler (minimal - DOs handle all logic)
  */
 export default {

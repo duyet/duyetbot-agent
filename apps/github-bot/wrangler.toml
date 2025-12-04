@@ -11,7 +11,7 @@ binding = "AI"
 
 [vars]
 ENVIRONMENT = "production"
-MODEL = "x-ai/grok-4.1-fast:free"
+MODEL = "@preset/duyetbot"
 AI_GATEWAY_NAME = "duyetbot"
 BOT_USERNAME = "duyetbot"
 GITHUB_ADMIN = "duyet"

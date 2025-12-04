@@ -8,7 +8,7 @@ binding = "AI"
 
 [vars]
 ENVIRONMENT = "production"
-MODEL = "x-ai/grok-4.1-fast:free"
+MODEL = "@preset/duyetbot"
 AI_GATEWAY_NAME = "duyetbot"
 TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
 TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
@@ -81,6 +81,12 @@ name = "StateDO"
 class_name = "StateDO"
 script_name = "duyetbot-agents"
 
+# Agentic Scheduler DO for task scheduling
+[[durable_objects.bindings]]
+name = "SchedulerObject"
+class_name = "SchedulerObject"
+script_name = "duyetbot-agents"
+
 # Migration for local TelegramAgent only
 # Shared DOs are now in duyetbot-agents (referenced via script_name)
 [[migrations]]
@@ -98,3 +104,9 @@ entrypoint = "MemoryServiceEntrypoint"
 binding = "OBSERVABILITY_DB"
 database_name = "duyetbot"
 database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+
+# KV namespace for safety kernel heartbeat
+# This is shared with duyetbot-safety-kernel for dead man's switch
+[[kv_namespaces]]
+binding = "HEARTBEAT_KV"
+id = "f86303f7fa3a45dd986c0c6bf835c8e1"

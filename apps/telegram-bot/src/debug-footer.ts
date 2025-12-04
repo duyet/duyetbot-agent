@@ -55,11 +55,10 @@ export function prepareMessageWithDebug(
   const debugFooter = formatDebugFooter(ctx);
 
   // Use MarkdownV2 parse mode if configured
-  // Note: LLM generates properly escaped MarkdownV2 text via prompt instructions
-  // We DON'T escape the main message text as that would break the formatting
   if (ctx.parseMode === 'MarkdownV2') {
+    const escapedText = escapeMarkdownV2(text);
     return {
-      text: debugFooter ? text + debugFooter : text,
+      text: debugFooter ? escapedText + debugFooter : escapedText,
       parseMode: 'MarkdownV2',
     };
   }
