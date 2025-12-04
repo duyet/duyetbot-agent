@@ -2,17 +2,25 @@
  * Simple Agent
  *
  * Handles simple queries that don't need tools or orchestration.
- * Provides direct LLM responses using conversation history from parent agent.
+ * Provides direct LLM responses using conversation history from ExecutionContext.
  *
  * This agent is STATELESS for conversation history - history is passed via
- * AgentContext.conversationHistory from the parent agent (CloudflareAgent).
+ * ExecutionContext.conversationHistory from the parent agent (CloudflareAgent).
  * This enables centralized state management where only the parent stores history.
+ *
+ * SimpleAgent extends BaseAgent to leverage:
+ * - Provider management for LLM calls
+ * - Message sending and editing via transport
+ * - Execution context tracing and debug accumulation
+ * - Typing indicators and thinking status updates
  */
 
 import { logger } from '@duyetbot/hono-middleware';
-import { Agent, type Connection } from 'agents';
+import { BaseAgent } from '../base/base-agent.js';
+import type { AgentResult, BaseEnv, BaseState } from '../base/index.js';
+import { createErrorResult, createSuccessResult } from '../base/index.js';
+import type { ExecutionContext } from '../execution/context.js';
 import type { ChatOptions, LLMProvider, Message } from '../types.js';
-import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
 import { agentRegistry } from './registry.js';
 
 // =============================================================================
@@ -55,17 +63,12 @@ agentRegistry.register({
 /**
  * Simple agent state
  *
- * NOTE: This agent is intentionally stateless for conversation history.
- * Conversation history is passed via AgentContext.conversationHistory from the parent agent.
- * This enables centralized state management where only the parent (CloudflareAgent) stores history.
+ * Extends BaseState with optional analytics. Conversation history is stateless
+ * and passed via ExecutionContext.conversationHistory from the parent agent.
  */
-export interface SimpleAgentState {
-  /** Session identifier */
-  sessionId: string;
-  /** Creation timestamp */
-  createdAt: number;
-  /** Last update timestamp */
-  updatedAt: number;
+export interface SimpleAgentState extends BaseState {
+  /** Session identifier (optional) */
+  sessionId?: string;
   /** Number of queries executed (for analytics) */
   queriesExecuted: number;
 }
@@ -75,8 +78,7 @@ export interface SimpleAgentState {
  * Note: Actual env fields depend on the provider (OpenRouterProviderEnv, etc.)
  * This interface is kept minimal - extend with provider-specific env in your app
  */
-// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extend with provider env
-export interface SimpleAgentEnv {}
+export interface SimpleAgentEnv extends BaseEnv {}
 
 /**
  * Web search configuration for SimpleAgent
@@ -94,8 +96,8 @@ export interface WebSearchConfig {
  * Configuration for simple agent
  */
 export interface SimpleAgentConfig<TEnv extends SimpleAgentEnv> {
-  /** Function to create LLM provider from env and optional context */
-  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
+  /** Function to create LLM provider from env */
+  createProvider: (env: TEnv) => LLMProvider;
   /** System prompt for the agent */
   systemPrompt: string;
   /** Maximum messages in history */
@@ -116,26 +118,14 @@ export interface SimpleAgentConfig<TEnv extends SimpleAgentEnv> {
 }
 
 /**
- * Methods exposed by SimpleAgent
- */
-export interface SimpleAgentMethods {
-  execute(query: string, context: AgentContext): Promise<AgentResult>;
-  getMessageCount(): number;
-  clearHistory(): void;
-  getHistory(): Message[];
-}
-
-/**
- * Type for SimpleAgent class
- */
-export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<TEnv, SimpleAgentState> & {
-  new (
-    ...args: ConstructorParameters<typeof Agent<TEnv, SimpleAgentState>>
-  ): Agent<TEnv, SimpleAgentState> & SimpleAgentMethods;
-};
-
-/**
  * Create a Simple Agent class
+ *
+ * Extends BaseAgent to provide:
+ * - Provider management for LLM calls via this.chat()
+ * - Message sending via this.respond()
+ * - Status updates via this.updateThinking()
+ * - Typing indicators via this.sendTyping()
+ * - Execution tracing via this.recordExecution()
  *
  * @example
  * ```typescript
@@ -145,9 +135,7 @@ export type SimpleAgentClass<TEnv extends SimpleAgentEnv> = typeof Agent<TEnv, S
  * });
  * ```
  */
-export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
-  config: SimpleAgentConfig<TEnv>
-): SimpleAgentClass<TEnv> {
+export function createSimpleAgent<TEnv extends SimpleAgentEnv>(config: SimpleAgentConfig<TEnv>) {
   const maxHistory = config.maxHistory ?? 20;
   const debug = config.debug ?? false;
 
@@ -161,64 +149,64 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
     logger.debug(`[SimpleAgent] Full system prompt:\n${config.systemPrompt}`);
   }
 
-  const AgentClass = class SimpleAgent extends Agent<TEnv, SimpleAgentState> {
+  /**
+   * SimpleAgent class extending BaseAgent
+   *
+   * Provides direct LLM responses for simple queries without tools.
+   * Uses BaseAgent for provider management, message sending, and execution tracing.
+   */
+  const AgentClass = class SimpleAgent extends BaseAgent<TEnv, SimpleAgentState> {
     override initialState: SimpleAgentState = {
-      sessionId: '',
       createdAt: Date.now(),
       updatedAt: Date.now(),
       queriesExecuted: 0,
     };
 
     /**
-     * Handle state updates
-     */
-    override onStateUpdate(state: SimpleAgentState, source: 'server' | Connection): void {
-      if (debug) {
-        logger.info('[SimpleAgent] State updated', {
-          source,
-          queriesExecuted: state.queriesExecuted,
-        });
-      }
-    }
-
-    /**
-     * Execute a simple query
+     * Execute a simple query using ExecutionContext
      *
-     * Uses conversation history from context.conversationHistory (passed by parent agent)
-     * instead of maintaining local state. This enables centralized state management.
+     * Handles direct LLM calls without tools. Uses ExecutionContext for:
+     * - User query and conversation history
+     * - Provider/model information for LLM calls
+     * - Execution tracing and debug accumulation
+     * - Message sending via transport layer
+     *
+     * @param ctx - ExecutionContext with query, history, tracing
+     * @returns AgentResult with success, content, and duration
+     *
+     * @example
+     * ```typescript
+     * const result = await agent.execute(executionContext);
+     * console.log(result.content); // LLM response
+     * console.log(result.durationMs); // Total execution time
+     * ```
      */
-    async execute(query: string, context: AgentContext): Promise<AgentResult> {
+    async execute(ctx: ExecutionContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
 
-      // Use conversation history from context (passed by parent agent)
-      const conversationHistory = context.conversationHistory ?? [];
-
-      AgentMixin.log('SimpleAgent', 'Executing query', {
-        traceId,
-        queryLength: query.length,
-        historyLength: conversationHistory.length,
+      logger.debug('[SimpleAgent] Starting execution', {
+        spanId: ctx.spanId,
+        queryLength: ctx.query.length,
+        historyLength: ctx.conversationHistory.length,
       });
 
       try {
-        // Get LLM provider (pass context for platformConfig credentials)
-        const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env, context);
+        // Send initial response message
+        await this.respond(ctx, '🤔 Processing your query...');
 
         // Build messages for LLM using history from context
         // Trim to maxHistory to prevent context overflow
-        const trimmedHistory = AgentMixin.trimHistory(conversationHistory, maxHistory);
-        const llmMessages = [
-          { role: 'system' as const, content: config.systemPrompt },
-          ...trimmedHistory.map((m) => ({
-            role: m.role as 'user' | 'assistant' | 'system',
-            content: m.content,
-          })),
-          { role: 'user' as const, content: query },
+        const trimmedHistory = ctx.conversationHistory.slice(-maxHistory);
+        const llmMessages: Message[] = [
+          { role: 'system', content: config.systemPrompt },
+          ...trimmedHistory,
+          { role: 'user', content: ctx.query },
         ];
 
+        // Update thinking status
+        await this.updateThinking(ctx, 'Generating response');
+
         // Build chat options with web search if enabled
-        // Uses :online model suffix for reliable passthrough via AI Gateway
         let chatOptions: ChatOptions | undefined;
         if (config.webSearch) {
           const webConfig =
@@ -230,84 +218,73 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
             chatOptions = { webSearch: true };
 
             if (debug) {
-              logger.debug('[SimpleAgent] Web search enabled via :online suffix', {
-                traceId,
+              logger.debug('[SimpleAgent] Web search enabled', {
+                spanId: ctx.spanId,
               });
             }
           }
         }
 
-        // Call LLM
-        const response = await provider.chat(llmMessages, undefined, chatOptions);
+        // Send typing indicator
+        await this.sendTyping(ctx);
 
-        // Update state with query count (not messages - those are managed by parent)
+        // Call LLM via BaseAgent.chat()
+        const response = await this.chat(ctx, llmMessages, chatOptions);
+
+        // Update state with query count
         this.setState({
           ...this.state,
-          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
+          sessionId: ctx.chatId?.toString(),
           queriesExecuted: this.state.queriesExecuted + 1,
           updatedAt: Date.now(),
         });
 
         const durationMs = Date.now() - startTime;
 
-        AgentMixin.log('SimpleAgent', 'Query complete', {
-          traceId,
+        // Record execution in debug chain
+        this.recordExecution(ctx, 'simple-agent', durationMs);
+
+        logger.debug('[SimpleAgent] Query completed', {
+          spanId: ctx.spanId,
           durationMs,
-          responseLength: response.content.length,
+          contentLength: response.content.length,
         });
 
-        // Return result with new messages for parent to save
-        return AgentMixin.createResult(true, response.content, durationMs, {
-          data: {
-            // Return new messages so parent can append to its state
-            newMessages: [
-              { role: 'user' as const, content: query },
-              { role: 'assistant' as const, content: response.content },
-            ],
-          },
+        // Send final response
+        await this.respond(ctx, response.content);
+
+        return createSuccessResult(response.content, durationMs, {
+          tokensUsed: response.usage?.totalTokens,
         });
       } catch (error) {
         const durationMs = Date.now() - startTime;
-        AgentMixin.logError('SimpleAgent', 'Query failed', error, {
-          traceId,
+
+        logger.error('[SimpleAgent] Query failed', {
+          spanId: ctx.spanId,
           durationMs,
+          error: error instanceof Error ? error.message : String(error),
         });
-        return AgentMixin.createErrorResult(error, durationMs);
+
+        // Record execution even on failure
+        this.recordExecution(ctx, 'simple-agent', durationMs);
+
+        // Try to send error message via transport
+        try {
+          await this.respond(
+            ctx,
+            `Error: ${error instanceof Error ? error.message : String(error)}`
+          );
+        } catch (respondError) {
+          logger.warn('[SimpleAgent] Failed to send error message', {
+            spanId: ctx.spanId,
+            error: respondError instanceof Error ? respondError.message : String(respondError),
+          });
+        }
+
+        return createErrorResult(error, durationMs);
       }
-    }
-
-    /**
-     * Get current message count
-     * @deprecated This agent is stateless for messages. Returns 0.
-     */
-    getMessageCount(): number {
-      return 0; // Stateless - history is in parent agent
-    }
-
-    /**
-     * Clear conversation history
-     * @deprecated This agent is stateless for messages. No-op.
-     */
-    clearHistory(): void {
-      // No-op - history is managed by parent agent
-      logger.info('[SimpleAgent] clearHistory called - no-op (stateless agent)');
-    }
-
-    /**
-     * Get conversation history
-     * @deprecated This agent is stateless for messages. Returns empty array.
-     */
-    getHistory(): Message[] {
-      return []; // Stateless - history is in parent agent
     }
   };
 
-  return AgentClass as SimpleAgentClass<TEnv>;
+  return AgentClass;
 }
-
-/**
- * Type for simple agent instance
- */
-export type SimpleAgentInstance<TEnv extends SimpleAgentEnv> = InstanceType<
-  ReturnType<typeof createSimpleAgent<TEnv>>
->;

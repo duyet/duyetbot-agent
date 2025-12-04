@@ -24,6 +24,15 @@ export {
   type PlatformConfig,
   type TelegramPlatformConfig,
 } from './base-agent.js';
+// Chat Agent - primary entry point
+export {
+  type ChatAgentClass,
+  type ChatAgentConfig,
+  type ChatAgentEnv,
+  type ChatAgentMethods,
+  type ChatAgentState,
+  createChatAgent,
+} from './chat-agent.js';
 // Duyet Info agent
 export {
   createDuyetInfoAgent,
@@ -49,11 +58,11 @@ export {
 export {
   createOrchestratorAgent,
   type OrchestratorAgentClass,
-  type OrchestratorAgentConfig,
-  type OrchestratorAgentEnv,
   type OrchestratorAgentInstance,
-  type OrchestratorAgentMethods,
-  type OrchestratorAgentState,
+  type OrchestratorConfig,
+  type OrchestratorEnv,
+  type OrchestratorMethods,
+  type OrchestratorState,
 } from './orchestrator-agent.js';
 // Agent Registry - exports first for use by other modules
 export {
@@ -112,10 +121,7 @@ export {
 // Simple agent
 export {
   createSimpleAgent,
-  type SimpleAgentClass,
   type SimpleAgentConfig,
   type SimpleAgentEnv,
-  type SimpleAgentInstance,
-  type SimpleAgentMethods,
   type SimpleAgentState,
 } from './simple-agent.js';

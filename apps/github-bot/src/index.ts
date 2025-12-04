@@ -3,10 +3,9 @@
  *
  * Hono-based webhook server using Transport Layer pattern.
  * Uses middleware chain for signature verification, parsing, and mention detection.
- * Uses alarm-based batch processing for reliable message handling.
+ * Uses fire-and-forget pattern with ChatAgent for async message processing.
  */
 
-import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -23,7 +22,7 @@ import {
   createGitHubParserMiddleware,
   createGitHubSignatureMiddleware,
 } from './middlewares/index.js';
-import { createGitHubContext } from './transport.js';
+import { createGitHubContext, githubTransport } from './transport.js';
 
 export type { Env, GitHubAgentInstance } from './agent.js';
 // Local Durable Object export
@@ -251,33 +250,38 @@ app.post(
         });
       }
 
-      const ctx = createGitHubContext(contextOptions);
+      // Create GitHub context for transport layer
+      const githubContext = createGitHubContext(contextOptions);
 
-      // Get agent by name (issue-based session)
+      // Parse context to ParsedInput using transport's parseContext
+      const parsedInput = githubTransport.parseContext(githubContext);
+
+      // Get agent instance (issue-based session)
       const agentId = `github:${owner}/${repo}#${issue.number}`;
-      logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
+      logger.info(`[${requestId}] [WEBHOOK] Getting agent instance`, {
         requestId,
         agentId,
         isPullRequest,
         durationMs: Date.now() - startTime,
       });
 
-      const agent = getChatAgent(env.GitHubAgent, agentId);
+      const agent = env.GitHubAgent.get(env.GitHubAgent.idFromName(agentId)) as unknown as {
+        receiveMessage(input: typeof parsedInput): Promise<{ traceId: string }>;
+      };
 
-      logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
+      logger.info(`[${requestId}] [WEBHOOK] Firing message to agent (fire-and-forget)`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
 
-      // Queue message - alarm will fire after batch window (200ms by default for GitHub)
+      // Fire-and-forget: don't await, let agent process asynchronously
+      // Returns immediately while agent processes message in background
       try {
-        const { queued, batchId } = await agent.queueMessage(ctx);
-        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+        c.executionCtx.waitUntil(agent.receiveMessage(parsedInput));
+        logger.info(`[${requestId}] [WEBHOOK] Message dispatched to agent`, {
           requestId,
           agentId,
-          queued,
-          batchId,
           durationMs: Date.now() - startTime,
         });
 
@@ -286,7 +290,7 @@ app.post(
           collector.complete({ status: 'success' });
         }
       } catch (error) {
-        logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
+        logger.error(`[${requestId}] [WEBHOOK] Failed to dispatch message`, {
           requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
