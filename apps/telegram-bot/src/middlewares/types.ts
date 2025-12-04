@@ -34,6 +34,24 @@ export interface TelegramUpdate {
     };
     /** Message text content */
     text?: string;
+    /** Original message being replied to (for quoted messages) */
+    reply_to_message?: {
+      /** Unique message identifier of the quoted message */
+      message_id: number;
+      /** Sender of the quoted message */
+      from?: {
+        /** Unique user identifier */
+        id: number;
+        /** Username without @ prefix */
+        username?: string;
+        /** User's first name */
+        first_name: string;
+      };
+      /** Text content of the quoted message */
+      text?: string;
+      /** Unix timestamp when the quoted message was sent */
+      date: number;
+    };
   };
 }
 
@@ -54,6 +72,14 @@ export interface WebhookContext {
   username?: string;
   /** Timestamp when processing started (for latency tracking) */
   startTime: number;
+  /** Message ID of the current message (for reply threading) */
+  messageId: number;
+  /** Message ID of the quoted message (when replying to a message) */
+  replyToMessageId?: number;
+  /** Text content of the quoted message */
+  quotedText?: string;
+  /** Username of the quoted message sender */
+  quotedUsername?: string;
 }
 
 /**

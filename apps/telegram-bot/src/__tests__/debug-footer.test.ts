@@ -20,6 +20,7 @@ interface TelegramContext {
   text: string;
   startTime: number;
   isAdmin: boolean;
+  messageId: number;
   debugContext?: DebugContext;
   parseMode?: 'HTML' | 'MarkdownV2';
 }
@@ -35,6 +36,7 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
     text: 'test message',
     startTime: Date.now(),
     isAdmin: false,
+    messageId: 123,
     ...overrides,
   };
 }

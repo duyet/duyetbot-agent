@@ -39,6 +39,7 @@ import {
   createThinkingRotator,
   formatWithEmbeddedHistory,
   getDefaultThinkingMessages,
+  type QuotedContext,
 } from './format.js';
 import { trimHistory } from './history.js';
 import type {
@@ -524,8 +525,13 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Chat with the LLM directly, with optional MCP tool support
      * @param userMessage - The user's message
      * @param stepTracker - Optional step progress tracker for real-time UI updates
+     * @param quotedContext - Optional quoted message context (when user replied to a message)
      */
-    async chat(userMessage: string, stepTracker?: StepProgressTracker): Promise<string> {
+    async chat(
+      userMessage: string,
+      stepTracker?: StepProgressTracker,
+      quotedContext?: QuotedContext
+    ): Promise<string> {
       // Trim history if it exceeds maxHistory (handles bloated state from older versions)
       if (this.state.messages.length > maxHistory) {
         logger.info(
@@ -586,7 +592,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const llmMessages = formatWithEmbeddedHistory(
         this.state.messages,
         resolvedSystemPrompt,
-        userMessage
+        userMessage,
+        quotedContext
       );
 
       // Call LLM with tools if available
@@ -1276,6 +1283,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         let response = '';
         let chatMessage: string = input.text;
 
+        // Extract quoted context from metadata (if user replied to a message)
+        const quotedUsername = input.metadata?.quotedUsername as string | undefined;
+        const quotedContext: QuotedContext | undefined = input.metadata?.quotedText
+          ? {
+              text: input.metadata.quotedText as string,
+              ...(quotedUsername && { username: quotedUsername }),
+            }
+          : undefined;
+
         // Route: Built-in Command, Dynamic Command, or Chat
         if (input.text.startsWith('/')) {
           // Try built-in commands first (/start, /help, /clear)
@@ -1383,12 +1399,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 logger.info(
                   '[CloudflareAgent][HANDLE] Routing failed or unavailable, falling back to chat()'
                 );
-                response = await this.chat(chatMessage, stepTracker);
+                response = await this.chat(chatMessage, stepTracker, quotedContext);
               }
             } else {
               // Routing disabled - use direct chat
               logger.info('[CloudflareAgent][HANDLE] Routing disabled, using direct chat()');
-              response = await this.chat(chatMessage, stepTracker);
+              response = await this.chat(chatMessage, stepTracker, quotedContext);
             }
           } finally {
             // Stop step tracker (stops any rotation timers)

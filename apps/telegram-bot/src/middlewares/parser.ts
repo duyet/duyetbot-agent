@@ -61,12 +61,18 @@ export async function parseWebhookBody(request: Request): Promise<{
 export function extractWebhookContext(
   message: NonNullable<TelegramUpdate['message']>
 ): WebhookContext {
+  const replyTo = message.reply_to_message;
+
   return {
     text: message.text!,
     userId: message.from!.id,
     chatId: message.chat.id,
     startTime: Date.now(),
     username: message.from!.username,
+    messageId: message.message_id,
+    replyToMessageId: replyTo?.message_id,
+    quotedText: replyTo?.text,
+    quotedUsername: replyTo?.from?.username,
   };
 }
 

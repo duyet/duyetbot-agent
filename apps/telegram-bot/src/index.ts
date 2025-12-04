@@ -168,6 +168,8 @@ app.post(
         userId: ctx.userId,
         chatId: ctx.chatId,
         username: ctx.username,
+        messageRef: ctx.messageId,
+        replyTo: ctx.replyToMessageId,
         metadata: {
           platform: 'telegram',
           requestId,
@@ -175,6 +177,8 @@ app.post(
           adminUsername: ctx.adminUsername,
           parseMode: ctx.parseMode,
           isAdmin: ctx.isAdmin,
+          quotedText: webhookCtx.quotedText,
+          quotedUsername: webhookCtx.quotedUsername,
         },
       };
 
