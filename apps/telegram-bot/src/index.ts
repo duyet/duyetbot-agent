@@ -25,7 +25,7 @@ import { createTelegramContext, telegramTransport } from './transport.js';
 type EnvWithAgent = Env & ObservabilityEnv;
 
 // Re-export local agent for Durable Object binding
-// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-shared-agents via script_name
 export { TelegramAgent };
 
 export type { TelegramBot } from './test-utils.js';

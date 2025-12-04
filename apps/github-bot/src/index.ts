@@ -26,7 +26,7 @@ import { createGitHubContext, githubTransport } from './transport.js';
 
 export type { Env, GitHubAgentInstance } from './agent.js';
 // Local Durable Object export
-// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-shared-agents via script_name
 export { GitHubAgent } from './agent.js';
 // Utility exports
 export {

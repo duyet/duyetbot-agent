@@ -65,7 +65,7 @@ const APPS: Record<string, AppConfig> = {
   agents: {
     name: 'Shared Agents',
     dir: 'apps/shared-agents',
-    workerName: 'duyetbot-agents',
+    workerName: 'duyetbot-shared-agents',
     secrets: [
       { name: 'AI_GATEWAY_API_KEY', required: true },
       { name: 'TELEGRAM_BOT_TOKEN', required: true },

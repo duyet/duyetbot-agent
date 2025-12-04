@@ -163,7 +163,7 @@ export default {
   async fetch(): Promise<Response> {
     return new Response(
       JSON.stringify({
-        name: 'duyetbot-agents',
+        name: 'duyetbot-shared-agents',
         status: 'ok',
         description: 'Shared Durable Objects for duyetbot',
       }),

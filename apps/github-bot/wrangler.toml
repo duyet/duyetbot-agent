@@ -36,7 +36,7 @@ mode = "smart"
 name = "GitHubAgent"
 class_name = "GitHubAgent"
 
-# Shared Durable Objects - from duyetbot-agents worker
+# Shared Durable Objects - from duyetbot-shared-agents worker
 [[durable_objects.bindings]]
 name = "RouterAgent"
 class_name = "RouterAgent"
@@ -77,7 +77,7 @@ name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
 script_name = "duyetbot-shared-agents"
 
-# Migrations for local DO only (shared DOs managed by duyetbot-agents)
+# Migrations for local DO only (shared DOs managed by duyetbot-shared-agents)
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GitHubAgent"]

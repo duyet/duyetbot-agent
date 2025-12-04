@@ -34,7 +34,7 @@ mode = "smart"
 name = "TelegramAgent"
 class_name = "TelegramAgent"
 
-# Shared Durable Objects - from duyetbot-agents worker
+# Shared Durable Objects - from duyetbot-shared-agents worker
 [[durable_objects.bindings]]
 name = "RouterAgent"
 class_name = "RouterAgent"
@@ -88,7 +88,7 @@ class_name = "SchedulerObject"
 script_name = "duyetbot-shared-agents"
 
 # Migration for local TelegramAgent only
-# Shared DOs are now in duyetbot-agents (referenced via script_name)
+# Shared DOs are now in duyetbot-shared-agents (referenced via script_name)
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["TelegramAgent"]

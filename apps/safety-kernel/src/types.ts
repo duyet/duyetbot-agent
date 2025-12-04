@@ -116,8 +116,8 @@ export const MONITORED_WORKERS = [
     deploymentKey: KV_KEYS.DEPLOYMENT_TELEGRAM,
   },
   {
-    name: 'duyetbot-agents',
-    healthEndpoint: 'https://duyetbot-agents.duyet.workers.dev/health',
+    name: 'duyetbot-shared-agents',
+    healthEndpoint: 'https://duyetbot-shared-agents.duyet.workers.dev/health',
     heartbeatKey: KV_KEYS.HEARTBEAT_SHARED,
     deploymentKey: KV_KEYS.DEPLOYMENT_SHARED,
   },
