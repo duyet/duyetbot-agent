@@ -1,8 +1,15 @@
 /**
  * Cloudflare Durable Object Agent with direct LLM integration
  *
- * Simplified design: No ChatAgent wrapper, calls LLM directly in chat().
- * State persistence via Durable Object storage.
+ * DEPRECATED: This module is part of the legacy architecture and should not be used for new implementations.
+ * Use the new agent architecture (src/agents/chat-agent.ts) and execution context (src/execution/) instead.
+ *
+ * Legacy implementation kept for backward compatibility and gradual migration.
+ * - Simplified design: No ChatAgent wrapper, calls LLM directly in chat().
+ * - State persistence via Durable Object storage.
+ *
+ * MCPServerConnection is still exported for use by duyet-info-agent and mcp-worker, but will be
+ * refactored into a dedicated module in a future phase.
  */
 
 import { logger } from '@duyetbot/hono-middleware';

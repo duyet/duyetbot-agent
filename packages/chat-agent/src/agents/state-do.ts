@@ -1,11 +1,18 @@
 /**
  * State Management Durable Object
  *
+ * DEPRECATED: This module is part of the legacy architecture.
+ * Legacy implementation kept for backward compatibility during migration.
+ *
  * Centralized hub for:
  * - Session tracking across all chat agents
  * - Execution traces for observability
  * - Watchdog recovery for stuck batches (with user notification)
  * - Aggregated metrics
+ *
+ * The new architecture moves observability to ExecutionContext (src/execution/context.ts) and
+ * DebugAccumulator. StateDO will be removed in a future phase after migrating any remaining
+ * dependencies.
  */
 
 import { logger } from '@duyetbot/hono-middleware';
