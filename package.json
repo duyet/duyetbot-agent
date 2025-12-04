@@ -36,6 +36,7 @@
     "config:github": "bun scripts/config.ts github",
     "config:shared-agents": "bun scripts/config.ts agents",
     "config:memory-mcp": "bun scripts/config.ts memory",
+    "config:safety-kernel": "bun scripts/config.ts safety-kernel",
     "config:show": "bun scripts/config.ts show"
   },
   "keywords": [
