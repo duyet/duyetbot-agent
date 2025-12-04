@@ -180,6 +180,10 @@ export function createGitHubProvider(
       const githubCtx = reconstructGitHubContext(ctx, env);
 
       try {
+        if (!githubTransport.edit) {
+          logger.warn('GitHub transport does not support edit operations');
+          return;
+        }
         await githubTransport.edit(githubCtx, ref, content);
         logger.debug('GitHub provider message edited', { messageRef: ref });
       } catch (error) {

@@ -65,6 +65,7 @@ import {
   createErrorResult as createErrorResultFn,
   createSuccessResult as createSuccessResultFn,
 } from '../base/index.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
 import type { ExecutionContext } from '../execution/context.js';
 import {
   createToolConfirmation,
@@ -90,7 +91,7 @@ import {
   transitionHITLState,
 } from '../hitl/state-machine.js';
 import type { ToolConfirmation } from '../routing/schemas.js';
-import type { AgentProvider, Message } from '../types.js';
+import type { Message } from '../types.js';
 
 /**
  * HITL Agent state (extends BaseState and HITLState)
@@ -101,8 +102,6 @@ import type { AgentProvider, Message } from '../types.js';
  * This enables centralized state management where only the parent (CloudflareAgent) stores history.
  */
 export interface HITLAgentState extends BaseState, HITLState {
-  /** Session identifier */
-  sessionId?: string;
   /** LLM-generated tool calls awaiting confirmation */
   pendingToolCalls: Array<{
     toolName: string;
@@ -122,8 +121,8 @@ export interface HITLAgentEnv extends BaseEnv {}
  * Configuration for HITL agent
  */
 export interface HITLAgentConfig<TEnv extends HITLAgentEnv> {
-  /** Function to create LLM provider from env and optional context */
-  createProvider: (env: TEnv, context?: ExecutionContext) => AgentProvider;
+  /** Function to create agent provider from env */
+  createProvider: (env: TEnv) => AgentProvider;
   /** System prompt for the agent */
   systemPrompt: string;
   /** Maximum messages in history */
@@ -146,7 +145,7 @@ export interface HITLAgentConfig<TEnv extends HITLAgentEnv> {
  */
 export interface HITLAgentMethods {
   handle(ctx: ExecutionContext): Promise<AgentResult>;
-  processConfirmation(response: string): Promise<AgentResult>;
+  processConfirmation(ctx: ExecutionContext, response: string): Promise<AgentResult>;
   getPendingCount(): number;
   getStatus(): string;
   clearHistory(): void;
@@ -168,6 +167,19 @@ interface ExtractedToolCall {
   toolName: string;
   toolArgs: Record<string, unknown>;
   description: string;
+}
+
+/**
+ * Convert unknown error to Error | string type for error handling
+ *
+ * @param error - Unknown error from catch block
+ * @returns Error if Error instance, otherwise string representation
+ */
+function normalizeError(error: unknown): Error | string {
+  if (error instanceof Error) {
+    return error;
+  }
+  return String(error);
 }
 
 /**
@@ -259,12 +271,13 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
         return await this.processQuery(ctx, startTime);
       } catch (error) {
         const durationMs = Date.now() - startTime;
+        const normalizedError = normalizeError(error);
         logger.error('[HITLAgent] Handle failed', {
           spanId: ctx.spanId,
           durationMs,
-          error: error instanceof Error ? error.message : String(error),
+          error: normalizedError instanceof Error ? normalizedError.message : normalizedError,
         });
-        return createErrorResultFn(error, durationMs);
+        return createErrorResultFn(normalizedError, durationMs);
       }
     }
 
@@ -284,7 +297,7 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
       try {
         // Create and set provider for this execution
-        const provider = config.createProvider(env, ctx);
+        const provider = config.createProvider(env);
         this.setProvider(provider);
 
         // Use conversation history from context (passed by parent agent)
@@ -348,11 +361,12 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
           nextAction: 'complete',
         });
       } catch (error) {
+        const normalizedError = normalizeError(error);
         logger.error('[HITLAgent] processQuery failed', {
           spanId: ctx.spanId,
-          error: error instanceof Error ? error.message : String(error),
+          error: normalizedError instanceof Error ? normalizedError.message : normalizedError,
         });
-        return createErrorResultFn(error, Date.now() - startTime);
+        return createErrorResultFn(normalizedError, Date.now() - startTime);
       }
     }
 
@@ -714,7 +728,7 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
     }
   };
 
-  return AgentClass as HITLAgentClass<TEnv>;
+  return AgentClass as unknown as HITLAgentClass<TEnv>;
 }
 
 /**

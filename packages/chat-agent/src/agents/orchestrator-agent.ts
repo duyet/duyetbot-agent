@@ -81,7 +81,7 @@ import {
   type WorkerDispatcher,
 } from '../orchestration/index.js';
 import type { ExecutionPlan, WorkerResult } from '../routing/schemas.js';
-import type { LLMProvider } from '../types.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
 import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
 
 /**
@@ -129,8 +129,8 @@ export interface OrchestratorEnv extends BaseEnv {
  * Configuration for orchestrator agent
  */
 export interface OrchestratorConfig<TEnv extends OrchestratorEnv> {
-  /** Function to create LLM provider from env and optional context */
-  createProvider: (env: TEnv, context?: ExecutionContext) => LLMProvider;
+  /** Function to create agent provider from env */
+  createProvider: (env: TEnv) => AgentProvider;
   /** Maximum steps per plan */
   maxSteps?: number;
   /** Maximum parallel executions */
@@ -240,7 +240,8 @@ export function createOrchestratorAgent<TEnv extends OrchestratorEnv>(
 
       try {
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env, ctx);
+        const provider = config.createProvider(env);
+        this.setProvider(provider);
 
         // Update UI: show thinking status
         await this.updateThinking(ctx, 'Planning task decomposition');

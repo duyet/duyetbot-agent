@@ -192,7 +192,7 @@ describe('ObservabilityStorage', () => {
       expect(events[0].eventId).toBe('test-123');
       expect(events[0].appSource).toBe('telegram-webhook');
       expect(events[0].agents).toHaveLength(1);
-      expect(events[0].agents[0].name).toBe('router');
+      expect(events[0].agents[0]!.name).toBe('router');
       expect(events[0].classification).toEqual({
         type: 'simple',
         category: 'general',

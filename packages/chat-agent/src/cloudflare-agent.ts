@@ -94,6 +94,32 @@ export interface RouterConfig {
 }
 
 /**
+ * Target for scheduling routing to specialized agents
+ * Used by scheduleRouting to specify where and how to send responses
+ */
+export interface ScheduleRoutingTarget {
+  chatId: string;
+  messageRef: { messageId: number };
+  platform: string;
+  botToken?: string | undefined;
+  /** Admin username for debug footer (Phase 5) */
+  adminUsername?: string | undefined;
+  /** Current user's username for admin check (Phase 5) */
+  username?: string | undefined;
+  /** Platform config for parseMode and other settings */
+  platformConfig?: PlatformConfig | undefined;
+  // GitHub-specific fields (required when platform === 'github')
+  /** GitHub repository owner */
+  githubOwner?: string | undefined;
+  /** GitHub repository name */
+  githubRepo?: string | undefined;
+  /** GitHub issue/PR number */
+  githubIssueNumber?: number | undefined;
+  /** GitHub token for API authentication */
+  githubToken?: string | undefined;
+}
+
+/**
  * Configuration for CloudflareChatAgent
  *
  * @template TEnv - Environment type with bindings
@@ -1054,27 +1080,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private async scheduleRouting(
       query: string,
       context: AgentContext,
-      responseTarget: {
-        chatId: string;
-        messageRef: { messageId: number };
-        platform: string;
-        botToken?: string | undefined;
-        /** Admin username for debug footer (Phase 5) */
-        adminUsername?: string | undefined;
-        /** Current user's username for admin check (Phase 5) */
-        username?: string | undefined;
-        /** Platform config for parseMode and other settings */
-        platformConfig?: PlatformConfig | undefined;
-        // GitHub-specific fields (required when platform === 'github')
-        /** GitHub repository owner */
-        githubOwner?: string | undefined;
-        /** GitHub repository name */
-        githubRepo?: string | undefined;
-        /** GitHub issue/PR number */
-        githubIssueNumber?: number | undefined;
-        /** GitHub token for API authentication */
-        githubToken?: string | undefined;
-      }
+      responseTarget: ScheduleRoutingTarget
     ): Promise<boolean> {
       if (!routerConfig) {
         return false;
@@ -1937,7 +1943,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           };
 
           // Build responseTarget with platform-specific fields
-          const responseTarget: Parameters<typeof this.scheduleRouting>[2] = {
+          const responseTarget: ScheduleRoutingTarget = {
             chatId: firstMessage?.chatId?.toString() || '',
             messageRef: { messageId: messageRef as number },
             platform: routerConfig?.platform || 'telegram',

@@ -296,9 +296,9 @@ describe('Orchestration Planner', () => {
 
       expect(groups).toHaveLength(3);
       expect(groups[0]).toHaveLength(1);
-      expect(groups[0][0].id).toBe('step_1');
-      expect(groups[1][0].id).toBe('step_2');
-      expect(groups[2][0].id).toBe('step_3');
+      expect(groups[0]![0]!.id).toBe('step_1');
+      expect(groups[1]![0]!.id).toBe('step_2');
+      expect(groups[2]![0]!.id).toBe('step_3');
     });
 
     it('puts steps with same dependency depth in same group', () => {
@@ -363,8 +363,8 @@ describe('Orchestration Planner', () => {
 
       const groups = groupStepsByLevel(steps);
 
-      expect(groups[0][0].id).toBe('step_high');
-      expect(groups[0][1].id).toBe('step_low');
+      expect(groups[0]![0]!.id).toBe('step_high');
+      expect(groups[0]![1]!.id).toBe('step_low');
     });
   });
 
@@ -379,10 +379,10 @@ describe('Orchestration Planner', () => {
       const optimized = optimizePlan(plan);
 
       // Deeper steps should have lower effective priority
-      const step1 = optimized.steps.find((s) => s.id === 'step_1');
-      const step3 = optimized.steps.find((s) => s.id === 'step_3');
+      const step1 = optimized.steps.find((s) => s.id === 'step_1')!;
+      const step3 = optimized.steps.find((s) => s.id === 'step_3')!;
 
-      expect(step1?.priority).toBeGreaterThan(step3?.priority || 0);
+      expect(step1.priority).toBeGreaterThan(step3.priority);
     });
   });
 
@@ -412,7 +412,7 @@ describe('Orchestration Planner', () => {
 
       expect(plan.taskId).toBe('task_123');
       expect(plan.steps).toHaveLength(1);
-      expect(plan.steps[0].workerType).toBe('code');
+      expect(plan.steps[0]!.workerType).toBe('code');
     });
 
     it('creates fallback plan on invalid response', async () => {
@@ -422,7 +422,7 @@ describe('Orchestration Planner', () => {
       const plan = await createPlan('Test task', config);
 
       expect(plan.steps).toHaveLength(1);
-      expect(plan.steps[0].id).toBe('step_main');
+      expect(plan.steps[0]!.id).toBe('step_main');
     });
 
     it('handles JSON in code blocks', async () => {
@@ -453,7 +453,7 @@ describe('Orchestration Planner', () => {
       const plan = await createPlan('Research task', config);
 
       expect(plan.taskId).toBe('task_456');
-      expect(plan.steps[0].workerType).toBe('research');
+      expect(plan.steps[0]!.workerType).toBe('research');
     });
 
     it('limits steps to maxSteps', async () => {
@@ -793,7 +793,7 @@ describe('Orchestration Aggregator', () => {
       const aggregation = quickAggregate(plan, execResult);
 
       expect(aggregation.errors).toHaveLength(1);
-      expect(aggregation.errors[0].error).toBe('Test error message');
+      expect(aggregation.errors[0]!.error).toBe('Test error message');
       expect(aggregation.response).toContain('Error');
     });
   });

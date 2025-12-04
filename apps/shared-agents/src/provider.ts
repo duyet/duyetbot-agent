@@ -1,30 +1,31 @@
 /**
- * LLM Provider for Shared Agents
+ * Agent Provider for Shared Agents
  *
  * Unified provider configuration used by all shared Durable Objects.
  * Uses OpenRouter SDK via Cloudflare AI Gateway.
  * Supports xAI Grok native tools (web_search, x_search).
  *
- * ## Credential Flow
+ * ## Provider Types
  *
- * Cloudflare secrets don't cross Durable Object script boundaries automatically.
- * This provider receives credentials via AgentContext.platformConfig from parent workers.
+ * - `createProvider()` - Returns `AgentProvider` for agents (RouterAgent, SimpleAgent, etc.)
+ *   that extend BaseAgent and need transport capabilities.
+ * - `createLLMProvider()` - Returns `LLMProvider` for workers (CodeWorker, etc.)
+ *   that extend Agent directly and only need LLM chat.
  *
- * ```
- * telegram-bot                     shared-agents DO
- *     │                                  │
- *     ├─ extractPlatformConfig()         │
- *     │   └─ AI_GATEWAY_API_KEY ─────────┼──> context.platformConfig.aiGatewayApiKey
- *     │   └─ AI_GATEWAY_NAME ────────────┼──> context.platformConfig.aiGatewayName
- *     │                                  │
- *     └─ callAgent(RouterAgent) ─────────┼──> createProvider(env, context)
- *                                        │       └─ merges platformConfig with env
- *                                        │
- *                                        └──> OpenRouter via AI Gateway ✓
- * ```
+ * ## Architecture Note
+ *
+ * Shared agents are called by parent workers (telegram-bot, github-bot).
+ * Transport operations (send/edit/typing) are stubs here because:
+ * - The parent worker owns the transport layer
+ * - Sub-agents return AgentResult with response text
+ * - Parent ChatAgent handles actual message delivery
  */
 
-import type { CommonPlatformConfig, LLMProvider } from '@duyetbot/chat-agent';
+import type {
+  AgentProvider,
+  LLMProvider,
+  ProviderExecutionContext,
+} from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   createOpenRouterProvider,
@@ -39,42 +40,77 @@ import {
 export type ProviderEnv = OpenRouterProviderEnv;
 
 /**
- * Create an LLM provider for shared agents
+ * Create an LLM provider for workers (CodeWorker, ResearchWorker, etc.)
  *
- * Uses platformConfig from AgentContext to get AI Gateway credentials
- * that are passed from the parent worker (telegram-bot, github-bot).
+ * Workers extend Agent directly and only need LLM chat capabilities.
  *
  * @param env - Worker environment bindings
  * @param options - Optional provider configuration
- * @param platformConfig - Platform config from parent (contains AI Gateway credentials)
- *
- * @example
- * ```typescript
- * const provider = createProvider(env, undefined, context.platformConfig);
- * const response = await provider.chat([
- *   { role: 'user', content: 'Hello!' }
- * ]);
- * ```
  */
-export function createProvider(
+export function createLLMProvider(
   env: ProviderEnv,
-  options?: Partial<OpenRouterProviderOptions>,
-  platformConfig?: CommonPlatformConfig
+  options?: Partial<OpenRouterProviderOptions>
 ): LLMProvider {
-  // Merge platformConfig credentials with env
-  // platformConfig takes precedence (comes from parent worker)
-  const effectiveEnv: OpenRouterProviderEnv = {
-    AI: env.AI,
-    AI_GATEWAY_NAME: platformConfig?.aiGatewayName ?? env.AI_GATEWAY_NAME,
-    AI_GATEWAY_API_KEY: platformConfig?.aiGatewayApiKey ?? env.AI_GATEWAY_API_KEY,
-    MODEL: platformConfig?.model ?? env.MODEL,
-  };
-
-  return createOpenRouterProvider(effectiveEnv, {
+  return createOpenRouterProvider(env, {
     maxTokens: 1024,
     requestTimeout: 30000,
-    enableWebSearch: true, // Enable native web search for xAI models
+    enableWebSearch: true,
     logger,
     ...options,
   });
+}
+
+/**
+ * Create an AgentProvider for agents (RouterAgent, SimpleAgent, HITLAgent, etc.)
+ *
+ * Agents extend BaseAgent and need both LLM chat and transport capabilities.
+ * Transport operations are stubs here - parent ChatAgent handles actual delivery.
+ *
+ * @param env - Worker environment bindings
+ * @param options - Optional provider configuration
+ */
+export function createProvider(
+  env: ProviderEnv,
+  options?: Partial<OpenRouterProviderOptions>
+): AgentProvider {
+  const llmProvider = createOpenRouterProvider(env, {
+    maxTokens: 1024,
+    requestTimeout: 30000,
+    enableWebSearch: true,
+    logger,
+    ...options,
+  });
+
+  // Wrap LLMProvider with transport stubs and adapted chat signature
+  return {
+    // Adapt chat signature: AgentProvider uses (messages, options?) format
+    // while LLMProvider uses (messages, tools?, options?) format
+    chat: async (messages, chatOptions) => {
+      // Extract tools from options if present, pass to underlying provider
+      const tools = chatOptions?.tools;
+      return llmProvider.chat(messages, tools, chatOptions);
+    },
+
+    // Transport stubs - parent worker handles actual message delivery
+    send: async (_ctx: ProviderExecutionContext, _content: string) => {
+      logger.debug('[SharedProvider] send() called - returning stub ref (parent handles transport)');
+      return 0; // Stub message ref
+    },
+
+    edit: async (_ctx: ProviderExecutionContext, _ref: string | number, _content: string) => {
+      logger.debug('[SharedProvider] edit() called - no-op (parent handles transport)');
+    },
+
+    typing: async (_ctx: ProviderExecutionContext) => {
+      logger.debug('[SharedProvider] typing() called - no-op (parent handles transport)');
+    },
+
+    createContext: (input) => ({
+      text: input.text,
+      userId: input.userId,
+      chatId: input.chatId,
+      ...(input.username && { username: input.username }),
+      messageRef: input.messageRef,
+    }),
+  };
 }

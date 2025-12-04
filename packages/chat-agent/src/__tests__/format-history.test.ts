@@ -107,14 +107,14 @@ describe('formatWithEmbeddedHistory', () => {
     const result = formatWithEmbeddedHistory(history, 'System prompt', 'New message');
 
     expect(result).toHaveLength(2);
-    expect(result[0].role).toBe('system');
-    expect(result[1].role).toBe('user');
-    expect(result[1].content).toContain('<conversation_history>');
-    expect(result[1].content).toContain('Previous');
-    expect(result[1].content).toContain('Response');
-    expect(result[1].content).toContain('<current_message>');
-    expect(result[1].content).toContain('New message');
-    expect(result[1].content).toContain('</current_message>');
+    expect(result[0]!.role).toBe('system');
+    expect(result[1]!.role).toBe('user');
+    expect(result[1]!.content).toContain('<conversation_history>');
+    expect(result[1]!.content).toContain('Previous');
+    expect(result[1]!.content).toContain('Response');
+    expect(result[1]!.content).toContain('<current_message>');
+    expect(result[1]!.content).toContain('New message');
+    expect(result[1]!.content).toContain('</current_message>');
   });
 
   it('wraps current message in XML tags when history exists', () => {
@@ -122,23 +122,23 @@ describe('formatWithEmbeddedHistory', () => {
 
     const result = formatWithEmbeddedHistory(history, 'System', 'Current');
 
-    expect(result[1].content).toContain('<current_message>');
-    expect(result[1].content).toContain('Current');
-    expect(result[1].content).toContain('</current_message>');
+    expect(result[1]!.content).toContain('<current_message>');
+    expect(result[1]!.content).toContain('Current');
+    expect(result[1]!.content).toContain('</current_message>');
   });
 
   it('does not wrap message when no history', () => {
     const result = formatWithEmbeddedHistory([], 'System', 'Current');
 
-    expect(result[1].content).toBe('Current');
-    expect(result[1].content).not.toContain('<current_message>');
+    expect(result[1]!.content).toBe('Current');
+    expect(result[1]!.content).not.toContain('<current_message>');
   });
 
   it('preserves system prompt exactly', () => {
     const systemPrompt = 'You are a helpful assistant.\nBe concise.';
     const result = formatWithEmbeddedHistory([], systemPrompt, 'Hi');
 
-    expect(result[0].content).toBe(systemPrompt);
+    expect(result[0]!.content).toBe(systemPrompt);
   });
 
   it('handles complex history with special characters', () => {
@@ -150,8 +150,8 @@ describe('formatWithEmbeddedHistory', () => {
     const result = formatWithEmbeddedHistory(history, 'System', 'Follow up');
 
     // Should contain escaped versions
-    expect(result[1].content).toContain('&lt;div&gt;');
-    expect(result[1].content).toContain('&amp;amp;');
+    expect(result[1]!.content).toContain('&lt;div&gt;');
+    expect(result[1]!.content).toContain('&amp;amp;');
   });
 
   it('returns only 2 messages regardless of history size', () => {
@@ -166,7 +166,7 @@ describe('formatWithEmbeddedHistory', () => {
 
     // Should always return exactly 2 messages (system + user with embedded history)
     expect(result).toHaveLength(2);
-    expect(result[0].role).toBe('system');
-    expect(result[1].role).toBe('user');
+    expect(result[0]!.role).toBe('system');
+    expect(result[1]!.role).toBe('user');
   });
 });

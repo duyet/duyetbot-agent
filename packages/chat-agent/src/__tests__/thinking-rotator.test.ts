@@ -52,6 +52,8 @@ describe('createThinkingRotator', () => {
     const messages: string[] = [];
     const rotator = createThinkingRotator({
       messages: ['Only'],
+      random: false,
+      interval: 5000,
     });
 
     rotator.start((msg) => messages.push(msg));
@@ -66,7 +68,7 @@ describe('createThinkingRotator', () => {
       messages: ['A', 'B'],
       interval: 1000,
       random: false,
-    });
+    } satisfies Parameters<typeof createThinkingRotator>[0]);
 
     rotator.start((msg) => messages.push(msg));
     await vi.advanceTimersByTime(1000);
@@ -87,6 +89,7 @@ describe('createThinkingRotator', () => {
     const rotator = createThinkingRotator({
       messages: ['A', 'B'],
       random: false,
+      interval: 5000,
     });
 
     rotator.start((msg) => messages.push(msg));
@@ -106,10 +109,11 @@ describe('createThinkingRotator', () => {
       messages: ['A', 'B'],
       interval: 1000,
       random: false,
-    });
+    } satisfies Parameters<typeof createThinkingRotator>[0]);
 
-    rotator.start((msg) => messages.push(msg));
-    rotator.start((msg) => messages.push(msg)); // Should be ignored
+    const callback = (msg: string) => messages.push(msg);
+    rotator.start(callback);
+    rotator.start(callback); // Should be ignored
 
     await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B']); // Only one message, not two
@@ -149,12 +153,14 @@ describe('createThinkingRotator', () => {
       messages.push(msg);
     });
 
-    // First rotation: wait for interval + async callback
-    await vi.advanceTimersByTime(1100);
+    // First rotation: advance interval timer (1000ms) then async callback timer (100ms)
+    await vi.advanceTimersToNextTimerAsync(); // interval timer
+    await vi.advanceTimersToNextTimerAsync(); // async callback timer
     expect(messages).toEqual(['B']);
 
-    // Second rotation should only start after first completes
-    await vi.advanceTimersByTime(1100);
+    // Second rotation: advance interval timer (1000ms) then async callback timer (100ms)
+    await vi.advanceTimersToNextTimerAsync(); // interval timer
+    await vi.advanceTimersToNextTimerAsync(); // async callback timer
     expect(messages).toEqual(['B', 'C']);
 
     rotator.stop();
