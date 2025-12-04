@@ -1,4 +1,4 @@
-name = "duyetbot-agents"
+name = "duyetbot-shared-agents"
 main = "src/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
