@@ -15,8 +15,8 @@ import { getDuyetInfoPrompt, platformToOutputFormat } from '@duyetbot/prompts';
 import { Agent, type Connection } from 'agents';
 import { type AgentDebugInfo, type AgentResult, BaseAgent, type BaseState } from '../base/index.js';
 import type { MCPServerConnection } from '../cloudflare-agent.js';
-import type { ExecutionContext } from '../execution/context.js';
 import type { AgentProvider } from '../execution/agent-provider.js';
+import type { ExecutionContext } from '../execution/context.js';
 import type { LLMMessage, OpenAITool, ToolCall } from '../types.js';
 import { agentRegistry } from './registry.js';
 
@@ -663,10 +663,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         ];
 
         // Execute with tool loop (tools in options for AgentProvider.chat signature)
-        let response = await provider.chat(
-          messages,
-          tools.length > 0 ? { tools } : undefined
-        );
+        let response = await provider.chat(messages, tools.length > 0 ? { tools } : undefined);
         let iterations = 0;
 
         while (

@@ -1,0 +1,22 @@
+# CODEOWNERS for duyetbot-agent
+#
+# This file defines code owners for automated review requests.
+# See: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+#
+# Format: pattern owner1 owner2 ...
+# Owner can be @username, @org/team-name, or email
+
+# =============================================================================
+# SAFETY KERNEL - Requires manual approval
+# =============================================================================
+# The safety kernel is the "immune system" that protects the bot from
+# self-destruction. Changes to this directory MUST be reviewed by @duyet.
+# The bot itself should NOT be able to modify these files autonomously.
+
+apps/safety-kernel/ @duyet
+
+# =============================================================================
+# Default owner for everything else
+# =============================================================================
+
+* @duyet

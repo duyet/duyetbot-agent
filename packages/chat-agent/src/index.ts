@@ -16,11 +16,16 @@ export {
   calculateRetryDelay,
   combineBatchMessages,
   createInitialBatchState,
+  createInitialEnhancedBatchState,
   DEFAULT_BATCH_CONFIG,
   DEFAULT_RETRY_CONFIG,
+  type EnhancedBatchState,
   isDuplicateMessage,
+  type MessageStage,
   type PendingMessage,
   type RetryConfig,
+  type RetryError,
+  type StageTransition,
   shouldProcessImmediately,
 } from './batch-types.js';
 // Cloudflare Durable Object wrapper
@@ -298,7 +303,7 @@ export {
   type WorkerResult,
   WorkerResultSchema,
 } from './routing/index.js';
-// Workers (Base, Code, Research, GitHub)
+// Workers (Base, Code, Research, GitHub, SubAgent Protocol)
 export {
   type BaseWorkerConfig,
   type BaseWorkerEnv,
@@ -308,8 +313,11 @@ export {
   type CodeWorkerEnv,
   createBaseWorker,
   createCodeWorker,
+  createContextGatheringStep,
   createGitHubWorker,
   createResearchWorker,
+  createSubAgentWorkerAdapter,
+  defaultWorkerRegistry,
   detectCodeTaskType,
   detectGitHubTaskType,
   detectResearchTaskType,
@@ -317,14 +325,22 @@ export {
   type GitHubTaskType,
   type GitHubWorkerConfig,
   type GitHubWorkerEnv,
+  type HealthCheckResult,
   isSuccessfulResult,
   type ResearchTaskType,
   type ResearchWorkerConfig,
   type ResearchWorkerEnv,
+  type SubAgentCapability,
+  type SubAgentMetadata,
+  type SubAgentWorker,
+  type SubAgentWorkerResult,
   summarizeResults,
+  validateReplanningRequest,
   type WorkerClass,
   type WorkerInput,
   type WorkerMethods,
+  WorkerRegistry,
+  type WorkerRegistryEntry,
   type WorkerType,
 } from './workers/index.js';
 
@@ -363,3 +379,93 @@ export {
   type TrackedBatchStatus,
   WATCHDOG_INTERVAL_SECONDS,
 } from './state-types.js';
+
+// =============================================================================
+// Safety Kernel Integration
+// =============================================================================
+
+// Heartbeat emission for dead man's switch
+export {
+  createHeartbeatEmitter,
+  emitHeartbeat,
+  emitHeartbeatHttp,
+  HEARTBEAT_KEYS,
+  type HeartbeatData,
+  type HeartbeatEnv,
+  type HeartbeatMetadata,
+} from './safety/index.js';
+
+// =============================================================================
+// Agentic Scheduler (Phase 2)
+// =============================================================================
+
+// Scheduler types
+export type {
+  ActivityPatterns,
+  EnergyBudget,
+  EnergyCost,
+  ScheduledTask,
+  SchedulerConfig,
+  SchedulerState,
+  TaskExecutionResult,
+  TaskSource,
+  TaskType,
+} from './scheduler/index.js';
+
+// Scheduler DO and utilities
+export {
+  // Queue management
+  addTask,
+  // Energy management
+  calculateEffectiveEnergyCost,
+  // Proactive research
+  calculateRelevance,
+  calculateUrgency,
+  canAffordTask,
+  // Scheduler client (for apps to schedule tasks)
+  cancelTask,
+  cleanupStaleTasks,
+  // State initialization
+  createInitialEnergyBudget,
+  createInitialSchedulerState,
+  DEFAULT_ACTIVITY_PATTERNS,
+  DEFAULT_ENERGY_COSTS,
+  DEFAULT_PRIORITY_WEIGHTS,
+  DEFAULT_RESEARCH_SOURCES,
+  DEFAULT_SCHEDULER_CONFIG,
+  DEFAULT_TASTE_FILTER,
+  deductEnergy,
+  ENERGY_CONSTANTS,
+  executeResearchTask,
+  fetchHackerNewsStories,
+  findTasksByType,
+  formatResearchDigest,
+  getEnergyBreakdown,
+  getEnergyPercentage,
+  getQueueStats,
+  getReadyTasks,
+  getSchedulerStatus,
+  getSchedulerStub,
+  processHackerNewsStories,
+  QUEUE_CONSTANTS,
+  type ResearchFinding,
+  type ResearchResult,
+  type ResearchSource,
+  type ResearchTaskPayload,
+  regenerateEnergy,
+  removeTask,
+  // Scheduler DO
+  SchedulerDO,
+  type SchedulerDOContext,
+  type SchedulerDOEnv,
+  type SchedulerStatus,
+  type ScheduleTaskOptions,
+  scheduleMaintenance,
+  scheduleNotification,
+  scheduleResearch,
+  scheduleResearchTask,
+  scheduleTask,
+  type TasteFilter,
+  triggerSchedulerTick,
+  type WakeUpDecision,
+} from './scheduler/index.js';

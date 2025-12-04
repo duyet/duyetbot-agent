@@ -269,39 +269,45 @@ app.post(
         receiveMessage(input: typeof parsedInput): Promise<{ traceId: string }>;
       };
 
-      logger.info(`[${requestId}] [WEBHOOK] Dispatching to agent (fire-and-forget)`, {
+      // True fire-and-forget: schedule RPC without awaiting
+      // waitUntil keeps worker alive for the RPC, but we return immediately
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const result = await agent.receiveMessage(parsedInput);
+            logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+              requestId,
+              agentId,
+              traceId: result.traceId,
+              durationMs: Date.now() - startTime,
+            });
+          } catch (error) {
+            // RPC failure only (rare) - DO is unreachable
+            logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
+              requestId,
+              agentId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+
+          // Write observability event (fire-and-forget)
+          if (collector && storage) {
+            collector.complete({ status: 'success' });
+            storage.writeEvent(collector.toEvent()).catch((err) => {
+              logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                requestId,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
+          }
+        })()
+      );
+
+      logger.info(`[${requestId}] [WEBHOOK] Returning OK immediately`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
-
-      // Fire-and-forget: DO handles all error handling, retries, and observability
-      try {
-        const result = await agent.receiveMessage(parsedInput);
-        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
-          requestId,
-          agentId,
-          traceId: result.traceId,
-          durationMs: Date.now() - startTime,
-        });
-      } catch (error) {
-        // RPC failure only (rare) - DO is unreachable
-        logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
-          requestId,
-          agentId,
-          error: error instanceof Error ? error.message : String(error),
-        });
-      }
-
-      // Write observability event (fire-and-forget)
-      if (collector && storage) {
-        storage.writeEvent(collector.toEvent()).catch((err) => {
-          logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
-            requestId,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
-      }
 
       return c.json({ ok: true });
     } catch (error) {

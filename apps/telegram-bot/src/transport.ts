@@ -121,17 +121,28 @@ async function sendTelegramMessage(
 
     // Fallback to plain text if parsing fails (400 error)
     if (response.status === 400 && parseMode) {
-      // Consume the error response body to prevent connection pool exhaustion
-      await response.text();
+      // Read and log the actual Telegram API error for debugging
+      const errorBody = await response.text();
+      let errorDetail = '';
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorDetail = parsed.description || errorBody;
+      } catch {
+        errorDetail = errorBody;
+      }
 
       const withoutParseMode = {
         chat_id: chatId,
         text: chunk,
       };
-      logger.warn(
-        `[TRANSPORT] ${parseMode} parse failed, retrying without parse_mode`,
-        withoutParseMode
-      );
+
+      // Log detailed error info including the Telegram API error message
+      logger.warn(`[TRANSPORT] ${parseMode} parse failed, retrying without parse_mode`, {
+        ...withoutParseMode,
+        telegramError: errorDetail,
+        textLength: chunk.length,
+        textPreview: chunk.length > 100 ? `${chunk.slice(0, 100)}...` : chunk,
+      });
 
       response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
@@ -206,18 +217,29 @@ async function editTelegramMessage(
 
   // Fallback to plain text if parsing fails
   if (response.status === 400 && parseMode) {
-    // Consume the error response body to prevent connection pool exhaustion
-    await response.text();
+    // Read and log the actual Telegram API error for debugging
+    const errorBody = await response.text();
+    let errorDetail = '';
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorDetail = parsed.description || errorBody;
+    } catch {
+      errorDetail = errorBody;
+    }
 
     const withoutParseMode = {
       chat_id: chatId,
       message_id: messageId,
       text: truncatedText,
     };
-    logger.warn(
-      `[TRANSPORT] ${parseMode} parse failed in edit, retrying without parse_mode`,
-      withoutParseMode
-    );
+
+    // Log detailed error info including the Telegram API error message
+    logger.warn(`[TRANSPORT] ${parseMode} parse failed in edit, retrying without parse_mode`, {
+      ...withoutParseMode,
+      telegramError: errorDetail,
+      textLength: truncatedText.length,
+      textPreview: truncatedText.length > 100 ? `${truncatedText.slice(0, 100)}...` : truncatedText,
+    });
 
     // Retry
     response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {

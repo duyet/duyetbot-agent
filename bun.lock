@@ -76,6 +76,19 @@
         "wrangler": "catalog:",
       },
     },
+    "apps/safety-kernel": {
+      "name": "@duyetbot/safety-kernel",
+      "version": "0.1.0",
+      "dependencies": {
+        "hono": "catalog:",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241127.0",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+        "wrangler": "catalog:",
+      },
+    },
     "apps/shared-agents": {
       "name": "@duyetbot/shared-agents",
       "version": "0.1.0",
@@ -427,6 +440,8 @@
     "@duyetbot/prompts": ["@duyetbot/prompts@workspace:packages/prompts"],
 
     "@duyetbot/providers": ["@duyetbot/providers@workspace:packages/providers"],
+
+    "@duyetbot/safety-kernel": ["@duyetbot/safety-kernel@workspace:apps/safety-kernel"],
 
     "@duyetbot/shared-agents": ["@duyetbot/shared-agents@workspace:apps/shared-agents"],
 

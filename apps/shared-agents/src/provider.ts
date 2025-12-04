@@ -21,11 +21,7 @@
  * - Parent ChatAgent handles actual message delivery
  */
 
-import type {
-  AgentProvider,
-  LLMProvider,
-  ProviderExecutionContext,
-} from '@duyetbot/chat-agent';
+import type { AgentProvider, LLMProvider, ProviderExecutionContext } from '@duyetbot/chat-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   createOpenRouterProvider,
@@ -93,7 +89,9 @@ export function createProvider(
 
     // Transport stubs - parent worker handles actual message delivery
     send: async (_ctx: ProviderExecutionContext, _content: string) => {
-      logger.debug('[SharedProvider] send() called - returning stub ref (parent handles transport)');
+      logger.debug(
+        '[SharedProvider] send() called - returning stub ref (parent handles transport)'
+      );
       return 0; // Stub message ref
     },
 

@@ -146,34 +146,30 @@ app.post(
         },
       };
 
-      logger.info(`[${requestId}] [WEBHOOK] Dispatching to TelegramAgent (fire-and-forget)`, {
-        requestId,
-        agentId,
-        text: ctx.text.substring(0, 100) + (ctx.text.length > 100 ? '...' : ''),
-        durationMs: Date.now() - startTime,
-      });
-
-      // Fire-and-forget: DO handles all error handling, retries, and observability
-      try {
-        const result = await agent.receiveMessage(parsedInput);
-
-        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
-          requestId,
-          agentId,
-          traceId: result.traceId,
-          batchId: result.batchId,
-          durationMs: Date.now() - startTime,
-        });
-      } catch (error) {
-        // RPC failure only (rare) - DO is unreachable
-        logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
-          requestId,
-          agentId,
-          error: error instanceof Error ? error.message : String(error),
-          durationMs: Date.now() - startTime,
-        });
-        // Don't send error to user here - we can't reach the DO anyway
-      }
+      // True fire-and-forget: schedule RPC without awaiting
+      // waitUntil keeps worker alive for the RPC, but we return immediately
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const result = await agent.receiveMessage(parsedInput);
+            logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+              requestId,
+              agentId,
+              traceId: result.traceId,
+              batchId: result.batchId,
+              durationMs: Date.now() - startTime,
+            });
+          } catch (error) {
+            // RPC failure only (rare) - DO is unreachable
+            logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
+              requestId,
+              agentId,
+              error: error instanceof Error ? error.message : String(error),
+              durationMs: Date.now() - startTime,
+            });
+          }
+        })()
+      );
 
       logger.info(`[${requestId}] [WEBHOOK] Returning OK immediately`, {
         requestId,

@@ -213,5 +213,75 @@ describe('debug-footer', () => {
       expect(result.text).toBe('Use &lt;code&gt; &amp; &quot;quotes&quot;');
       expect(result.parseMode).toBe('HTML');
     });
+
+    describe('MarkdownV2 mode', () => {
+      it('returns MarkdownV2 mode when configured', () => {
+        const ctx = createMockContext({
+          isAdmin: false,
+          parseMode: 'MarkdownV2',
+        });
+        const result = prepareMessageWithDebug('Hello world', ctx);
+        expect(result.parseMode).toBe('MarkdownV2');
+      });
+
+      it('escapes all text for MarkdownV2', () => {
+        const ctx = createMockContext({
+          isAdmin: false,
+          parseMode: 'MarkdownV2',
+        });
+
+        // All text should be escaped for MarkdownV2
+        const patterns = [
+          { input: '🔄 Thinking...', expected: '🔄 Thinking\\.\\.\\.' },
+          { input: '🔄 Loading...', expected: '🔄 Loading\\.\\.\\.' },
+          { input: '🤔 Analyzing...', expected: '🤔 Analyzing\\.\\.\\.' },
+          { input: '📊 Processing (50%)', expected: '📊 Processing \\(50%\\)' },
+          { input: '✅ Done!', expected: '✅ Done\\!' },
+          { input: '⚠️ Warning!', expected: '⚠️ Warning\\!' },
+          // Text-only loading indicators (no emoji prefix)
+          { input: 'Simmering...', expected: 'Simmering\\.\\.\\.' },
+          { input: 'Thinking...', expected: 'Thinking\\.\\.\\.' },
+          { input: 'Still thinking...', expected: 'Still thinking\\.\\.\\.' },
+          // Regular messages
+          { input: 'Hello world!', expected: 'Hello world\\!' },
+          { input: 'Test (value)', expected: 'Test \\(value\\)' },
+        ];
+
+        for (const { input, expected } of patterns) {
+          const result = prepareMessageWithDebug(input, ctx);
+          expect(result.text).toBe(expected);
+        }
+      });
+
+      it('escapes long responses for MarkdownV2', () => {
+        const ctx = createMockContext({
+          isAdmin: false,
+          parseMode: 'MarkdownV2',
+        });
+
+        // All text is escaped regardless of length
+        const longResponse =
+          'Here is a detailed explanation. The dots in this sentence ARE escaped now.';
+        const result = prepareMessageWithDebug(longResponse, ctx);
+        expect(result.text).toContain('\\.'); // Dots should be escaped
+      });
+
+      it('includes MarkdownV2 debug footer for admin users', () => {
+        const ctx = createMockContext({
+          isAdmin: true,
+          parseMode: 'MarkdownV2',
+          debugContext: {
+            routingFlow: [{ agent: 'simple-agent', durationMs: 500 }],
+            totalDurationMs: 500,
+          },
+        });
+        const result = prepareMessageWithDebug('Hello', ctx);
+        expect(result.text).toContain('Hello');
+        // MarkdownV2 expandable blockquote syntax
+        expect(result.text).toContain('**>');
+        expect(result.text).toContain('||');
+        expect(result.parseMode).toBe('MarkdownV2');
+      });
+    });
   });
 });
