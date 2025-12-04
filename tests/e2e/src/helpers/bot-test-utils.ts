@@ -314,7 +314,10 @@ export function createTestScenarios() {
       expectations: {
         minLength: 10,
         maxLength: 2000,
-        containsText: text.match(/`([^`]+)`/)?.[1] ? [text.match(/`([^`]+)`/)?.[1]!] : [],
+        containsText: (() => {
+          const match = text.match(/`([^`]+)`/);
+          return match?.[1] ? [match[1]] : [];
+        })(),
       },
     })),
 

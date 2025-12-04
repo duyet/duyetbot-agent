@@ -45,13 +45,12 @@ export interface CleanupOptions {
  */
 export class AgentSessionManager {
   private sessions = new Map<string, AgentSession>();
-  private idCounter = 0;
 
   /**
    * Generate unique session ID
    */
   private generateId(): string {
-    return `session-${Date.now()}-${++this.idCounter}`;
+    return `session-${Date.now()}-${crypto.getRandomValues(new Uint8Array(4)).join('')}`;
   }
 
   /**

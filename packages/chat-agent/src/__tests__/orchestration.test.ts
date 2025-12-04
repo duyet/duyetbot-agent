@@ -1304,9 +1304,7 @@ describe('Worker Task Type Detection', () => {
         estimatedComplexity: 'high',
       };
 
-      let callCount = 0;
       const dispatcher = async () => {
-        callCount++;
         // Always return needsMoreContext to force multiple re-plans
         return {
           stepId: 'step_1',
