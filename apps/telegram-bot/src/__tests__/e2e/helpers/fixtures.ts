@@ -59,6 +59,13 @@ export interface TelegramMessage {
   chat: (typeof CHATS)[keyof typeof CHATS];
   date: number;
   text: string;
+  /** Original message being replied to (for quoted messages) */
+  reply_to_message?: {
+    message_id: number;
+    from: (typeof USERS)[keyof typeof USERS];
+    text?: string;
+    date: number;
+  };
 }
 
 /**
@@ -83,6 +90,15 @@ export interface CreateUpdateOptions {
   messageId?: number;
   /** Custom update ID */
   updateId?: number;
+  /** Reply to another message (for quoted message testing) */
+  replyTo?: {
+    /** Message ID of the quoted message */
+    messageId: number;
+    /** User who sent the quoted message (defaults to admin) */
+    user?: keyof typeof USERS;
+    /** Text content of the quoted message */
+    text?: string;
+  };
 }
 
 let updateCounter = 1000;
@@ -107,20 +123,34 @@ export function createUpdate(options: CreateUpdateOptions): TelegramUpdate {
     chat = 'private',
     messageId = messageCounter++,
     updateId = updateCounter++,
+    replyTo,
   } = options;
 
   const selectedUser = USERS[user];
   const selectedChat = CHATS[chat];
 
+  const message: TelegramMessage = {
+    message_id: messageId,
+    from: selectedUser,
+    chat: selectedChat,
+    date: Math.floor(Date.now() / 1000),
+    text,
+  };
+
+  // Add reply_to_message if specified
+  if (replyTo) {
+    const quotedUser = USERS[replyTo.user ?? 'admin'];
+    message.reply_to_message = {
+      message_id: replyTo.messageId,
+      from: quotedUser,
+      text: replyTo.text,
+      date: Math.floor(Date.now() / 1000) - 60, // 1 minute ago
+    };
+  }
+
   return {
     update_id: updateId,
-    message: {
-      message_id: messageId,
-      from: selectedUser,
-      chat: selectedChat,
-      date: Math.floor(Date.now() / 1000),
-      text,
-    },
+    message,
   };
 }
 

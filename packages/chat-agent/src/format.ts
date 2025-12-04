@@ -454,6 +454,16 @@ function escapeXML(text: string): string {
 }
 
 /**
+ * Quoted message context for prompt injection
+ */
+export interface QuotedContext {
+  /** Text content of the quoted message */
+  text: string;
+  /** Username of the quoted message sender */
+  username?: string;
+}
+
+/**
  * Format messages for LLM with history embedded in user message
  *
  * This transforms the standard messages array format into a single user message
@@ -463,6 +473,7 @@ function escapeXML(text: string): string {
  * @param messages - Current conversation messages
  * @param systemPrompt - System prompt for the agent
  * @param userMessage - Current user message
+ * @param quotedContext - Optional quoted message context (when user replied to a message)
  * @returns LLM messages with history embedded in user message
  *
  * @example
@@ -477,19 +488,36 @@ function escapeXML(text: string): string {
  * //   { role: 'system', content: 'You are a helpful assistant' },
  * //   { role: 'user', content: '<conversation_history>...</conversation_history>\n\nWhat is the weather?' }
  * // ]
+ *
+ * // With quoted context:
+ * const llmMessagesWithQuote = formatWithEmbeddedHistory(
+ *   previousMessages,
+ *   'You are a helpful assistant',
+ *   'How about this one?',
+ *   { text: 'Original message text', username: 'john' }
+ * );
+ * // Returns message with <quoted_message> tag before current_message
  * ```
  */
 export function formatWithEmbeddedHistory(
   messages: Message[],
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
+  quotedContext?: QuotedContext
 ): LLMMessage[] {
   const historyXML = formatHistoryAsXML(messages);
 
-  // Build user message with embedded history
+  // Build quoted context XML if present
+  let quotedXML = '';
+  if (quotedContext?.text) {
+    const from = quotedContext.username || 'a previous message';
+    quotedXML = `<quoted_message from="${escapeXML(from)}">${escapeXML(quotedContext.text)}</quoted_message>\n\n`;
+  }
+
+  // Build user message with embedded history and quoted context
   const userContent = historyXML
-    ? `${historyXML}\n\n<current_message>\n${userMessage}\n</current_message>`
-    : userMessage;
+    ? `${historyXML}\n\n${quotedXML}<current_message>\n${userMessage}\n</current_message>`
+    : `${quotedXML}${userMessage}`;
 
   return [
     { role: 'system', content: systemPrompt },

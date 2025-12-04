@@ -68,6 +68,7 @@ export {
   getExtendedThinkingMessages,
   getRandomThinkingMessage,
   type ProgressConfig,
+  type QuotedContext,
   type ThinkingRotator,
   type ThinkingRotatorConfig,
   type ToolExecution,

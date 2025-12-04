@@ -82,6 +82,10 @@ export interface TelegramContext {
   isAdmin: boolean;
   /** Parse mode for message formatting */
   parseMode?: 'HTML' | 'MarkdownV2';
+  /** Message ID of the user's message (for reply threading) */
+  messageId: number;
+  /** Message ID of the quoted message (when user replied to a message) */
+  replyToMessageId?: number;
 }
 
 /**
@@ -94,21 +98,26 @@ export interface TelegramContext {
  * @param chatId - Chat to send to
  * @param text - Message text
  * @param parseMode - Parse mode ('HTML', 'Markdown', or undefined for plain text)
+ * @param replyToMessageId - Message ID to reply to (creates reply threading)
  */
 async function sendTelegramMessage(
   token: string,
   chatId: number,
   text: string,
-  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML'
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML',
+  replyToMessageId?: number
 ): Promise<number> {
   const chunks = splitMessage(text);
   let lastMessageId = 0;
 
   for (const chunk of chunks) {
-    // Build payload with optional parse_mode
+    // Build payload with optional parse_mode and reply_to_message_id
     const payload: Record<string, unknown> = { chat_id: chatId, text: chunk };
     if (parseMode) {
       payload.parse_mode = parseMode;
+    }
+    if (replyToMessageId) {
+      payload.reply_to_message_id = replyToMessageId;
     }
     logger.debug('[TRANSPORT] Sending message', payload);
 
@@ -307,7 +316,8 @@ export const telegramTransport: Transport<TelegramContext> = {
   send: async (ctx, text) => {
     // Apply debug footer for admin users (context chain pattern)
     const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
-    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode);
+    // Always reply to user's message for threading
+    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode, ctx.messageId);
   },
 
   edit: async (ctx, ref, text) => {
@@ -325,6 +335,8 @@ export const telegramTransport: Transport<TelegramContext> = {
     userId: ctx.userId,
     chatId: ctx.chatId,
     username: ctx.username,
+    messageRef: ctx.messageId,
+    replyTo: ctx.replyToMessageId,
     metadata: {
       startTime: ctx.startTime,
       requestId: ctx.requestId,
@@ -367,6 +379,8 @@ export function createTelegramContext(
     text: string;
     username?: string;
     startTime: number;
+    messageId: number;
+    replyToMessageId?: number;
   },
   adminUsername?: string,
   requestId?: string,
@@ -385,5 +399,7 @@ export function createTelegramContext(
     adminUsername,
     isAdmin,
     parseMode,
+    messageId: webhookCtx.messageId,
+    replyToMessageId: webhookCtx.replyToMessageId,
   };
 }

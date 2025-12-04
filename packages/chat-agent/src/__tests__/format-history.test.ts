@@ -169,4 +169,77 @@ describe('formatWithEmbeddedHistory', () => {
     expect(result[0]!.role).toBe('system');
     expect(result[1]!.role).toBe('user');
   });
+
+  describe('with quoted context', () => {
+    it('includes quoted message XML when quotedContext provided', () => {
+      const result = formatWithEmbeddedHistory([], 'You are helpful', 'How about this one?', {
+        text: 'Original message text',
+        username: 'john',
+      });
+
+      expect(result[1]!.content).toContain('<quoted_message from="john">');
+      expect(result[1]!.content).toContain('Original message text');
+      expect(result[1]!.content).toContain('</quoted_message>');
+    });
+
+    it('uses default "a previous message" when username not provided', () => {
+      const result = formatWithEmbeddedHistory([], 'System', 'Reply message', {
+        text: 'Quoted text',
+      });
+
+      expect(result[1]!.content).toContain('<quoted_message from="a previous message">');
+    });
+
+    it('does not include quoted message XML when quotedContext undefined', () => {
+      const result = formatWithEmbeddedHistory([], 'System', 'Hello', undefined);
+
+      expect(result[1]!.content).not.toContain('<quoted_message');
+      expect(result[1]!.content).toBe('Hello');
+    });
+
+    it('escapes special characters in quoted text and username', () => {
+      const result = formatWithEmbeddedHistory([], 'System', 'Reply', {
+        text: '<script>alert("xss")</script>',
+        username: 'user"name',
+      });
+
+      expect(result[1]!.content).toContain('&lt;script&gt;');
+      expect(result[1]!.content).toContain('&quot;name');
+      expect(result[1]!.content).not.toContain('<script>');
+    });
+
+    it('places quoted message before current message when history exists', () => {
+      const history: Message[] = [
+        { role: 'user', content: 'Previous' },
+        { role: 'assistant', content: 'Response' },
+      ];
+
+      const result = formatWithEmbeddedHistory(history, 'System', 'New message', {
+        text: 'Quoted',
+        username: 'alice',
+      });
+
+      const content = result[1]!.content;
+      const historyIndex = content.indexOf('</conversation_history>');
+      const quotedIndex = content.indexOf('<quoted_message');
+      const currentIndex = content.indexOf('<current_message>');
+
+      // Order: history → quoted → current
+      expect(historyIndex).toBeLessThan(quotedIndex);
+      expect(quotedIndex).toBeLessThan(currentIndex);
+    });
+
+    it('handles quoted context without history', () => {
+      const result = formatWithEmbeddedHistory([], 'System', 'Reply to quote', {
+        text: 'Original quote',
+      });
+
+      const content = result[1]!.content;
+      expect(content).toContain('<quoted_message');
+      expect(content).toContain('Original quote');
+      expect(content).toContain('Reply to quote');
+      // Should not wrap in <current_message> when no history
+      expect(content).not.toContain('<current_message>');
+    });
+  });
 });
