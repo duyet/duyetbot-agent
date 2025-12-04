@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { escapeHtml, formatDebugFooter, formatDebugFooterMarkdown } from '../debug-footer.js';
+import {
+  escapeHtml,
+  escapeMarkdownV2,
+  formatDebugFooter,
+  formatDebugFooterMarkdown,
+  smartEscapeMarkdownV2,
+} from '../debug-footer.js';
 import type { DebugContext } from '../types.js';
 
 describe('escapeHtml', () => {
@@ -336,6 +342,98 @@ describe('formatDebugFooter', () => {
     expect(footer).toContain('orchestrator-agent (running)');
     // Single worker uses └─ (last/only item)
     expect(footer).toContain('└─ research-worker (running)');
+  });
+});
+
+describe('escapeMarkdownV2', () => {
+  it('escapes all special characters', () => {
+    expect(escapeMarkdownV2('_*[]()~`>#+-=|{}.!')).toBe(
+      '\\_\\*\\[\\]\\(\\)\\~\\`\\>\\#\\+\\-\\=\\|\\{\\}\\.\\!'
+    );
+  });
+
+  it('escapes backslash', () => {
+    expect(escapeMarkdownV2('path\\to\\file')).toBe('path\\\\to\\\\file');
+  });
+
+  it('preserves plain text', () => {
+    expect(escapeMarkdownV2('hello world')).toBe('hello world');
+  });
+});
+
+describe('smartEscapeMarkdownV2', () => {
+  it('preserves bold formatting', () => {
+    expect(smartEscapeMarkdownV2('*bold text*')).toBe('*bold text*');
+  });
+
+  it('preserves italic formatting', () => {
+    expect(smartEscapeMarkdownV2('_italic text_')).toBe('_italic text_');
+  });
+
+  it('preserves plain links', () => {
+    expect(smartEscapeMarkdownV2('[link](https://example.com)')).toBe(
+      '[link](https://example.com)'
+    );
+  });
+
+  it('preserves bold-wrapped links *[text](url)*', () => {
+    const input =
+      '*[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)*';
+    const result = smartEscapeMarkdownV2(input);
+    // Should preserve the outer * markers and the link structure
+    expect(result).toBe(
+      '*[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)*'
+    );
+  });
+
+  it('preserves italic-wrapped links _[text](url)_', () => {
+    const input = '_[Italic Link](https://example.com)_';
+    const result = smartEscapeMarkdownV2(input);
+    expect(result).toBe('_[Italic Link](https://example.com)_');
+  });
+
+  it('escapes special chars in plain text around formatted links', () => {
+    const input = '*[Title](url)* - Nov. 2024';
+    const result = smartEscapeMarkdownV2(input);
+    // Bold link should be preserved, but - and . should be escaped
+    expect(result).toContain('*[Title](url)*');
+    expect(result).toContain('\\-');
+    expect(result).toContain('\\.');
+  });
+
+  it('handles multiple bold links in text', () => {
+    const input = '• *[Post 1](url1)* and *[Post 2](url2)*';
+    const result = smartEscapeMarkdownV2(input);
+    expect(result).toContain('*[Post 1](url1)*');
+    expect(result).toContain('*[Post 2](url2)*');
+  });
+
+  it('preserves inline code', () => {
+    expect(smartEscapeMarkdownV2('use `npm install` to install')).toBe(
+      'use `npm install` to install'
+    );
+  });
+
+  it('preserves code blocks', () => {
+    const input = '```python\nprint("hello")\n```';
+    const result = smartEscapeMarkdownV2(input);
+    expect(result).toContain('```python');
+    expect(result).toContain('print');
+  });
+
+  it('escapes parentheses in URLs', () => {
+    const input = '[wiki](https://en.wikipedia.org/wiki/Title_(disambiguation))';
+    const result = smartEscapeMarkdownV2(input);
+    expect(result).toContain('\\)');
+  });
+
+  it('handles blog post list format', () => {
+    const input = `• *[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)* Nov 2024
+  Custom UDFs in Rust for data transformations`;
+    const result = smartEscapeMarkdownV2(input);
+    // Bold link should be preserved
+    expect(result).toContain('*[ClickHouse Rust UDFs]');
+    expect(result).toContain(')*');
   });
 });
 

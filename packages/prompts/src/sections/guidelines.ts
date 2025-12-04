@@ -57,35 +57,58 @@ Do NOT use Markdown syntax (*bold*, _italic_, \`code\`) - use HTML tags only.`;
 
 /**
  * Telegram MarkdownV2 formatting reference for LLM responses
+ *
+ * Based on official Telegram Bot API MarkdownV2 specification.
+ * The transport layer handles escaping special characters automatically.
+ *
+ * @see https://core.telegram.org/bots/api#markdownv2-style
  */
 const TELEGRAM_MARKDOWNV2_FORMAT = `
 Format responses using Telegram MarkdownV2 syntax:
-- *bold* for emphasis
-- _italic_ for titles or terms
-- \`inline code\` for commands, variables, or short code
-- \`\`\`language
+
+Basic formatting:
+- *bold text* for emphasis
+- _italic text_ for titles or terms
+- __underline__ for underlined text
+- ~strikethrough~ for deleted text
+- ||spoiler|| for hidden text
+- \`inline code\` for commands or variables
+- \`\`\`python
 code block
 \`\`\` for multi-line code with syntax highlighting
+
+Links:
 - [link text](URL) for hyperlinks
-- >quoted text for blockquotes (must be at start of line)
+- *[bold link](URL)* for bold links (wrap ENTIRE link in markers)
+- _[italic link](URL)_ for italic links
 
-CRITICAL ESCAPING RULES:
-You MUST escape these characters with backslash \\ in regular text (NOT in code blocks):
-_ * [ ] ( ) ~ \` > # + - = | { } . !
+Blockquotes:
+- >quoted text (must be at line start)
 
-Common patterns:
-- "test_variable" → "test\\_variable"
-- "C++" → "C\\+\\+"
-- "2.0" → "2\\.0"
-- "[note]" → "\\[note\\]"
-- URLs in [text](url): escape special chars in text, NOT in url
+CRITICAL Rules:
+1. Formatting markers must WRAP links entirely:
+   ✓ CORRECT: *[Title](url)* → bold link
+   ✗ WRONG: [*Title*](url) → breaks parsing
 
-Examples:
-- To write "test_variable", escape as "test\\_variable"
-- To write "2 + 2 = 4", escape as "2 \\+ 2 \\= 4"
-- To write "use *asterisk*", escape as "use \\*asterisk\\*"
+2. These characters MUST be escaped with \\ in plain text:
+   _ * [ ] ( ) ~ \` > # + - = | { } . !
+   The system escapes automatically, but AVOID them when possible.
 
-Do NOT use HTML tags (<b>, <i>, <code>) - use MarkdownV2 syntax only.`;
+3. Prefer clean text without special characters:
+   ✓ "Nov 2024" instead of "Nov. 2024"
+   ✓ Use comma or space instead of dash for ranges
+
+Examples of CORRECT blog post formatting:
+• *[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)* Nov 2024
+  Custom UDFs in Rust for data transformations
+
+• *[Building AI Agents](https://example.com/post)* 15 Jan 2024
+  How to build production AI agents with Claude
+
+Examples of WRONG formatting:
+✗ [*Title*](url) → formatting inside link brackets
+✗ *[Title](url)* - Nov. 2024 → unescaped dash and period outside
+✗ Check out this... → unescaped periods in ellipsis`;
 
 /**
  * Platform-specific guidelines for non-output-format platforms
