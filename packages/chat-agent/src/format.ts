@@ -274,6 +274,11 @@ export interface ThinkingRotator {
   start(onMessage: (message: string) => void | Promise<void>): void;
   /** Stop rotation */
   stop(): void;
+  /**
+   * Wait for any in-flight callback to complete.
+   * Call this after stop() before sending final response to avoid race conditions.
+   */
+  waitForPending(): Promise<void>;
 }
 
 /**
@@ -304,14 +309,18 @@ export function createThinkingRotator(config: ThinkingRotatorConfig = {}): Think
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
 
+  // Track in-flight callback promise to allow waiting for completion
+  let pendingCallback: Promise<void> | null = null;
+
   // Recursive function to schedule next rotation after current one completes
   const scheduleNext = (onMessage: (message: string) => void | Promise<void>) => {
     if (stopped) {
       return;
     }
 
-    timer = setTimeout(async () => {
+    timer = setTimeout(() => {
       if (stopped) {
+        pendingCallback = null;
         return;
       }
 
@@ -326,15 +335,25 @@ export function createThinkingRotator(config: ThinkingRotatorConfig = {}): Think
         messageIndex = (messageIndex + 1) % messages.length;
       }
 
-      try {
-        // Await the callback to ensure edit completes before scheduling next
-        await onMessage(messages[messageIndex] ?? 'Processing...');
-      } catch (err) {
-        console.error('[ROTATOR] Callback failed:', err);
-      }
+      // Track the callback as pending so waitForPending() can await it
+      pendingCallback = (async () => {
+        try {
+          // Check stopped again before actually calling onMessage
+          // This prevents sending if stop() was called while timeout was pending
+          if (stopped) {
+            return;
+          }
+          // Await the callback to ensure edit completes before scheduling next
+          await onMessage(messages[messageIndex] ?? 'Processing...');
+        } catch (err) {
+          console.error('[ROTATOR] Callback failed:', err);
+        } finally {
+          pendingCallback = null;
+        }
 
-      // Schedule next rotation only after this one completes
-      scheduleNext(onMessage);
+        // Schedule next rotation only after this one completes
+        scheduleNext(onMessage);
+      })();
     }, interval);
   };
 
@@ -357,6 +376,14 @@ export function createThinkingRotator(config: ThinkingRotatorConfig = {}): Think
       if (timer) {
         clearTimeout(timer);
         timer = null;
+      }
+    },
+
+    async waitForPending() {
+      // Wait for any in-flight callback to complete
+      // This ensures the rotator edit finishes before caller sends final response
+      if (pendingCallback) {
+        await pendingCallback;
       }
     },
   };
