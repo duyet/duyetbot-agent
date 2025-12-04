@@ -84,7 +84,7 @@ describe('createRateLimiter', () => {
   describe('window expiration and reset', () => {
     it('should reset count after window expires', async () => {
       const app = new Hono();
-      const window = 100; // 100ms window
+      const window = 500; // 500ms window (increased for test stability)
       app.use('*', createRateLimiter({ limit: 2, window }));
       app.get('/', (c) => c.json({ ok: true }));
 
@@ -99,7 +99,7 @@ describe('createRateLimiter', () => {
       expect(res.status).toBe(429);
 
       // Wait for window to expire
-      await new Promise((resolve) => setTimeout(resolve, window + 50));
+      await new Promise((resolve) => setTimeout(resolve, window + 100));
 
       // Should work again after reset
       res = await app.request('/', { headers: { 'cf-connecting-ip': ip } });

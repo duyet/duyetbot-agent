@@ -6,8 +6,8 @@
 
 import type { DebugContext, ParsedInput, Transport } from '@duyetbot/chat-agent';
 import { Octokit } from '@octokit/rest';
-import { logger } from './logger.js';
 import { prepareMessageWithDebug } from './debug-footer.js';
+import { logger } from './logger.js';
 
 /**
  * GitHub-specific context for transport operations

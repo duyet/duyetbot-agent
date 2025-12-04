@@ -18,11 +18,6 @@ export default defineConfig({
   },
   resolve: {
     alias: [
-      // Agent server package
-      {
-        find: /^@duyetbot\/agent-server\/(.*)$/,
-        replacement: resolve(__dirname, '../../apps/agent-server/src/$1.ts'),
-      },
       // Memory MCP package
       {
         find: /^@duyetbot\/memory-mcp\/(.*)$/,
