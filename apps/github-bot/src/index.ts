@@ -269,52 +269,38 @@ app.post(
         receiveMessage(input: typeof parsedInput): Promise<{ traceId: string }>;
       };
 
-      logger.info(`[${requestId}] [WEBHOOK] Firing message to agent (fire-and-forget)`, {
+      logger.info(`[${requestId}] [WEBHOOK] Dispatching to agent (fire-and-forget)`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
 
-      // Fire-and-forget: don't await, let agent process asynchronously
-      // Returns immediately while agent processes message in background
+      // Fire-and-forget: DO handles all error handling, retries, and observability
       try {
-        c.executionCtx.waitUntil(agent.receiveMessage(parsedInput));
-        logger.info(`[${requestId}] [WEBHOOK] Message dispatched to agent`, {
+        const result = await agent.receiveMessage(parsedInput);
+        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
           requestId,
           agentId,
+          traceId: result.traceId,
           durationMs: Date.now() - startTime,
         });
-
-        // Complete observability event on success
-        if (collector) {
-          collector.complete({ status: 'success' });
-        }
       } catch (error) {
-        logger.error(`[${requestId}] [WEBHOOK] Failed to dispatch message`, {
+        // RPC failure only (rare) - DO is unreachable
+        logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
           requestId,
           agentId,
           error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          durationMs: Date.now() - startTime,
         });
+      }
 
-        // Complete observability event on error
-        if (collector) {
-          collector.complete({
-            status: 'error',
-            error: error instanceof Error ? error : new Error(String(error)),
+      // Write observability event (fire-and-forget)
+      if (collector && storage) {
+        storage.writeEvent(collector.toEvent()).catch((err) => {
+          logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+            requestId,
+            error: err instanceof Error ? err.message : String(err),
           });
-        }
-      } finally {
-        // Write observability event to D1 (fire-and-forget)
-        if (collector && storage) {
-          storage.writeEvent(collector.toEvent()).catch((err) => {
-            logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
-              requestId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          });
-        }
+        });
       }
 
       return c.json({ ok: true });
@@ -328,7 +314,7 @@ app.post(
         durationMs: Date.now() - startTime,
       });
 
-      // Complete observability event on outer error
+      // Complete observability event on error
       if (collector) {
         collector.complete({
           status: 'error',
