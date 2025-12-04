@@ -11,7 +11,7 @@
 import { type AgentContext, AgentMixin } from '../agents/base-agent.js';
 import type { ExecutionPlan, PlanStep, WorkerResult } from '../routing/schemas.js';
 import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
-import { groupStepsByLevel } from './planner.js';
+import { createPlan, groupStepsByLevel, type PlannerConfig } from './planner.js';
 
 /**
  * Worker dispatcher function type
@@ -35,6 +35,10 @@ export interface ExecutorConfig {
   continueOnError?: boolean;
   /** Enable detailed logging */
   debug?: boolean;
+  /** Maximum re-planning iterations (default: 2) */
+  maxRePlanIterations?: number;
+  /** Planner config for re-planning when needsMoreContext is triggered */
+  plannerConfig?: PlannerConfig;
 }
 
 /**
@@ -62,10 +66,24 @@ export interface ExecutionResult {
   totalDurationMs: number;
   /** Whether all steps succeeded */
   allSucceeded: boolean;
+  /** Number of re-planning iterations that occurred */
+  rePlanIterations: number;
+  /** Original plan before any re-planning */
+  originalPlan: ExecutionPlan;
+  /** Final plan after all re-planning iterations */
+  finalPlan: ExecutionPlan;
 }
 
 /**
- * Execute a plan with parallel step execution
+ * Execute a plan with parallel step execution and bounded re-planning support
+ *
+ * When a step returns needsMoreContext, the executor will:
+ * 1. Pause execution
+ * 2. Gather context from completed steps and suggestions
+ * 3. Call the planner to generate additional steps
+ * 4. Resume execution with the updated plan
+ *
+ * Maximum re-planning iterations: 2 (bounded to prevent infinite loops)
  */
 export async function executePlan(
   plan: ExecutionPlan,
@@ -75,141 +93,277 @@ export async function executePlan(
 ): Promise<ExecutionResult> {
   const startTime = Date.now();
   const traceId = context.traceId || AgentMixin.generateId('trace');
-  const results = new Map<string, WorkerResult>();
-  const successfulSteps: string[] = [];
-  const failedSteps: string[] = [];
-  const skippedSteps: string[] = [];
+  const maxRePlanIterations = config.maxRePlanIterations ?? 2;
+  let currentPlan = plan;
+  let rePlanIterations = 0;
 
-  const maxParallel = config.maxParallel ?? 5;
-  const continueOnError = config.continueOnError ?? true;
+  const originalPlan = plan;
 
-  AgentMixin.log('Executor', 'Starting plan execution', {
+  AgentMixin.log('Executor', 'Starting plan execution with re-planning support', {
     traceId,
     taskId: plan.taskId,
     stepCount: plan.steps.length,
-    maxParallel,
+    maxRePlanIterations,
   });
 
-  // Group steps by dependency level for parallel execution
-  const stepGroups = groupStepsByLevel(plan.steps);
+  // Main execution loop with re-planning support
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const results = new Map<string, WorkerResult>();
+    const successfulSteps: string[] = [];
+    const failedSteps: string[] = [];
+    const skippedSteps: string[] = [];
 
-  AgentMixin.log('Executor', 'Grouped steps by level', {
-    traceId,
-    groupCount: stepGroups.length,
-    groupSizes: stepGroups.map((g) => g.length),
-  });
+    const maxParallel = config.maxParallel ?? 5;
+    const continueOnError = config.continueOnError ?? true;
 
-  // Execute each level sequentially, steps within a level in parallel
-  // Using Promise.allSettled for true fault-tolerant parallelism
-  for (let level = 0; level < stepGroups.length; level++) {
-    const group = stepGroups[level];
-    if (!group || group.length === 0) {
-      continue;
-    }
+    // Track if re-planning is needed
+    let replanNeeded = false;
+    let replanContext = '';
 
-    AgentMixin.log('Executor', `Executing level ${level}`, {
+    AgentMixin.log('Executor', `Executing plan iteration ${rePlanIterations}`, {
       traceId,
-      stepCount: group.length,
-      steps: group.map((s) => s.id),
+      taskId: currentPlan.taskId,
+      stepCount: currentPlan.steps.length,
+      rePlanIterations,
     });
 
-    // Check if we should skip this level due to failed dependencies
-    const groupWithDependencyStatus = group.map((step) => {
-      const failedDeps = step.dependsOn.filter((depId) => failedSteps.includes(depId));
-      const skippedDeps = step.dependsOn.filter((depId) => skippedSteps.includes(depId));
-      return {
-        step,
-        shouldSkip: failedDeps.length > 0 || skippedDeps.length > 0,
-        failedDeps,
-        skippedDeps,
-      };
+    // Group steps by dependency level for parallel execution
+    const stepGroups = groupStepsByLevel(currentPlan.steps);
+
+    AgentMixin.log('Executor', 'Grouped steps by level', {
+      traceId,
+      groupCount: stepGroups.length,
+      groupSizes: stepGroups.map((g) => g.length),
     });
 
-    // Separate executable steps from skipped steps
-    const executableSteps = groupWithDependencyStatus
-      .filter(({ shouldSkip }) => !shouldSkip)
-      .map(({ step }) => step);
+    // Execute each level sequentially, steps within a level in parallel
+    for (let level = 0; level < stepGroups.length; level++) {
+      const group = stepGroups[level];
+      if (!group || group.length === 0) {
+        continue;
+      }
 
-    const stepsToSkip = groupWithDependencyStatus.filter(({ shouldSkip }) => shouldSkip);
-
-    // Mark skipped steps
-    for (const { step, failedDeps, skippedDeps } of stepsToSkip) {
-      skippedSteps.push(step.id);
-      results.set(step.id, {
-        stepId: step.id,
-        success: false,
-        error: `Skipped due to failed dependencies: ${[...failedDeps, ...skippedDeps].join(', ')}`,
-        durationMs: 0,
+      AgentMixin.log('Executor', `Executing level ${level}`, {
+        traceId,
+        stepCount: group.length,
+        steps: group.map((s) => s.id),
       });
-      onProgress?.(step.id, 'failed', results.get(step.id));
-    }
 
-    // Execute steps in parallel with fault-tolerance
-    const levelResults = await executeStepsParallelSafe(
-      executableSteps,
-      results,
-      context,
-      config,
-      traceId,
-      maxParallel,
-      onProgress
-    );
+      // Check if we should skip this level due to failed dependencies
+      const groupWithDependencyStatus = group.map((step) => {
+        const failedDeps = step.dependsOn.filter((depId) => failedSteps.includes(depId));
+        const skippedDeps = step.dependsOn.filter((depId) => skippedSteps.includes(depId));
+        return {
+          step,
+          shouldSkip: failedDeps.length > 0 || skippedDeps.length > 0,
+          failedDeps,
+          skippedDeps,
+        };
+      });
 
-    // Process results
-    for (const [stepId, result] of levelResults) {
-      results.set(stepId, result);
-      if (result.success) {
-        successfulSteps.push(stepId);
-      } else {
-        failedSteps.push(stepId);
-        if (!continueOnError) {
-          // Mark remaining steps as skipped
-          for (let i = level + 1; i < stepGroups.length; i++) {
-            const remainingGroup = stepGroups[i];
-            if (!remainingGroup) {
-              continue;
-            }
-            for (const step of remainingGroup) {
-              if (!results.has(step.id)) {
-                skippedSteps.push(step.id);
-                results.set(step.id, {
-                  stepId: step.id,
-                  success: false,
-                  error: 'Skipped due to earlier failure',
-                  durationMs: 0,
-                });
+      // Separate executable steps from skipped steps
+      const executableSteps = groupWithDependencyStatus
+        .filter(({ shouldSkip }) => !shouldSkip)
+        .map(({ step }) => step);
+
+      const stepsToSkip = groupWithDependencyStatus.filter(({ shouldSkip }) => shouldSkip);
+
+      // Mark skipped steps
+      for (const { step, failedDeps, skippedDeps } of stepsToSkip) {
+        skippedSteps.push(step.id);
+        results.set(step.id, {
+          stepId: step.id,
+          success: false,
+          error: `Skipped due to failed dependencies: ${[...failedDeps, ...skippedDeps].join(', ')}`,
+          durationMs: 0,
+        });
+        onProgress?.(step.id, 'failed', results.get(step.id));
+      }
+
+      // Execute steps in parallel with fault-tolerance
+      const levelResults = await executeStepsParallelSafe(
+        executableSteps,
+        results,
+        context,
+        config,
+        traceId,
+        maxParallel,
+        onProgress
+      );
+
+      // Process results and check for needsMoreContext
+      for (const [stepId, result] of levelResults) {
+        results.set(stepId, result);
+
+        // Check if this step needs more context (triggers re-planning)
+        if (result.needsMoreContext && !replanNeeded) {
+          replanNeeded = true;
+          replanContext = result.contextSuggestion || '';
+
+          AgentMixin.log('Executor', 'Step needs more context - triggering re-plan', {
+            traceId,
+            stepId,
+            rePlanIterations: rePlanIterations + 1,
+            contextSuggestion: replanContext.slice(0, 100),
+          });
+
+          // Mark as partial success - the worker did work but needs more context
+          if (result.success) {
+            successfulSteps.push(stepId);
+          } else {
+            failedSteps.push(stepId);
+          }
+          continue;
+        }
+
+        if (result.success) {
+          successfulSteps.push(stepId);
+        } else {
+          failedSteps.push(stepId);
+          if (!continueOnError) {
+            // Mark remaining steps as skipped
+            for (let i = level + 1; i < stepGroups.length; i++) {
+              const remainingGroup = stepGroups[i];
+              if (!remainingGroup) {
+                continue;
+              }
+              for (const step of remainingGroup) {
+                if (!results.has(step.id)) {
+                  skippedSteps.push(step.id);
+                  results.set(step.id, {
+                    stepId: step.id,
+                    success: false,
+                    error: 'Skipped due to earlier failure',
+                    durationMs: 0,
+                  });
+                }
               }
             }
+            break;
           }
-          break;
         }
+      }
+
+      // If re-planning is needed, pause execution and handle it
+      if (replanNeeded) {
+        AgentMixin.log('Executor', 'Pausing execution for re-planning', {
+          traceId,
+          completedSteps: successfulSteps.length,
+          failedSteps: failedSteps.length,
+          rePlanIterations: rePlanIterations + 1,
+        });
+        break; // Break from level loop to handle re-planning
+      }
+
+      // Stop if we hit a failure and continueOnError is false
+      if (!continueOnError && failedSteps.length > 0) {
+        break;
       }
     }
 
-    // Stop if we hit a failure and continueOnError is false
-    if (!continueOnError && failedSteps.length > 0) {
+    // Handle re-planning if needed
+    if (replanNeeded && rePlanIterations < maxRePlanIterations) {
+      rePlanIterations += 1;
+
+      // Build re-planning context from results
+      const completedResults = Array.from(results.values())
+        .filter((r) => r.success)
+        .map((r) => `- ${r.stepId}: ${r.data ? String(r.data).slice(0, 200) : 'completed'}`)
+        .join('\n');
+
+      const replanningPrompt = buildReplanningPrompt(
+        currentPlan,
+        successfulSteps,
+        failedSteps,
+        completedResults,
+        replanContext
+      );
+
+      try {
+        // Re-plan with the planner if available
+        if (config.plannerConfig) {
+          AgentMixin.log('Executor', 'Calling planner for re-planning', {
+            traceId,
+            rePlanIterations,
+            maxRePlanIterations,
+          });
+
+          const newPlan = await createPlan(replanningPrompt, config.plannerConfig, {
+            customInstructions: `Previous steps completed: ${successfulSteps.join(', ')}. New steps should build on this context.`,
+          });
+
+          // Merge the new steps into the plan
+          currentPlan = mergeRePlanedSteps(currentPlan, newPlan, successfulSteps);
+
+          AgentMixin.log('Executor', 'Plan updated with new steps from re-planning', {
+            traceId,
+            newStepCount: currentPlan.steps.length,
+            addedSteps: newPlan.steps.length,
+            rePlanIterations,
+          });
+        } else {
+          AgentMixin.log('Executor', 'Re-planning requested but no planner config provided', {
+            traceId,
+            rePlanIterations,
+          });
+          break; // Exit if no planner config is available
+        }
+      } catch (error) {
+        AgentMixin.logError('Executor', 'Failed during re-planning', error, {
+          traceId,
+          rePlanIterations,
+        });
+        // Continue execution with current results if re-planning fails
+        break;
+      }
+    } else if (replanNeeded && rePlanIterations >= maxRePlanIterations) {
+      AgentMixin.log('Executor', 'Max re-plan iterations reached', {
+        traceId,
+        rePlanIterations,
+        maxRePlanIterations,
+      });
+      // Exit loop - max iterations reached
       break;
+    } else {
+      // No re-planning needed or all iterations complete
+      AgentMixin.log('Executor', 'Plan execution completed', {
+        traceId,
+        taskId: currentPlan.taskId,
+        successCount: successfulSteps.length,
+        failureCount: failedSteps.length,
+        skippedCount: skippedSteps.length,
+        rePlanIterations,
+      });
+
+      const totalDurationMs = Date.now() - startTime;
+
+      return {
+        results,
+        successfulSteps,
+        failedSteps,
+        skippedSteps,
+        totalDurationMs,
+        allSucceeded: failedSteps.length === 0 && skippedSteps.length === 0,
+        rePlanIterations,
+        originalPlan,
+        finalPlan: currentPlan,
+      };
     }
   }
 
+  // Fallback return (should not reach here in normal flow)
   const totalDurationMs = Date.now() - startTime;
-
-  AgentMixin.log('Executor', 'Plan execution completed', {
-    traceId,
-    taskId: plan.taskId,
-    totalDurationMs,
-    successCount: successfulSteps.length,
-    failureCount: failedSteps.length,
-    skippedCount: skippedSteps.length,
-  });
-
   return {
-    results,
-    successfulSteps,
-    failedSteps,
-    skippedSteps,
+    results: new Map(),
+    successfulSteps: [],
+    failedSteps: [],
+    skippedSteps: [],
     totalDurationMs,
-    allSucceeded: failedSteps.length === 0 && skippedSteps.length === 0,
+    allSucceeded: false,
+    rePlanIterations,
+    originalPlan,
+    finalPlan: currentPlan,
   };
 }
 
@@ -364,6 +518,82 @@ async function withTimeout<T>(
     clearTimeout(timeoutId!);
     throw error;
   }
+}
+
+/**
+ * Build a prompt for re-planning based on current execution state
+ */
+function buildReplanningPrompt(
+  currentPlan: ExecutionPlan,
+  completedSteps: string[],
+  failedSteps: string[],
+  completedResults: string,
+  contextSuggestion: string
+): string {
+  const plan = `Original plan: ${currentPlan.summary}
+Steps completed: ${completedSteps.join(', ')}
+Steps failed: ${failedSteps.length > 0 ? failedSteps.join(', ') : 'none'}
+
+Completed results:
+${completedResults}`;
+
+  const suggestion = contextSuggestion
+    ? `\nContext suggestion from worker: ${contextSuggestion}`
+    : '';
+
+  return `Continue execution based on previous progress. ${plan}${suggestion}
+
+Generate additional steps to continue making progress on the task.`;
+}
+
+/**
+ * Merge newly planned steps into the current plan
+ *
+ * Strategy:
+ * 1. Keep successfully completed steps
+ * 2. Remove or update failed steps that the new plan addresses
+ * 3. Add new steps from the new plan
+ * 4. Rebuild dependency graph
+ */
+function mergeRePlanedSteps(
+  currentPlan: ExecutionPlan,
+  newPlan: ExecutionPlan,
+  completedSteps: string[]
+): ExecutionPlan {
+  // Keep steps that completed successfully
+  const keptSteps = currentPlan.steps.filter((step) => completedSteps.includes(step.id));
+
+  // Add new steps from the re-plan
+  // Prefix new step IDs with iteration marker to avoid conflicts
+  const newSteps = newPlan.steps.map((step) => ({
+    ...step,
+    id: `${step.id}_rp`, // Add re-plan marker
+    // Update dependencies to refer to completed steps and new steps
+    dependsOn: step.dependsOn.map((depId) => {
+      if (completedSteps.includes(depId)) {
+        return depId; // Keep reference to completed step
+      }
+      // Check if this refers to an old step - if so, find the new equivalent
+      const oldStep = currentPlan.steps.find((s) => s.id === depId);
+      if (oldStep && !completedSteps.includes(depId)) {
+        return `${depId}_rp`; // Point to re-planned version
+      }
+      return depId;
+    }),
+  }));
+
+  // Combine and update summary
+  const mergedPlan: ExecutionPlan = {
+    taskId: currentPlan.taskId,
+    summary: `${currentPlan.summary} (continued after re-planning iteration)`,
+    steps: [...keptSteps, ...newSteps],
+    estimatedComplexity: currentPlan.estimatedComplexity,
+    estimatedDurationSeconds: currentPlan.estimatedDurationSeconds
+      ? currentPlan.estimatedDurationSeconds + (newPlan.estimatedDurationSeconds || 0)
+      : undefined,
+  };
+
+  return mergedPlan;
 }
 
 /**
