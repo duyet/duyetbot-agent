@@ -9,7 +9,7 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
-import { extractTask, hasMention } from '@duyetbot/types';
+import { extractTask, hasMention } from '@duyetbot/types/mention-parser';
 import type { MiddlewareHandler } from 'hono';
 import type { Env, MentionVariables, WebhookContext } from './types.js';
 
@@ -17,7 +17,7 @@ import type { Env, MentionVariables, WebhookContext } from './types.js';
 export {
   extractTask,
   hasMention as hasBotMention,
-} from '@duyetbot/types';
+} from '@duyetbot/types/mention-parser';
 
 /**
  * Get the text content from webhook context
