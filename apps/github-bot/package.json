@@ -21,6 +21,7 @@
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
     "@octokit/rest": "^21.0.0",
     "agents": "catalog:",
     "hono": "catalog:"
