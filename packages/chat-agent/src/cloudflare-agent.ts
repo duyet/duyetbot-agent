@@ -541,6 +541,62 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
+     * Persist a slash command and its response to D1.
+     * Used for commands that bypass chat() (e.g., /start, /help, /clear).
+     * Uses fire-and-forget pattern to avoid blocking main flow.
+     *
+     * @param command - The slash command text (e.g., "/clear")
+     * @param response - The response text
+     * @param eventId - Optional event ID for D1 correlation
+     */
+    private persistCommand(command: string, response: string, eventId?: string): void {
+      const env = (this as unknown as { env: TEnv }).env as unknown as {
+        OBSERVABILITY_DB?: D1Database;
+      };
+
+      if (!env.OBSERVABILITY_DB) {
+        return;
+      }
+
+      // Build session ID from state (platform:userId:chatId)
+      const platform = routerConfig?.platform ?? 'api';
+      const userId = this.state.userId?.toString() ?? 'unknown';
+      const chatId = this.state.chatId?.toString() ?? 'unknown';
+      const sessionId = `${platform}:${userId}:${chatId}`;
+
+      const now = Date.now();
+
+      // Fire-and-forget: persist command and response to D1
+      void (async () => {
+        try {
+          const storage = new ChatMessageStorage(env.OBSERVABILITY_DB!);
+
+          // Append command and response as separate messages
+          await storage.appendMessages(
+            sessionId,
+            [
+              { role: 'user' as const, content: command, timestamp: now },
+              { role: 'assistant' as const, content: response, timestamp: now },
+            ],
+            eventId
+          );
+
+          logger.debug('[CloudflareAgent][PERSIST] Command saved to D1', {
+            sessionId,
+            command,
+            eventId,
+          });
+        } catch (err) {
+          logger.warn('[CloudflareAgent][PERSIST] Failed to save command', {
+            sessionId,
+            command,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      })();
+    }
+
+    /**
      * Load messages from D1 for session recovery.
      * Called on init if DO state is empty but D1 has history.
      *
@@ -712,11 +768,13 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * @param userMessage - The user's message
      * @param stepTracker - Optional step progress tracker for real-time UI updates
      * @param quotedContext - Optional quoted message context (when user replied to a message)
+     * @param eventId - Optional event ID for D1 correlation
      */
     async chat(
       userMessage: string,
       stepTracker?: StepProgressTracker,
-      quotedContext?: QuotedContext
+      quotedContext?: QuotedContext,
+      eventId?: string
     ): Promise<string> {
       // Trim history if it exceeds maxHistory (handles bloated state from older versions)
       if (this.state.messages.length > maxHistory) {
@@ -939,47 +997,37 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       });
 
       // Persist messages to D1 (fire-and-forget)
-      this.persistMessages();
+      this.persistMessages(eventId);
 
       return assistantContent;
     }
 
     /**
-     * Clear conversation history
+     * Clear conversation history.
+     * Clears DO state but preserves D1 messages as archive.
+     * The /clear command and response are persisted via persistCommand()
+     * in handle(), so D1 maintains full audit trail.
      */
     async clearHistory(): Promise<string> {
-      // Get session ID before clearing for D1 cleanup
-      const platform = routerConfig?.platform ?? 'api';
-      const userId = this.state.userId?.toString() ?? 'unknown';
-      const chatId = this.state.chatId?.toString() ?? 'unknown';
-      const sessionId = `${platform}:${userId}:${chatId}`;
+      const messageCount = this.state.messages.length;
 
+      // Clear DO state (but keep D1 messages as archive)
       this.setState({
         ...this.state,
         messages: [],
         updatedAt: Date.now(),
       });
 
-      // Clear D1 history too (fire-and-forget)
-      const env = (this as unknown as { env: TEnv }).env as unknown as {
-        OBSERVABILITY_DB?: D1Database;
-      };
-      if (env.OBSERVABILITY_DB) {
-        void (async () => {
-          try {
-            const storage = new ChatMessageStorage(env.OBSERVABILITY_DB!);
-            await storage.deleteSession(sessionId);
-            logger.debug('[CloudflareAgent][CLEAR] D1 messages cleared', { sessionId });
-          } catch (err) {
-            logger.warn('[CloudflareAgent][CLEAR] Failed to clear D1 messages', {
-              sessionId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          }
-        })();
-      }
+      // Note: D1 messages are NOT deleted - they serve as archive
+      // The /clear command itself is persisted via persistCommand() in handle()
+      logger.debug('[CloudflareAgent][CLEAR] DO state cleared', {
+        platform: routerConfig?.platform ?? 'api',
+        userId: this.state.userId,
+        chatId: this.state.chatId,
+        archivedMessages: messageCount,
+      });
 
-      return 'Conversation history cleared.';
+      return `🧹 Conversation cleared. ${messageCount} messages archived.`;
     }
 
     /**
@@ -1488,6 +1536,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Legacy rotator for batch processing (not yet migrated)
       let rotator: ReturnType<typeof createThinkingRotator> | undefined;
 
+      // Extract eventId from metadata for D1 correlation (outside try for error handling)
+      const eventId = input.metadata?.eventId as string | undefined;
+
+      // Track start time for observability duration
+      const handleStartTime = Date.now();
+
       try {
         // Call beforeHandle hook
         if (hooks?.beforeHandle) {
@@ -1515,6 +1569,18 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // Built-in command handled - send response directly
             response = builtinResponse;
             await transport.send(ctx, response);
+
+            // Persist command to D1 (fire-and-forget)
+            this.persistCommand(input.text, builtinResponse, eventId);
+
+            // Update observability for command
+            if (eventId) {
+              this.updateObservability([eventId], {
+                status: 'success',
+                durationMs: Date.now() - handleStartTime,
+                responseText: builtinResponse,
+              });
+            }
           } else {
             // Unknown command - transform to chat message for tools/MCP/LLM
             // e.g., "/translate hello" → "translate: hello"
@@ -1613,12 +1679,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 logger.info(
                   '[CloudflareAgent][HANDLE] Routing failed or unavailable, falling back to chat()'
                 );
-                response = await this.chat(chatMessage, stepTracker, quotedContext);
+                response = await this.chat(chatMessage, stepTracker, quotedContext, eventId);
               }
             } else {
               // Routing disabled - use direct chat
               logger.info('[CloudflareAgent][HANDLE] Routing disabled, using direct chat()');
-              response = await this.chat(chatMessage, stepTracker, quotedContext);
+              response = await this.chat(chatMessage, stepTracker, quotedContext, eventId);
             }
           } finally {
             // Stop step tracker (stops any rotation timers)
@@ -1672,6 +1738,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         if (hooks?.afterHandle) {
           await hooks.afterHandle(ctx, response);
         }
+
+        // Update observability for this event (fire-and-forget)
+        if (eventId) {
+          this.updateObservability([eventId], {
+            status: 'success',
+            durationMs: Date.now() - handleStartTime,
+            responseText: response,
+          });
+        }
       } catch (error) {
         // Stop step tracker if still running
         stepTracker?.destroy();
@@ -1697,6 +1772,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         } else if (!messageRef) {
           // No message to edit and no hook - rethrow
           throw error;
+        }
+
+        // Update observability with error status (fire-and-forget)
+        if (eventId) {
+          this.updateObservability([eventId], {
+            status: 'error',
+            durationMs: Date.now() - handleStartTime,
+            errorMessage: error instanceof Error ? error.message : String(error),
+          });
         }
       } finally {
         // Always reset processing flag
