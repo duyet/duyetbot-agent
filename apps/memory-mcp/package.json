@@ -49,8 +49,8 @@
     "@modelcontextprotocol/sdk": "catalog:",
     "agents": "catalog:",
     "hono": "catalog:",
-    "zod": "^3.23.8",
-    "zod-to-json-schema": "^3.24.5"
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
