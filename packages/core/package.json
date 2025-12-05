@@ -47,7 +47,7 @@
     "@duyetbot/types": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.0.0",
+    "@modelcontextprotocol/sdk": "catalog:",
     "zod": "^3.23.8"
   },
   "devDependencies": {
