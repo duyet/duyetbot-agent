@@ -8,11 +8,12 @@ binding = "AI"
 
 [vars]
 ENVIRONMENT = "production"
-MODEL = "x-ai/grok-4.1-fast:free"
+MODEL = "@preset/duyetbot"
 AI_GATEWAY_NAME = "duyetbot"
 TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
 TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
 TELEGRAM_PARSE_MODE = "MarkdownV2" # Response format: 'HTML' or 'MarkdownV2' (default)
+BOT_USERNAME = "duyetbot" # Bot username for @mention detection in groups
 
 [observability]
 enabled = true
@@ -34,55 +35,61 @@ mode = "smart"
 name = "TelegramAgent"
 class_name = "TelegramAgent"
 
-# Shared Durable Objects - from duyetbot-agents worker
+# Shared Durable Objects - from duyetbot-shared-agents worker
 [[durable_objects.bindings]]
 name = "RouterAgent"
 class_name = "RouterAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "SimpleAgent"
 class_name = "SimpleAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "HITLAgent"
 class_name = "HITLAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "OrchestratorAgent"
 class_name = "OrchestratorAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "CodeWorker"
 class_name = "CodeWorker"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "ResearchWorker"
 class_name = "ResearchWorker"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "GitHubWorker"
 class_name = "GitHubWorker"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 [[durable_objects.bindings]]
 name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
 
 # State Management DO for observability and watchdog recovery
 [[durable_objects.bindings]]
 name = "StateDO"
 class_name = "StateDO"
-script_name = "duyetbot-agents"
+script_name = "duyetbot-shared-agents"
+
+# Agentic Scheduler DO for task scheduling
+[[durable_objects.bindings]]
+name = "SchedulerObject"
+class_name = "SchedulerObject"
+script_name = "duyetbot-shared-agents"
 
 # Migration for local TelegramAgent only
-# Shared DOs are now in duyetbot-agents (referenced via script_name)
+# Shared DOs are now in duyetbot-shared-agents (referenced via script_name)
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["TelegramAgent"]
@@ -98,3 +105,9 @@ entrypoint = "MemoryServiceEntrypoint"
 binding = "OBSERVABILITY_DB"
 database_name = "duyetbot"
 database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+
+# KV namespace for safety kernel heartbeat
+# This is shared with duyetbot-safety-kernel for dead man's switch
+[[kv_namespaces]]
+binding = "HEARTBEAT_KV"
+id = "f86303f7fa3a45dd986c0c6bf835c8e1"

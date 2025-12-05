@@ -3,10 +3,9 @@
  *
  * Hono-based webhook server using Transport Layer pattern.
  * Uses middleware chain for signature verification, parsing, and mention detection.
- * Uses alarm-based batch processing for reliable message handling.
+ * Uses fire-and-forget pattern with ChatAgent for async message processing.
  */
 
-import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -23,11 +22,11 @@ import {
   createGitHubParserMiddleware,
   createGitHubSignatureMiddleware,
 } from './middlewares/index.js';
-import { createGitHubContext } from './transport.js';
+import { createGitHubContext, githubTransport } from './transport.js';
 
 export type { Env, GitHubAgentInstance } from './agent.js';
 // Local Durable Object export
-// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-shared-agents via script_name
 export { GitHubAgent } from './agent.js';
 // Utility exports
 export {
@@ -37,14 +36,14 @@ export {
   parseCommand,
   parseMention,
 } from './mention-parser.js';
-// Type exports
+// Type exports (from middlewares for webhook payload types)
 export type {
   GitHubComment,
   GitHubIssue,
   GitHubPullRequest,
   GitHubRepository,
   GitHubUser,
-} from './types.js';
+} from './middlewares/types.js';
 
 // Extend Env to include observability bindings
 type EnvWithObservability = Env & ObservabilityEnv;
@@ -251,67 +250,64 @@ app.post(
         });
       }
 
-      const ctx = createGitHubContext(contextOptions);
+      // Create GitHub context for transport layer
+      const githubContext = createGitHubContext(contextOptions);
 
-      // Get agent by name (issue-based session)
+      // Parse context to ParsedInput using transport's parseContext
+      const parsedInput = githubTransport.parseContext(githubContext);
+
+      // Get agent instance (issue-based session)
       const agentId = `github:${owner}/${repo}#${issue.number}`;
-      logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
+      logger.info(`[${requestId}] [WEBHOOK] Getting agent instance`, {
         requestId,
         agentId,
         isPullRequest,
         durationMs: Date.now() - startTime,
       });
 
-      const agent = getChatAgent(env.GitHubAgent, agentId);
+      const agent = env.GitHubAgent.get(env.GitHubAgent.idFromName(agentId)) as unknown as {
+        receiveMessage(input: typeof parsedInput): Promise<{ traceId: string }>;
+      };
 
-      logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
+      // True fire-and-forget: schedule RPC without awaiting
+      // waitUntil keeps worker alive for the RPC, but we return immediately
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const result = await agent.receiveMessage(parsedInput);
+            logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+              requestId,
+              agentId,
+              traceId: result.traceId,
+              durationMs: Date.now() - startTime,
+            });
+          } catch (error) {
+            // RPC failure only (rare) - DO is unreachable
+            logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
+              requestId,
+              agentId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+
+          // Write observability event (fire-and-forget)
+          if (collector && storage) {
+            collector.complete({ status: 'success' });
+            storage.writeEvent(collector.toEvent()).catch((err) => {
+              logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                requestId,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
+          }
+        })()
+      );
+
+      logger.info(`[${requestId}] [WEBHOOK] Returning OK immediately`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
-
-      // Queue message - alarm will fire after batch window (200ms by default for GitHub)
-      try {
-        const { queued, batchId } = await agent.queueMessage(ctx);
-        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
-          requestId,
-          agentId,
-          queued,
-          batchId,
-          durationMs: Date.now() - startTime,
-        });
-
-        // Complete observability event on success
-        if (collector) {
-          collector.complete({ status: 'success' });
-        }
-      } catch (error) {
-        logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
-          requestId,
-          agentId,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          durationMs: Date.now() - startTime,
-        });
-
-        // Complete observability event on error
-        if (collector) {
-          collector.complete({
-            status: 'error',
-            error: error instanceof Error ? error : new Error(String(error)),
-          });
-        }
-      } finally {
-        // Write observability event to D1 (fire-and-forget)
-        if (collector && storage) {
-          storage.writeEvent(collector.toEvent()).catch((err) => {
-            logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
-              requestId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          });
-        }
-      }
 
       return c.json({ ok: true });
     } catch (error) {
@@ -324,7 +320,7 @@ app.post(
         durationMs: Date.now() - startTime,
       });
 
-      // Complete observability event on outer error
+      // Complete observability event on error
       if (collector) {
         collector.complete({
           status: 'error',

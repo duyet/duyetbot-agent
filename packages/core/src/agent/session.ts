@@ -251,7 +251,7 @@ export class InMemorySessionManager implements SessionManager {
       throw new SessionError(`Cannot resume session in state: ${session.state}`, 'INVALID_STATE');
     }
 
-    const { resumeToken, ...sessionWithoutToken } = session;
+    const { resumeToken: _resumeToken, ...sessionWithoutToken } = session;
     const resumed: Session = {
       ...sessionWithoutToken,
       state: 'active',

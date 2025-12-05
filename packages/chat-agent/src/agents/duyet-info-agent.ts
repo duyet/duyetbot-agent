@@ -6,19 +6,18 @@
  *
  * This agent sits at the same level as SimpleAgent under RouterAgent,
  * providing direct routing for Duyet-specific queries.
+ *
+ * Extends BaseAgent and uses ExecutionContext for unified context management.
  */
 
 import { logger } from '@duyetbot/hono-middleware';
 import { getDuyetInfoPrompt, platformToOutputFormat } from '@duyetbot/prompts';
 import { Agent, type Connection } from 'agents';
+import { type AgentDebugInfo, type AgentResult, BaseAgent, type BaseState } from '../base/index.js';
 import type { MCPServerConnection } from '../cloudflare-agent.js';
-import type { LLMMessage, LLMProvider, OpenAITool, ToolCall } from '../types.js';
-import {
-  type AgentContext,
-  type AgentDebugInfo,
-  AgentMixin,
-  type AgentResult,
-} from './base-agent.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
+import type { ExecutionContext } from '../execution/context.js';
+import type { LLMMessage, OpenAITool, ToolCall } from '../types.js';
 import { agentRegistry } from './registry.js';
 
 // =============================================================================
@@ -173,14 +172,11 @@ interface CachedToolResult {
 
 /**
  * Duyet Info Agent state (stateless - no conversation history)
+ * Extends BaseState with agent-specific tracking
  */
-export interface DuyetInfoAgentState {
+export interface DuyetInfoAgentState extends BaseState {
   /** Agent instance ID */
   agentId: string;
-  /** Creation timestamp */
-  createdAt: number;
-  /** Last update timestamp */
-  updatedAt: number;
   /** Cached MCP tools (to avoid repeated discovery) */
   cachedTools: OpenAITool[] | undefined;
   /** When tools were last cached */
@@ -205,8 +201,8 @@ export interface DuyetInfoAgentEnv {}
  * Configuration for Duyet Info Agent
  */
 export interface DuyetInfoAgentConfig<TEnv extends DuyetInfoAgentEnv> {
-  /** Function to create LLM provider from env and optional context */
-  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
+  /** Function to create agent provider from env */
+  createProvider: (env: TEnv) => AgentProvider;
   /** Maximum tools to expose to LLM (default: 10) */
   maxTools?: number;
   /** MCP connection timeout in ms (default: 5000) - reduced to fit 30s budget */
@@ -227,7 +223,7 @@ export interface DuyetInfoAgentConfig<TEnv extends DuyetInfoAgentEnv> {
  * Methods exposed by DuyetInfoAgent
  */
 export interface DuyetInfoAgentMethods {
-  execute(query: string, context: AgentContext): Promise<AgentResult>;
+  execute(ctx: ExecutionContext): Promise<AgentResult>;
   getStats(): {
     queriesExecuted: number;
     lastExecutedAt: number | undefined;
@@ -237,13 +233,13 @@ export interface DuyetInfoAgentMethods {
 /**
  * Type for DuyetInfoAgent class
  */
-export type DuyetInfoAgentClass<TEnv extends DuyetInfoAgentEnv> = typeof Agent<
+export type DuyetInfoAgentClass<TEnv extends DuyetInfoAgentEnv> = typeof BaseAgent<
   TEnv,
   DuyetInfoAgentState
 > & {
   new (
     ...args: ConstructorParameters<typeof Agent<TEnv, DuyetInfoAgentState>>
-  ): Agent<TEnv, DuyetInfoAgentState> & DuyetInfoAgentMethods;
+  ): BaseAgent<TEnv, DuyetInfoAgentState> & DuyetInfoAgentMethods;
 };
 
 /**
@@ -270,7 +266,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
   const maxToolIterations = config.maxToolIterations ?? 1; // 1 iteration only (was 3)
   const maxTools = config.maxTools ?? 10;
 
-  const AgentClass = class DuyetInfoAgent extends Agent<TEnv, DuyetInfoAgentState> {
+  const AgentClass = class DuyetInfoAgent extends BaseAgent<TEnv, DuyetInfoAgentState> {
     override initialState: DuyetInfoAgentState = {
       agentId: '',
       createdAt: Date.now(),
@@ -623,18 +619,25 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
     /**
      * Execute a query with MCP tools
+     *
+     * Uses ExecutionContext for unified context management including:
+     * - User query from ctx.query
+     * - Conversation history from ctx.conversationHistory
+     * - Tracing via ctx.traceId and ctx.spanId
+     * - Platform information for output formatting
+     *
      * Wrapped with global timeout to prevent blockConcurrencyWhile timeout (30s limit)
      */
-    async execute(query: string, context: AgentContext): Promise<AgentResult> {
+    async execute(ctx: ExecutionContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
 
       // Reset tool stats for this execution
       this.resetToolStats();
 
-      AgentMixin.log('DuyetInfoAgent', 'Executing query', {
-        traceId,
-        queryLength: query.length,
+      logger.debug('[DuyetInfoAgent] Executing query', {
+        traceId: ctx.traceId,
+        spanId: ctx.spanId,
+        queryLength: ctx.query.length,
         executionTimeoutMs,
       });
 
@@ -643,23 +646,24 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         // Initialize MCP connection
         await this.initMcp();
 
-        // Get LLM provider (pass context for platformConfig credentials)
+        // Get agent provider and set it
         const env = (this as unknown as { env: TEnv }).env;
-        const provider = config.createProvider(env, context);
+        const provider = config.createProvider(env);
+        this.setProvider(provider);
 
         // Get available tools (filtered)
         const tools = this._mcpInitialized ? this.getMcpTools() : [];
 
         // Build messages (stateless - single query)
         // Generate platform-aware system prompt at runtime
-        const systemPrompt = getSystemPrompt(context.platform);
+        const systemPrompt = getSystemPrompt(ctx.platform);
         const messages: LLMMessage[] = [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: query },
+          { role: 'user', content: ctx.query },
         ];
 
-        // Execute with tool loop
-        let response = await provider.chat(messages, tools.length > 0 ? tools : undefined);
+        // Execute with tool loop (tools in options for AgentProvider.chat signature)
+        let response = await provider.chat(messages, tools.length > 0 ? { tools } : undefined);
         let iterations = 0;
 
         while (
@@ -671,6 +675,7 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
 
           if (debug) {
             logger.info(`[DuyetInfoAgent] Tool iteration ${iterations}`, {
+              spanId: ctx.spanId,
               toolCalls: response.toolCalls.map((tc) => tc.name),
             });
           }
@@ -692,8 +697,8 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
             });
           }
 
-          // Get next response
-          response = await provider.chat(messages, tools);
+          // Get next response (tools in options for AgentProvider.chat signature)
+          response = await provider.chat(messages, { tools });
         }
 
         const durationMs = Date.now() - startTime;
@@ -701,24 +706,29 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
         // Update state
         this.setState({
           ...this.state,
-          agentId: this.state.agentId || traceId,
+          agentId: this.state.agentId || ctx.traceId,
           queriesExecuted: this.state.queriesExecuted + 1,
           lastExecutedAt: Date.now(),
           updatedAt: Date.now(),
         });
 
-        AgentMixin.log('DuyetInfoAgent', 'Query complete', {
-          traceId,
+        logger.debug('[DuyetInfoAgent] Query complete', {
+          spanId: ctx.spanId,
           durationMs,
           toolIterations: iterations,
           responseLength: response.content.length,
-          toolStats: this.toolStats,
+          cacheHits: this.toolStats.cacheHits,
+          cacheMisses: this.toolStats.cacheMisses,
+          toolErrors: this.toolStats.toolErrors,
         });
 
         // Include debug info with tool stats
-        return AgentMixin.createResult(true, response.content, durationMs, {
+        return {
+          success: true,
+          content: response.content,
+          durationMs,
           debug: this.buildDebugInfo(),
-        });
+        };
       };
 
       try {
@@ -744,31 +754,39 @@ export function createDuyetInfoAgent<TEnv extends DuyetInfoAgentEnv>(
           errorMessage.includes('408');
 
         if (isRecoverableError) {
-          const fallbackMessage = getFallbackResponse(query);
+          const fallbackMessage = getFallbackResponse(ctx.query);
 
           logger.warn('[DuyetInfoAgent] Returning fallback due to error', {
-            traceId,
+            spanId: ctx.spanId,
             durationMs,
             error: errorMessage,
             fallback: true,
-            toolStats: this.toolStats,
+            cacheHits: this.toolStats.cacheHits,
+            toolErrors: this.toolStats.toolErrors,
           });
 
           // Return fallback as success with debug info including fallback status
-          return AgentMixin.createResult(true, fallbackMessage, durationMs, {
+          return {
+            success: true,
+            content: fallbackMessage,
+            durationMs,
             debug: this.buildDebugInfo(true, errorMessage),
-          });
+          };
         }
 
         // For other errors, still return as error with debug info
-        AgentMixin.logError('DuyetInfoAgent', 'Query failed', error, {
-          traceId,
+        logger.error('[DuyetInfoAgent] Query failed', {
+          spanId: ctx.spanId,
           durationMs,
+          error: errorMessage,
         });
 
-        const errorResult = AgentMixin.createErrorResult(error, durationMs);
-        errorResult.debug = this.buildDebugInfo(false, errorMessage);
-        return errorResult;
+        return {
+          success: false,
+          error: errorMessage,
+          durationMs,
+          debug: this.buildDebugInfo(false, errorMessage),
+        };
       }
     }
 

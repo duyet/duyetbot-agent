@@ -148,8 +148,12 @@ async function deploy(databaseId: string) {
     // Run migrations (after substitution so wrangler.toml has correct database_id)
     await runMigrations(databaseId);
 
+    // Support both production deploy and branch versions upload
+    const command = process.env.WRANGLER_COMMAND || 'deploy';
+    const args = process.env.WRANGLER_ARGS ? ` ${process.env.WRANGLER_ARGS}` : '';
+
     console.log('\n🚀 Deploying to Cloudflare Workers...');
-    await $`bun --cwd ${rootDir} wrangler deploy --config ${configPath}`;
+    await $`bun --cwd ${rootDir} wrangler ${command}${args} --config ${configPath}`;
     console.log('\n✅ Deployment complete!');
   } finally {
     // Always revert wrangler.toml back to placeholder

@@ -2,11 +2,10 @@
  * HITL Agent (Human-in-the-Loop)
  *
  * Manages tool confirmation workflows for sensitive operations.
- * Extends the standard agent pattern to intercept tool calls,
- * request user confirmation, and execute approved tools.
+ * Extends BaseAgent to intercept tool calls, request user confirmation, and execute approved tools.
  *
  * This agent is STATELESS for conversation history - history is passed via
- * AgentContext.conversationHistory from the parent agent (CloudflareAgent).
+ * ExecutionContext.conversationHistory from the parent agent (CloudflareAgent).
  * This enables centralized state management where only the parent stores history.
  *
  * Based on Cloudflare's HITL pattern:
@@ -60,7 +59,14 @@ agentRegistry.register({
   priority: 100, // Highest priority - always check first for confirmations
 });
 
-import { Agent, type Connection } from 'agents';
+import { BaseAgent } from '../base/base-agent.js';
+import type { AgentResult, BaseEnv, BaseState } from '../base/index.js';
+import {
+  createErrorResult as createErrorResultFn,
+  createSuccessResult as createSuccessResultFn,
+} from '../base/index.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
+import type { ExecutionContext } from '../execution/context.js';
 import {
   createToolConfirmation,
   formatMultipleConfirmations,
@@ -85,17 +91,17 @@ import {
   transitionHITLState,
 } from '../hitl/state-machine.js';
 import type { ToolConfirmation } from '../routing/schemas.js';
-import type { LLMProvider, Message } from '../types.js';
-import { type AgentContext, AgentMixin, type AgentResult } from './base-agent.js';
+import type { Message } from '../types.js';
 
 /**
- * HITL Agent state (extends HITLState)
+ * HITL Agent state (extends BaseState and HITLState)
  *
- * NOTE: This agent is intentionally stateless for conversation history.
- * Conversation history is passed via AgentContext.conversationHistory from the parent agent.
+ * Combines BaseState timestamps with HITL confirmation state machine fields.
+ * This agent is intentionally stateless for conversation history.
+ * Conversation history is passed via ExecutionContext.conversationHistory from the parent agent.
  * This enables centralized state management where only the parent (CloudflareAgent) stores history.
  */
-export interface HITLAgentState extends HITLState {
+export interface HITLAgentState extends BaseState, HITLState {
   /** LLM-generated tool calls awaiting confirmation */
   pendingToolCalls: Array<{
     toolName: string;
@@ -105,19 +111,18 @@ export interface HITLAgentState extends HITLState {
 }
 
 /**
- * Environment bindings for HITL agent
+ * Environment bindings for HITL agent (extends BaseEnv)
  * Note: Actual env fields depend on the provider (OpenRouterProviderEnv, etc.)
  * This interface is kept minimal - extend with provider-specific env in your app
  */
-// biome-ignore lint/suspicious/noEmptyInterface: Intentionally empty - extend with provider env
-export interface HITLAgentEnv {}
+export interface HITLAgentEnv extends BaseEnv {}
 
 /**
  * Configuration for HITL agent
  */
 export interface HITLAgentConfig<TEnv extends HITLAgentEnv> {
-  /** Function to create LLM provider from env and optional context */
-  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
+  /** Function to create agent provider from env */
+  createProvider: (env: TEnv) => AgentProvider;
   /** System prompt for the agent */
   systemPrompt: string;
   /** Maximum messages in history */
@@ -139,8 +144,8 @@ export interface HITLAgentConfig<TEnv extends HITLAgentEnv> {
  * Methods exposed by HITLAgent
  */
 export interface HITLAgentMethods {
-  handle(query: string, context: AgentContext): Promise<AgentResult>;
-  processConfirmation(response: string): Promise<AgentResult>;
+  handle(ctx: ExecutionContext): Promise<AgentResult>;
+  processConfirmation(ctx: ExecutionContext, response: string): Promise<AgentResult>;
   getPendingCount(): number;
   getStatus(): string;
   clearHistory(): void;
@@ -149,10 +154,10 @@ export interface HITLAgentMethods {
 /**
  * Type for HITLAgent class
  */
-export type HITLAgentClass<TEnv extends HITLAgentEnv> = typeof Agent<TEnv, HITLAgentState> & {
+export type HITLAgentClass<TEnv extends HITLAgentEnv> = typeof BaseAgent<TEnv, HITLAgentState> & {
   new (
-    ...args: ConstructorParameters<typeof Agent<TEnv, HITLAgentState>>
-  ): Agent<TEnv, HITLAgentState> & HITLAgentMethods;
+    ...args: ConstructorParameters<typeof BaseAgent<TEnv, HITLAgentState>>
+  ): BaseAgent<TEnv, HITLAgentState> & HITLAgentMethods;
 };
 
 /**
@@ -162,6 +167,19 @@ interface ExtractedToolCall {
   toolName: string;
   toolArgs: Record<string, unknown>;
   description: string;
+}
+
+/**
+ * Convert unknown error to Error | string type for error handling
+ *
+ * @param error - Unknown error from catch block
+ * @returns Error if Error instance, otherwise string representation
+ */
+function normalizeError(error: unknown): Error | string {
+  if (error instanceof Error) {
+    return error;
+  }
+  return String(error);
 }
 
 /**
@@ -186,19 +204,21 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
   const confirmationThreshold = config.confirmationThreshold ?? 'high';
   const debug = config.debug ?? false;
 
-  const AgentClass = class HITLAgent extends Agent<TEnv, HITLAgentState> {
+  const AgentClass = class HITLAgent extends BaseAgent<TEnv, HITLAgentState> {
     override initialState: HITLAgentState = {
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
       ...createInitialHITLState(''),
+      sessionId: '',
       pendingToolCalls: [],
     };
 
     /**
      * Handle state updates
      */
-    override onStateUpdate(state: HITLAgentState, source: 'server' | Connection): void {
+    override onStateUpdate(state: HITLAgentState): void {
       if (debug) {
         logger.info('[HITLAgent] State updated', {
-          source,
           status: state.status,
           pendingConfirmations: state.pendingConfirmations.length,
         });
@@ -206,15 +226,23 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
     }
 
     /**
-     * Main entry point - handle incoming query
+     * Main entry point - handle execution context
+     *
+     * Checks for:
+     * 1. Expired confirmations (clean them up)
+     * 2. Confirmation responses (user approved/rejected)
+     * 3. Pending confirmations (ask user again if waiting)
+     * 4. New queries (process through LLM)
+     *
+     * @param ctx - ExecutionContext containing user query and conversation history
+     * @returns AgentResult with next action indicator
      */
-    async handle(query: string, context: AgentContext): Promise<AgentResult> {
+    async handle(ctx: ExecutionContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
 
-      AgentMixin.log('HITLAgent', 'Handling query', {
-        traceId,
-        queryLength: query.length,
+      logger.debug('[HITLAgent] Handling execution', {
+        spanId: ctx.spanId,
+        queryLength: ctx.query.length,
         currentStatus: this.state.status,
       });
 
@@ -225,15 +253,14 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
         }
 
         // Check if this is a confirmation response
-        if (hasToolConfirmation(query) && isAwaitingConfirmation(this.state)) {
-          return this.processConfirmation(query);
+        if (hasToolConfirmation(ctx.query) && isAwaitingConfirmation(this.state)) {
+          return await this.processConfirmation(ctx, ctx.query);
         }
 
         // Check if we're waiting for confirmation
         if (isAwaitingConfirmation(this.state)) {
           const pending = getPendingConfirmations(this.state);
-          return AgentMixin.createResult(
-            true,
+          return createSuccessResultFn(
             formatMultipleConfirmations(pending),
             Date.now() - startTime,
             { nextAction: 'await_confirmation' }
@@ -241,54 +268,56 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
         }
 
         // Process new query through LLM
-        return this.processQuery(query, context, traceId);
+        return await this.processQuery(ctx, startTime);
       } catch (error) {
         const durationMs = Date.now() - startTime;
-        AgentMixin.logError('HITLAgent', 'Handle failed', error, {
-          traceId,
+        const normalizedError = normalizeError(error);
+        logger.error('[HITLAgent] Handle failed', {
+          spanId: ctx.spanId,
           durationMs,
+          error: normalizedError instanceof Error ? normalizedError.message : normalizedError,
         });
-        return AgentMixin.createErrorResult(error, durationMs);
+        return createErrorResultFn(normalizedError, durationMs);
       }
     }
 
     /**
      * Process a new query through the LLM
      *
-     * Uses conversation history from context.conversationHistory (passed by parent agent)
-     * instead of maintaining local state. This enables centralized state management.
+     * Uses conversation history from ctx.conversationHistory (passed by parent agent).
+     * Sets provider via setProvider() before calling LLM.
+     * Leverages BaseAgent.chat() for provider communication.
+     *
+     * @param ctx - ExecutionContext with query and conversation history
+     * @param startTime - Start time for duration calculation
+     * @returns AgentResult with confirmation request or final response
      */
-    private async processQuery(
-      query: string,
-      context: AgentContext,
-      traceId: string
-    ): Promise<AgentResult> {
-      const startTime = Date.now();
+    private async processQuery(ctx: ExecutionContext, startTime: number): Promise<AgentResult> {
       const env = (this as unknown as { env: TEnv }).env;
 
       try {
-        // Pass context for platformConfig credentials
-        const provider = config.createProvider(env, context);
+        // Create and set provider for this execution
+        const provider = config.createProvider(env);
+        this.setProvider(provider);
 
         // Use conversation history from context (passed by parent agent)
-        const conversationHistory = context.conversationHistory ?? [];
+        const conversationHistory = ctx.conversationHistory ?? [];
 
-        // Add user message
-        const userMessage: Message = { role: 'user', content: query };
-        const trimmedHistory = AgentMixin.trimHistory(conversationHistory, maxHistory);
+        // Trim history to max length and add current query
+        const trimmedHistory = conversationHistory.slice(
+          Math.max(0, conversationHistory.length - maxHistory)
+        );
+        const userMessage: Message = { role: 'user', content: ctx.query };
         const updatedMessages = [...trimmedHistory, userMessage];
 
         // Build messages for LLM
-        const llmMessages = [
+        const llmMessages: Message[] = [
           { role: 'system' as const, content: config.systemPrompt },
-          ...updatedMessages.map((m) => ({
-            role: m.role as 'user' | 'assistant' | 'system',
-            content: m.content,
-          })),
+          ...updatedMessages,
         ];
 
-        // Call LLM
-        const response = await provider.chat(llmMessages);
+        // Call LLM using BaseAgent.chat()
+        const response = await this.chat(ctx, llmMessages);
 
         // Check if response contains tool calls that need confirmation
         const toolCalls = this.extractToolCalls(response.content);
@@ -301,7 +330,7 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
           if (needsConfirmation.length > 0) {
             // Create confirmations and transition state
-            return this.requestConfirmations(needsConfirmation, traceId, updatedMessages);
+            return this.requestConfirmations(ctx, needsConfirmation, updatedMessages);
           }
         }
 
@@ -315,19 +344,29 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
         this.setState({
           ...this.state,
-          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
-          lastActivityAt: Date.now(),
+          sessionId: this.state.sessionId || ctx.chatId?.toString() || ctx.traceId,
+          updatedAt: Date.now(),
+        });
+
+        logger.debug('[HITLAgent] Query processed without confirmation needed', {
+          spanId: ctx.spanId,
+          responseLength: response.content.length,
         });
 
         // Return result with new messages for parent to save
-        return AgentMixin.createResult(true, response.content, Date.now() - startTime, {
+        return createSuccessResultFn(response.content, Date.now() - startTime, {
           data: {
             newMessages,
           },
           nextAction: 'complete',
         });
       } catch (error) {
-        return AgentMixin.createErrorResult(error, Date.now() - startTime);
+        const normalizedError = normalizeError(error);
+        logger.error('[HITLAgent] processQuery failed', {
+          spanId: ctx.spanId,
+          error: normalizedError instanceof Error ? normalizedError.message : normalizedError,
+        });
+        return createErrorResultFn(normalizedError, Date.now() - startTime);
       }
     }
 
@@ -393,12 +432,20 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
     /**
      * Request confirmations for tool calls
+     *
+     * Creates confirmation prompts and transitions state machine.
+     * Sends confirmation message to user via BaseAgent.respond().
+     *
+     * @param ctx - ExecutionContext for message sending
+     * @param toolCalls - Tool calls requiring confirmation
+     * @param messages - Conversation messages to include in result
+     * @returns AgentResult with nextAction: 'await_confirmation'
      */
-    private requestConfirmations(
+    private async requestConfirmations(
+      ctx: ExecutionContext,
       toolCalls: ExtractedToolCall[],
-      traceId: string,
       messages: Message[]
-    ): AgentResult {
+    ): Promise<AgentResult> {
       const startTime = Date.now();
 
       // Create confirmation requests
@@ -418,22 +465,26 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
       this.setState({
         ...this.state,
         ...baseState,
-        sessionId: this.state.sessionId || traceId,
+        sessionId: this.state.sessionId || ctx.traceId,
         pendingToolCalls: toolCalls,
+        updatedAt: Date.now(),
       });
 
-      AgentMixin.log('HITLAgent', 'Requesting confirmations', {
-        traceId,
+      logger.debug('[HITLAgent] Requesting confirmations', {
+        spanId: ctx.spanId,
         count: confirmations.length,
         tools: confirmations.map((c) => c.toolName),
       });
 
       const response = formatMultipleConfirmations(confirmations);
 
-      // Extract user and assistant messages to return for parent to save
+      // Send confirmation message to user via BaseAgent.respond()
+      await this.respond(ctx, response);
+
+      // Extract messages to return for parent to save
       const newMessages = messages.slice(-2);
 
-      return AgentMixin.createResult(true, response, Date.now() - startTime, {
+      return createSuccessResultFn(response, Date.now() - startTime, {
         data: {
           newMessages,
         },
@@ -443,8 +494,16 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
     /**
      * Process user confirmation response
+     *
+     * Parses user's approval/rejection response and transitions state.
+     * Executes approved tools or returns cancellation message.
+     * Uses BaseAgent.updateThinking() to show status.
+     *
+     * @param ctx - ExecutionContext for status updates
+     * @param response - User's confirmation response
+     * @returns AgentResult indicating next action
      */
-    async processConfirmation(response: string): Promise<AgentResult> {
+    async processConfirmation(ctx: ExecutionContext, response: string): Promise<AgentResult> {
       const startTime = Date.now();
 
       const parseResult = parseConfirmationResponse(response);
@@ -452,15 +511,15 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
       if (!parseResult.isConfirmation) {
         // Not a valid confirmation - ask again
         const pending = getPendingConfirmations(this.state);
-        return AgentMixin.createResult(
-          true,
-          `I didn't understand that. ${formatMultipleConfirmations(pending)}`,
-          Date.now() - startTime,
-          { nextAction: 'await_confirmation' }
-        );
+        const message = `I didn't understand that. ${formatMultipleConfirmations(pending)}`;
+        await this.respond(ctx, message);
+        return createSuccessResultFn(message, Date.now() - startTime, {
+          nextAction: 'await_confirmation',
+        });
       }
 
-      AgentMixin.log('HITLAgent', 'Processing confirmation', {
+      logger.debug('[HITLAgent] Processing confirmation', {
+        spanId: ctx.spanId,
         action: parseResult.action,
         targetId: parseResult.targetConfirmationId,
       });
@@ -484,11 +543,13 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
         this.setState({
           ...this.state,
           ...baseState,
+          updatedAt: Date.now(),
         });
 
         // Execute approved tools
-        return this.executeApproved();
+        return await this.executeApproved(ctx, startTime);
       }
+
       if (parseResult.action === 'reject') {
         // Reject all pending or specific one
         let baseState: HITLState = this.state;
@@ -508,34 +569,44 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
           ...this.state,
           ...baseState,
           pendingToolCalls: [],
+          updatedAt: Date.now(),
         });
 
-        return AgentMixin.createResult(
-          true,
-          '❌ Tool execution cancelled.',
-          Date.now() - startTime,
-          { nextAction: 'complete' }
-        );
+        const message = '❌ Tool execution cancelled.';
+        await this.respond(ctx, message);
+
+        return createSuccessResultFn(message, Date.now() - startTime, {
+          nextAction: 'complete',
+        });
       }
 
-      // Shouldn't reach here
-      return AgentMixin.createResult(
-        true,
-        formatMultipleConfirmations(pending),
-        Date.now() - startTime,
-        { nextAction: 'await_confirmation' }
-      );
+      // Shouldn't reach here - log as warning
+      const pending2 = getPendingConfirmations(this.state);
+      const message = formatMultipleConfirmations(pending2);
+      await this.respond(ctx, message);
+
+      return createSuccessResultFn(message, Date.now() - startTime, {
+        nextAction: 'await_confirmation',
+      });
     }
 
     /**
      * Execute approved tools
+     *
+     * Runs all approved tool confirmations and tracks execution results.
+     * Updates thinking status via BaseAgent.updateThinking().
+     *
+     * @param ctx - ExecutionContext for status updates
+     * @param startTime - Start time for duration calculation
+     * @returns AgentResult with execution results
      */
-    private async executeApproved(): Promise<AgentResult> {
-      const startTime = Date.now();
+    private async executeApproved(ctx: ExecutionContext, startTime: number): Promise<AgentResult> {
       const approved = getApprovedConfirmations(this.state);
 
       if (approved.length === 0) {
-        return AgentMixin.createResult(true, 'No tools to execute.', Date.now() - startTime, {
+        const message = 'No tools to execute.';
+        await this.respond(ctx, message);
+        return createSuccessResultFn(message, Date.now() - startTime, {
           nextAction: 'complete',
         });
       }
@@ -550,14 +621,19 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
           };
         });
 
-      AgentMixin.log('HITLAgent', 'Executing approved tools', {
+      logger.debug('[HITLAgent] Executing approved tools', {
+        spanId: ctx.spanId,
         count: approved.length,
         tools: approved.map((c) => c.toolName),
       });
 
+      // Show status to user
+      await this.updateThinking(ctx, `Executing ${approved.length} tool(s)`);
+
       // Execute tools
       const result = await executeApprovedTools(approved, executor, {}, (entry, index, total) => {
-        AgentMixin.log('HITLAgent', 'Tool execution progress', {
+        logger.debug('[HITLAgent] Tool execution progress', {
+          spanId: ctx.spanId,
           toolName: entry.toolName,
           success: entry.success,
           index: index + 1,
@@ -573,6 +649,7 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
         this.setState({
           ...this.state,
           ...baseState,
+          updatedAt: Date.now(),
         });
       });
 
@@ -580,11 +657,13 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
       this.setState({
         ...this.state,
         pendingToolCalls: [],
+        updatedAt: Date.now(),
       });
 
       const responseText = formatExecutionResults(result);
+      await this.respond(ctx, responseText);
 
-      return AgentMixin.createResult(true, responseText, Date.now() - startTime, {
+      return createSuccessResultFn(responseText, Date.now() - startTime, {
         data: result,
         nextAction: 'complete',
       });
@@ -592,6 +671,8 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
     /**
      * Handle expired confirmations
+     *
+     * Removes confirmations that exceeded their timeout window.
      */
     private handleExpiredConfirmations(): void {
       const expiredIds = getExpiredConfirmationIds(this.state);
@@ -607,22 +688,27 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
       this.setState({
         ...this.state,
         ...baseState,
+        updatedAt: Date.now(),
       });
 
-      AgentMixin.log('HITLAgent', 'Expired confirmations handled', {
+      logger.debug('[HITLAgent] Expired confirmations handled', {
         count: expiredIds.length,
       });
     }
 
     /**
      * Get number of pending confirmations
+     *
+     * @returns Count of confirmations awaiting user action
      */
     getPendingCount(): number {
       return getPendingConfirmations(this.state).length;
     }
 
     /**
-     * Get current status
+     * Get current agent status
+     *
+     * @returns Current status (e.g., 'idle', 'awaiting_confirmation')
      */
     getStatus(): string {
       return this.state.status;
@@ -630,7 +716,11 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
 
     /**
      * Clear conversation history
-     * @deprecated This agent is stateless for messages. No-op.
+     *
+     * No-op since this agent is stateless for messages.
+     * Conversation history is managed by the parent CloudflareAgent.
+     *
+     * @deprecated Use parent agent's history management instead
      */
     clearHistory(): void {
       // No-op - history is managed by parent agent
@@ -638,7 +728,7 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
     }
   };
 
-  return AgentClass as HITLAgentClass<TEnv>;
+  return AgentClass as unknown as HITLAgentClass<TEnv>;
 }
 
 /**

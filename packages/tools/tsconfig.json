@@ -1,14 +1,17 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "rootDir": "./src",
     "outDir": "./dist",
     "noEmit": false,
     "allowImportingTsExtensions": false,
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "paths": {}
+    "baseUrl": ".",
+    "paths": {
+      "@duyetbot/types": ["../../packages/types/src"],
+      "@duyetbot/types/*": ["../../packages/types/src/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]

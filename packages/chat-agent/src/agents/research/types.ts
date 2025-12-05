@@ -7,6 +7,7 @@
  */
 
 import { z } from 'zod';
+import type { BaseState } from '../../base/base-types.js';
 import type { EffortEstimate } from '../../config/effort-config.js';
 
 /**
@@ -221,21 +222,20 @@ export interface DelegationContext {
 
 /**
  * Lead researcher state
+ *
+ * Extends BaseState for consistent Durable Object state management.
+ * Tracks current and historical research operations.
  */
-export interface LeadResearcherState {
-  /** Session identifier */
+export interface LeadResearcherState extends BaseState {
+  /** Session identifier for grouping related research operations */
   sessionId: string;
-  /** Current research plan */
+  /** Current research plan (if in progress) */
   currentPlan: ResearchPlan | undefined;
-  /** History of completed research */
+  /** History of completed research operations */
   researchHistory: Array<{
     planId: string;
     query: string;
     summary: ResearchResult['summary'];
     timestamp: number;
   }>;
-  /** Creation timestamp */
-  createdAt: number;
-  /** Last update timestamp */
-  updatedAt: number;
 }

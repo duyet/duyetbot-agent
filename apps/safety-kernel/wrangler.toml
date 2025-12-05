@@ -1,0 +1,69 @@
+# =============================================================================
+# SAFETY KERNEL - Immutable Guardian for @duyetbot
+# =============================================================================
+# This worker is the "immune system" - it monitors the main bot and can:
+# 1. Roll back bad deployments automatically
+# 2. Detect when the bot stops responding (dead man's switch)
+# 3. Provide admin escape hatch for manual recovery
+#
+# CRITICAL: This worker should be deployed BEFORE the main bot workers
+# and changes to this file should require manual approval (branch protection)
+# =============================================================================
+
+name = "duyetbot-safety-kernel"
+main = "src/index.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+ENVIRONMENT = "production"
+# Health check configuration
+HEALTH_CHECK_TIMEOUT_MS = "5000"
+# Dead man's switch configuration
+HEARTBEAT_THRESHOLD_MS = "600000"  # 10 minutes
+# Rollback window after deployment
+ROLLBACK_WINDOW_MS = "300000"  # 5 minutes
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1
+
+[placement]
+mode = "smart"
+
+# =============================================================================
+# CRON TRIGGERS
+# =============================================================================
+# These run independently of the main bot - even if the bot is down,
+# the safety kernel continues to monitor and can trigger recovery
+
+[triggers]
+# Health check: Run every minute to verify bot is responsive
+crons = ["* * * * *"]
+
+# =============================================================================
+# KV NAMESPACE
+# =============================================================================
+# Stores heartbeat timestamps and deployment metadata
+# The main bot writes to this KV, safety kernel reads from it
+
+[[kv_namespaces]]
+binding = "HEARTBEAT_KV"
+id = "f86303f7fa3a45dd986c0c6bf835c8e1"
+
+# =============================================================================
+# SECRETS (set via `wrangler secret put`)
+# =============================================================================
+# ADMIN_OVERRIDE_TOKEN - Token for manual rollback bypass
+# CF_API_TOKEN - Cloudflare API token for deployments API
+# CF_ACCOUNT_ID - Cloudflare account ID for API calls
+# TELEGRAM_BOT_TOKEN - For sending recovery notifications
+# TELEGRAM_ADMIN_CHAT_ID - Chat ID to send alerts to

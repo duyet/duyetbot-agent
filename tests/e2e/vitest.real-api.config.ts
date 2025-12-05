@@ -1,4 +1,3 @@
-import { resolve } from 'node:path';
 import { defineConfig } from 'vitest/config';
 
 // Base configuration extends the existing vitest.config.ts
@@ -23,7 +22,7 @@ export default defineConfig({
       MODEL: process.env.MODEL || 'x-ai/grok-4.1-fast',
       ROUTER_DEBUG: process.env.ROUTER_DEBUG || 'false',
     },
+    // Add test name pattern to distinguish from regular E2E tests
+    testNamePattern: '\\[real-api\\]',
   },
-  // Add test name pattern to distinguish from regular E2E tests
-  testNamePattern: '\\[real-api\\]',
 });

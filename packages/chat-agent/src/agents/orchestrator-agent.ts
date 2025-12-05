@@ -6,15 +6,17 @@
  * 2. Executing: Running steps in parallel where possible
  * 3. Aggregating: Combining results into unified response
  *
- * This agent is STATELESS for conversation history - history is passed via
- * AgentContext.conversationHistory from the parent agent (CloudflareAgent).
- * This enables centralized state management where only the parent stores history.
+ * Extends BaseAgent to provide standardized agent interface with ExecutionContext
+ * for message handling, LLM communication, and execution tracing.
  *
  * Based on Cloudflare's Orchestrator-Workers pattern:
  * https://developers.cloudflare.com/agents/patterns/orchestrator-workers/
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { BaseAgent } from '../base/base-agent.js';
+import type { BaseState } from '../base/base-types.js';
+import type { ExecutionContext } from '../execution/index.js';
 import { agentRegistry } from './registry.js';
 
 // =============================================================================
@@ -64,6 +66,8 @@ agentRegistry.register({
 });
 
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
+import type { AgentResult, BaseEnv, WorkerInfo } from '../base/base-types.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
 import {
   type AggregationResult,
   type AggregatorConfig,
@@ -78,23 +82,16 @@ import {
   type WorkerDispatcher,
 } from '../orchestration/index.js';
 import type { ExecutionPlan, WorkerResult } from '../routing/schemas.js';
-import type { LLMProvider } from '../types.js';
 import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
-import {
-  type AgentContext,
-  type AgentDebugInfo,
-  AgentMixin,
-  type AgentResult,
-} from './base-agent.js';
 
 /**
  * Orchestrator agent state
  *
- * NOTE: This agent is intentionally stateless for conversation history.
- * Conversation history is passed via AgentContext.conversationHistory from the parent agent.
- * This enables centralized state management where only the parent (CloudflareAgent) stores history.
+ * Extends BaseState to include orchestration-specific state.
+ * Conversation history is managed via ExecutionContext.conversationHistory,
+ * enabling centralized state management where only the parent (CloudflareAgent) stores history.
  */
-export interface OrchestratorAgentState {
+export interface OrchestratorState extends BaseState {
   /** Session identifier */
   sessionId: string;
   /** Current execution plan */
@@ -109,16 +106,12 @@ export interface OrchestratorAgentState {
     totalDurationMs: number;
     timestamp: number;
   }>;
-  /** Creation timestamp */
-  createdAt: number;
-  /** Last update timestamp */
-  updatedAt: number;
 }
 
 /**
  * Environment bindings for orchestrator agent
  */
-export interface OrchestratorAgentEnv {
+export interface OrchestratorEnv extends BaseEnv {
   /** LLM provider configuration */
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
@@ -126,18 +119,18 @@ export interface OrchestratorAgentEnv {
   OPENROUTER_API_KEY?: string;
 
   /** Worker agent bindings */
-  CodeWorker?: AgentNamespace<Agent<OrchestratorAgentEnv, unknown>>;
-  ResearchWorker?: AgentNamespace<Agent<OrchestratorAgentEnv, unknown>>;
-  GitHubWorker?: AgentNamespace<Agent<OrchestratorAgentEnv, unknown>>;
-  GeneralWorker?: AgentNamespace<Agent<OrchestratorAgentEnv, unknown>>;
+  CodeWorker?: AgentNamespace<Agent<OrchestratorEnv, unknown>>;
+  ResearchWorker?: AgentNamespace<Agent<OrchestratorEnv, unknown>>;
+  GitHubWorker?: AgentNamespace<Agent<OrchestratorEnv, unknown>>;
+  GeneralWorker?: AgentNamespace<Agent<OrchestratorEnv, unknown>>;
 }
 
 /**
  * Configuration for orchestrator agent
  */
-export interface OrchestratorAgentConfig<TEnv extends OrchestratorAgentEnv> {
-  /** Function to create LLM provider from env and optional context */
-  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
+export interface OrchestratorConfig<TEnv extends OrchestratorEnv> {
+  /** Function to create agent provider from env */
+  createProvider: (env: TEnv) => AgentProvider;
   /** Maximum steps per plan */
   maxSteps?: number;
   /** Maximum parallel executions */
@@ -157,8 +150,8 @@ export interface OrchestratorAgentConfig<TEnv extends OrchestratorAgentEnv> {
 /**
  * Methods exposed by OrchestratorAgent
  */
-export interface OrchestratorAgentMethods {
-  orchestrate(query: string, context: AgentContext): Promise<AgentResult>;
+export interface OrchestratorMethods {
+  orchestrate(ctx: ExecutionContext): Promise<AgentResult>;
   getCurrentPlan(): ExecutionPlan | undefined;
   getStats(): {
     totalOrchestrated: number;
@@ -172,13 +165,13 @@ export interface OrchestratorAgentMethods {
 /**
  * Type for OrchestratorAgent class
  */
-export type OrchestratorAgentClass<TEnv extends OrchestratorAgentEnv> = typeof Agent<
+export type OrchestratorAgentClass<TEnv extends OrchestratorEnv> = typeof BaseAgent<
   TEnv,
-  OrchestratorAgentState
+  OrchestratorState
 > & {
   new (
-    ...args: ConstructorParameters<typeof Agent<TEnv, OrchestratorAgentState>>
-  ): Agent<TEnv, OrchestratorAgentState> & OrchestratorAgentMethods;
+    ...args: ConstructorParameters<typeof BaseAgent<TEnv, OrchestratorState>>
+  ): BaseAgent<TEnv, OrchestratorState> & OrchestratorMethods;
 };
 
 /**
@@ -193,8 +186,8 @@ export type OrchestratorAgentClass<TEnv extends OrchestratorAgentEnv> = typeof A
  * });
  * ```
  */
-export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
-  config: OrchestratorAgentConfig<TEnv>
+export function createOrchestratorAgent<TEnv extends OrchestratorEnv>(
+  config: OrchestratorConfig<TEnv>
 ): OrchestratorAgentClass<TEnv> {
   const maxSteps = config.maxSteps ?? 10;
   const maxParallel = config.maxParallel ?? 3;
@@ -204,8 +197,8 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
   const maxHistory = config.maxHistory ?? 50;
   const debug = config.debug ?? false;
 
-  const AgentClass = class OrchestratorAgent extends Agent<TEnv, OrchestratorAgentState> {
-    override initialState: OrchestratorAgentState = {
+  const AgentClass = class OrchestratorAgent extends BaseAgent<TEnv, OrchestratorState> {
+    override initialState: OrchestratorState = {
       sessionId: '',
       currentPlan: undefined,
       orchestrationHistory: [],
@@ -216,7 +209,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
     /**
      * Handle state updates
      */
-    override onStateUpdate(state: OrchestratorAgentState, source: 'server' | Connection): void {
+    override onStateUpdate(state: OrchestratorState, source: 'server' | Connection): void {
       if (debug) {
         logger.info('[OrchestratorAgent] State updated', {
           source,
@@ -228,20 +221,30 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 
     /**
      * Main orchestration entry point
+     *
+     * Manages the full orchestration workflow:
+     * 1. Plan task decomposition using LLM
+     * 2. Execute steps in parallel
+     * 3. Aggregate results with LLM or quick aggregation
+     *
+     * @param ctx - ExecutionContext containing query and conversation history
+     * @returns AgentResult with orchestration response and metadata
      */
-    async orchestrate(query: string, context: AgentContext): Promise<AgentResult> {
+    async orchestrate(ctx: ExecutionContext): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
 
-      AgentMixin.log('OrchestratorAgent', 'Starting orchestration', {
-        traceId,
-        queryLength: query.length,
+      logger.info('[OrchestratorAgent] Starting orchestration', {
+        spanId: ctx.spanId,
+        queryLength: ctx.query.length,
       });
 
       try {
         const env = (this as unknown as { env: TEnv }).env;
-        // Pass context for platformConfig credentials
-        const provider = config.createProvider(env, context);
+        const provider = config.createProvider(env);
+        this.setProvider(provider);
+
+        // Update UI: show thinking status
+        await this.updateThinking(ctx, 'Planning task decomposition');
 
         // Step 1: Create execution plan
         const plannerConfig: PlannerConfig = {
@@ -252,37 +255,45 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 
         const planningContext = {
           availableWorkers: this.getAvailableWorkers(env),
-          ...(context.platform ? { platform: String(context.platform) } : {}),
+          ...(ctx.platform ? { platform: String(ctx.platform) } : {}),
         };
-        const plan = await createPlan(query, plannerConfig, planningContext);
+
+        const plan = await createPlan(ctx.query, plannerConfig, planningContext);
 
         // Validate plan
         const validation = validatePlanDependencies(plan);
         if (!validation.valid) {
-          AgentMixin.logError('OrchestratorAgent', 'Invalid plan', validation.errors);
-          return AgentMixin.createErrorResult(
-            new Error(`Invalid plan: ${validation.errors.join(', ')}`),
-            Date.now() - startTime
-          );
+          logger.error('[OrchestratorAgent] Invalid plan', {
+            spanId: ctx.spanId,
+            errors: validation.errors,
+          });
+          return {
+            success: false,
+            error: `Invalid plan: ${validation.errors.join(', ')}`,
+            durationMs: Date.now() - startTime,
+          };
         }
 
         // Update state with current plan
         this.setState({
           ...this.state,
           currentPlan: plan,
-          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
+          sessionId: this.state.sessionId || ctx.chatId?.toString() || ctx.traceId,
           updatedAt: Date.now(),
         });
 
-        AgentMixin.log('OrchestratorAgent', 'Plan created', {
-          traceId,
+        logger.info('[OrchestratorAgent] Plan created', {
+          spanId: ctx.spanId,
           taskId: plan.taskId,
           stepCount: plan.steps.length,
           complexity: plan.estimatedComplexity,
         });
 
+        // Update UI: show execution status
+        await this.updateThinking(ctx, `Executing ${plan.steps.length} steps`);
+
         // Step 2: Execute plan
-        const dispatcher = this.createDispatcher(env, traceId);
+        const dispatcher = this.createDispatcher(env, ctx);
         const executorConfig: ExecutorConfig = {
           dispatcher,
           maxParallel,
@@ -291,7 +302,13 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
           debug,
         };
 
-        const executionResult = await executePlan(plan, { ...context, traceId }, executorConfig);
+        const executionResult = await executePlan(plan, ctx, executorConfig);
+
+        // Track orchestration execution
+        this.recordExecution(ctx, 'orchestrator-agent', Date.now() - startTime);
+
+        // Update UI: show aggregation status
+        await this.updateThinking(ctx, 'Synthesizing results');
 
         // Step 3: Aggregate results
         let aggregationResult: AggregationResult;
@@ -310,8 +327,8 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
         // Update history
         this.updateHistory(plan, executionResult, durationMs);
 
-        AgentMixin.log('OrchestratorAgent', 'Orchestration completed', {
-          traceId,
+        logger.info('[OrchestratorAgent] Orchestration completed', {
+          spanId: ctx.spanId,
           taskId: plan.taskId,
           durationMs,
           successCount: executionResult.successfulSteps.length,
@@ -319,34 +336,29 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
         });
 
         // Build worker debug info from execution results
-        // Maps stepId -> workerType and includes timing
-        const workerDebugInfo: AgentDebugInfo['workers'] = plan.steps
+        const workers: WorkerInfo[] = plan.steps
           .filter((step) => executionResult.results.has(step.id))
           .map((step) => {
             const result = executionResult.results.get(step.id);
-            // Build worker info object, only including durationMs if defined
-            // to satisfy exactOptionalPropertyTypes
-            const workerInfo: {
-              name: string;
-              durationMs?: number;
-              status: 'completed' | 'error';
-            } = {
+            const workerInfo: WorkerInfo = {
               name: `${step.workerType}-worker`,
-              status: result?.success ? 'completed' : 'error',
+              status: result?.success ? 'success' : 'failed',
+              durationMs: result?.durationMs ?? 0,
             };
-            if (result?.durationMs !== undefined) {
-              workerInfo.durationMs = result.durationMs;
+            if (result?.error) {
+              workerInfo.error = result.error;
             }
             return workerInfo;
           });
 
-        // Build result extras with optional debug property
-        // Use spread to avoid assigning undefined with exactOptionalPropertyTypes
-        const resultExtras: Partial<AgentResult> = {
+        // Build result with orchestration data
+        const result: AgentResult = {
+          success: true,
+          content: aggregationResult.response,
+          durationMs,
           data: {
-            // Return new messages so parent can append to its state
             newMessages: [
-              { role: 'user' as const, content: query },
+              { role: 'user' as const, content: ctx.query },
               {
                 role: 'assistant' as const,
                 content: aggregationResult.response,
@@ -367,20 +379,24 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
           nextAction: executionResult.allSucceeded ? 'complete' : 'continue',
         };
 
-        // Only add debug info if there are workers
-        if (workerDebugInfo && workerDebugInfo.length > 0) {
-          resultExtras.debug = { workers: workerDebugInfo };
+        // Add worker debug info if available
+        if (workers.length > 0) {
+          result.debug = { workers };
         }
 
-        // Return result with new messages for parent to save
-        return AgentMixin.createResult(true, aggregationResult.response, durationMs, resultExtras);
+        return result;
       } catch (error) {
         const durationMs = Date.now() - startTime;
-        AgentMixin.logError('OrchestratorAgent', 'Orchestration failed', error, {
-          traceId,
+        logger.error('[OrchestratorAgent] Orchestration failed', {
+          spanId: ctx.spanId,
           durationMs,
+          error: error instanceof Error ? error.message : String(error),
         });
-        return AgentMixin.createErrorResult(error, durationMs);
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs,
+        };
       }
     }
 
@@ -405,8 +421,12 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 
     /**
      * Create a dispatcher for executing steps
+     *
+     * @param env - Environment bindings
+     * @param ctx - ExecutionContext for tracing and worker coordination
+     * @returns WorkerDispatcher function for executing individual steps
      */
-    private createDispatcher(env: TEnv, traceId: string): WorkerDispatcher {
+    private createDispatcher(env: TEnv, ctx: ExecutionContext): WorkerDispatcher {
       return async (workerType: WorkerType, input: WorkerInput): Promise<WorkerResult> => {
         const startTime = Date.now();
 
@@ -420,7 +440,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
           }
 
           // Get worker instance
-          const workerId = `${traceId}_${input.step.id}`;
+          const workerId = `${ctx.traceId}_${input.step.id}`;
           const worker = await getAgentByName(workerNamespace, workerId);
 
           // Execute step
@@ -614,6 +634,6 @@ export function createOrchestratorAgent<TEnv extends OrchestratorAgentEnv>(
 /**
  * Type for orchestrator agent instance
  */
-export type OrchestratorAgentInstance<TEnv extends OrchestratorAgentEnv> = InstanceType<
+export type OrchestratorAgentInstance<TEnv extends OrchestratorEnv> = InstanceType<
   ReturnType<typeof createOrchestratorAgent<TEnv>>
 >;

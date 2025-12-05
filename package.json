@@ -11,6 +11,11 @@
   ],
   "scripts": {
     "build": "turbo run build",
+    "build:safety-kernel": "turbo run build --filter=@duyetbot/safety-kernel",
+    "build:shared-agents": "turbo run build --filter=@duyetbot/shared-agents",
+    "build:telegram": "turbo run build --filter=@duyetbot/telegram-bot...",
+    "build:github": "turbo run build --filter=@duyetbot/github-bot...",
+    "build:memory-mcp": "turbo run build --filter=@duyetbot/memory-mcp...",
     "dev": "turbo run dev",
     "test": "turbo run test",
     "test:watch": "turbo run test:watch",
@@ -20,18 +25,23 @@
     "format": "biome format --write .",
     "check": "biome check --write . && turbo run type-check",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
-    "prepare-hooks": "bash scripts/install-hooks.sh",
-    "prepare": "bash scripts/install-hooks.sh || true",
     "deploy": "turbo run deploy config",
+    "deploy:safety-kernel": "turbo run deploy config --filter=@duyetbot/safety-kernel",
     "deploy:shared-agents": "turbo run deploy config --filter=@duyetbot/shared-agents",
     "deploy:telegram": "turbo run deploy config --filter=@duyetbot/telegram-bot...",
     "deploy:github": "turbo run deploy config --filter=@duyetbot/github-bot...",
     "deploy:memory-mcp": "bun run --filter @duyetbot/memory-mcp deploy && bun run config:memory-mcp",
+    "deploy:shared-agents:branch": "turbo run deploy:branch config --filter=@duyetbot/shared-agents",
+    "deploy:telegram:branch": "turbo run deploy:branch config --filter=@duyetbot/telegram-bot...",
+    "deploy:github:branch": "turbo run deploy:branch config --filter=@duyetbot/github-bot...",
+    "deploy:memory-mcp:branch": "bun run --filter @duyetbot/memory-mcp deploy:branch && bun run config:memory-mcp",
+    "deploy:safety-kernel:branch": "turbo run deploy:branch config --filter=@duyetbot/safety-kernel",
     "config": "concurrently 'bun run config:telegram' 'bun run config:github' 'bun run config:shared-agents'",
     "config:telegram": "bun scripts/config.ts telegram",
     "config:github": "bun scripts/config.ts github",
     "config:shared-agents": "bun scripts/config.ts agents",
     "config:memory-mcp": "bun scripts/config.ts memory",
+    "config:safety-kernel": "bun scripts/config.ts safety-kernel",
     "config:show": "bun scripts/config.ts show"
   },
   "keywords": [
@@ -47,9 +57,12 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "^2.1.2",
+    "@vitest/coverage-v8": "^2.1.8",
     "concurrently": "^9.2.1",
+    "depcheck": "^1.4.7",
     "turbo": "^2.0.0",
-    "wrangler": "^4.51.0"
+    "vitest": "catalog:",
+    "wrangler": "^4.53.0"
   },
   "packageManager": "bun@1.3.3",
   "trustedDependencies": [
@@ -59,13 +72,16 @@
     "workerd"
   ],
   "catalog": {
+    "@modelcontextprotocol/sdk": "^1.24.2",
     "@types/node": "^22.10.0",
     "@types/react": "^19.0.0",
     "agents": "^0.2.24",
     "hono": "^4.10.6",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
-    "wrangler": "^4.50.0"
+    "wrangler": "^4.50.0",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.5"
   },
   "dependencies": {
     "@openrouter/sdk": "^0.1.27"

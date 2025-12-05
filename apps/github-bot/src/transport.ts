@@ -6,6 +6,7 @@
 
 import type { DebugContext, ParsedInput, Transport } from '@duyetbot/chat-agent';
 import { Octokit } from '@octokit/rest';
+import { prepareMessageWithDebug } from './debug-footer.js';
 import { logger } from './logger.js';
 
 /**
@@ -89,11 +90,14 @@ export interface GitHubContext {
  */
 export const githubTransport: Transport<GitHubContext> = {
   send: async (ctx, text) => {
+    // Apply debug footer for admin users
+    const finalText = prepareMessageWithDebug(text, ctx);
+
     logger.debug('[TRANSPORT] Creating comment', {
       owner: ctx.owner,
       repo: ctx.repo,
       issueNumber: ctx.issueNumber,
-      textLength: text.length,
+      textLength: finalText.length,
     });
 
     const octokit = new Octokit({ auth: ctx.githubToken });
@@ -101,7 +105,7 @@ export const githubTransport: Transport<GitHubContext> = {
       owner: ctx.owner,
       repo: ctx.repo,
       issue_number: ctx.issueNumber,
-      body: text,
+      body: finalText,
     });
 
     logger.debug('[TRANSPORT] Comment created', {
@@ -115,11 +119,14 @@ export const githubTransport: Transport<GitHubContext> = {
   },
 
   edit: async (ctx, ref, text) => {
+    // Apply debug footer for admin users
+    const finalText = prepareMessageWithDebug(text, ctx);
+
     logger.debug('[TRANSPORT] Editing comment', {
       owner: ctx.owner,
       repo: ctx.repo,
       commentId: ref,
-      textLength: text.length,
+      textLength: finalText.length,
     });
 
     const octokit = new Octokit({ auth: ctx.githubToken });
@@ -127,7 +134,7 @@ export const githubTransport: Transport<GitHubContext> = {
       owner: ctx.owner,
       repo: ctx.repo,
       comment_id: ref as number,
-      body: text,
+      body: finalText,
     });
 
     logger.debug('[TRANSPORT] Comment edited', {

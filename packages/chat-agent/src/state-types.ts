@@ -1,11 +1,17 @@
 /**
  * State Management DO Types
  *
+ * DEPRECATED: This module is part of the legacy architecture.
+ * Legacy implementation kept for backward compatibility with cloudflare-agent.ts and state-do.ts.
+ *
  * Type definitions for the centralized State DO that provides:
  * - Session tracking across all chat agents
  * - Execution traces for observability
  * - Watchdog recovery for stuck batches
  * - Aggregated metrics
+ *
+ * Observability in the new architecture is handled through ExecutionContext (src/execution/context.ts)
+ * and DebugAccumulator instead of a centralized State DO.
  */
 
 /**

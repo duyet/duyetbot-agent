@@ -6,7 +6,7 @@
  *
  * Note: This uses wrangler.test.toml which only includes local TelegramAgent DO.
  * External DOs (RouterAgent, SimpleAgent, etc.) are not available in test mode
- * as they require the duyetbot-agents worker to be running.
+ * as they require the duyetbot-shared-agents worker to be running.
  */
 
 declare module 'cloudflare:test' {

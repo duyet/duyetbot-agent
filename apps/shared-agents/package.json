@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:branch": "wrangler versions upload --message=\"Branch deploy: $(git branch --show-current)\" --tag=$(git branch --show-current)",
     "config": "bun ../../scripts/config.ts agents",
     "test": "vitest run --passWithNoTests",
     "type-check": "tsc --noEmit"

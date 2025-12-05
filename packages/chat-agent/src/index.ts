@@ -7,6 +7,8 @@
 // Core agent
 export { ChatAgent } from './agent.js';
 // Batch types (alarm-based processing)
+// DEPRECATED: Legacy module for backward compatibility with cloudflare-agent.ts
+// Use ExecutionContext and AgentProvider from './execution/' for new implementations.
 export {
   type BatchConfig,
   type BatchState,
@@ -14,14 +16,22 @@ export {
   calculateRetryDelay,
   combineBatchMessages,
   createInitialBatchState,
+  createInitialEnhancedBatchState,
   DEFAULT_BATCH_CONFIG,
   DEFAULT_RETRY_CONFIG,
+  type EnhancedBatchState,
   isDuplicateMessage,
+  type MessageStage,
   type PendingMessage,
   type RetryConfig,
+  type RetryError,
+  type StageTransition,
   shouldProcessImmediately,
 } from './batch-types.js';
 // Cloudflare Durable Object wrapper
+// DEPRECATED: Legacy module for backward compatibility during migration to new agent architecture
+// Use createChatAgent() from './agents/chat-agent.js' for new implementations.
+// MCPServerConnection is still exported for use by mcp-worker but will be refactored separately.
 export {
   type CloudflareAgentConfig,
   type CloudflareAgentState,
@@ -40,6 +50,7 @@ export {
   formatDebugFooter,
   formatDebugFooterMarkdownV2,
   formatProgressiveDebugFooter,
+  smartEscapeMarkdownV2,
 } from './debug-footer.js';
 // Factory
 export { createAgent } from './factory.js';
@@ -57,6 +68,7 @@ export {
   getExtendedThinkingMessages,
   getRandomThinkingMessage,
   type ProgressConfig,
+  type QuotedContext,
   type ThinkingRotator,
   type ThinkingRotatorConfig,
   type ToolExecution,
@@ -106,7 +118,6 @@ export type {
 export type {
   AgentState,
   ChatAgentConfig,
-  ChatOptions,
   DebugContext,
   LLMMessage,
   LLMProvider,
@@ -160,11 +171,11 @@ export {
   type HITLAgentState,
   isAgent,
   type OrchestratorAgentClass,
-  type OrchestratorAgentConfig,
-  type OrchestratorAgentEnv,
   type OrchestratorAgentInstance,
-  type OrchestratorAgentMethods,
-  type OrchestratorAgentState,
+  type OrchestratorConfig,
+  type OrchestratorEnv,
+  type OrchestratorMethods,
+  type OrchestratorState,
   type PlatformConfig,
   type RouterAgentClass,
   type RouterAgentConfig,
@@ -176,10 +187,30 @@ export {
   type SimpleAgentConfig,
   type SimpleAgentEnv,
   type SimpleAgentInstance,
-  type SimpleAgentMethods,
   type SimpleAgentState,
   type TelegramPlatformConfig,
 } from './agents/index.js';
+// Execution Context
+export {
+  type AgentProvider,
+  type AgentSpan,
+  addDebugError,
+  addDebugWarning,
+  type ChatOptions,
+  createDebugAccumulator,
+  createProviderContext,
+  createSpanId,
+  createTraceId,
+  type DebugAccumulator,
+  type DebugToolCall,
+  type ExecutionContext,
+  type ExtendedAgentProvider,
+  type ParsedInputOptions,
+  type Platform,
+  type ProviderExecutionContext,
+  recordAgentSpan,
+  recordToolCall,
+} from './execution/index.js';
 // Feature Flags
 export {
   type FeatureFlagEnv,
@@ -274,7 +305,7 @@ export {
   type WorkerResult,
   WorkerResultSchema,
 } from './routing/index.js';
-// Workers (Base, Code, Research, GitHub)
+// Workers (Base, Code, Research, GitHub, SubAgent Protocol)
 export {
   type BaseWorkerConfig,
   type BaseWorkerEnv,
@@ -284,8 +315,11 @@ export {
   type CodeWorkerEnv,
   createBaseWorker,
   createCodeWorker,
+  createContextGatheringStep,
   createGitHubWorker,
   createResearchWorker,
+  createSubAgentWorkerAdapter,
+  defaultWorkerRegistry,
   detectCodeTaskType,
   detectGitHubTaskType,
   detectResearchTaskType,
@@ -293,14 +327,22 @@ export {
   type GitHubTaskType,
   type GitHubWorkerConfig,
   type GitHubWorkerEnv,
+  type HealthCheckResult,
   isSuccessfulResult,
   type ResearchTaskType,
   type ResearchWorkerConfig,
   type ResearchWorkerEnv,
+  type SubAgentCapability,
+  type SubAgentMetadata,
+  type SubAgentWorker,
+  type SubAgentWorkerResult,
   summarizeResults,
+  validateReplanningRequest,
   type WorkerClass,
   type WorkerInput,
   type WorkerMethods,
+  WorkerRegistry,
+  type WorkerRegistryEntry,
   type WorkerType,
 } from './workers/index.js';
 
@@ -309,9 +351,13 @@ export {
 // =============================================================================
 
 // State DO
+// DEPRECATED: Legacy observability module during migration to ExecutionContext-based design
+// Use createDebugAccumulator() and ExecutionContext from './execution/' for new implementations.
 export { StateDO, type StateDOEnv } from './agents/state-do.js';
 
 // State types
+// DEPRECATED: Legacy types for backward compatibility with cloudflare-agent.ts and state-do.ts
+// Use ExecutionContext, DebugAccumulator, and AgentSpan from './execution/' for new implementations.
 export {
   type AgentMetrics,
   type AggregatedMetrics,
@@ -324,7 +370,7 @@ export {
   type LogTraceParams,
   MAX_TRACES,
   type MarkDelegatedParams,
-  type Platform,
+  type Platform as StatePlatform,
   type RecoveryResult,
   type RegisterBatchParams,
   type ResponseTarget,
@@ -335,3 +381,93 @@ export {
   type TrackedBatchStatus,
   WATCHDOG_INTERVAL_SECONDS,
 } from './state-types.js';
+
+// =============================================================================
+// Safety Kernel Integration
+// =============================================================================
+
+// Heartbeat emission for dead man's switch
+export {
+  createHeartbeatEmitter,
+  emitHeartbeat,
+  emitHeartbeatHttp,
+  HEARTBEAT_KEYS,
+  type HeartbeatData,
+  type HeartbeatEnv,
+  type HeartbeatMetadata,
+} from './safety/index.js';
+
+// =============================================================================
+// Agentic Scheduler (Phase 2)
+// =============================================================================
+
+// Scheduler types
+export type {
+  ActivityPatterns,
+  EnergyBudget,
+  EnergyCost,
+  ScheduledTask,
+  SchedulerConfig,
+  SchedulerState,
+  TaskExecutionResult,
+  TaskSource,
+  TaskType,
+} from './scheduler/index.js';
+
+// Scheduler DO and utilities
+export {
+  // Queue management
+  addTask,
+  // Energy management
+  calculateEffectiveEnergyCost,
+  // Proactive research
+  calculateRelevance,
+  calculateUrgency,
+  canAffordTask,
+  // Scheduler client (for apps to schedule tasks)
+  cancelTask,
+  cleanupStaleTasks,
+  // State initialization
+  createInitialEnergyBudget,
+  createInitialSchedulerState,
+  DEFAULT_ACTIVITY_PATTERNS,
+  DEFAULT_ENERGY_COSTS,
+  DEFAULT_PRIORITY_WEIGHTS,
+  DEFAULT_RESEARCH_SOURCES,
+  DEFAULT_SCHEDULER_CONFIG,
+  DEFAULT_TASTE_FILTER,
+  deductEnergy,
+  ENERGY_CONSTANTS,
+  executeResearchTask,
+  fetchHackerNewsStories,
+  findTasksByType,
+  formatResearchDigest,
+  getEnergyBreakdown,
+  getEnergyPercentage,
+  getQueueStats,
+  getReadyTasks,
+  getSchedulerStatus,
+  getSchedulerStub,
+  processHackerNewsStories,
+  QUEUE_CONSTANTS,
+  type ResearchFinding,
+  type ResearchResult,
+  type ResearchSource,
+  type ResearchTaskPayload,
+  regenerateEnergy,
+  removeTask,
+  // Scheduler DO
+  SchedulerDO,
+  type SchedulerDOContext,
+  type SchedulerDOEnv,
+  type SchedulerStatus,
+  type ScheduleTaskOptions,
+  scheduleMaintenance,
+  scheduleNotification,
+  scheduleResearch,
+  scheduleResearchTask,
+  scheduleTask,
+  type TasteFilter,
+  triggerSchedulerTick,
+  type WakeUpDecision,
+} from './scheduler/index.js';

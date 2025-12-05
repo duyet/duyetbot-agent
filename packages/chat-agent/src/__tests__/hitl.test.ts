@@ -81,7 +81,7 @@ describe('HITL State Machine', () => {
 
       expect(newState.status).toBe('awaiting_confirmation');
       expect(newState.pendingConfirmations).toHaveLength(1);
-      expect(newState.pendingConfirmations[0].id).toBe('confirm_123');
+      expect(newState.pendingConfirmations[0]!.id).toBe('confirm_123');
     });
 
     it('transitions to executing on USER_APPROVED when no more pending', () => {
@@ -98,7 +98,7 @@ describe('HITL State Machine', () => {
       });
 
       expect(state.status).toBe('executing');
-      expect(state.pendingConfirmations[0].status).toBe('approved');
+      expect(state.pendingConfirmations[0]!.status).toBe('approved');
     });
 
     it('stays in awaiting_confirmation if more pending after approval', () => {
@@ -139,8 +139,8 @@ describe('HITL State Machine', () => {
       });
 
       expect(state.status).toBe('idle');
-      expect(state.pendingConfirmations[0].status).toBe('rejected');
-      expect(state.pendingConfirmations[0].rejectionReason).toBe('Too dangerous');
+      expect(state.pendingConfirmations[0]!.status).toBe('rejected');
+      expect(state.pendingConfirmations[0]!.rejectionReason).toBe('Too dangerous');
     });
 
     it('handles CONFIRMATION_EXPIRED', () => {
@@ -155,7 +155,7 @@ describe('HITL State Machine', () => {
       });
 
       expect(state.status).toBe('idle');
-      expect(state.pendingConfirmations[0].status).toBe('expired');
+      expect(state.pendingConfirmations[0]!.status).toBe('expired');
     });
 
     it('handles EXECUTION_COMPLETED', () => {
@@ -252,7 +252,7 @@ describe('HITL State Machine', () => {
 
       const approved = getApprovedConfirmations(state);
       expect(approved).toHaveLength(1);
-      expect(approved[0].id).toBe('2');
+      expect(approved[0]!.id).toBe('2');
     });
 
     it('hasExpiredConfirmations detects expired', () => {

@@ -48,11 +48,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
   describe('HTML Parse Mode', () => {
     it('should handle basic HTML formatting', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'This is <b>bold</b> and <i>italic</i> text';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -75,11 +77,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle HTML code blocks', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'Here is some <code>console.log("hello")</code> code';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -100,11 +104,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle HTML links properly', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'Visit <a href="https://example.com">this link</a> for more info';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -125,11 +131,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should reject unsupported HTML tags gracefully', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'This has <script>alert("xss")</script> and <div>unsupported</div> tags';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -143,11 +151,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
   describe('MarkdownV2 Parse Mode', () => {
     it('should handle basic MarkdownV2 formatting', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'This is *bold* and _italic_ text';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);
@@ -170,11 +180,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle MarkdownV2 code blocks', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'Here is some ```javascript\nconst x = 1;\nconsole.log(x);\n``` code';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -195,11 +207,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should escape MarkdownV2 special characters', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'Special characters: _ * [ ] ( ) ~ ` > # + - = | { } . !';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -226,11 +240,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle MarkdownV2 links', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'Visit [this link](https://example.com) for more info';
       const update = createMockUpdate(message, { parseMode: 'MarkdownV2' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -253,7 +269,9 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
   describe('Parse Mode Fallback', () => {
     it('should fallback to plain text on parse errors', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       // Create a message with malformed formatting that might cause parse errors
       const message = parseModeTestConfig.fallbackTest;
@@ -282,7 +300,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
         }
       };
 
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -299,7 +317,9 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle parse mode switching', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       // First message with HTML
       const update1 = createMockUpdate('Send with *bold* HTML', {
@@ -340,11 +360,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
   describe('Complex Formatting Scenarios', () => {
     it('should handle mixed formatting types', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'Complex: *bold* with _italic_ and `code` and [a link](https://example.com)';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -365,11 +387,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle nested formatting', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = 'Nested: <b>Bold with <i>italic inside</i></b> and `code`';
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -390,7 +414,9 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle list formatting', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const message = `Shopping list:
 • First item
@@ -398,7 +424,7 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 • Third item with <a href="https://example.com">link</a>`;
 
       const update = createMockUpdate(message, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       const [response] = sentMessages;
@@ -421,12 +447,14 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
   describe('Message Length and Splitting', () => {
     it('should handle messages near Telegram limit', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       // Create a message that's close to 4096 character limit
       const longMessage = 'A'.repeat(4080); // ~4080 chars
       const update = createMockUpdate(longMessage, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -442,14 +470,16 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should preserve formatting across splits', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const longFormattedMessage =
         'This is a <b>very long message</b> with <i>formatting</i> throughout. '.repeat(200);
       const update = createMockUpdate(longFormattedMessage, {
         parseMode: 'HTML',
       });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(1); // Should be split
@@ -469,11 +499,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle malformed markup gracefully', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const malformedMessage = 'Broken HTML: <b>unclosed <i>mixed tags <code>';
       const update = createMockUpdate(malformedMessage, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -484,13 +516,15 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle very long code blocks', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
-      const longCodeBlock = '```python\n' + '# Large code example\n'.repeat(100) + '\n```';
+      const longCodeBlock = `\`\`\`python\n${'# Large code example\n'.repeat(100)}\n\`\`\``;
       const update = createMockUpdate(longCodeBlock, {
         parseMode: 'MarkdownV2',
       });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
@@ -502,11 +536,13 @@ describe('Telegram Bot - Parse Mode Validation', () => {
     });
 
     it('should handle Unicode and special characters', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!isRealAPITestingAvailable()) {
+        return;
+      }
 
       const unicodeMessage = 'Test with émojis 🎉 and Unicode: αβγδε и中文 العربية';
       const update = createMockUpdate(unicodeMessage, { parseMode: 'HTML' });
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
 
       const sentMessages = apiSpy.getSentMessages();
       expect(sentMessages).toHaveLength(1);

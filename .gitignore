@@ -8,6 +8,11 @@ dist/
 build/
 *.tsbuildinfo
 
+# Compiled TypeScript outputs
+**/src/**/*.js
+**/src/**/*.d.ts
+**/src/**/*.map
+
 # Cloudflare Workers
 .wrangler/
 .dev.vars
@@ -65,3 +70,7 @@ Thumbs.db
 packages/*/dist/
 .turbo/
 .turbo
+# Next.js
+.next/
+.source/
+*.timestamp-*

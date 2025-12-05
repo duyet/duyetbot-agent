@@ -44,6 +44,10 @@
       "dependsOn": ["build", "test"],
       "cache": false
     },
+    "deploy:branch": {
+      "dependsOn": ["build", "test"],
+      "cache": false
+    },
     "format": {
       "cache": false
     },
