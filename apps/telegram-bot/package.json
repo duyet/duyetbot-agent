@@ -30,6 +30,7 @@
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/providers": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "agents": "catalog:",
     "hono": "catalog:"

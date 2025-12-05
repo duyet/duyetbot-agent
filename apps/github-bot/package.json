@@ -20,6 +20,7 @@
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/providers": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
     "@octokit/rest": "^21.0.0",
     "agents": "catalog:",
     "hono": "catalog:"
