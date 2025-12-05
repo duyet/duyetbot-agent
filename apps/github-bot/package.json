@@ -8,6 +8,7 @@
     "build": "tsc",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:branch": "wrangler versions upload --message=\"Branch deploy: $(git branch --show-current)\" --tag=$(git branch --show-current)",
     "config": "bun ../../scripts/config.ts github",
     "start": "node dist/index.js",
     "test": "vitest run",

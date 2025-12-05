@@ -24,6 +24,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy": "bun scripts/deploy.ts",
+    "deploy:branch": "WRANGLER_COMMAND='versions upload' WRANGLER_ARGS='--message=\"Branch deploy: $(git branch --show-current)\" --tag=$(git branch --show-current)' bun scripts/deploy.ts",
     "deploy:staging": "wrangler deploy --env staging",
     "deploy:production": "wrangler deploy",
     "db:create": "wrangler d1 create duyetbot-memory",
