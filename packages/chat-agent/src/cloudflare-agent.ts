@@ -13,7 +13,12 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
-import { type D1Database, ObservabilityStorage } from '@duyetbot/observability';
+import {
+  type ChatMessageRole,
+  ChatMessageStorage,
+  type D1Database,
+  ObservabilityStorage,
+} from '@duyetbot/observability';
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
@@ -481,6 +486,118 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
+     * Persist current messages to D1 for cross-session history.
+     * Uses fire-and-forget pattern to avoid blocking main flow.
+     *
+     * @param eventId - Optional event ID for correlation
+     */
+    private persistMessages(eventId?: string): void {
+      const env = (this as unknown as { env: TEnv }).env as unknown as {
+        OBSERVABILITY_DB?: D1Database;
+      };
+
+      if (!env.OBSERVABILITY_DB) {
+        return;
+      }
+
+      // Build session ID from state (platform:userId:chatId)
+      const platform = routerConfig?.platform ?? 'api';
+      const userId = this.state.userId?.toString() ?? 'unknown';
+      const chatId = this.state.chatId?.toString() ?? 'unknown';
+      const sessionId = `${platform}:${userId}:${chatId}`;
+
+      const messages = this.state.messages;
+      if (messages.length === 0) {
+        return;
+      }
+
+      // Fire-and-forget: persist messages to D1
+      void (async () => {
+        try {
+          const storage = new ChatMessageStorage(env.OBSERVABILITY_DB!);
+
+          // Convert Message[] to ChatMessage format
+          const chatMessages = messages.map((msg) => ({
+            role: msg.role as ChatMessageRole,
+            content: msg.content,
+            timestamp: Date.now(),
+          }));
+
+          // Replace all messages (sync full state)
+          await storage.replaceMessages(sessionId, chatMessages, eventId);
+
+          logger.debug('[CloudflareAgent][PERSIST] Messages saved to D1', {
+            sessionId,
+            messageCount: messages.length,
+            eventId,
+          });
+        } catch (err) {
+          logger.warn('[CloudflareAgent][PERSIST] Failed to save messages', {
+            sessionId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      })();
+    }
+
+    /**
+     * Load messages from D1 for session recovery.
+     * Called on init if DO state is empty but D1 has history.
+     *
+     * @returns Number of messages loaded, or 0 if none found
+     */
+    private async loadMessagesFromD1(): Promise<number> {
+      const env = (this as unknown as { env: TEnv }).env as unknown as {
+        OBSERVABILITY_DB?: D1Database;
+      };
+
+      if (!env.OBSERVABILITY_DB) {
+        return 0;
+      }
+
+      // Build session ID from state
+      const platform = routerConfig?.platform ?? 'api';
+      const userId = this.state.userId?.toString() ?? 'unknown';
+      const chatId = this.state.chatId?.toString() ?? 'unknown';
+      const sessionId = `${platform}:${userId}:${chatId}`;
+
+      try {
+        const storage = new ChatMessageStorage(env.OBSERVABILITY_DB);
+
+        // Get recent messages (limited to maxHistory)
+        const maxHistory = config.maxHistory ?? 100;
+        const messages = await storage.getRecentMessages(sessionId, maxHistory);
+
+        if (messages.length === 0) {
+          return 0;
+        }
+
+        // Update state with loaded messages
+        this.setState({
+          ...this.state,
+          messages: messages.map((m) => ({
+            role: m.role as 'user' | 'assistant' | 'system',
+            content: m.content,
+          })),
+          updatedAt: Date.now(),
+        });
+
+        logger.info('[CloudflareAgent][LOAD] Restored messages from D1', {
+          sessionId,
+          messageCount: messages.length,
+        });
+
+        return messages.length;
+      } catch (err) {
+        logger.warn('[CloudflareAgent][LOAD] Failed to load messages from D1', {
+          sessionId,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return 0;
+      }
+    }
+
+    /**
      * Initialize MCP server connections with timeout
      * Uses the new addMcpServer() API (agents SDK v0.2.24+) which handles
      * registration, connection, and discovery in one call
@@ -562,6 +679,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Initialize agent with context (userId, chatId)
+     * Also attempts to restore messages from D1 if DO state is empty.
      */
     async init(userId?: string | number, chatId?: string | number): Promise<void> {
       const needsUpdate =
@@ -581,6 +699,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           newState.chatId = chatId;
         }
         this.setState(newState);
+
+        // If DO state has no messages, try to restore from D1
+        if (this.state.messages.length === 0) {
+          await this.loadMessagesFromD1();
+        }
       }
     }
 
@@ -815,6 +938,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         updatedAt: Date.now(),
       });
 
+      // Persist messages to D1 (fire-and-forget)
+      this.persistMessages();
+
       return assistantContent;
     }
 
@@ -822,11 +948,36 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Clear conversation history
      */
     async clearHistory(): Promise<string> {
+      // Get session ID before clearing for D1 cleanup
+      const platform = routerConfig?.platform ?? 'api';
+      const userId = this.state.userId?.toString() ?? 'unknown';
+      const chatId = this.state.chatId?.toString() ?? 'unknown';
+      const sessionId = `${platform}:${userId}:${chatId}`;
+
       this.setState({
         ...this.state,
         messages: [],
         updatedAt: Date.now(),
       });
+
+      // Clear D1 history too (fire-and-forget)
+      const env = (this as unknown as { env: TEnv }).env as unknown as {
+        OBSERVABILITY_DB?: D1Database;
+      };
+      if (env.OBSERVABILITY_DB) {
+        void (async () => {
+          try {
+            const storage = new ChatMessageStorage(env.OBSERVABILITY_DB!);
+            await storage.deleteSession(sessionId);
+            logger.debug('[CloudflareAgent][CLEAR] D1 messages cleared', { sessionId });
+          } catch (err) {
+            logger.warn('[CloudflareAgent][CLEAR] Failed to clear D1 messages', {
+              sessionId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        })();
+      }
 
       return 'Conversation history cleared.';
     }
