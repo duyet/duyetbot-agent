@@ -9,7 +9,9 @@ build/
 *.tsbuildinfo
 
 # Compiled TypeScript outputs
-src/**/*.{js,d.ts,map}
+**/src/**/*.js
+**/src/**/*.d.ts
+**/src/**/*.map
 
 # Cloudflare Workers
 .wrangler/
