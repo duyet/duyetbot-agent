@@ -144,6 +144,49 @@ export interface CategoryStat {
 }
 
 /**
+ * Chat message role types.
+ */
+export type ChatMessageRole = 'user' | 'assistant' | 'system' | 'tool';
+
+/**
+ * A single chat message stored in D1.
+ */
+export interface ChatMessage {
+  /** Auto-generated database ID */
+  id?: number;
+  /** Optional event ID for webhook correlation */
+  eventId?: string;
+  /** Session identifier (format: "platform:userId:chatId") */
+  sessionId: string;
+  /** Message sequence number (0-indexed) */
+  sequence: number;
+  /** Message role */
+  role: ChatMessageRole;
+  /** Message content */
+  content: string;
+  /** Input tokens used for this message */
+  inputTokens?: number;
+  /** Output tokens generated (for assistant messages) */
+  outputTokens?: number;
+  /** Timestamp when message was created */
+  timestamp: number;
+}
+
+/**
+ * Session statistics from chat_session_stats view.
+ */
+export interface ChatSessionStats {
+  sessionId: string;
+  messageCount: number;
+  userMessages: number;
+  assistantMessages: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  firstMessageAt: number;
+  lastMessageAt: number;
+}
+
+/**
  * Token counts structure used during accumulation.
  */
 export interface TokenCounts {
