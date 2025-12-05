@@ -14,9 +14,13 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import {
+  type AgentStep,
   type ChatMessageRole,
   ChatMessageStorage,
+  type Classification,
   type D1Database,
+  type DebugContext,
+  debugContextToAgentSteps,
   ObservabilityStorage,
 } from '@duyetbot/observability';
 import type { Tool, ToolInput } from '@duyetbot/types';
@@ -348,6 +352,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _processing = false;
     private _batchStartTime = 0; // Track batch start time for duration calculation
     private _lastResponse: string | undefined; // Capture response for observability
+    private _lastDebugContext: DebugContext | undefined; // Capture debug context for observability
 
     // ============================================
     // State DO Reporting (Fire-and-Forget)
@@ -425,21 +430,32 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
-     * Update observability event on batch completion (fire-and-forget)
+     * Upsert observability event on any lifecycle change (fire-and-forget).
      *
-     * Updates the D1 observability event that was created at webhook receipt.
-     * This records the actual agent execution result (success/error).
+     * Uses SQLite UPSERT for atomic insert-or-update. Called at multiple lifecycle points:
+     * - receiveMessage: Mark as 'processing' when agent receives message
+     * - handle: Update status during execution
+     * - batch completion: Final update with status, response, agents, tokens
      *
-     * @param eventIds - Event IDs (full UUIDs) from batch messages for D1 correlation
-     * @param completion - Completion data to update
+     * @param eventId - Full UUID for D1 correlation
+     * @param data - Partial event data to upsert
      */
-    private updateObservability(
-      eventIds: string[],
-      completion: {
-        status: 'success' | 'error';
-        durationMs: number;
+    private upsertObservability(
+      eventId: string,
+      data: {
+        status?: 'pending' | 'processing' | 'success' | 'error';
+        completedAt?: number;
+        durationMs?: number;
         responseText?: string;
+        errorType?: string;
         errorMessage?: string;
+        classification?: Classification;
+        agents?: AgentStep[];
+        inputTokens?: number;
+        outputTokens?: number;
+        totalTokens?: number;
+        cachedTokens?: number;
+        reasoningTokens?: number;
       }
     ): void {
       const env = (this as unknown as { env: TEnv }).env as unknown as {
@@ -451,37 +467,48 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
 
       const storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
+
+      void (async () => {
+        try {
+          await storage.upsertEvent({
+            eventId,
+            ...data,
+          });
+          logger.debug('[CloudflareAgent][OBSERVABILITY] Event upserted', {
+            eventId,
+            status: data.status,
+          });
+        } catch (err) {
+          logger.warn('[CloudflareAgent][OBSERVABILITY] Upsert failed', {
+            eventId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+        }
+      })();
+    }
+
+    /**
+     * Legacy method for batch updates - calls upsertObservability for each eventId.
+     * @deprecated Use upsertObservability directly for new code
+     */
+    private updateObservability(
+      eventIds: string[],
+      completion: {
+        status: 'success' | 'error';
+        durationMs: number;
+        responseText?: string;
+        errorMessage?: string;
+      }
+    ): void {
       const completedAt = Date.now();
-
-      // Fire-and-forget: update all events for this batch
       for (const eventId of eventIds) {
-        void (async () => {
-          try {
-            // Build completion object conditionally for exactOptionalPropertyTypes
-            const updateData: Parameters<typeof storage.updateEventCompletion>[1] = {
-              status: completion.status,
-              completedAt,
-              durationMs: completion.durationMs,
-            };
-            if (completion.responseText !== undefined) {
-              updateData.responseText = completion.responseText;
-            }
-            if (completion.errorMessage !== undefined) {
-              updateData.errorMessage = completion.errorMessage;
-            }
-
-            await storage.updateEventCompletion(eventId, updateData);
-            logger.debug('[CloudflareAgent][OBSERVABILITY] Event updated', {
-              eventId,
-              status: completion.status,
-            });
-          } catch (err) {
-            logger.warn('[CloudflareAgent][OBSERVABILITY] Update failed', {
-              eventId,
-              error: err instanceof Error ? err.message : String(err),
-            });
-          }
-        })();
+        this.upsertObservability(eventId, {
+          status: completion.status,
+          completedAt,
+          durationMs: completion.durationMs,
+          ...(completion.responseText !== undefined && { responseText: completion.responseText }),
+          ...(completion.errorMessage !== undefined && { errorMessage: completion.errorMessage }),
+        });
       }
     }
 
@@ -1649,6 +1676,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 platform: routerConfig?.platform || 'api',
                 ...(input.metadata && { data: input.metadata }),
                 ...(platformConfig && { platformConfig }),
+                ...(eventId && { eventId }),
               };
 
               logger.info('[CloudflareAgent][HANDLE] Routing enabled, calling RouterAgent', {
@@ -1739,12 +1767,53 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           await hooks.afterHandle(ctx, response);
         }
 
-        // Update observability for this event (fire-and-forget)
+        // Capture debug context for observability (used by batch completion too)
+        const debugContext = stepTracker?.getDebugContext();
+        this._lastDebugContext = debugContext;
+        this._lastResponse = response;
+
+        // Update observability for this event with full data (fire-and-forget)
         if (eventId) {
-          this.updateObservability([eventId], {
+          const completedAt = Date.now();
+          const durationMs = completedAt - handleStartTime;
+
+          // Extract classification and agents from debug context
+          let classification: Classification | undefined;
+          let agents: AgentStep[] | undefined;
+          let inputTokens = 0;
+          let outputTokens = 0;
+          let totalTokens = 0;
+
+          if (debugContext) {
+            if (debugContext.classification) {
+              classification = {
+                type: debugContext.classification.type ?? 'unknown',
+                category: debugContext.classification.category ?? 'unknown',
+                complexity: debugContext.classification.complexity ?? 'unknown',
+              };
+            }
+            agents = debugContextToAgentSteps(debugContext);
+
+            // Sum tokens from routing flow
+            for (const flow of debugContext.routingFlow) {
+              if (flow.tokenUsage) {
+                inputTokens += flow.tokenUsage.inputTokens ?? 0;
+                outputTokens += flow.tokenUsage.outputTokens ?? 0;
+              }
+            }
+            totalTokens = inputTokens + outputTokens;
+          }
+
+          this.upsertObservability(eventId, {
             status: 'success',
-            durationMs: Date.now() - handleStartTime,
+            completedAt,
+            durationMs,
             responseText: response,
+            ...(classification && { classification }),
+            ...(agents && agents.length > 0 && { agents }),
+            ...(inputTokens > 0 && { inputTokens }),
+            ...(outputTokens > 0 && { outputTokens }),
+            ...(totalTokens > 0 && { totalTokens }),
           });
         }
       } catch (error) {
@@ -2006,6 +2075,13 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Extract eventId from metadata for D1 observability correlation
       const eventId = input.metadata?.eventId as string | undefined;
 
+      // UPSERT: Mark event as 'processing' when agent receives message
+      if (eventId) {
+        this.upsertObservability(eventId, {
+          status: 'processing',
+        });
+      }
+
       const pendingMessage: PendingMessage<unknown> = {
         text: input.text,
         timestamp: now,
@@ -2243,23 +2319,59 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         };
         this.reportToStateDO('completeBatch', completeParams);
 
-        // Update observability: batch completed successfully
+        // Update observability: batch completed successfully with full data
         // Extract eventIds from pending messages (full UUIDs for D1 correlation)
         const eventIds = activeBatch.pendingMessages
           .map((m) => m.eventId)
           .filter((id): id is string => !!id);
         if (eventIds.length > 0) {
-          // Build completion object conditionally (exactOptionalPropertyTypes)
-          const completionData: Parameters<typeof this.updateObservability>[1] = {
-            status: 'success',
-            durationMs,
-          };
-          if (this._lastResponse !== undefined) {
-            completionData.responseText = this._lastResponse;
+          const completedAt = Date.now();
+
+          // Extract classification and agents from captured debug context
+          let classification: Classification | undefined;
+          let agents: AgentStep[] | undefined;
+          let inputTokens = 0;
+          let outputTokens = 0;
+          let totalTokens = 0;
+
+          if (this._lastDebugContext) {
+            if (this._lastDebugContext.classification) {
+              classification = {
+                type: this._lastDebugContext.classification.type ?? 'unknown',
+                category: this._lastDebugContext.classification.category ?? 'unknown',
+                complexity: this._lastDebugContext.classification.complexity ?? 'unknown',
+              };
+            }
+            agents = debugContextToAgentSteps(this._lastDebugContext);
+
+            // Sum tokens from routing flow
+            for (const flow of this._lastDebugContext.routingFlow) {
+              if (flow.tokenUsage) {
+                inputTokens += flow.tokenUsage.inputTokens ?? 0;
+                outputTokens += flow.tokenUsage.outputTokens ?? 0;
+              }
+            }
+            totalTokens = inputTokens + outputTokens;
           }
-          this.updateObservability(eventIds, completionData);
-          // Clear captured response after use
+
+          // Upsert each event with full data
+          for (const eventId of eventIds) {
+            this.upsertObservability(eventId, {
+              status: 'success',
+              completedAt,
+              durationMs,
+              ...(this._lastResponse !== undefined && { responseText: this._lastResponse }),
+              ...(classification && { classification }),
+              ...(agents && agents.length > 0 && { agents }),
+              ...(inputTokens > 0 && { inputTokens }),
+              ...(outputTokens > 0 && { outputTokens }),
+              ...(totalTokens > 0 && { totalTokens }),
+            });
+          }
+
+          // Clear captured data after use
           this._lastResponse = undefined;
+          this._lastDebugContext = undefined;
         } else if (activeBatch.pendingMessages.length > 0) {
           // Log warning if messages exist but no eventIds (indicates webhook didn't pass eventId)
           logger.warn('[CloudflareAgent][BATCH] No eventIds for observability update', {
@@ -2378,13 +2490,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               .map((m) => m.eventId)
               .filter((id): id is string => !!id);
             if (failedEventIds.length > 0) {
-              this.updateObservability(failedEventIds, {
-                status: 'error',
-                durationMs: failedDurationMs,
-                errorMessage: errorInfo.message,
-              });
+              const completedAt = Date.now();
+              for (const eventId of failedEventIds) {
+                this.upsertObservability(eventId, {
+                  status: 'error',
+                  completedAt,
+                  durationMs: failedDurationMs,
+                  errorMessage: errorInfo.message,
+                });
+              }
             }
           }
+
+          // Clear captured data on error
+          this._lastResponse = undefined;
+          this._lastDebugContext = undefined;
 
           // If pendingBatch has messages, schedule processing
           if (this.state.pendingBatch?.pendingMessages.length) {
@@ -2689,10 +2809,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           logger.info(
             '[CloudflareAgent][BATCH] Fire-and-forget scheduling failed, falling back to chat()'
           );
-          response = await this.chat(combinedText);
+          // Pass eventId from first batch message for D1 correlation
+          response = await this.chat(combinedText, undefined, undefined, firstMessage?.eventId);
         } else {
           // Routing disabled - use direct chat
-          response = await this.chat(combinedText);
+          // Pass eventId from first batch message for D1 correlation
+          response = await this.chat(combinedText, undefined, undefined, firstMessage?.eventId);
         }
 
         rotator.stop();

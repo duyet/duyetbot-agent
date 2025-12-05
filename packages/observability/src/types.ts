@@ -212,7 +212,8 @@ export interface TokenUsage {
  */
 export interface WorkerDebugInfo {
   name: string;
-  status: string;
+  /** Current execution status (optional to match chat-agent) */
+  status?: string;
   durationMs?: number;
   tokenUsage?: TokenUsage;
 }
@@ -238,7 +239,19 @@ export interface DebugContext {
     complexity?: string;
   };
   workers?: WorkerDebugInfo[];
-  metadata?: Record<string, unknown>;
+  /** Additional debug metadata (accepts any object type for flexibility) */
+  metadata?: {
+    fallback?: boolean;
+    originalError?: string;
+    cacheHits?: number;
+    cacheMisses?: number;
+    toolTimeouts?: number;
+    timedOutTools?: string[];
+    toolErrors?: number;
+    lastToolError?: string;
+    tokenUsage?: TokenUsage;
+    [key: string]: unknown;
+  };
 }
 
 /**

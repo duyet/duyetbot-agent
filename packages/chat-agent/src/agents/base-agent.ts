@@ -130,6 +130,8 @@ export interface AgentContext {
   parentAgentId?: string;
   /** Trace ID for distributed tracing */
   traceId?: string;
+  /** Event ID for D1 observability correlation (full UUID from webhook) */
+  eventId?: string;
   /**
    * Conversation history from parent agent.
    * Child agents should use this instead of maintaining their own messages[] state.
