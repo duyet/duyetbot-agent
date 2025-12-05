@@ -36,14 +36,14 @@ export {
   parseCommand,
   parseMention,
 } from './mention-parser.js';
-// Type exports
+// Type exports (from middlewares for webhook payload types)
 export type {
   GitHubComment,
   GitHubIssue,
   GitHubPullRequest,
   GitHubRepository,
   GitHubUser,
-} from './types.js';
+} from './middlewares/types.js';
 
 // Extend Env to include observability bindings
 type EnvWithObservability = Env & ObservabilityEnv;

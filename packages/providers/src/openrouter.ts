@@ -357,6 +357,8 @@ export function createOpenRouterProvider(
           return {
             content: choice?.content || '',
             ...(toolCalls?.length && { toolCalls }),
+            // Include model from response (for observability tracking)
+            ...(data.model && { model: data.model }),
             // Extract token usage from OpenAI-compatible response format
             ...(data.usage && {
               usage: {

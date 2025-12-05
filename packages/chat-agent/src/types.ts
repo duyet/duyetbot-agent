@@ -83,6 +83,8 @@ export interface LLMResponse {
   toolCalls?: ToolCall[];
   /** Token usage metrics */
   usage?: TokenUsage;
+  /** Model identifier used for the response */
+  model?: string;
 }
 
 /**
@@ -229,6 +231,8 @@ export interface DebugContext {
     status?: ExecutionStatus;
     /** Token usage for this routing step */
     tokenUsage?: TokenUsage;
+    /** Model used for this routing step (e.g., 'claude-3-5-sonnet-20241022') */
+    model?: string;
   }>;
   /** Router classification duration in milliseconds (separate from agent execution) */
   routerDurationMs?: number;

@@ -88,7 +88,9 @@ export class ChatMessageStorage {
     }>,
     eventId?: string
   ): Promise<number> {
-    if (messages.length === 0) return 0;
+    if (messages.length === 0) {
+      return 0;
+    }
 
     // Get current max sequence for this session
     const maxSeq = await this.db
@@ -260,7 +262,9 @@ export class ChatMessageStorage {
       .bind(sessionId)
       .first<SessionStatsRow>();
 
-    if (!result) return null;
+    if (!result) {
+      return null;
+    }
 
     return {
       sessionId: result.session_id,
