@@ -84,6 +84,8 @@ export interface ExecutionContext {
   spanId: string;
   /** Parent span ID for correlation with parent agent */
   parentSpanId?: string;
+  /** Event ID for D1 observability correlation (full UUID from webhook) */
+  eventId?: string;
 
   // Platform Origin
   /** Platform where message originated */
@@ -223,9 +225,11 @@ export function addDebugError(debug: DebugAccumulator, error: string): void {
 export function createExecutionContext(input: ParsedInput, platform?: string): ExecutionContext {
   const traceId = createTraceId();
   const spanId = createSpanId();
+  const eventId = input.metadata?.eventId as string | undefined;
   return {
     traceId,
     spanId,
+    ...(eventId && { eventId }),
     platform: (platform || 'api') as Platform,
     userId: input.userId,
     chatId: input.chatId,

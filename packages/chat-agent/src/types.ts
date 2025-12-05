@@ -165,6 +165,7 @@ export interface AgentState {
 
 /**
  * Debug metadata for agent execution
+ * Includes index signature for compatibility with observability package
  */
 export interface DebugMetadata {
   /** Whether response is a fallback due to error */
@@ -184,6 +185,8 @@ export interface DebugMetadata {
   lastToolError?: string;
   /** Aggregated token usage for entire request */
   tokenUsage?: TokenUsage;
+  /** Index signature for extensibility */
+  [key: string]: unknown;
 }
 
 /**
