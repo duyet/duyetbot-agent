@@ -870,9 +870,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Call LLM with tools if available
       let response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
 
-      // Track token usage from LLM response
+      // Track token usage and model from LLM response
       if (response.usage) {
         stepTracker?.addTokenUsage(response.usage);
+      }
+      if (response.model) {
+        stepTracker?.setModel(response.model);
       }
 
       // Handle tool calls (up to maxToolIterations)
@@ -996,9 +999,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Continue conversation with tool results
         response = await llmProvider.chat(toolMessages, hasTools ? tools : undefined);
 
-        // Track token usage from follow-up LLM calls
+        // Track token usage and model from follow-up LLM calls
         if (response.usage) {
           stepTracker?.addTokenUsage(response.usage);
+        }
+        if (response.model) {
+          stepTracker?.setModel(response.model);
         }
       }
 
@@ -1777,12 +1783,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           const completedAt = Date.now();
           const durationMs = completedAt - handleStartTime;
 
-          // Extract classification and agents from debug context
+          // Extract classification, agents, tokens, and model from debug context
           let classification: Classification | undefined;
           let agents: AgentStep[] | undefined;
           let inputTokens = 0;
           let outputTokens = 0;
           let totalTokens = 0;
+          let cachedTokens = 0;
+          let reasoningTokens = 0;
+          let model: string | undefined;
 
           if (debugContext) {
             if (debugContext.classification) {
@@ -1794,11 +1803,17 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             }
             agents = debugContextToAgentSteps(debugContext);
 
-            // Sum tokens from routing flow
+            // Sum tokens and extract model from routing flow
             for (const flow of debugContext.routingFlow) {
               if (flow.tokenUsage) {
                 inputTokens += flow.tokenUsage.inputTokens ?? 0;
                 outputTokens += flow.tokenUsage.outputTokens ?? 0;
+                cachedTokens += flow.tokenUsage.cachedTokens ?? 0;
+                reasoningTokens += flow.tokenUsage.reasoningTokens ?? 0;
+              }
+              // Prefer last agent's model (the one that generated the response)
+              if (flow.model) {
+                model = flow.model;
               }
             }
             totalTokens = inputTokens + outputTokens;
@@ -1814,6 +1829,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             ...(inputTokens > 0 && { inputTokens }),
             ...(outputTokens > 0 && { outputTokens }),
             ...(totalTokens > 0 && { totalTokens }),
+            ...(cachedTokens > 0 && { cachedTokens }),
+            ...(reasoningTokens > 0 && { reasoningTokens }),
+            ...(model && { model }),
           });
         }
       } catch (error) {
