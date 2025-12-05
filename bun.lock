@@ -45,8 +45,8 @@
         "@modelcontextprotocol/sdk": "catalog:",
         "agents": "catalog:",
         "hono": "catalog:",
-        "zod": "^3.23.8",
-        "zod-to-json-schema": "^3.24.5",
+        "zod": "catalog:",
+        "zod-to-json-schema": "catalog:",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20241127.0",
@@ -115,8 +115,8 @@
         "@duyetbot/observability": "workspace:*",
         "@duyetbot/prompts": "workspace:*",
         "@duyetbot/types": "workspace:*",
-        "zod": "^3.24.0",
-        "zod-to-json-schema": "^3.24.5",
+        "zod": "catalog:",
+        "zod-to-json-schema": "catalog:",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20241127.0",
@@ -184,7 +184,7 @@
         "@duyetbot/tools": "workspace:*",
         "@duyetbot/types": "workspace:*",
         "@modelcontextprotocol/sdk": "catalog:",
-        "zod": "^3.23.8",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@types/node": "catalog:",
@@ -243,7 +243,7 @@
       "dependencies": {
         "@duyetbot/types": "workspace:*",
         "@openrouter/sdk": "^0.1.27",
-        "zod": "^3.23.8",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20241127.0",
@@ -259,7 +259,7 @@
       "dependencies": {
         "@anthropic-ai/claude-agent-sdk": "^0.1.0",
         "@duyetbot/types": "workspace:*",
-        "zod": "^3.23.8",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "@types/node": "catalog:",
@@ -271,7 +271,7 @@
       "name": "@duyetbot/types",
       "version": "0.1.0",
       "dependencies": {
-        "zod": "^3.23.8",
+        "zod": "catalog:",
       },
       "devDependencies": {
         "typescript": "catalog:",
@@ -321,6 +321,8 @@
     "typescript": "^5.7.2",
     "vitest": "^2.1.8",
     "wrangler": "^4.50.0",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.24.5",
   },
   "packages": {
     "@ai-sdk/gateway": ["@ai-sdk/gateway@2.0.16", "", { "dependencies": { "@ai-sdk/provider": "2.0.0", "@ai-sdk/provider-utils": "3.0.17", "@vercel/oidc": "3.0.5" }, "peerDependencies": { "zod": "^3.25.76 || ^4.1.8" } }, "sha512-qiIaVs1w1XcNiFG6cjhOwolPuMFSvy6ZxDeLaPlEK/kSmNGfd+gUA2CTpBPWWT3qN6Zxfdrwq+ti4BfkdmLIJQ=="],

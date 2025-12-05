@@ -39,7 +39,7 @@
   "dependencies": {
     "@duyetbot/types": "workspace:*",
     "@openrouter/sdk": "^0.1.27",
-    "zod": "^3.23.8"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
