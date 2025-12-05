@@ -2747,6 +2747,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             ...(firstMessage?.chatId !== undefined && {
               chatId: firstMessage.chatId.toString(),
             }),
+            ...(batch.batchId && { traceId: batch.batchId }),
             ...(platformConfig && { platformConfig }),
           };
 

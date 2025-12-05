@@ -20,6 +20,7 @@ import {
   createSuccessResult,
 } from '../base/index.js';
 import type { AgentProvider, ExecutionContext } from '../execution/index.js';
+import { createDebugAccumulator } from '../execution/index.js';
 import { type ResponseTarget, sendPlatformResponse } from '../platform-response.js';
 import {
   type ClassificationContext,
@@ -30,6 +31,7 @@ import {
   type RouteTarget,
 } from '../routing/index.js';
 import type { DebugContext } from '../types.js';
+import type { AgentContext } from './base-agent.js';
 
 // Re-export ResponseTarget for consumers
 export type { ResponseTarget } from '../platform-response.js';
@@ -605,15 +607,37 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      * the request in its own alarm handler and sends the response directly
      * to the platform.
      *
-     * @param ctx - ExecutionContext with query, user info, and tracing
+     * Accepts AgentContext from CloudflareAgent and converts to ExecutionContext
+     * for internal routing.
+     *
+     * @param ctx - AgentContext with query, user info, and optional tracing
      * @param responseTarget - Where to send the response
      * @returns Promise with scheduled status and execution ID
      */
     async scheduleExecution(
-      ctx: ExecutionContext,
+      ctx: AgentContext,
       responseTarget: ResponseTarget
     ): Promise<{ scheduled: boolean; executionId: string }> {
-      const executionId = `exec_${ctx.traceId.slice(0, 8)}`;
+      const traceId = ctx.traceId || crypto.randomUUID();
+      const executionId = `exec_${traceId.slice(0, 8)}`;
+
+      // Convert AgentContext to ExecutionContext for internal routing
+      const executionContext: ExecutionContext = {
+        traceId,
+        spanId: `span_${crypto.randomUUID().slice(0, 8)}`,
+        query: ctx.query,
+        platform: (ctx.platform || 'api') as 'telegram' | 'github' | 'api',
+        userId: ctx.userId || 'unknown',
+        chatId: ctx.chatId || 'unknown',
+        ...(ctx.username && { username: ctx.username }),
+        userMessageId: responseTarget.chatId || 'unknown',
+        provider: 'claude',
+        model: 'claude-opus-4.5',
+        conversationHistory: ctx.conversationHistory || [],
+        debug: createDebugAccumulator(),
+        startedAt: Date.now(),
+        deadline: Date.now() + 30000, // 30s budget for RouterAgent
+      };
 
       // Store execution context in state
       const pendingExecutions = this.state.pendingExecutions || [];
@@ -624,7 +648,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           {
             executionId,
             query: ctx.query,
-            context: ctx,
+            context: executionContext,
             responseTarget,
             scheduledAt: Date.now(),
           },
