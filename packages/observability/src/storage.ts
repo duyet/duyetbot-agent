@@ -419,6 +419,14 @@ export class ObservabilityStorage {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(event_id) DO UPDATE SET
         request_id = COALESCE(excluded.request_id, request_id),
+        app_source = COALESCE(excluded.app_source, app_source),
+        event_type = COALESCE(excluded.event_type, event_type),
+        user_id = COALESCE(excluded.user_id, user_id),
+        username = COALESCE(excluded.username, username),
+        chat_id = COALESCE(excluded.chat_id, chat_id),
+        repo = COALESCE(excluded.repo, repo),
+        triggered_at = COALESCE(excluded.triggered_at, triggered_at),
+        input_text = COALESCE(excluded.input_text, input_text),
         status = COALESCE(excluded.status, status),
         completed_at = COALESCE(excluded.completed_at, completed_at),
         duration_ms = COALESCE(excluded.duration_ms, duration_ms),
