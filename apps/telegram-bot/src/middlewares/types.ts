@@ -31,9 +31,33 @@ export interface TelegramUpdate {
     chat: {
       /** Unique chat identifier */
       id: number;
+      /** Type of chat: private, group, supergroup, or channel */
+      type?: 'private' | 'group' | 'supergroup' | 'channel';
+      /** Title of the chat (for groups, supergroups, and channels) */
+      title?: string;
     };
     /** Message text content */
     text?: string;
+    /** Original message being replied to (for quoted messages) */
+    reply_to_message?: {
+      /** Unique message identifier of the quoted message */
+      message_id: number;
+      /** Sender of the quoted message */
+      from?: {
+        /** Unique user identifier */
+        id: number;
+        /** True if this user is a bot */
+        is_bot?: boolean;
+        /** Username without @ prefix */
+        username?: string;
+        /** User's first name */
+        first_name: string;
+      };
+      /** Text content of the quoted message */
+      text?: string;
+      /** Unix timestamp when the quoted message was sent */
+      date: number;
+    };
   };
 }
 
@@ -54,6 +78,28 @@ export interface WebhookContext {
   username?: string;
   /** Timestamp when processing started (for latency tracking) */
   startTime: number;
+  /** Message ID of the current message (for reply threading) */
+  messageId: number;
+  /** Message ID of the quoted message (when replying to a message) */
+  replyToMessageId?: number;
+  /** Text content of the quoted message */
+  quotedText?: string;
+  /** Username of the quoted message sender */
+  quotedUsername?: string;
+  /** Chat type: private, group, supergroup, or channel */
+  chatType: 'private' | 'group' | 'supergroup' | 'channel';
+  /** Title of the chat (for groups, supergroups, and channels) */
+  chatTitle?: string;
+  /** Whether this message is from a group or supergroup */
+  isGroupChat: boolean;
+  /** Whether the bot was mentioned in this message */
+  hasBotMention: boolean;
+  /** Whether this message is a reply to any message */
+  isReply: boolean;
+  /** Whether this message is a reply to the bot's message */
+  isReplyToBot: boolean;
+  /** Extracted task text (message with @mention removed, if present) */
+  task?: string;
 }
 
 /**
@@ -67,6 +113,8 @@ export interface Env {
   TELEGRAM_ALLOWED_USERS?: string;
   /** Telegram Bot API token */
   TELEGRAM_BOT_TOKEN: string;
+  /** Bot username for mention detection (without @, default: 'duyetbot') */
+  BOT_USERNAME?: string;
 }
 
 /**

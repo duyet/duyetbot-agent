@@ -10,6 +10,7 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { AgentMixin } from '../agents/base-agent.js';
+import type { AgentProvider } from '../execution/agent-provider.js';
 import type { ComplexityLevel, ExecutionPlan, PlanStep } from '../routing/schemas.js';
 import { ExecutionPlanSchema } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
@@ -18,8 +19,8 @@ import type { LLMProvider } from '../types.js';
  * Planner configuration
  */
 export interface PlannerConfig {
-  /** LLM provider for generating plans */
-  provider: LLMProvider;
+  /** LLM/Agent provider for generating plans */
+  provider: LLMProvider | AgentProvider;
   /** Maximum steps in a plan */
   maxSteps?: number;
   /** Enable detailed logging */

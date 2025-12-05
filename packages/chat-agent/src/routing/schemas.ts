@@ -195,5 +195,9 @@ export const WorkerResultSchema = z.object({
   durationMs: z.number(),
   /** Token usage */
   tokensUsed: z.number().optional(),
+  /** Whether the worker needs more context to proceed (triggers re-planning) */
+  needsMoreContext: z.boolean().optional(),
+  /** Suggested context information for re-planning */
+  contextSuggestion: z.string().optional(),
 });
 export type WorkerResult = z.infer<typeof WorkerResultSchema>;

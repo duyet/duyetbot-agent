@@ -12,7 +12,9 @@
       "@duyetbot/tools": ["packages/tools/src"],
       "@duyetbot/tools/*": ["packages/tools/src/*"],
       "@duyetbot/core": ["packages/core/src"],
-      "@duyetbot/core/*": ["packages/core/src/*"]
+      "@duyetbot/core/*": ["packages/core/src/*"],
+      "@duyetbot/hono-middleware": ["packages/hono-middleware/src"],
+      "@duyetbot/hono-middleware/*": ["packages/hono-middleware/src/*"]
     }
   },
   "include": ["packages/**/*", "apps/**/*", "tests/**/*"],

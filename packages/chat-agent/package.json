@@ -23,10 +23,11 @@
   },
   "dependencies": {
     "@duyetbot/hono-middleware": "workspace:*",
+    "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/types": "workspace:*",
-    "zod": "^3.24.0",
-    "zod-to-json-schema": "^3.24.5"
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
   },
   "peerDependencies": {
     "agents": ">=0.2.24"
@@ -37,6 +38,7 @@
     }
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
     "@duyetbot/config-vitest": "workspace:*",
     "agents": "catalog:",
     "typescript": "catalog:",

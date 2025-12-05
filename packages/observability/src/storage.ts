@@ -320,6 +320,166 @@ export class ObservabilityStorage {
   }
 
   /**
+   * Update an existing event with completion data.
+   *
+   * Used by agents to update events that were created at webhook receipt.
+   * This allows the actual agent execution results to be recorded.
+   *
+   * @param eventId - The event ID to update
+   * @param completion - Completion data including status, response, tokens, etc.
+   * @returns True if the event was updated, false if not found
+   */
+  async updateEventCompletion(
+    eventId: string,
+    completion: {
+      status: 'success' | 'error';
+      completedAt: number;
+      durationMs: number;
+      responseText?: string;
+      errorType?: string;
+      errorMessage?: string;
+      classification?: { type: string; category: string; complexity: string };
+      agents?: ObservabilityEvent['agents'];
+      inputTokens?: number;
+      outputTokens?: number;
+      totalTokens?: number;
+      cachedTokens?: number;
+      reasoningTokens?: number;
+    }
+  ): Promise<boolean> {
+    const stmt = this.db.prepare(`
+      UPDATE observability_events SET
+        status = ?,
+        completed_at = ?,
+        duration_ms = ?,
+        response_text = COALESCE(?, response_text),
+        error_type = COALESCE(?, error_type),
+        error_message = COALESCE(?, error_message),
+        classification_type = COALESCE(?, classification_type),
+        classification_category = COALESCE(?, classification_category),
+        classification_complexity = COALESCE(?, classification_complexity),
+        agents = COALESCE(?, agents),
+        input_tokens = COALESCE(?, input_tokens),
+        output_tokens = COALESCE(?, output_tokens),
+        total_tokens = COALESCE(?, total_tokens),
+        cached_tokens = COALESCE(?, cached_tokens),
+        reasoning_tokens = COALESCE(?, reasoning_tokens)
+      WHERE event_id = ?
+    `);
+
+    const result = await stmt
+      .bind(
+        completion.status,
+        completion.completedAt,
+        completion.durationMs,
+        completion.responseText ?? null,
+        completion.errorType ?? null,
+        completion.errorMessage ?? null,
+        completion.classification?.type ?? null,
+        completion.classification?.category ?? null,
+        completion.classification?.complexity ?? null,
+        completion.agents ? JSON.stringify(completion.agents) : null,
+        completion.inputTokens ?? null,
+        completion.outputTokens ?? null,
+        completion.totalTokens ?? null,
+        completion.cachedTokens ?? null,
+        completion.reasoningTokens ?? null,
+        eventId
+      )
+      .run();
+
+    return (result.meta?.changes ?? 0) > 0;
+  }
+
+  /**
+   * Upsert an observability event (INSERT or UPDATE if exists).
+   *
+   * Uses SQLite UPSERT syntax for atomic insert-or-update operations.
+   * This enables progressive updates throughout the request lifecycle:
+   * - Initial insert with status='pending' when webhook received
+   * - Update to status='processing' when agent starts
+   * - Update with classification data after routing
+   * - Update with agents array as execution progresses
+   * - Final update with completion status, tokens, and response
+   *
+   * @param event - Partial event data to upsert (eventId is required)
+   */
+  async upsertEvent(event: Partial<ObservabilityEvent> & { eventId: string }): Promise<void> {
+    const stmt = this.db.prepare(`
+      INSERT INTO observability_events (
+        event_id, request_id, app_source, event_type,
+        user_id, username, chat_id, repo,
+        triggered_at, completed_at, duration_ms,
+        status, error_type, error_message,
+        input_text, response_text,
+        classification_type, classification_category, classification_complexity,
+        agents,
+        input_tokens, output_tokens, total_tokens, cached_tokens, reasoning_tokens,
+        model, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(event_id) DO UPDATE SET
+        request_id = COALESCE(excluded.request_id, request_id),
+        app_source = COALESCE(excluded.app_source, app_source),
+        event_type = COALESCE(excluded.event_type, event_type),
+        user_id = COALESCE(excluded.user_id, user_id),
+        username = COALESCE(excluded.username, username),
+        chat_id = COALESCE(excluded.chat_id, chat_id),
+        repo = COALESCE(excluded.repo, repo),
+        triggered_at = COALESCE(excluded.triggered_at, triggered_at),
+        input_text = COALESCE(excluded.input_text, input_text),
+        status = COALESCE(excluded.status, status),
+        completed_at = COALESCE(excluded.completed_at, completed_at),
+        duration_ms = COALESCE(excluded.duration_ms, duration_ms),
+        response_text = COALESCE(excluded.response_text, response_text),
+        error_type = COALESCE(excluded.error_type, error_type),
+        error_message = COALESCE(excluded.error_message, error_message),
+        classification_type = COALESCE(excluded.classification_type, classification_type),
+        classification_category = COALESCE(excluded.classification_category, classification_category),
+        classification_complexity = COALESCE(excluded.classification_complexity, classification_complexity),
+        agents = COALESCE(excluded.agents, agents),
+        input_tokens = CASE WHEN excluded.input_tokens > 0 THEN excluded.input_tokens ELSE input_tokens END,
+        output_tokens = CASE WHEN excluded.output_tokens > 0 THEN excluded.output_tokens ELSE output_tokens END,
+        total_tokens = CASE WHEN excluded.total_tokens > 0 THEN excluded.total_tokens ELSE total_tokens END,
+        cached_tokens = CASE WHEN excluded.cached_tokens > 0 THEN excluded.cached_tokens ELSE cached_tokens END,
+        reasoning_tokens = CASE WHEN excluded.reasoning_tokens > 0 THEN excluded.reasoning_tokens ELSE reasoning_tokens END,
+        model = COALESCE(excluded.model, model),
+        metadata = COALESCE(excluded.metadata, metadata)
+    `);
+
+    await stmt
+      .bind(
+        event.eventId,
+        event.requestId ?? null,
+        event.appSource ?? 'telegram-webhook',
+        event.eventType ?? 'message',
+        event.userId ?? null,
+        event.username ?? null,
+        event.chatId ?? null,
+        event.repo ?? null,
+        event.triggeredAt ?? Date.now(),
+        event.completedAt ?? null,
+        event.durationMs ?? null,
+        event.status ?? 'pending',
+        event.errorType ?? null,
+        event.errorMessage ?? null,
+        event.inputText ?? null,
+        event.responseText ?? null,
+        event.classification?.type ?? null,
+        event.classification?.category ?? null,
+        event.classification?.complexity ?? null,
+        event.agents ? JSON.stringify(event.agents) : null,
+        event.inputTokens ?? 0,
+        event.outputTokens ?? 0,
+        event.totalTokens ?? 0,
+        event.cachedTokens ?? 0,
+        event.reasoningTokens ?? 0,
+        event.model ?? null,
+        event.metadata ? JSON.stringify(event.metadata) : null
+      )
+      .run();
+  }
+
+  /**
    * Convert a database row to an ObservabilityEvent.
    * Handles exactOptionalPropertyTypes by conditionally adding optional fields.
    */

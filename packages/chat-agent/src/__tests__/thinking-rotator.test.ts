@@ -36,13 +36,13 @@ describe('createThinkingRotator', () => {
     });
 
     // Advance time and flush promises for async callback
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B']);
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B', 'C']);
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B', 'C', 'A']);
 
     rotator.stop();
@@ -52,10 +52,12 @@ describe('createThinkingRotator', () => {
     const messages: string[] = [];
     const rotator = createThinkingRotator({
       messages: ['Only'],
+      random: false,
+      interval: 5000,
     });
 
     rotator.start((msg) => messages.push(msg));
-    await vi.advanceTimersByTimeAsync(10000);
+    await vi.advanceTimersByTime(10000);
 
     expect(messages).toEqual([]);
   });
@@ -66,12 +68,12 @@ describe('createThinkingRotator', () => {
       messages: ['A', 'B'],
       interval: 1000,
       random: false,
-    });
+    } satisfies Parameters<typeof createThinkingRotator>[0]);
 
     rotator.start((msg) => messages.push(msg));
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     rotator.stop();
-    await vi.advanceTimersByTimeAsync(5000);
+    await vi.advanceTimersByTime(5000);
 
     expect(messages).toEqual(['B']);
   });
@@ -87,14 +89,15 @@ describe('createThinkingRotator', () => {
     const rotator = createThinkingRotator({
       messages: ['A', 'B'],
       random: false,
+      interval: 5000,
     });
 
     rotator.start((msg) => messages.push(msg));
 
-    await vi.advanceTimersByTimeAsync(4999);
+    await vi.advanceTimersByTime(4999);
     expect(messages).toEqual([]);
 
-    await vi.advanceTimersByTimeAsync(1);
+    await vi.advanceTimersByTime(1);
     expect(messages).toEqual(['B']);
 
     rotator.stop();
@@ -106,12 +109,13 @@ describe('createThinkingRotator', () => {
       messages: ['A', 'B'],
       interval: 1000,
       random: false,
-    });
+    } satisfies Parameters<typeof createThinkingRotator>[0]);
 
-    rotator.start((msg) => messages.push(msg));
-    rotator.start((msg) => messages.push(msg)); // Should be ignored
+    const callback = (msg: string) => messages.push(msg);
+    rotator.start(callback);
+    rotator.start(callback); // Should be ignored
 
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['B']); // Only one message, not two
 
     rotator.stop();
@@ -149,12 +153,14 @@ describe('createThinkingRotator', () => {
       messages.push(msg);
     });
 
-    // First rotation: wait for interval + async callback
-    await vi.advanceTimersByTimeAsync(1100);
+    // First rotation: advance interval timer (1000ms) then async callback timer (100ms)
+    await vi.advanceTimersToNextTimerAsync(); // interval timer
+    await vi.advanceTimersToNextTimerAsync(); // async callback timer
     expect(messages).toEqual(['B']);
 
-    // Second rotation should only start after first completes
-    await vi.advanceTimersByTimeAsync(1100);
+    // Second rotation: advance interval timer (1000ms) then async callback timer (100ms)
+    await vi.advanceTimersToNextTimerAsync(); // interval timer
+    await vi.advanceTimersToNextTimerAsync(); // async callback timer
     expect(messages).toEqual(['B', 'C']);
 
     rotator.stop();
@@ -180,15 +186,86 @@ describe('createThinkingRotator', () => {
     });
 
     // First rotation should fail but continue
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(errorSpy).toHaveBeenCalledWith('[ROTATOR] Callback failed:', expect.any(Error));
 
     // Second rotation should succeed
-    await vi.advanceTimersByTimeAsync(1000);
+    await vi.advanceTimersByTime(1000);
     expect(messages).toEqual(['C']);
 
     rotator.stop();
     errorSpy.mockRestore();
+  });
+
+  it('should wait for in-flight callback with waitForPending', async () => {
+    const events: string[] = [];
+    const rotator = createThinkingRotator({
+      messages: ['A', 'B'],
+      interval: 1000,
+      random: false,
+    });
+
+    // Simulate async callback with delay (like network request)
+    rotator.start(async (msg) => {
+      events.push(`start:${msg}`);
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      events.push(`end:${msg}`);
+    });
+
+    // Trigger rotation
+    await vi.advanceTimersByTime(1000);
+    events.push('rotator:stop');
+    rotator.stop();
+
+    // At this point, callback is in-flight (started but not completed)
+    expect(events).toEqual(['start:B', 'rotator:stop']);
+
+    // waitForPending should block until callback completes
+    const waitPromise = rotator.waitForPending();
+    await vi.advanceTimersByTime(500); // Advance for the async callback's setTimeout
+    await waitPromise;
+
+    expect(events).toEqual(['start:B', 'rotator:stop', 'end:B']);
+  });
+
+  it('should resolve immediately if no pending callback', async () => {
+    const rotator = createThinkingRotator({
+      messages: ['A', 'B'],
+      interval: 1000,
+      random: false,
+    });
+
+    // Not started yet - should resolve immediately
+    await rotator.waitForPending();
+
+    rotator.start((_msg) => {
+      // Sync callback - no pending promise
+    });
+
+    // No rotation triggered yet
+    rotator.stop();
+    await rotator.waitForPending(); // Should resolve immediately
+  });
+
+  it('should not call onMessage if stopped before callback executes', async () => {
+    const messages: string[] = [];
+    const rotator = createThinkingRotator({
+      messages: ['A', 'B'],
+      interval: 1000,
+      random: false,
+    });
+
+    rotator.start((msg) => {
+      messages.push(msg);
+    });
+
+    // Stop before the timer fires
+    rotator.stop();
+
+    // Advance time - callback should not execute
+    await vi.advanceTimersByTime(2000);
+
+    expect(messages).toEqual([]);
   });
 });
 

@@ -7,12 +7,19 @@
  * 3. Spawning and coordinating subagents
  * 4. Synthesizing results with source attribution
  *
+ * Extends BaseAgent and uses ExecutionContext for improved tracing,
+ * context propagation, and multi-agent coordination.
+ *
  * Based on Anthropic's multi-agent research system architecture:
  * https://www.anthropic.com/engineering/multi-agent-research-system
  */
 
+import { randomUUID } from 'node:crypto';
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
+import { BaseAgent } from '../../base/base-agent.js';
+import type { BaseEnv } from '../../base/base-types.js';
+import type { ExecutionContext } from '../../execution/context.js';
 import { agentRegistry } from '../registry.js';
 
 // =============================================================================
@@ -65,6 +72,8 @@ agentRegistry.register({
   priority: 60, // Higher than duyet (50) to catch "latest news" queries
 });
 
+import type { AgentResult } from '../../base/base-types.js';
+import { createErrorResult, createSuccessResult } from '../../base/base-types.js';
 import {
   type EffortConfig,
   type EffortEstimate,
@@ -73,7 +82,6 @@ import {
 } from '../../config/effort-config.js';
 import type { QueryClassification } from '../../routing/schemas.js';
 import type { LLMProvider } from '../../types.js';
-import { type AgentContext, AgentMixin, type AgentResult } from '../base-agent.js';
 import {
   buildSubagentPrompt,
   formatDependencyContext,
@@ -99,8 +107,10 @@ import type {
 
 /**
  * Environment bindings for lead researcher agent
+ *
+ * Extends BaseEnv with additional LLM provider and subagent configuration.
  */
-export interface LeadResearcherEnv {
+export interface LeadResearcherEnv extends BaseEnv {
   /** LLM provider configuration */
   AI_GATEWAY_ACCOUNT_ID?: string;
   AI_GATEWAY_ID?: string;
@@ -132,18 +142,37 @@ export interface LeadResearcherConfig<TEnv extends LeadResearcherEnv> {
  * Methods exposed by LeadResearcherAgent
  */
 export interface LeadResearcherMethods {
-  research(
-    query: string,
-    context: AgentContext,
-    classification?: QueryClassification
-  ): Promise<AgentResult>;
+  /**
+   * Main research entry point
+   *
+   * @param ctx - ExecutionContext containing query and conversation history
+   * @param classification - Optional query classification for routing hints
+   * @returns AgentResult with research findings and metadata
+   */
+  research(ctx: ExecutionContext, classification?: QueryClassification): Promise<AgentResult>;
+
+  /**
+   * Get the current research plan (if one is in progress)
+   *
+   * @returns Current ResearchPlan or undefined if no plan is active
+   */
   getCurrentPlan(): ResearchPlan | undefined;
+
+  /**
+   * Get aggregate statistics from research history
+   *
+   * @returns Statistics including total researched, average subagent count, etc.
+   */
   getStats(): {
     totalResearched: number;
     avgSubagentCount: number;
     avgDurationMs: number;
     parallelEfficiency: number;
   };
+
+  /**
+   * Clear all research history
+   */
   clearHistory(): void;
 }
 
@@ -161,6 +190,9 @@ export type LeadResearcherAgentClass<TEnv extends LeadResearcherEnv> = typeof Ag
 
 /**
  * Create a Lead Researcher Agent class
+ *
+ * Creates a specialized agent that extends BaseAgent and coordinates multi-agent research
+ * operations using ExecutionContext for proper tracing and context propagation.
  */
 export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
   config: LeadResearcherConfig<TEnv>
@@ -168,7 +200,8 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
   const maxHistory = config.maxHistory ?? 50;
   const debug = config.debug ?? false;
 
-  const AgentClass = class LeadResearcherAgent extends Agent<TEnv, LeadResearcherState> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const AgentClass = class LeadResearcherAgent extends BaseAgent<TEnv, LeadResearcherState> {
     override initialState: LeadResearcherState = {
       sessionId: '',
       currentPlan: undefined,
@@ -189,22 +222,34 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
 
     /**
      * Main research entry point
+     *
+     * Conducts multi-agent research by:
+     * 1. Estimating query complexity and effort level
+     * 2. Creating a decomposed research plan
+     * 3. Executing subagent tasks in parallel (respecting dependencies)
+     * 4. Synthesizing results with proper attribution
+     *
+     * @param ctx - ExecutionContext containing the user's query and conversation history
+     * @param classification - Optional query classification for routing hints
+     * @returns AgentResult with research findings and execution metadata
      */
     async research(
-      query: string,
-      context: AgentContext,
+      ctx: ExecutionContext,
       classification?: QueryClassification
     ): Promise<AgentResult> {
       const startTime = Date.now();
-      const traceId = context.traceId ?? AgentMixin.generateId('trace');
+      const traceId = ctx.traceId;
 
       // Create research trace for observability
-      const trace = createTrace(traceId, query);
+      const trace = createTrace(traceId, ctx.query);
       const traceLogger = createTraceLogger(traceId, 'LeadResearcherAgent');
 
+      await this.updateThinking(ctx, 'Planning research strategy');
+
       traceLogger.info('Starting research', {
-        queryLength: query.length,
+        queryLength: ctx.query.length,
         classification: classification?.category,
+        spanId: ctx.spanId,
       });
 
       try {
@@ -212,7 +257,7 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
         const provider = config.createProvider(env);
 
         // Step 1: Estimate effort level
-        const effortEstimate = this.estimateEffort(query, classification);
+        const effortEstimate = this.estimateEffort(ctx.query, classification);
         const effortConfig = getEffortConfigFromEstimate(effortEstimate);
 
         traceLogger.info('Effort estimated', {
@@ -223,7 +268,7 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
 
         // Step 2: Create research plan
         const plan = await this.createResearchPlan(
-          query,
+          ctx.query,
           effortEstimate,
           effortConfig,
           provider,
@@ -234,25 +279,30 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
         this.setState({
           ...this.state,
           currentPlan: plan,
-          sessionId: this.state.sessionId || context.chatId?.toString() || traceId,
+          sessionId: this.state.sessionId || ctx.chatId.toString() || traceId,
           updatedAt: Date.now(),
         });
+
+        await this.updateThinking(ctx, 'Executing research plan');
 
         traceLogger.info('Research plan created', {
           planId: plan.planId,
           subagentCount: plan.subagentTasks.length,
+          spanId: ctx.spanId,
         });
 
         // Update trace with plan info
         trace.subagentCount = plan.subagentTasks.length;
 
         // Step 3: Run subagents in parallel
-        const subagentResults = await this.runSubagents(plan, context, effortConfig, traceId, env);
+        const subagentResults = await this.runSubagents(plan, ctx, effortConfig, traceId, env);
 
         // Track subagent results in trace
         trace.totalToolCalls = subagentResults.reduce((sum, r) => sum + r.toolCallCount, 0);
 
         // Step 4: Synthesize results
+        await this.updateThinking(ctx, 'Synthesizing findings');
+
         const researchResult = await this.synthesizeResults(
           plan,
           subagentResults,
@@ -265,6 +315,9 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
 
         // Update history
         this.updateHistory(plan, researchResult);
+
+        // Record execution span in debug
+        this.recordExecution(ctx, 'lead-researcher-agent', durationMs);
 
         // Complete trace for observability recording
         trace.endTime = Date.now();
@@ -299,9 +352,10 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
           failureCount: researchResult.summary.failureCount,
           parallelEfficiency: `${(researchResult.summary.parallelEfficiency * 100).toFixed(1)}%`,
           totalToolCalls: trace.totalToolCalls,
+          spanId: ctx.spanId,
         });
 
-        return AgentMixin.createResult(true, researchResult.response, durationMs, {
+        return createSuccessResult(researchResult.response, durationMs, {
           data: {
             planId: plan.planId,
             summary: researchResult.summary,
@@ -310,21 +364,26 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
           },
           nextAction: 'complete',
         });
-      } catch (error) {
+      } catch (err) {
         const durationMs = Date.now() - startTime;
+        const error = err instanceof Error ? err : new Error(String(err));
+
+        // Record execution span in debug
+        this.recordExecution(ctx, 'lead-researcher-agent', durationMs);
 
         // Record failed trace
         trace.endTime = Date.now();
         trace.durationMs = trace.endTime - trace.startTime;
         trace.succeeded = false;
-        trace.error = error instanceof Error ? error.message : String(error);
+        trace.error = error.message;
         globalPerformanceMonitor.recordTrace(trace);
 
         traceLogger.error('Research failed', error, {
           durationMs,
+          spanId: ctx.spanId,
         });
 
-        return AgentMixin.createErrorResult(error, durationMs);
+        return createErrorResult(error, durationMs);
       }
     }
 
@@ -339,7 +398,17 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
     }
 
     /**
-     * Create a research plan with subagent tasks
+     * Create a research plan by decomposing the query
+     *
+     * Uses the LLM to analyze the query and create a decomposed plan
+     * with parallel subagent tasks.
+     *
+     * @param query - Research query to decompose
+     * @param effortEstimate - Estimated effort level for this query
+     * @param effortConfig - Effort configuration constraints
+     * @param provider - LLM provider for planning
+     * @param traceId - Trace ID for observability
+     * @returns ResearchPlan with decomposed tasks
      */
     private async createResearchPlan(
       query: string,
@@ -348,7 +417,7 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
       provider: LLMProvider,
       traceId: string
     ): Promise<ResearchPlan> {
-      const planId = AgentMixin.generateId('plan');
+      const planId = `plan_${randomUUID()}`;
 
       // Use LLM to decompose the query into parallel tasks
       const planningPrompt = this.buildPlanningPrompt(query, effortEstimate, effortConfig);
@@ -461,7 +530,7 @@ Respond with a JSON object following the specified format.`;
           const outputFormat = this.validateOutputFormat(task.outputFormat);
 
           tasks.push({
-            id: task.id || AgentMixin.generateId('task'),
+            id: task.id || `task_${randomUUID()}`,
             type: subagentType,
             objective: task.objective || 'Complete the assigned task',
             outputFormat,
@@ -477,18 +546,26 @@ Respond with a JSON object following the specified format.`;
         // Enforce subagent limit
         return tasks.slice(0, effortConfig.maxSubagents);
       } catch (error) {
-        AgentMixin.logError('LeadResearcherAgent', 'Failed to parse plan', error, { traceId });
+        logger.error('[LeadResearcherAgent] Failed to parse plan', {
+          traceId,
+          error: error instanceof Error ? error.message : String(error),
+        });
         return this.createFallbackTasks(effortConfig);
       }
     }
 
     /**
      * Create fallback tasks when planning fails
+     *
+     * Returns a single general-purpose task when LLM plan parsing fails.
+     *
+     * @param effortConfig - Effort configuration for resource limits
+     * @returns Array with single fallback task
      */
     private createFallbackTasks(effortConfig: EffortConfig): SubagentTask[] {
       return [
         {
-          id: AgentMixin.generateId('task'),
+          id: `task_${randomUUID()}`,
           type: 'general',
           objective: "Complete the user's request to the best of your ability",
           outputFormat: 'text',
@@ -556,10 +633,21 @@ Respond with a JSON object following the specified format.`;
 
     /**
      * Run subagents in parallel based on dependencies
+     *
+     * Executes research subagent tasks, respecting task dependencies.
+     * Tasks are grouped by dependency level and executed sequentially at each level,
+     * with parallelism within each level.
+     *
+     * @param plan - Research plan with tasks to execute
+     * @param parentCtx - Parent ExecutionContext for tracing
+     * @param _effortConfig - Effort configuration (currently unused)
+     * @param traceId - Trace ID for observability
+     * @param env - Environment bindings for subagent access
+     * @returns Array of subagent results
      */
     private async runSubagents(
       plan: ResearchPlan,
-      context: AgentContext,
+      parentCtx: ExecutionContext,
       _effortConfig: EffortConfig,
       traceId: string,
       env: TEnv
@@ -567,8 +655,9 @@ Respond with a JSON object following the specified format.`;
       const results: Map<string, SubagentResult> = new Map();
       const tasksByLevel = this.groupTasksByDependencyLevel(plan.subagentTasks);
 
-      AgentMixin.log('LeadResearcherAgent', 'Running subagents', {
+      logger.debug('[LeadResearcherAgent] Running subagents', {
         traceId,
+        spanId: parentCtx.spanId,
         levelCount: tasksByLevel.length,
         taskCounts: tasksByLevel.map((l) => l.length),
       });
@@ -593,10 +682,11 @@ Respond with a JSON object following the specified format.`;
           previousResults.set(taskId, entry);
         }
 
-        // Run all tasks in this level in parallel
-        const levelPromises = levelTasks.map((task) =>
-          this.runSubagent(task, previousResults, context, traceId, env)
-        );
+        // Run all tasks in this level in parallel with child contexts
+        const levelPromises = levelTasks.map((task) => {
+          const childCtx = this.createChildContext(parentCtx);
+          return this.runSubagent(task, previousResults, childCtx, traceId, env);
+        });
 
         const levelResults = await Promise.allSettled(levelPromises);
 
@@ -675,11 +765,21 @@ Respond with a JSON object following the specified format.`;
 
     /**
      * Run a single subagent
+     *
+     * Executes a single research task, either by delegating to a Durable Object
+     * subagent namespace or by running inline with the LLM.
+     *
+     * @param task - Subagent task to execute
+     * @param previousResults - Results from dependencies (if any)
+     * @param childCtx - Child ExecutionContext for tracing
+     * @param traceId - Trace ID for observability
+     * @param env - Environment bindings for subagent access
+     * @returns SubagentResult with execution details
      */
     private async runSubagent(
       task: SubagentTask,
       previousResults: Map<string, { success: boolean; content?: string; data?: unknown }>,
-      context: AgentContext,
+      childCtx: ExecutionContext,
       traceId: string,
       env: TEnv
     ): Promise<SubagentResult> {
@@ -711,10 +811,10 @@ Respond with a JSON object following the specified format.`;
             subagent as unknown as {
               perform: (
                 delegationContext: DelegationContext,
-                context: AgentContext
+                context: ExecutionContext
               ) => Promise<SubagentResult>;
             }
-          ).perform(delegationContext, context);
+          ).perform(delegationContext, childCtx);
 
           return {
             ...result,
@@ -723,7 +823,7 @@ Respond with a JSON object following the specified format.`;
           };
         }
         // Fallback: inline with LLM
-        return this.runSubagentInline(task, delegationContext, context, traceId, env, startTime);
+        return this.runSubagentInline(task, delegationContext, childCtx, traceId, env, startTime);
       } catch (error) {
         return {
           taskId: task.id,
@@ -740,12 +840,23 @@ Respond with a JSON object following the specified format.`;
     }
 
     /**
-     * Run subagent inline when DO is not available
+     * Run subagent inline when Durable Object is not available
+     *
+     * Falls back to executing the subagent task inline with the LLM provider
+     * when a Durable Object namespace is not configured.
+     *
+     * @param task - Subagent task to execute
+     * @param delegationContext - Task context and constraints
+     * @param _childCtx - Child ExecutionContext (unused in inline mode)
+     * @param _traceId - Trace ID (unused in inline mode)
+     * @param env - Environment bindings for LLM provider
+     * @param startTime - Task start time for duration calculation
+     * @returns SubagentResult from inline execution
      */
     private async runSubagentInline(
       task: SubagentTask,
       delegationContext: DelegationContext,
-      _context: AgentContext,
+      _childCtx: ExecutionContext,
       _traceId: string,
       env: TEnv,
       startTime: number
@@ -839,7 +950,7 @@ Respond with a JSON object following the specified format.`;
         const source = match[2];
         if (num && source && refNumbers.has(num)) {
           citations.push({
-            id: AgentMixin.generateId('cite'),
+            id: `cite_${randomUUID()}`,
             source: source.trim(),
             content: '',
             confidence: 0.8,

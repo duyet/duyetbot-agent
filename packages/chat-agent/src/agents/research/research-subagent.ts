@@ -139,7 +139,7 @@ export function createSubagent<TEnv extends SubagentEnv>(
           ...this.state,
           taskId,
           sessionId: agentContext.chatId?.toString() || taskId,
-          maxToolCalls: Number.parseInt(delegationContext.scopeLimit.match(/\d+/)?.[0] || '10'),
+          maxToolCalls: Number.parseInt(delegationContext.scopeLimit.match(/\d+/)?.[0] || '10', 10),
           isActive: true,
           lastActivityAt: Date.now(),
         });

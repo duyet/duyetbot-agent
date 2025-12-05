@@ -9,9 +9,13 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { extractTask, hasMention } from '@duyetbot/types/mention-parser';
 import type { MiddlewareHandler } from 'hono';
 
 import type { Env, ParserVariables, TelegramUpdate, WebhookContext } from './types.js';
+
+/** Default bot username for mention detection */
+const DEFAULT_BOT_USERNAME = 'duyetbot';
 
 /**
  * Parse webhook request and extract message data
@@ -55,18 +59,51 @@ export async function parseWebhookBody(request: Request): Promise<{
  * Extract webhook context from parsed message
  *
  * @param message - The parsed Telegram message
+ * @param botUsername - Bot username for mention detection (without @)
  * @returns WebhookContext with extracted data
  * @internal Exported for testing
  */
 export function extractWebhookContext(
-  message: NonNullable<TelegramUpdate['message']>
+  message: NonNullable<TelegramUpdate['message']>,
+  botUsername: string = DEFAULT_BOT_USERNAME
 ): WebhookContext {
+  const replyTo = message.reply_to_message;
+  const text = message.text!;
+
+  // Extract chat type (default to 'private' for backward compatibility)
+  const chatType = message.chat.type ?? 'private';
+  const isGroupChat = chatType === 'group' || chatType === 'supergroup';
+
+  // Detect bot mention in message text
+  const hasBotMention = hasMention(text, botUsername);
+
+  // Check if this message is a reply to any message
+  const isReply = !!replyTo;
+
+  // Check if this is a reply to the bot's previous message
+  const replyToUsername = replyTo?.from?.username?.toLowerCase();
+  const isReplyToBot = replyToUsername === botUsername.toLowerCase();
+
+  // Extract task text (message without @mention) if mention is present
+  const task = hasBotMention ? extractTask(text, botUsername) : undefined;
+
   return {
-    text: message.text!,
+    text,
     userId: message.from!.id,
     chatId: message.chat.id,
     startTime: Date.now(),
     username: message.from!.username,
+    messageId: message.message_id,
+    replyToMessageId: replyTo?.message_id,
+    quotedText: replyTo?.text,
+    quotedUsername: replyTo?.from?.username,
+    chatType,
+    chatTitle: message.chat.title,
+    isGroupChat,
+    hasBotMention,
+    isReply,
+    isReplyToBot,
+    task,
   };
 }
 
@@ -77,7 +114,8 @@ export function extractWebhookContext(
  * 1. Parses the JSON body from the webhook request
  * 2. Validates that the message has required fields (text, from)
  * 3. Extracts webhook context for downstream handlers
- * 4. Sets `skipProcessing: true` for invalid requests
+ * 4. For group chats: skips processing unless bot is mentioned or replied to
+ * 5. Sets `skipProcessing: true` for invalid requests or non-targeted group messages
  *
  * @returns Hono middleware handler
  *
@@ -108,11 +146,29 @@ export function createTelegramParserMiddleware(): MiddlewareHandler<{
       return next();
     }
 
+    // Get bot username from environment (default: 'duyetbot')
+    const botUsername = c.env.BOT_USERNAME ?? DEFAULT_BOT_USERNAME;
+
     // Extract context from parsed message
     const { message } = parsed;
-    const webhookCtx = extractWebhookContext(message);
+    const webhookCtx = extractWebhookContext(message, botUsername);
 
     logger.info('[WEBHOOK] Message received', JSON.parse(JSON.stringify(webhookCtx)));
+
+    // In group chats: only process if bot is mentioned OR message is a reply (to anyone)
+    // This allows users to engage with the bot by:
+    // 1. Mentioning @bot in their message
+    // 2. Replying to any message (including bot's previous responses or other users' messages)
+    if (webhookCtx.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReply) {
+      logger.debug('[PARSE] Skipping group message without mention or reply', {
+        chatId: webhookCtx.chatId,
+        chatType: webhookCtx.chatType,
+        chatTitle: webhookCtx.chatTitle,
+      });
+      c.set('webhookContext', webhookCtx);
+      c.set('skipProcessing', true);
+      return next();
+    }
 
     // Set context for downstream handlers
     c.set('webhookContext', webhookCtx);

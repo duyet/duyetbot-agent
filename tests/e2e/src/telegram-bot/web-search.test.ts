@@ -16,19 +16,18 @@ import {
   validateWebSearchResponse,
 } from '../helpers/bot-test-utils';
 import {
+  createTestProvider,
   createWebSearchConfig,
-  getTestProvider,
-  isRealAPITestingAvailable,
+  shouldUseRealAPI,
 } from '../helpers/test-providers';
 
 describe('Telegram Bot - Web Search Integration', () => {
-  let bot: any;
-  let apiSpy: any;
-  let provider: any;
+  let bot: Awaited<ReturnType<typeof createMockTelegramBot>> | null = null;
+  let apiSpy: ReturnType<typeof setupTelegramAPISpy> | null = null;
 
   beforeAll(async () => {
     // Skip tests if real API environment not available
-    if (!isRealAPITestingAvailable()) {
+    if (!shouldUseRealAPI()) {
       console.warn('⚠️ Skipping web search tests - environment not configured');
       return;
     }
@@ -36,7 +35,7 @@ describe('Telegram Bot - Web Search Integration', () => {
     try {
       bot = await createMockTelegramBot();
       apiSpy = setupTelegramAPISpy(bot);
-      provider = getTestProvider();
+      const _provider = createTestProvider();
 
       console.log('🔍 Web search test environment setup complete');
     } catch (error) {
@@ -47,13 +46,15 @@ describe('Telegram Bot - Web Search Integration', () => {
 
   afterAll(() => {
     if (apiSpy) {
-      apiSpy.clearMessages();
+      apiSpy!.clearMessages();
     }
   });
 
   describe('Native Web Search via OpenRouter Plugins', () => {
     it('should search for current information about AI', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       const webSearchConfig = createWebSearchConfig();
       if (!webSearchConfig.enabled || !webSearchConfig.useNativeSearch) {
@@ -62,9 +63,11 @@ describe('Telegram Bot - Web Search Integration', () => {
       }
 
       const update = createMockUpdate('What are the latest developments in AI?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       expect(sentMessages.length).toBeGreaterThan(0);
 
       const lastResponse = sentMessages[sentMessages.length - 1];
@@ -90,12 +93,17 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should search for trending topics', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
+      const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('What is trending on social media today?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
       const validation = validateWebSearchResponse(
         lastResponse.text,
@@ -114,12 +122,17 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should handle search queries with proper context', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
+      const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('Find recent news about climate change solutions');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
       const validation = validateWebSearchResponse(
         lastResponse.text,
@@ -143,13 +156,17 @@ describe('Telegram Bot - Web Search Integration', () => {
 
   describe('Standalone Research Tool Integration', () => {
     it('should fetch and analyze specific URLs', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       const testUrl = 'https://example.com';
       const update = createMockUpdate(`Summarize the content from ${testUrl}`);
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
       const validation = validateWebSearchResponse(
         lastResponse.text,
@@ -170,13 +187,17 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should handle multiple URL requests', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       const urls = ['https://example.com/page1', 'https://example.com/page2'];
       const update = createMockUpdate(`Compare these URLs: ${urls.join(', ')}`);
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
       const validation = validateWebSearchResponse(
         lastResponse.text,
@@ -200,12 +221,17 @@ describe('Telegram Bot - Web Search Integration', () => {
 
   describe('Search Quality and Accuracy', () => {
     it('should provide relevant and accurate information', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
+      const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('What is the capital of France?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
       const validation = validateWebSearchResponse(
         lastResponse.text,
@@ -226,12 +252,17 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should handle ambiguous queries gracefully', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
+      const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('Tell me about Python');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
       const validation = validateWebSearchResponse(
         lastResponse.text,
@@ -254,13 +285,17 @@ describe('Telegram Bot - Web Search Integration', () => {
 
   describe('Error Handling and Edge Cases', () => {
     it('should handle invalid URLs gracefully', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       const invalidUrl = 'https://nonexistent-domain-12345.com';
       const update = createMockUpdate(`What can you tell me about ${invalidUrl}?`);
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
 
       // Should handle the error gracefully
@@ -269,15 +304,19 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should handle search timeouts appropriately', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       // Create a complex query that might timeout
       const update = createMockUpdate(
         'Provide a comprehensive analysis of the latest developments in quantum computing, artificial intelligence, and renewable energy technologies'
       );
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
 
       // Should provide some response even if partial
@@ -289,12 +328,16 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should handle empty or nonsensical search queries', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       const update = createMockUpdate('asdfghjkl qwerty');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime: _responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
 
       // Should provide a helpful response rather than failing
@@ -305,7 +348,9 @@ describe('Telegram Bot - Web Search Integration', () => {
 
   describe('Performance and Efficiency', () => {
     it('should maintain reasonable response times', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       const searchQueries = [
         'What is machine learning?',
@@ -316,10 +361,10 @@ describe('Telegram Bot - Web Search Integration', () => {
       const responseTimes: number[] = [];
 
       for (const query of searchQueries) {
-        apiSpy.clearMessages();
+        apiSpy!.clearMessages();
 
         const update = createMockUpdate(query);
-        const { responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+        const { responseTime } = await measureResponseTime(() => bot!.handleUpdate(update));
 
         responseTimes.push(responseTime);
 
@@ -345,8 +390,11 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should handle concurrent search requests efficiently', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
+      const webSearchConfig = createWebSearchConfig();
       const concurrentQueries = [
         'What is cloud computing?',
         'Benefits of renewable energy',
@@ -356,17 +404,17 @@ describe('Telegram Bot - Web Search Integration', () => {
       // Send concurrent requests
       const updatePromises = concurrentQueries.map((query, index) => {
         const update = createMockUpdate(query, { messageId: 100 + index });
-        return bot.handleUpdate(update);
+        return bot!.handleUpdate(update);
       });
 
-      const results = await Promise.all(updatePromises);
-      const sentMessages = apiSpy.getSentMessages();
+      const _results = await Promise.all(updatePromises);
+      const sentMessages = apiSpy!.getSentMessages();
 
       // Should respond to all concurrent requests
       expect(sentMessages.length).toBe(concurrentQueries.length);
 
       // All responses should be meaningful
-      sentMessages.forEach((response, index) => {
+      sentMessages.forEach((response, _index) => {
         const validation = validateWebSearchResponse(response.text, {
           requiresCitations: webSearchConfig.useNativeSearch,
           maxResponseTime: 45000, // Allow longer for concurrency
@@ -379,12 +427,17 @@ describe('Telegram Bot - Web Search Integration', () => {
 
   describe('Citations and Source Attribution', () => {
     it('should include citations when using web search', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
+      const webSearchConfig = createWebSearchConfig();
       const update = createMockUpdate('What are the environmental impacts of cryptocurrency?');
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
       const validation = validateWebSearchResponse(
         lastResponse.text,
@@ -409,14 +462,18 @@ describe('Telegram Bot - Web Search Integration', () => {
     });
 
     it('should properly attribute sources when available', async () => {
-      if (!isRealAPITestingAvailable()) return;
+      if (!shouldUseRealAPI()) {
+        return;
+      }
 
       const update = createMockUpdate(
         'What recent discoveries has the James Webb Space Telescope made?'
       );
-      const { result, responseTime } = await measureResponseTime(() => bot.handleUpdate(update));
+      const { result: _result, responseTime: _responseTime } = await measureResponseTime(() =>
+        bot!.handleUpdate(update)
+      );
 
-      const sentMessages = apiSpy.getSentMessages();
+      const sentMessages = apiSpy!.getSentMessages();
       const lastResponse = sentMessages[sentMessages.length - 1];
 
       // Should mention James Webb and recent discoveries

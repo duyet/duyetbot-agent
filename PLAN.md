@@ -397,7 +397,6 @@ Recovery:
 | **@duyetbot/telegram-bot** | Cloudflare Workers + DO | Telegram chat interface | ✅ Deployed |
 | **@duyetbot/github-bot** | Cloudflare Workers + DO | GitHub @mention handler | ✅ Deployed |
 | **@duyetbot/memory-mcp** | Cloudflare Workers + D1 | Cross-session memory (MCP) | ✅ Deployed |
-| **@duyetbot/agent-server** | Node.js/Bun Container | Long-running agent (future Tier 2) | 🔮 Planned |
 | **@duyetbot/shared-agents** | Cloudflare Workers | Shared DO pool (8 agents) | ✅ Deployed |
 
 ---

@@ -6,21 +6,18 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // Exclude tests that require Cloudflare Workers runtime (cloudflare:* imports)
+    exclude: [
+      'src/telegram-bot/web-search.test.ts',
+      'src/telegram-bot/parse-modes.test.ts',
+      'src/telegram-bot/real-api.test.ts',
+    ],
     testTimeout: 30000, // E2E tests need longer timeout
     hookTimeout: 30000,
     setupFiles: ['./src/helpers/setup.ts'],
   },
   resolve: {
     alias: [
-      // Agent server package
-      {
-        find: /^@duyetbot\/agent-server\/(.*)$/,
-        replacement: resolve(__dirname, '../../apps/agent-server/src/$1.ts'),
-      },
-      {
-        find: '@duyetbot/agent-server',
-        replacement: resolve(__dirname, '../../apps/agent-server/src/index.ts'),
-      },
       // Memory MCP package
       {
         find: /^@duyetbot\/memory-mcp\/(.*)$/,

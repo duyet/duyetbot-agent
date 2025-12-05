@@ -42,8 +42,8 @@ export interface HITLState {
   pendingConfirmations: ToolConfirmation[];
   /** History of tool executions */
   executionHistory: ExecutionEntry[];
-  /** Session identifier */
-  sessionId: string;
+  /** Session identifier (populated lazily from context) */
+  sessionId?: string;
   /** Last activity timestamp */
   lastActivityAt: number;
   /** Error message if in error state */
@@ -66,14 +66,17 @@ export type HITLEvent =
 /**
  * Create initial HITL state
  */
-export function createInitialHITLState(sessionId: string): HITLState {
-  return {
+export function createInitialHITLState(sessionId?: string): HITLState {
+  const state: HITLState = {
     status: 'idle',
     pendingConfirmations: [],
     executionHistory: [],
-    sessionId,
     lastActivityAt: Date.now(),
   };
+  if (sessionId) {
+    state.sessionId = sessionId;
+  }
+  return state;
 }
 
 /**

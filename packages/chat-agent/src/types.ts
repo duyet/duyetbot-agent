@@ -83,6 +83,8 @@ export interface LLMResponse {
   toolCalls?: ToolCall[];
   /** Token usage metrics */
   usage?: TokenUsage;
+  /** Model identifier used for the response */
+  model?: string;
 }
 
 /**
@@ -165,6 +167,7 @@ export interface AgentState {
 
 /**
  * Debug metadata for agent execution
+ * Includes index signature for compatibility with observability package
  */
 export interface DebugMetadata {
   /** Whether response is a fallback due to error */
@@ -184,6 +187,8 @@ export interface DebugMetadata {
   lastToolError?: string;
   /** Aggregated token usage for entire request */
   tokenUsage?: TokenUsage;
+  /** Index signature for extensibility */
+  [key: string]: unknown;
 }
 
 /**
@@ -226,6 +231,8 @@ export interface DebugContext {
     status?: ExecutionStatus;
     /** Token usage for this routing step */
     tokenUsage?: TokenUsage;
+    /** Model used for this routing step (e.g., 'claude-3-5-sonnet-20241022') */
+    model?: string;
   }>;
   /** Router classification duration in milliseconds (separate from agent execution) */
   routerDurationMs?: number;

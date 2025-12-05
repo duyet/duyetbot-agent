@@ -52,7 +52,7 @@ describe('Batch Context Preservation', () => {
         text: ctx.text,
         userId: ctx.userId,
         chatId: ctx.chatId,
-        username: ctx.username,
+        ...(ctx.username !== undefined && { username: ctx.username }),
         metadata: { requestId: ctx.requestId, startTime: ctx.startTime },
       }),
     });
@@ -150,7 +150,7 @@ describe('Batch Context Preservation', () => {
         userId: pendingMessage.userId,
         text: 'combined',
         metadata: { requestId: 'batch-123' },
-      } as TelegramTestContext;
+      } as unknown as TelegramTestContext;
 
       // This would cause "botundefined" in the URL
       expect(buggyCtx.token).toBeUndefined();

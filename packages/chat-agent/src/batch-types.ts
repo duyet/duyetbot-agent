@@ -1,8 +1,12 @@
 /**
  * Types for message batching and alarm-based processing
  *
+ * DEPRECATED: This module is part of the legacy architecture.
+ * Legacy implementation kept for backward compatibility with cloudflare-agent.ts.
+ *
  * This module defines types for combining rapid-fire messages within
  * a time window into a single LLM input, using Cloudflare Durable Object Alarms.
+ * The new architecture uses ExecutionContext and AgentProvider for request handling.
  */
 
 /**
@@ -23,6 +27,30 @@ export type BatchStatus =
   | 'delegated';
 
 /**
+ * Detailed stages for message lifecycle tracking with timestamps
+ */
+export type MessageStage =
+  | 'queued' // Message received, added to pendingBatch
+  | 'scheduled' // Alarm scheduled to process
+  | 'processing' // Alarm fired, starting to process
+  | 'routing' // Router classification in progress
+  | 'llm_call' // LLM API call in progress
+  | 'sending' // Sending response to user
+  | 'done' // Successfully completed
+  | 'retrying' // Scheduled for retry after failure
+  | 'failed' // Failed after max retries
+  | 'notified'; // User notified of failure
+
+/**
+ * Stage transition with timestamp for observability debugging
+ */
+export interface StageTransition {
+  stage: MessageStage;
+  timestamp: number;
+  metadata?: Record<string, unknown>; // retry count, error message, delay, etc.
+}
+
+/**
  * A pending message waiting to be processed
  */
 export interface PendingMessage<TContext = unknown> {
@@ -30,8 +58,13 @@ export interface PendingMessage<TContext = unknown> {
   text: string;
   /** Timestamp when message was received */
   timestamp: number;
-  /** Request ID for deduplication */
+  /** Request ID for deduplication (short, for logging) */
   requestId: string;
+  /**
+   * Event ID for D1 observability correlation (full UUID)
+   * Used to update the observability event when batch completes
+   */
+  eventId?: string;
   /** User ID who sent the message */
   userId?: string | number;
   /** Chat/conversation ID */
@@ -71,6 +104,21 @@ export interface BatchState {
 }
 
 /**
+ * Enhanced BatchState with lifecycle tracking and retry support
+ * Extends existing BatchState for backward compatibility
+ */
+export interface EnhancedBatchState extends BatchState {
+  /** Current stage in message lifecycle */
+  currentStage: MessageStage;
+  /** History of all stage transitions with timestamps */
+  stageHistory: StageTransition[];
+  /** Trace ID for observability correlation */
+  traceId: string;
+  /** Errors from each retry attempt */
+  retryErrors: RetryError[];
+}
+
+/**
  * Configuration for batching behavior
  */
 export interface BatchConfig {
@@ -94,6 +142,15 @@ export interface RetryConfig {
   maxDelayMs: number;
   /** Multiplier for exponential backoff (default: 2) */
   backoffMultiplier: number;
+}
+
+/**
+ * Error record for retry tracking
+ */
+export interface RetryError {
+  timestamp: number;
+  message: string;
+  stack?: string;
 }
 
 /**
@@ -126,6 +183,19 @@ export function createInitialBatchState(): BatchState {
     retryCount: 0,
     lastMessageAt: 0,
     batchStartedAt: 0,
+  };
+}
+
+/**
+ * Create initial enhanced batch state with stage tracking
+ */
+export function createInitialEnhancedBatchState(): EnhancedBatchState {
+  return {
+    ...createInitialBatchState(),
+    currentStage: 'queued',
+    stageHistory: [],
+    traceId: crypto.randomUUID(),
+    retryErrors: [],
   };
 }
 

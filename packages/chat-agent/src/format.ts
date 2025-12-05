@@ -274,6 +274,11 @@ export interface ThinkingRotator {
   start(onMessage: (message: string) => void | Promise<void>): void;
   /** Stop rotation */
   stop(): void;
+  /**
+   * Wait for any in-flight callback to complete.
+   * Call this after stop() before sending final response to avoid race conditions.
+   */
+  waitForPending(): Promise<void>;
 }
 
 /**
@@ -304,14 +309,18 @@ export function createThinkingRotator(config: ThinkingRotatorConfig = {}): Think
   let timer: ReturnType<typeof setTimeout> | null = null;
   let stopped = false;
 
+  // Track in-flight callback promise to allow waiting for completion
+  let pendingCallback: Promise<void> | null = null;
+
   // Recursive function to schedule next rotation after current one completes
   const scheduleNext = (onMessage: (message: string) => void | Promise<void>) => {
     if (stopped) {
       return;
     }
 
-    timer = setTimeout(async () => {
+    timer = setTimeout(() => {
       if (stopped) {
+        pendingCallback = null;
         return;
       }
 
@@ -326,15 +335,25 @@ export function createThinkingRotator(config: ThinkingRotatorConfig = {}): Think
         messageIndex = (messageIndex + 1) % messages.length;
       }
 
-      try {
-        // Await the callback to ensure edit completes before scheduling next
-        await onMessage(messages[messageIndex] ?? 'Processing...');
-      } catch (err) {
-        console.error('[ROTATOR] Callback failed:', err);
-      }
+      // Track the callback as pending so waitForPending() can await it
+      pendingCallback = (async () => {
+        try {
+          // Check stopped again before actually calling onMessage
+          // This prevents sending if stop() was called while timeout was pending
+          if (stopped) {
+            return;
+          }
+          // Await the callback to ensure edit completes before scheduling next
+          await onMessage(messages[messageIndex] ?? 'Processing...');
+        } catch (err) {
+          console.error('[ROTATOR] Callback failed:', err);
+        } finally {
+          pendingCallback = null;
+        }
 
-      // Schedule next rotation only after this one completes
-      scheduleNext(onMessage);
+        // Schedule next rotation only after this one completes
+        scheduleNext(onMessage);
+      })();
     }, interval);
   };
 
@@ -357,6 +376,14 @@ export function createThinkingRotator(config: ThinkingRotatorConfig = {}): Think
       if (timer) {
         clearTimeout(timer);
         timer = null;
+      }
+    },
+
+    async waitForPending() {
+      // Wait for any in-flight callback to complete
+      // This ensures the rotator edit finishes before caller sends final response
+      if (pendingCallback) {
+        await pendingCallback;
       }
     },
   };
@@ -427,6 +454,16 @@ function escapeXML(text: string): string {
 }
 
 /**
+ * Quoted message context for prompt injection
+ */
+export interface QuotedContext {
+  /** Text content of the quoted message */
+  text: string;
+  /** Username of the quoted message sender */
+  username?: string;
+}
+
+/**
  * Format messages for LLM with history embedded in user message
  *
  * This transforms the standard messages array format into a single user message
@@ -436,6 +473,7 @@ function escapeXML(text: string): string {
  * @param messages - Current conversation messages
  * @param systemPrompt - System prompt for the agent
  * @param userMessage - Current user message
+ * @param quotedContext - Optional quoted message context (when user replied to a message)
  * @returns LLM messages with history embedded in user message
  *
  * @example
@@ -450,19 +488,36 @@ function escapeXML(text: string): string {
  * //   { role: 'system', content: 'You are a helpful assistant' },
  * //   { role: 'user', content: '<conversation_history>...</conversation_history>\n\nWhat is the weather?' }
  * // ]
+ *
+ * // With quoted context:
+ * const llmMessagesWithQuote = formatWithEmbeddedHistory(
+ *   previousMessages,
+ *   'You are a helpful assistant',
+ *   'How about this one?',
+ *   { text: 'Original message text', username: 'john' }
+ * );
+ * // Returns message with <quoted_message> tag before current_message
  * ```
  */
 export function formatWithEmbeddedHistory(
   messages: Message[],
   systemPrompt: string,
-  userMessage: string
+  userMessage: string,
+  quotedContext?: QuotedContext
 ): LLMMessage[] {
   const historyXML = formatHistoryAsXML(messages);
 
-  // Build user message with embedded history
+  // Build quoted context XML if present
+  let quotedXML = '';
+  if (quotedContext?.text) {
+    const from = quotedContext.username || 'a previous message';
+    quotedXML = `<quoted_message from="${escapeXML(from)}">${escapeXML(quotedContext.text)}</quoted_message>\n\n`;
+  }
+
+  // Build user message with embedded history and quoted context
   const userContent = historyXML
-    ? `${historyXML}\n\n<current_message>\n${userMessage}\n</current_message>`
-    : userMessage;
+    ? `${historyXML}\n\n${quotedXML}<current_message>\n${userMessage}\n</current_message>`
+    : `${quotedXML}${userMessage}`;
 
   return [
     { role: 'system', content: systemPrompt },

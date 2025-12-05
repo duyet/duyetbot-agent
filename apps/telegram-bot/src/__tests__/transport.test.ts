@@ -26,6 +26,7 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
     token: 'test-bot-token',
     chatId: 123456,
     userId: 789,
+    messageId: 123,
     text: 'test message',
     startTime: Date.now(),
     isAdmin: false,
@@ -153,6 +154,7 @@ describe('transport', () => {
             chat_id: 123456,
             text: 'Hello *world*',
             parse_mode: 'HTML',
+            reply_to_message_id: 123,
           }),
         })
       );
@@ -311,6 +313,7 @@ describe('transport', () => {
         text: 'Hello bot',
         userId: 12345,
         chatId: 67890,
+        messageId: 123,
         username: 'testuser',
         startTime: 1700000000000,
         requestId: 'req-123',
@@ -323,6 +326,8 @@ describe('transport', () => {
         userId: 12345,
         chatId: 67890,
         username: 'testuser',
+        messageRef: 123,
+        replyTo: undefined,
         metadata: {
           startTime: 1700000000000,
           requestId: 'req-123',
@@ -351,6 +356,7 @@ describe('transport', () => {
         text: 'Hello',
         username: 'testuser',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin', 'req-123');
@@ -359,6 +365,7 @@ describe('transport', () => {
         token: 'bot-token',
         chatId: 67890,
         userId: 12345,
+        messageId: 42,
         requestId: 'req-123',
         username: 'testuser',
         text: 'Hello',
@@ -374,6 +381,7 @@ describe('transport', () => {
         chatId: 67890,
         text: 'Hello',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx);
@@ -393,6 +401,7 @@ describe('transport', () => {
         text: 'Hello',
         username: 'testuser',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx);
@@ -407,6 +416,7 @@ describe('transport', () => {
         text: 'Hello',
         username: 'testuser',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
@@ -421,6 +431,7 @@ describe('transport', () => {
         text: 'Hello',
         username: 'admin',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
@@ -435,6 +446,7 @@ describe('transport', () => {
         text: 'Hello',
         username: '@admin',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
@@ -449,6 +461,7 @@ describe('transport', () => {
         text: 'Hello',
         username: 'admin',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, '@admin');
@@ -463,6 +476,7 @@ describe('transport', () => {
         text: 'Hello',
         username: '@admin',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, '@admin');
@@ -476,6 +490,7 @@ describe('transport', () => {
         chatId: 67890,
         text: 'Hello',
         startTime: 1700000000000,
+        messageId: 42,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');

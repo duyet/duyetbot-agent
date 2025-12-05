@@ -117,9 +117,6 @@ pnpm run dev --filter @duyetbot/cli
 
 # GitHub Bot only
 pnpm run dev --filter @duyetbot/github-bot
-
-# Server only
-pnpm run dev --filter @duyetbot/agent-server
 ```
 
 ### Code Quality

@@ -296,9 +296,9 @@ describe('Orchestration Planner', () => {
 
       expect(groups).toHaveLength(3);
       expect(groups[0]).toHaveLength(1);
-      expect(groups[0][0].id).toBe('step_1');
-      expect(groups[1][0].id).toBe('step_2');
-      expect(groups[2][0].id).toBe('step_3');
+      expect(groups[0]![0]!.id).toBe('step_1');
+      expect(groups[1]![0]!.id).toBe('step_2');
+      expect(groups[2]![0]!.id).toBe('step_3');
     });
 
     it('puts steps with same dependency depth in same group', () => {
@@ -363,8 +363,8 @@ describe('Orchestration Planner', () => {
 
       const groups = groupStepsByLevel(steps);
 
-      expect(groups[0][0].id).toBe('step_high');
-      expect(groups[0][1].id).toBe('step_low');
+      expect(groups[0]![0]!.id).toBe('step_high');
+      expect(groups[0]![1]!.id).toBe('step_low');
     });
   });
 
@@ -379,10 +379,10 @@ describe('Orchestration Planner', () => {
       const optimized = optimizePlan(plan);
 
       // Deeper steps should have lower effective priority
-      const step1 = optimized.steps.find((s) => s.id === 'step_1');
-      const step3 = optimized.steps.find((s) => s.id === 'step_3');
+      const step1 = optimized.steps.find((s) => s.id === 'step_1')!;
+      const step3 = optimized.steps.find((s) => s.id === 'step_3')!;
 
-      expect(step1?.priority).toBeGreaterThan(step3?.priority || 0);
+      expect(step1.priority).toBeGreaterThan(step3.priority);
     });
   });
 
@@ -412,7 +412,7 @@ describe('Orchestration Planner', () => {
 
       expect(plan.taskId).toBe('task_123');
       expect(plan.steps).toHaveLength(1);
-      expect(plan.steps[0].workerType).toBe('code');
+      expect(plan.steps[0]!.workerType).toBe('code');
     });
 
     it('creates fallback plan on invalid response', async () => {
@@ -422,7 +422,7 @@ describe('Orchestration Planner', () => {
       const plan = await createPlan('Test task', config);
 
       expect(plan.steps).toHaveLength(1);
-      expect(plan.steps[0].id).toBe('step_main');
+      expect(plan.steps[0]!.id).toBe('step_main');
     });
 
     it('handles JSON in code blocks', async () => {
@@ -453,7 +453,7 @@ describe('Orchestration Planner', () => {
       const plan = await createPlan('Research task', config);
 
       expect(plan.taskId).toBe('task_456');
-      expect(plan.steps[0].workerType).toBe('research');
+      expect(plan.steps[0]!.workerType).toBe('research');
     });
 
     it('limits steps to maxSteps', async () => {
@@ -793,7 +793,7 @@ describe('Orchestration Aggregator', () => {
       const aggregation = quickAggregate(plan, execResult);
 
       expect(aggregation.errors).toHaveLength(1);
-      expect(aggregation.errors[0].error).toBe('Test error message');
+      expect(aggregation.errors[0]!.error).toBe('Test error message');
       expect(aggregation.response).toContain('Error');
     });
   });
@@ -1129,6 +1129,341 @@ describe('Worker Task Type Detection', () => {
 
     it('defaults to diff_analyze', () => {
       expect(detectGitHubTaskType('Some random task')).toBe('diff_analyze');
+    });
+  });
+
+  describe('Bounded Re-planning', () => {
+    it('should execute plan without re-planning when no needsMoreContext', async () => {
+      const plan: ExecutionPlan = {
+        taskId: 'test_task_1',
+        summary: 'Test plan without re-planning',
+        steps: [
+          {
+            id: 'step_1',
+            description: 'First step',
+            workerType: 'general',
+            task: 'Do something',
+            dependsOn: [],
+            priority: 5,
+            expectedOutput: 'text',
+          },
+          {
+            id: 'step_2',
+            description: 'Second step',
+            workerType: 'general',
+            task: 'Do something else',
+            dependsOn: ['step_1'],
+            priority: 5,
+            expectedOutput: 'text',
+          },
+        ],
+        estimatedComplexity: 'low',
+      };
+
+      const responses = new Map<string, WorkerResult>([
+        [
+          'step_1',
+          {
+            stepId: 'step_1',
+            success: true,
+            data: 'Step 1 result',
+            durationMs: 100,
+          },
+        ],
+        [
+          'step_2',
+          {
+            stepId: 'step_2',
+            success: true,
+            data: 'Step 2 result',
+            durationMs: 100,
+          },
+        ],
+      ]);
+
+      const dispatcher = createMockDispatcher(responses);
+      const config: ExecutorConfig = {
+        dispatcher,
+        maxParallel: 5,
+        continueOnError: true,
+      };
+
+      const context = {
+        traceId: 'trace_1',
+        userId: 'user_1',
+      };
+
+      const result = await executePlan(plan, context, config);
+
+      expect(result.allSucceeded).toBe(true);
+      expect(result.successfulSteps).toContain('step_1');
+      expect(result.successfulSteps).toContain('step_2');
+      expect(result.rePlanIterations).toBe(0);
+      expect(result.originalPlan).toEqual(plan);
+      expect(result.finalPlan).toEqual(plan);
+    });
+
+    it('should trigger re-planning when needsMoreContext is returned', async () => {
+      const plan: ExecutionPlan = {
+        taskId: 'test_task_2',
+        summary: 'Test plan with re-planning trigger',
+        steps: [
+          {
+            id: 'step_1',
+            description: 'First step needs context',
+            workerType: 'code',
+            task: 'Analyze code',
+            dependsOn: [],
+            priority: 5,
+            expectedOutput: 'text',
+          },
+        ],
+        estimatedComplexity: 'medium',
+      };
+
+      let callCount = 0;
+      const dispatcher = async () => {
+        callCount++;
+        // First call returns needsMoreContext
+        if (callCount === 1) {
+          return {
+            stepId: 'step_1',
+            success: true,
+            data: 'Partial analysis',
+            durationMs: 100,
+            needsMoreContext: true,
+            contextSuggestion: 'Need access to related files',
+          };
+        }
+        // Subsequent calls succeed normally
+        return {
+          stepId: 'step_1',
+          success: true,
+          data: 'Complete analysis',
+          durationMs: 100,
+        };
+      };
+
+      const config: ExecutorConfig = {
+        dispatcher,
+        maxParallel: 5,
+        continueOnError: true,
+        maxRePlanIterations: 2,
+        plannerConfig: {
+          provider: {
+            chat: async () => ({
+              content: JSON.stringify({
+                taskId: 'task_repanned',
+                summary: 'Continue analysis',
+                steps: [
+                  {
+                    id: 'step_1_rp',
+                    description: 'Complete the analysis',
+                    workerType: 'code',
+                    task: 'Continue analyzing with more context',
+                    dependsOn: [],
+                    priority: 5,
+                    expectedOutput: 'text',
+                  },
+                ],
+                estimatedComplexity: 'medium',
+              }),
+            }),
+          } as unknown as LLMProvider,
+        },
+      };
+
+      const context = {
+        traceId: 'trace_2',
+        userId: 'user_1',
+      };
+
+      const result = await executePlan(plan, context, config);
+
+      // Should have attempted re-planning
+      expect(result.rePlanIterations).toBeGreaterThanOrEqual(1);
+      expect(result.originalPlan.steps.length).toBe(1);
+      expect(result.finalPlan.steps.length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('should respect maxRePlanIterations bound', async () => {
+      const plan: ExecutionPlan = {
+        taskId: 'test_task_3',
+        summary: 'Test re-planning iteration limit',
+        steps: [
+          {
+            id: 'step_1',
+            description: 'Always needs context',
+            workerType: 'research',
+            task: 'Research something',
+            dependsOn: [],
+            priority: 5,
+            expectedOutput: 'text',
+          },
+        ],
+        estimatedComplexity: 'high',
+      };
+
+      const dispatcher = async () => {
+        // Always return needsMoreContext to force multiple re-plans
+        return {
+          stepId: 'step_1',
+          success: true,
+          data: 'Partial result',
+          durationMs: 50,
+          needsMoreContext: true,
+          contextSuggestion: 'Need more information',
+        };
+      };
+
+      let replanCount = 0;
+      const config: ExecutorConfig = {
+        dispatcher,
+        maxParallel: 5,
+        continueOnError: true,
+        maxRePlanIterations: 2, // Bounded to max 2
+        plannerConfig: {
+          provider: {
+            chat: async () => {
+              replanCount++;
+              return {
+                content: JSON.stringify({
+                  taskId: `task_rp_${replanCount}`,
+                  summary: `Re-planned iteration ${replanCount}`,
+                  steps: [
+                    {
+                      id: `step_rp_${replanCount}`,
+                      description: 'Re-planned step',
+                      workerType: 'research',
+                      task: 'Continue research',
+                      dependsOn: [],
+                      priority: 5,
+                      expectedOutput: 'text',
+                    },
+                  ],
+                  estimatedComplexity: 'high',
+                }),
+              };
+            },
+          } as unknown as LLMProvider,
+        },
+      };
+
+      const context = {
+        traceId: 'trace_3',
+        userId: 'user_1',
+      };
+
+      const result = await executePlan(plan, context, config);
+
+      // Should not exceed maxRePlanIterations
+      expect(result.rePlanIterations).toBeLessThanOrEqual(2);
+      expect(replanCount).toBeLessThanOrEqual(2);
+    });
+
+    it('should handle re-planning errors gracefully', async () => {
+      const plan: ExecutionPlan = {
+        taskId: 'test_task_4',
+        summary: 'Test re-planning error handling',
+        steps: [
+          {
+            id: 'step_1',
+            description: 'Trigger re-planning',
+            workerType: 'general',
+            task: 'Do work',
+            dependsOn: [],
+            priority: 5,
+            expectedOutput: 'text',
+          },
+        ],
+        estimatedComplexity: 'low',
+      };
+
+      const dispatcher = async () => {
+        return {
+          stepId: 'step_1',
+          success: true,
+          data: 'Work done',
+          durationMs: 50,
+          needsMoreContext: true,
+          contextSuggestion: 'Need more info',
+        };
+      };
+
+      const config: ExecutorConfig = {
+        dispatcher,
+        maxParallel: 5,
+        continueOnError: true,
+        maxRePlanIterations: 2,
+        plannerConfig: {
+          provider: {
+            chat: async () => {
+              throw new Error('Planner failed');
+            },
+          } as unknown as LLMProvider,
+        },
+      };
+
+      const context = {
+        traceId: 'trace_4',
+        userId: 'user_1',
+      };
+
+      // Should not throw, but handle error gracefully
+      const result = await executePlan(plan, context, config);
+
+      expect(result).toBeDefined();
+      expect(result.rePlanIterations).toBeGreaterThanOrEqual(0);
+    });
+
+    it('should track original and final plans after re-planning', async () => {
+      const originalPlan: ExecutionPlan = {
+        taskId: 'test_task_5',
+        summary: 'Original plan',
+        steps: [
+          {
+            id: 'step_orig_1',
+            description: 'Original step',
+            workerType: 'general',
+            task: 'Work',
+            dependsOn: [],
+            priority: 5,
+            expectedOutput: 'text',
+          },
+        ],
+        estimatedComplexity: 'low',
+      };
+
+      const responses = new Map<string, WorkerResult>([
+        [
+          'step_orig_1',
+          {
+            stepId: 'step_orig_1',
+            success: true,
+            data: 'Result',
+            durationMs: 50,
+          },
+        ],
+      ]);
+
+      const dispatcher = createMockDispatcher(responses);
+      const config: ExecutorConfig = {
+        dispatcher,
+        maxParallel: 5,
+        continueOnError: true,
+      };
+
+      const context = {
+        traceId: 'trace_5',
+        userId: 'user_1',
+      };
+
+      const result = await executePlan(originalPlan, context, config);
+
+      // Both should be defined and traceable
+      expect(result.originalPlan).toEqual(originalPlan);
+      expect(result.finalPlan).toBeDefined();
+      expect(result.originalPlan.taskId).toBe(result.finalPlan.taskId);
     });
   });
 });

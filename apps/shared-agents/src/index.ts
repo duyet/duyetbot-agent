@@ -29,7 +29,7 @@ import {
   type GitHubWorkerEnv,
   type HITLAgentClass,
   type OrchestratorAgentClass,
-  type OrchestratorAgentEnv,
+  type OrchestratorEnv,
   type ResearchWorkerEnv,
   type RouterAgentClass,
   type RouterAgentEnv,
@@ -38,7 +38,7 @@ import {
   type WorkerClass,
 } from '@duyetbot/chat-agent';
 import { getSimpleAgentPrompt } from '@duyetbot/prompts';
-import { createProvider, type ProviderEnv } from './provider.js';
+import { createLLMProvider, createProvider, type ProviderEnv } from './provider.js';
 
 /**
  * Environment for shared agents
@@ -47,7 +47,7 @@ import { createProvider, type ProviderEnv } from './provider.js';
 interface SharedEnv
   extends ProviderEnv,
     RouterAgentEnv,
-    OrchestratorAgentEnv,
+    OrchestratorEnv,
     CodeWorkerEnv,
     ResearchWorkerEnv,
     GitHubWorkerEnv {}
@@ -55,11 +55,11 @@ interface SharedEnv
 /**
  * RouterAgent for query classification
  *
- * Note: createProvider receives context from parent workers (telegram-bot, github-bot)
- * which contains platformConfig with AI Gateway credentials.
+ * Note: createProvider is called with just env during migration.
+ * Platform-specific config will be passed via ExecutionContext in the future.
  */
 export const RouterAgent: RouterAgentClass<SharedEnv> = createRouterAgent<SharedEnv>({
-  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env) => createProvider(env),
   debug: false,
 });
 
@@ -70,7 +70,7 @@ export const RouterAgent: RouterAgentClass<SharedEnv> = createRouterAgent<Shared
  * to access real-time web information when needed.
  */
 export const SimpleAgent: SimpleAgentClass<SharedEnv> = createSimpleAgent<SharedEnv>({
-  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env) => createProvider(env),
   systemPrompt: getSimpleAgentPrompt(),
   maxHistory: 20,
   webSearch: true,
@@ -80,7 +80,7 @@ export const SimpleAgent: SimpleAgentClass<SharedEnv> = createSimpleAgent<Shared
  * HITLAgent for human-in-the-loop confirmations
  */
 export const HITLAgent: HITLAgentClass<SharedEnv> = createHITLAgent<SharedEnv>({
-  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env) => createProvider(env),
   systemPrompt: getSimpleAgentPrompt(),
   confirmationThreshold: 'high',
 });
@@ -90,7 +90,7 @@ export const HITLAgent: HITLAgentClass<SharedEnv> = createHITLAgent<SharedEnv>({
  */
 export const OrchestratorAgent: OrchestratorAgentClass<SharedEnv> =
   createOrchestratorAgent<SharedEnv>({
-    createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+    createProvider: (env) => createProvider(env),
     maxSteps: 10,
     maxParallel: 3,
     continueOnError: true,
@@ -98,31 +98,34 @@ export const OrchestratorAgent: OrchestratorAgentClass<SharedEnv> =
 
 /**
  * CodeWorker for code analysis and generation
+ * Workers use createLLMProvider() since they extend Agent directly
  */
 export const CodeWorker: WorkerClass<SharedEnv> = createCodeWorker<SharedEnv>({
-  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env) => createLLMProvider(env),
   defaultLanguage: 'typescript',
 });
 
 /**
  * ResearchWorker for web research and documentation
+ * Workers use createLLMProvider() since they extend Agent directly
  */
 export const ResearchWorker: WorkerClass<SharedEnv> = createResearchWorker<SharedEnv>({
-  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env) => createLLMProvider(env),
 });
 
 /**
  * GitHubWorker for GitHub operations
+ * Workers use createLLMProvider() since they extend Agent directly
  */
 export const GitHubWorker: WorkerClass<SharedEnv> = createGitHubWorker<SharedEnv>({
-  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env) => createLLMProvider(env),
 });
 
 /**
  * DuyetInfoAgent for Duyet's blog and personal info queries
  */
 export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> = createDuyetInfoAgent<SharedEnv>({
-  createProvider: (env, context) => createProvider(env, undefined, context?.platformConfig),
+  createProvider: (env) => createProvider(env),
   debug: true, // Enable detailed logging for observability
 });
 
@@ -138,13 +141,29 @@ export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> = createDuyetInfoAge
 export const StateDO = StateDOClass;
 
 /**
+ * SchedulerObject for agentic task scheduling
+ *
+ * Implements the "Wake Up" pattern from Software 2.0 design:
+ * - Priority queue with deadline-based urgency scoring
+ * - Hybrid energy budget (tokens + compute time)
+ * - Quiet hours for background work
+ * - Critical task bypass
+ *
+ * Used for:
+ * - ProactiveResearcher (HN scanning, ArXiv)
+ * - Scheduled maintenance tasks
+ * - Deferred work from main agents
+ */
+export { SchedulerObject } from './scheduler-object.js';
+
+/**
  * Worker fetch handler (minimal - DOs handle all logic)
  */
 export default {
   async fetch(): Promise<Response> {
     return new Response(
       JSON.stringify({
-        name: 'duyetbot-agents',
+        name: 'duyetbot-shared-agents',
         status: 'ok',
         description: 'Shared Durable Objects for duyetbot',
       }),

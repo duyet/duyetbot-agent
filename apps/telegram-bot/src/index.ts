@@ -5,6 +5,7 @@
  * Uses transport layer pattern for clean separation of concerns.
  */
 
+import type { ParsedInput } from '@duyetbot/chat-agent';
 import { getChatAgent } from '@duyetbot/chat-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import {
@@ -20,18 +21,18 @@ import {
 } from './middlewares/index.js';
 import { createTelegramContext, telegramTransport } from './transport.js';
 
-// Extend Env to include observability bindings
-type EnvWithObservability = Env & ObservabilityEnv;
+// Extend Env with agent bindings and observability
+type EnvWithAgent = Env & ObservabilityEnv;
 
 // Re-export local agent for Durable Object binding
-// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
+// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-shared-agents via script_name
 export { TelegramAgent };
 
 export type { TelegramBot } from './test-utils.js';
 // Re-export test utilities for E2E testing
 export { createTelegramBot, type TelegramBotConfig } from './test-utils.js';
 
-const app = createBaseApp<EnvWithObservability>({
+const app = createBaseApp<EnvWithAgent>({
   name: 'telegram-bot',
   version: '1.0.0',
   logger: true,
@@ -42,24 +43,27 @@ const app = createBaseApp<EnvWithObservability>({
 // Telegram webhook handler
 app.post(
   '/webhook',
-  createTelegramWebhookAuth<EnvWithObservability>(),
+  createTelegramWebhookAuth<EnvWithAgent>(),
   createTelegramParserMiddleware(),
   createTelegramAuthMiddleware(),
   async (c) => {
     const env = c.env;
     const startTime = Date.now();
 
-    // Generate request ID for trace correlation across webhook and DO invocations
-    const requestId = crypto.randomUUID().slice(0, 8);
+    // Generate IDs for trace correlation across webhook and DO invocations
+    // - eventId: Full UUID for D1 uniqueness (passed to agent for correlation)
+    // - requestId: Short ID for log readability
+    const eventId = crypto.randomUUID();
+    const requestId = eventId.slice(0, 8);
 
-    // Initialize observability collector
+    // Initialize observability collector (same pattern as github-bot)
     let collector: EventCollector | null = null;
     let storage: ObservabilityStorage | null = null;
 
     if (env.OBSERVABILITY_DB) {
       storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
       collector = new EventCollector({
-        eventId: crypto.randomUUID(),
+        eventId, // Full UUID for D1 uniqueness
         appSource: 'telegram-webhook',
         eventType: 'message',
         triggeredAt: startTime,
@@ -80,10 +84,19 @@ app.post(
 
     // Check if we should skip processing
     if (c.get('skipProcessing')) {
-      const reason = c.get('unauthorized') ? 'unauthorized' : 'skip_flag';
+      // Determine skip reason for logging
+      let reason = 'skip_flag';
+      if (c.get('unauthorized')) {
+        reason = 'unauthorized';
+      } else if (webhookCtx?.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReply) {
+        reason = 'group_not_mentioned_or_reply';
+      }
+
       logger.info(`[${requestId}] [WEBHOOK] Skipping`, {
         requestId,
         reason,
+        chatType: webhookCtx?.chatType,
+        isGroupChat: webhookCtx?.isGroupChat,
         durationMs: Date.now() - startTime,
       });
 
@@ -120,7 +133,8 @@ app.post(
       env.TELEGRAM_PARSE_MODE
     );
 
-    // Set observability context
+    // Set observability context (user info for event tracking)
+    // TriggerContext expects string types, but TelegramContext has number for userId/chatId
     if (collector) {
       collector.setContext({
         userId: String(ctx.userId),
@@ -154,70 +168,106 @@ app.post(
       ctx,
     });
 
-    // Queue message for batch processing with alarm-based execution
-    // Messages arriving within 500ms are combined into a single LLM call
-    // This handles rapid typing, corrections, and multi-message input naturally
+    // Fire-and-forget: dispatch to ChatAgent without waiting for response
+    // Uses c.executionCtx.waitUntil() to keep worker alive during processing
+    // Returns immediately to Telegram (<100ms)
     try {
       const agent = getChatAgent(env.TelegramAgent, agentId);
 
-      logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
+      // Create ParsedInput for agent
+      // Use extracted task text if bot was mentioned (removes @mention prefix)
+      const messageText = webhookCtx.task ?? ctx.text;
+
+      const parsedInput: ParsedInput = {
+        text: messageText,
+        userId: ctx.userId,
+        chatId: ctx.chatId,
+        username: ctx.username,
+        messageRef: ctx.messageId,
+        replyTo: ctx.replyToMessageId,
+        metadata: {
+          platform: 'telegram',
+          requestId,
+          eventId, // Full UUID for D1 observability correlation
+          startTime: ctx.startTime,
+          adminUsername: ctx.adminUsername,
+          parseMode: ctx.parseMode,
+          isAdmin: ctx.isAdmin,
+          quotedText: webhookCtx.quotedText,
+          quotedUsername: webhookCtx.quotedUsername,
+          chatType: webhookCtx.chatType,
+          chatTitle: webhookCtx.chatTitle,
+          isGroupChat: webhookCtx.isGroupChat,
+          hasBotMention: webhookCtx.hasBotMention,
+          isReply: webhookCtx.isReply,
+          isReplyToBot: webhookCtx.isReplyToBot,
+        },
+      };
+
+      // True fire-and-forget: schedule RPC without awaiting
+      // waitUntil keeps worker alive for the RPC, but we return immediately
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const result = await agent.receiveMessage(parsedInput);
+            logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+              requestId,
+              agentId,
+              traceId: result.traceId,
+              batchId: result.batchId,
+              durationMs: Date.now() - startTime,
+            });
+
+            // Write observability event with 'processing' status (fire-and-forget)
+            // Agent will update this event to 'success' or 'error' when execution completes
+            // This tracks "message received and queued" - actual completion tracked by agent
+            if (collector && storage) {
+              // Keep status as 'processing' - agent will update on completion
+              storage.writeEvent(collector.toEvent()).catch((err) => {
+                logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                  requestId,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              });
+            }
+          } catch (error) {
+            // RPC failure only (rare) - DO is unreachable
+            logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
+              requestId,
+              agentId,
+              error: error instanceof Error ? error.message : String(error),
+              durationMs: Date.now() - startTime,
+            });
+
+            // Write observability event as error - RPC failed, agent never received message
+            if (collector && storage) {
+              collector.complete({
+                status: 'error',
+                error: error instanceof Error ? error : new Error(String(error)),
+              });
+              storage.writeEvent(collector.toEvent()).catch((err) => {
+                logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                  requestId,
+                  error: err instanceof Error ? err.message : String(err),
+                });
+              });
+            }
+          }
+        })()
+      );
+
+      logger.info(`[${requestId}] [WEBHOOK] Returning OK immediately`, {
         requestId,
         agentId,
-        ctx,
         durationMs: Date.now() - startTime,
       });
-
-      // Queue message - alarm will fire after batch window (500ms by default)
-      // Await to ensure message is queued before returning
-      const { queued, batchId } = await agent.queueMessage(ctx);
-
-      logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
-        requestId,
-        agentId,
-        queued,
-        batchId,
-        ctx,
-        durationMs: Date.now() - startTime,
-      });
-
-      // Complete observability event on success
-      if (collector) {
-        collector.complete({ status: 'success' });
-      }
     } catch (error) {
-      logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
+      logger.error(`[${requestId}] [WEBHOOK] Failed to dispatch to ChatAgent`, {
         requestId,
         agentId,
-        ctx,
         error: error instanceof Error ? error.message : String(error),
-        stack: error instanceof Error ? error.stack : undefined,
         durationMs: Date.now() - startTime,
       });
-
-      // Complete observability event on error
-      if (collector) {
-        collector.complete({
-          status: 'error',
-          error: error instanceof Error ? error : new Error(String(error)),
-        });
-      }
-
-      // Send error message to user if queueing fails
-      await telegramTransport
-        .send(ctx, '❌ Sorry, an error occurred. Please try again later.')
-        .catch(() => {
-          // Ignore if we can't send the error message
-        });
-    } finally {
-      // Write observability event to D1 (fire-and-forget)
-      if (collector && storage) {
-        storage.writeEvent(collector.toEvent()).catch((err) => {
-          logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
-            requestId,
-            error: err instanceof Error ? err.message : String(err),
-          });
-        });
-      }
     }
 
     // Return immediately to Telegram

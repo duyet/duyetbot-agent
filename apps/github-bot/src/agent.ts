@@ -6,7 +6,7 @@
  *
  * This file only exports GitHubAgent (local DO).
  * Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from
- * duyetbot-agents worker via script_name in wrangler.toml.
+ * duyetbot-shared-agents worker via script_name in wrangler.toml.
  */
 
 import {

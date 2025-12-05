@@ -65,7 +65,7 @@ const APPS: Record<string, AppConfig> = {
   agents: {
     name: 'Shared Agents',
     dir: 'apps/shared-agents',
-    workerName: 'duyetbot-agents',
+    workerName: 'duyetbot-shared-agents',
     secrets: [
       { name: 'AI_GATEWAY_API_KEY', required: true },
       { name: 'TELEGRAM_BOT_TOKEN', required: true },
@@ -75,6 +75,18 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
+    ],
+  },
+  'safety-kernel': {
+    name: 'Safety Kernel',
+    dir: 'apps/safety-kernel',
+    workerName: 'duyetbot-safety-kernel',
+    secrets: [
+      { name: 'ADMIN_OVERRIDE_TOKEN', required: true },
+      { name: 'CF_API_TOKEN', required: true },
+      { name: 'CF_ACCOUNT_ID', required: true },
+      { name: 'TELEGRAM_BOT_TOKEN', required: true },
+      { name: 'TELEGRAM_ADMIN_CHAT_ID', required: true },
     ],
   },
 };
@@ -352,6 +364,7 @@ switch (app) {
   case 'github':
   case 'memory-mcp':
   case 'agents':
+  case 'safety-kernel':
     await configureApp(app, subCommand);
     break;
   case 'show':

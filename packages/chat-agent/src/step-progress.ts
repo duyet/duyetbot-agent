@@ -143,6 +143,9 @@ export class StepProgressTracker {
     routingFlow: [],
   };
 
+  /** Track tools used by the current agent */
+  private currentAgentTools: string[] = [];
+
   /** Router start time for measuring classification duration */
   private routerStartTime: number | undefined;
 
@@ -158,6 +161,9 @@ export class StepProgressTracker {
 
   /** Token usage for current routing step (router or target agent) */
   private currentStepTokenUsage: TokenUsage | undefined;
+
+  /** Model used for current routing step */
+  private currentStepModel: string | undefined;
 
   /**
    * Create a new step progress tracker
@@ -275,6 +281,10 @@ export class StepProgressTracker {
       if (duration !== undefined) {
         targetStep.durationMs = duration;
       }
+      // Add toolChain to the target step
+      if (this.currentAgentTools.length > 0) {
+        targetStep.toolChain = [...this.currentAgentTools];
+      }
     }
 
     // Calculate total duration
@@ -356,17 +366,28 @@ export class StepProgressTracker {
   }
 
   /**
+   * Set the model used for the current routing step
+   *
+   * @param model - Model identifier (e.g., 'claude-3-5-sonnet-20241022')
+   */
+  setModel(model: string): void {
+    this.currentStepModel = model;
+  }
+
+  /**
    * Finalize token usage for the current routing step (router or target agent)
    * This attaches the accumulated tokens to the current step in routingFlow
    */
   finalizeStepTokenUsage(): void {
-    if (!this.currentStepTokenUsage) {
+    // Nothing to finalize if neither tokens nor model are set
+    if (!this.currentStepTokenUsage && !this.currentStepModel) {
       return;
     }
 
     const routingFlow = this.debugContext.routingFlow;
     if (routingFlow.length === 0) {
       this.currentStepTokenUsage = undefined;
+      this.currentStepModel = undefined;
       return;
     }
 
@@ -381,12 +402,18 @@ export class StepProgressTracker {
       }
     }
 
-    if (currentStep && this.currentStepTokenUsage.totalTokens > 0) {
-      currentStep.tokenUsage = { ...this.currentStepTokenUsage };
+    if (currentStep) {
+      if (this.currentStepTokenUsage && this.currentStepTokenUsage.totalTokens > 0) {
+        currentStep.tokenUsage = { ...this.currentStepTokenUsage };
+      }
+      if (this.currentStepModel) {
+        currentStep.model = this.currentStepModel;
+      }
     }
 
     // Reset for next step
     this.currentStepTokenUsage = undefined;
+    this.currentStepModel = undefined;
   }
 
   /**
@@ -449,12 +476,18 @@ export class StepProgressTracker {
       case 'routing':
         this.executionPath.push(`routing:${event.agentName}`);
         this.completedSteps.push(`📡 Router → ${event.agentName}`);
+        // Reset tools list for the new agent
+        this.currentAgentTools = [];
         await this.update();
         break;
 
       case 'tool_start':
         this.executionPath.push(`tool:${event.toolName}:start`);
         this.currentPrefix = `⚙️ ${event.toolName} running`;
+        // Track this tool for the current agent
+        if (event.toolName && !this.currentAgentTools.includes(event.toolName)) {
+          this.currentAgentTools.push(event.toolName);
+        }
         await this.startRotation();
         break;
 

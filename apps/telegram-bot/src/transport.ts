@@ -82,6 +82,10 @@ export interface TelegramContext {
   isAdmin: boolean;
   /** Parse mode for message formatting */
   parseMode?: 'HTML' | 'MarkdownV2';
+  /** Message ID of the user's message (for reply threading) */
+  messageId: number;
+  /** Message ID of the quoted message (when user replied to a message) */
+  replyToMessageId?: number;
 }
 
 /**
@@ -94,21 +98,26 @@ export interface TelegramContext {
  * @param chatId - Chat to send to
  * @param text - Message text
  * @param parseMode - Parse mode ('HTML', 'Markdown', or undefined for plain text)
+ * @param replyToMessageId - Message ID to reply to (creates reply threading)
  */
 async function sendTelegramMessage(
   token: string,
   chatId: number,
   text: string,
-  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML'
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML',
+  replyToMessageId?: number
 ): Promise<number> {
   const chunks = splitMessage(text);
   let lastMessageId = 0;
 
   for (const chunk of chunks) {
-    // Build payload with optional parse_mode
+    // Build payload with optional parse_mode and reply_to_message_id
     const payload: Record<string, unknown> = { chat_id: chatId, text: chunk };
     if (parseMode) {
       payload.parse_mode = parseMode;
+    }
+    if (replyToMessageId) {
+      payload.reply_to_message_id = replyToMessageId;
     }
     logger.debug('[TRANSPORT] Sending message', payload);
 
@@ -121,17 +130,28 @@ async function sendTelegramMessage(
 
     // Fallback to plain text if parsing fails (400 error)
     if (response.status === 400 && parseMode) {
-      // Consume the error response body to prevent connection pool exhaustion
-      await response.text();
+      // Read and log the actual Telegram API error for debugging
+      const errorBody = await response.text();
+      let errorDetail = '';
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorDetail = parsed.description || errorBody;
+      } catch {
+        errorDetail = errorBody;
+      }
 
       const withoutParseMode = {
         chat_id: chatId,
         text: chunk,
       };
-      logger.warn(
-        `[TRANSPORT] ${parseMode} parse failed, retrying without parse_mode`,
-        withoutParseMode
-      );
+
+      // Log detailed error info including the Telegram API error message
+      logger.warn(`[TRANSPORT] ${parseMode} parse failed, retrying without parse_mode`, {
+        ...withoutParseMode,
+        telegramError: errorDetail,
+        textLength: chunk.length,
+        textPreview: chunk.length > 100 ? `${chunk.slice(0, 100)}...` : chunk,
+      });
 
       response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
@@ -206,18 +226,29 @@ async function editTelegramMessage(
 
   // Fallback to plain text if parsing fails
   if (response.status === 400 && parseMode) {
-    // Consume the error response body to prevent connection pool exhaustion
-    await response.text();
+    // Read and log the actual Telegram API error for debugging
+    const errorBody = await response.text();
+    let errorDetail = '';
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorDetail = parsed.description || errorBody;
+    } catch {
+      errorDetail = errorBody;
+    }
 
     const withoutParseMode = {
       chat_id: chatId,
       message_id: messageId,
       text: truncatedText,
     };
-    logger.warn(
-      `[TRANSPORT] ${parseMode} parse failed in edit, retrying without parse_mode`,
-      withoutParseMode
-    );
+
+    // Log detailed error info including the Telegram API error message
+    logger.warn(`[TRANSPORT] ${parseMode} parse failed in edit, retrying without parse_mode`, {
+      ...withoutParseMode,
+      telegramError: errorDetail,
+      textLength: truncatedText.length,
+      textPreview: truncatedText.length > 100 ? `${truncatedText.slice(0, 100)}...` : truncatedText,
+    });
 
     // Retry
     response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
@@ -285,7 +316,8 @@ export const telegramTransport: Transport<TelegramContext> = {
   send: async (ctx, text) => {
     // Apply debug footer for admin users (context chain pattern)
     const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
-    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode);
+    // Always reply to user's message for threading
+    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode, ctx.messageId);
   },
 
   edit: async (ctx, ref, text) => {
@@ -303,6 +335,8 @@ export const telegramTransport: Transport<TelegramContext> = {
     userId: ctx.userId,
     chatId: ctx.chatId,
     username: ctx.username,
+    messageRef: ctx.messageId,
+    replyTo: ctx.replyToMessageId,
     metadata: {
       startTime: ctx.startTime,
       requestId: ctx.requestId,
@@ -345,6 +379,8 @@ export function createTelegramContext(
     text: string;
     username?: string;
     startTime: number;
+    messageId: number;
+    replyToMessageId?: number;
   },
   adminUsername?: string,
   requestId?: string,
@@ -363,5 +399,7 @@ export function createTelegramContext(
     adminUsername,
     isAdmin,
     parseMode,
+    messageId: webhookCtx.messageId,
+    replyToMessageId: webhookCtx.replyToMessageId,
   };
 }

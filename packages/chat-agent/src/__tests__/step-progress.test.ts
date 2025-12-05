@@ -118,7 +118,7 @@ describe('StepProgressTracker', () => {
       });
 
       // Should show both steps
-      const lastCall = mockOnUpdate.mock.calls[0][0];
+      const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
       expect(lastCall).toContain('📡 Router → SimpleAgent');
       expect(lastCall).toContain('✅ get_posts returned');
     });
@@ -130,7 +130,7 @@ describe('StepProgressTracker', () => {
       await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
 
       // Should show completed routing + current tool running
-      const lastCall = mockOnUpdate.mock.calls[0][0];
+      const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
       expect(lastCall).toContain('📡 Router → SimpleAgent');
       expect(lastCall).toContain('⚙️ get_posts running. ...');
     });
@@ -143,7 +143,7 @@ describe('StepProgressTracker', () => {
       expect(mockOnUpdate).toHaveBeenLastCalledWith('🔄 Thinking. ...');
 
       // Advance timer to trigger rotation
-      await vi.advanceTimersByTimeAsync(5000);
+      await vi.advanceTimersByTime(5000);
 
       // Should have rotated to a different suffix
       expect(mockOnUpdate).toHaveBeenLastCalledWith(
@@ -158,7 +158,7 @@ describe('StepProgressTracker', () => {
       tracker.destroy();
 
       // Advance timer - should not trigger more updates
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTime(10000);
 
       expect(mockOnUpdate.mock.calls.length).toBe(callCount);
     });
@@ -171,7 +171,7 @@ describe('StepProgressTracker', () => {
       const callCount = mockOnUpdate.mock.calls.length;
 
       // Advance timer - rotation should be stopped
-      await vi.advanceTimersByTimeAsync(10000);
+      await vi.advanceTimersByTime(10000);
 
       // No additional calls from rotation
       expect(mockOnUpdate.mock.calls.length).toBe(callCount);
