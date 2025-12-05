@@ -2003,6 +2003,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
 
       // Create pending message (without originalContext since we don't have transport TContext)
+      // Extract eventId from metadata for D1 observability correlation
+      const eventId = input.metadata?.eventId as string | undefined;
+
       const pendingMessage: PendingMessage<unknown> = {
         text: input.text,
         timestamp: now,
@@ -2010,6 +2013,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         userId: input.userId,
         chatId: input.chatId,
         ...(input.username && { username: input.username }),
+        // Event ID for D1 observability updates when batch completes
+        ...(eventId && { eventId }),
         // Store metadata for later use (platform info, etc.)
         originalContext: input.metadata,
       };
@@ -2255,6 +2260,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           this.updateObservability(eventIds, completionData);
           // Clear captured response after use
           this._lastResponse = undefined;
+        } else if (activeBatch.pendingMessages.length > 0) {
+          // Log warning if messages exist but no eventIds (indicates webhook didn't pass eventId)
+          logger.warn('[CloudflareAgent][BATCH] No eventIds for observability update', {
+            batchId: activeBatch.batchId,
+            messageCount: activeBatch.pendingMessages.length,
+          });
         }
 
         // Check if new messages arrived during processing
