@@ -7,10 +7,10 @@
  * This middleware is responsible only for signature verification -
  * parsing and processing are handled by subsequent middlewares.
  *
+ * Uses Web Crypto API for Cloudflare Workers compatibility.
+ *
  * @see https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
  */
-
-import { createHmac, timingSafeEqual } from 'node:crypto';
 
 import { logger } from '@duyetbot/hono-middleware';
 import type { MiddlewareHandler } from 'hono';
@@ -20,8 +20,8 @@ import type { Env, SignatureVariables } from './types.js';
 /**
  * Verify GitHub webhook signature using HMAC-SHA256
  *
- * Compares the provided signature against a computed HMAC digest
- * using timing-safe comparison to prevent timing attacks.
+ * Uses Web Crypto API for Cloudflare Workers compatibility.
+ * Computes HMAC-SHA256 and compares using timing-safe comparison.
  *
  * @param payload - Raw request body as string
  * @param signature - Signature from x-hub-signature-256 header
@@ -30,22 +30,62 @@ import type { Env, SignatureVariables } from './types.js';
  *
  * @example
  * ```typescript
- * const isValid = verifySignature(
+ * const isValid = await verifySignature(
  *   '{"action":"created",...}',
  *   'sha256=abc123...',
  *   'my-webhook-secret'
  * );
  * ```
  */
-export function verifySignature(payload: string, signature: string, secret: string): boolean {
-  const hmac = createHmac('sha256', secret);
-  const digest = `sha256=${hmac.update(payload).digest('hex')}`;
-
-  // Use timing-safe comparison to prevent timing attacks
+export async function verifySignature(
+  payload: string,
+  signature: string,
+  secret: string
+): Promise<boolean> {
   try {
-    return timingSafeEqual(Buffer.from(digest), Buffer.from(signature));
-  } catch {
-    // Buffer lengths may differ if signature is malformed
+    // Import crypto from global scope (Cloudflare Workers provides this)
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(secret);
+    const payloadData = encoder.encode(payload);
+
+    // Import key for HMAC
+    const key = await crypto.subtle.importKey(
+      'raw',
+      keyData,
+      { name: 'HMAC', hash: 'SHA-256' },
+      false,
+      ['sign']
+    );
+
+    // Compute HMAC
+    const signature_bytes = await crypto.subtle.sign('HMAC', key, payloadData);
+
+    // Convert to hex string
+    const digest = `sha256=${Array.from(new Uint8Array(signature_bytes))
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')}`;
+
+    // Use timing-safe comparison to prevent timing attacks
+    // For constant-time comparison, compare byte lengths first
+    if (digest.length !== signature.length) {
+      return false;
+    }
+
+    // Convert both to ArrayBuffers for timing-safe comparison
+    const digestBytes = new TextEncoder().encode(digest);
+    const signatureBytes = new TextEncoder().encode(signature);
+
+    // Timing-safe comparison
+    let result = 0;
+    for (let i = 0; i < digestBytes.length; i++) {
+      result |= digestBytes[i] ^ signatureBytes[i];
+    }
+
+    return result === 0;
+  } catch (error) {
+    logger.error('[SIGNATURE] Verification error', {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return false;
   }
 }
@@ -100,7 +140,8 @@ export function createGitHubSignatureMiddleware(): MiddlewareHandler<{
 
     // Verify signature if both signature and secret are present
     if (signature && c.env.GITHUB_WEBHOOK_SECRET) {
-      if (!verifySignature(rawBody, signature, c.env.GITHUB_WEBHOOK_SECRET)) {
+      const isValid = await verifySignature(rawBody, signature, c.env.GITHUB_WEBHOOK_SECRET);
+      if (!isValid) {
         logger.warn(`[${requestId}] [SIGNATURE] Invalid webhook signature`, {
           requestId,
           deliveryId,
