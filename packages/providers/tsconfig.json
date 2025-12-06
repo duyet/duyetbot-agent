@@ -9,8 +9,8 @@
     "sourceMap": true,
     "baseUrl": ".",
     "paths": {
-      "@duyetbot/chat-agent": ["../../packages/chat-agent/src"],
-      "@duyetbot/chat-agent/*": ["../../packages/chat-agent/src/*"],
+      "@duyetbot/cloudflare-agent": ["../../packages/cloudflare-agent/src"],
+      "@duyetbot/cloudflare-agent/*": ["../../packages/cloudflare-agent/src/*"],
       "@duyetbot/types": ["../../packages/types/src"],
       "@duyetbot/types/*": ["../../packages/types/src/*"]
     },

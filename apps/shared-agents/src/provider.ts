@@ -21,7 +21,11 @@
  * - Parent ChatAgent handles actual message delivery
  */
 
-import type { AgentProvider, LLMProvider, ProviderExecutionContext } from '@duyetbot/chat-agent';
+import type {
+  AgentProvider,
+  LLMProvider,
+  ProviderExecutionContext,
+} from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   createOpenRouterProvider,

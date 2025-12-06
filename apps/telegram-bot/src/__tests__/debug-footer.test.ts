@@ -5,7 +5,7 @@
  * cloudflare: protocol dependencies from the transport module.
  */
 
-import type { DebugContext } from '@duyetbot/chat-agent';
+import type { DebugContext } from '@duyetbot/cloudflare-agent';
 import { describe, expect, it } from 'vitest';
 import { escapeHtml, formatDebugFooter, prepareMessageWithDebug } from '../debug-footer.js';
 

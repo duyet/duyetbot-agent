@@ -21,11 +21,13 @@
       "name": "@duyetbot/github-bot",
       "version": "0.1.0",
       "dependencies": {
-        "@duyetbot/chat-agent": "workspace:*",
+        "@duyetbot/cloudflare-agent": "workspace:*",
         "@duyetbot/hono-middleware": "workspace:*",
         "@duyetbot/observability": "workspace:*",
         "@duyetbot/prompts": "workspace:*",
         "@duyetbot/providers": "workspace:*",
+        "@duyetbot/tools": "workspace:*",
+        "@duyetbot/types": "workspace:*",
         "@octokit/rest": "^21.0.0",
         "agents": "catalog:",
         "hono": "catalog:",
@@ -74,7 +76,7 @@
       "name": "@duyetbot/shared-agents",
       "version": "0.1.0",
       "dependencies": {
-        "@duyetbot/chat-agent": "workspace:*",
+        "@duyetbot/cloudflare-agent": "workspace:*",
         "@duyetbot/hono-middleware": "workspace:*",
         "@duyetbot/prompts": "workspace:*",
         "@duyetbot/providers": "workspace:*",
@@ -90,12 +92,13 @@
       "name": "@duyetbot/telegram-bot",
       "version": "0.1.0",
       "dependencies": {
-        "@duyetbot/chat-agent": "workspace:*",
+        "@duyetbot/cloudflare-agent": "workspace:*",
         "@duyetbot/hono-middleware": "workspace:*",
         "@duyetbot/mcp-servers": "workspace:*",
         "@duyetbot/observability": "workspace:*",
         "@duyetbot/prompts": "workspace:*",
         "@duyetbot/providers": "workspace:*",
+        "@duyetbot/tools": "workspace:*",
         "@duyetbot/types": "workspace:*",
         "agents": "catalog:",
         "hono": "catalog:",
@@ -107,31 +110,6 @@
         "vitest": "catalog:",
         "wrangler": "catalog:",
       },
-    },
-    "packages/chat-agent": {
-      "name": "@duyetbot/chat-agent",
-      "version": "0.1.0",
-      "dependencies": {
-        "@duyetbot/hono-middleware": "workspace:*",
-        "@duyetbot/observability": "workspace:*",
-        "@duyetbot/prompts": "workspace:*",
-        "@duyetbot/types": "workspace:*",
-        "zod": "catalog:",
-        "zod-to-json-schema": "catalog:",
-      },
-      "devDependencies": {
-        "@cloudflare/workers-types": "^4.20241127.0",
-        "@duyetbot/config-vitest": "workspace:*",
-        "agents": "catalog:",
-        "typescript": "catalog:",
-        "vitest": "catalog:",
-      },
-      "peerDependencies": {
-        "agents": ">=0.2.24",
-      },
-      "optionalPeers": [
-        "agents",
-      ],
     },
     "packages/cli": {
       "name": "@duyetbot/cli",
@@ -160,6 +138,31 @@
         "typescript": "catalog:",
         "vitest": "catalog:",
       },
+    },
+    "packages/cloudflare-agent": {
+      "name": "@duyetbot/cloudflare-agent",
+      "version": "0.1.0",
+      "dependencies": {
+        "@duyetbot/hono-middleware": "workspace:*",
+        "@duyetbot/observability": "workspace:*",
+        "@duyetbot/prompts": "workspace:*",
+        "@duyetbot/types": "workspace:*",
+        "zod": "catalog:",
+        "zod-to-json-schema": "catalog:",
+      },
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241127.0",
+        "@duyetbot/config-vitest": "workspace:*",
+        "agents": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+      "peerDependencies": {
+        "agents": ">=0.2.24",
+      },
+      "optionalPeers": [
+        "agents",
+      ],
     },
     "packages/config-typescript": {
       "name": "@duyetbot/config-typescript",
@@ -248,7 +251,7 @@
       },
       "devDependencies": {
         "@cloudflare/workers-types": "^4.20241127.0",
-        "@duyetbot/chat-agent": "workspace:*",
+        "@duyetbot/cloudflare-agent": "workspace:*",
         "@types/node": "catalog:",
         "typescript": "catalog:",
         "vitest": "catalog:",
@@ -408,9 +411,9 @@
 
     "@cspotcode/source-map-support": ["@cspotcode/source-map-support@0.8.1", "", { "dependencies": { "@jridgewell/trace-mapping": "0.3.9" } }, "sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw=="],
 
-    "@duyetbot/chat-agent": ["@duyetbot/chat-agent@workspace:packages/chat-agent"],
-
     "@duyetbot/cli": ["@duyetbot/cli@workspace:packages/cli"],
+
+    "@duyetbot/cloudflare-agent": ["@duyetbot/cloudflare-agent@workspace:packages/cloudflare-agent"],
 
     "@duyetbot/config-typescript": ["@duyetbot/config-typescript@workspace:packages/config-typescript"],
 

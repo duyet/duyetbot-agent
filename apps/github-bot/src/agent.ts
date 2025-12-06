@@ -1,7 +1,7 @@
 /**
  * GitHub Agent using Cloudflare Agents SDK
  *
- * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
+ * Uses @duyetbot/cloudflare-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern with Durable Object state.
  *
  * This file only exports GitHubAgent (local DO).
@@ -16,7 +16,7 @@ import {
   type GitHubPlatformConfig,
   type MCPServerConnection,
   type RouterAgentEnv,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 import { getGitHubBotPrompt } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
 import { Octokit } from '@octokit/rest';

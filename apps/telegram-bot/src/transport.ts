@@ -4,7 +4,7 @@
  * Implements the Transport interface for Telegram Bot API.
  */
 
-import type { DebugContext, Transport } from '@duyetbot/chat-agent';
+import type { DebugContext, Transport } from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import { prepareMessageWithDebug } from './debug-footer.js';
 

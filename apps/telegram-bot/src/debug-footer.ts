@@ -15,7 +15,7 @@ import {
   escapeHtml,
   escapeMarkdownV2,
   smartEscapeMarkdownV2,
-} from '@duyetbot/chat-agent/debug-footer';
+} from '@duyetbot/cloudflare-agent/debug-footer';
 import type { TelegramContext } from './transport.js';
 
 // Re-export escape functions directly (no wrapper needed)

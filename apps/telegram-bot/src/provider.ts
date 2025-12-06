@@ -16,7 +16,7 @@ import type {
   Message,
   MessageRef,
   ProviderExecutionContext,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   createOpenRouterProvider,

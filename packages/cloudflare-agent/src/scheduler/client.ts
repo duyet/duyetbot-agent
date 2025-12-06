@@ -6,7 +6,7 @@
  *
  * Usage:
  * ```typescript
- * import { scheduleTask, getSchedulerStatus } from '@duyetbot/chat-agent';
+ * import { scheduleTask, getSchedulerStatus } from '@duyetbot/cloudflare-agent';
  *
  * // Schedule a research task
  * await scheduleTask(env.SchedulerObject, {

@@ -296,7 +296,7 @@ export type CloudflareChatAgentClass<TEnv, TContext = unknown> = typeof Agent<
  *
  * @example
  * ```typescript
- * import { createCloudflareChatAgent } from '@duyetbot/chat-agent';
+ * import { createCloudflareChatAgent } from '@duyetbot/cloudflare-agent';
  *
  * export const TelegramAgent = createCloudflareChatAgent({
  *   createProvider: (env) => createAIGatewayProvider(env),

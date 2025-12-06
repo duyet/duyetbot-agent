@@ -1,7 +1,7 @@
 /**
  * Telegram Agent using Cloudflare Agents SDK
  *
- * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
+ * Uses @duyetbot/cloudflare-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern.
  *
  * This file only exports TelegramAgent (local DO).
@@ -9,12 +9,12 @@
  * duyetbot-shared-agents worker via script_name in wrangler.toml.
  */
 
-import type { RouterAgentEnv, TelegramPlatformConfig } from '@duyetbot/chat-agent';
+import type { RouterAgentEnv, TelegramPlatformConfig } from '@duyetbot/cloudflare-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
   createCloudflareChatAgent,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   getTelegramHelpMessage,
