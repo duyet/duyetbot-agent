@@ -168,18 +168,34 @@ export async function runHealthChecks(env: Env): Promise<HealthStatus> {
 }
 
 /**
- * Store health check history (rolling window of last 60 checks = 1 hour)
+ * Store health check history (rolling window of last 12 checks = 1 hour at 5-min intervals)
+ *
+ * OPTIMIZATION: To reduce KV write operations (free tier limit: 1000/day),
+ * we only store history every 5 minutes instead of every minute.
+ * This reduces writes from ~1,440/day to ~288/day.
  */
 async function storeHealthHistory(env: Env, status: HealthStatus): Promise<void> {
   try {
     const existing = await env.HEARTBEAT_KV.get(KV_KEYS.HEALTH_HISTORY, 'json');
     const history = (existing as HealthStatus[] | null) || [];
 
+    // Only store if unhealthy OR every 5 minutes to reduce KV writes
+    // (cron runs every minute, but we only persist every 5th check or on issues)
+    const lastEntry = history[history.length - 1];
+    const timeSinceLastStore = lastEntry ? status.timestamp - lastEntry.timestamp : Infinity;
+    const STORE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+    const shouldStore = status.overall !== 'healthy' || timeSinceLastStore >= STORE_INTERVAL_MS;
+
+    if (!shouldStore) {
+      return; // Skip KV write to conserve quota
+    }
+
     // Add current status
     history.push(status);
 
-    // Keep only last 60 entries (1 hour at 1-minute intervals)
-    while (history.length > 60) {
+    // Keep only last 12 entries (1 hour at 5-minute intervals)
+    while (history.length > 12) {
       history.shift();
     }
 
