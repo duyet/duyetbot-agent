@@ -8,22 +8,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "baseUrl": ".",
-    "paths": {
-      "@duyetbot/types": ["../../packages/types/src"],
-      "@duyetbot/types/*": ["../../packages/types/src/*"],
-      "@duyetbot/providers": ["../../packages/providers/src"],
-      "@duyetbot/providers/*": ["../../packages/providers/src/*"],
-      "@duyetbot/tools": ["../../packages/tools/src"],
-      "@duyetbot/tools/*": ["../../packages/tools/src/*"],
-      "@duyetbot/core": ["../../packages/core/src"],
-      "@duyetbot/core/*": ["../../packages/core/src/*"],
-      "@duyetbot/hono-middleware": ["../../packages/hono-middleware/src"],
-      "@duyetbot/hono-middleware/*": ["../../packages/hono-middleware/src/*"],
-      "@duyetbot/observability": ["../../packages/observability/src"],
-      "@duyetbot/observability/*": ["../../packages/observability/src/*"],
-      "@duyetbot/prompts": ["../../packages/prompts/src"],
-      "@duyetbot/prompts/*": ["../../packages/prompts/src/*"]
-    }
+    "paths": {}
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
