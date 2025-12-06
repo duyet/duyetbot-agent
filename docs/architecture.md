@@ -3,13 +3,26 @@ title: Architecture
 description: System design overview of duyetbot-agent's hybrid supervisor-worker architecture with Cloudflare Workers and Durable Objects.
 ---
 
-**Table of Contents**: [System Overview](#system-overview) | [Message Flow](#message-flow) | [Routing System](#routing-system) | [Batch Processing](#batch-processing) | [Package Architecture](#package-architecture) | [Transport Layer](#transport-layer) | [Error Handling](#error-handling) | [Deployment](#deployment)
+**Table of Contents**: [Agent Types](#agent-types) | [System Overview](#system-overview) | [Message Flow](#message-flow) | [Routing System](#routing-system) | [Batch Processing](#batch-processing) | [Package Architecture](#package-architecture) | [Transport Layer](#transport-layer) | [Error Handling](#error-handling) | [Deployment](#deployment)
+
+---
+
+## Agent Types
+
+This system supports two deployment models:
+
+| Type | Runtime | Best For | Guides |
+|------|---------|----------|--------|
+| **Cloudflare Agent** | Cloudflare Workers + Durable Objects | Webhooks, short sessions, serverless, global edge | [Telegram Bot](/guides/telegram-bot), [GitHub Bot](/guides/github-bot) |
+| **Claude Code Agent** | VM, Docker, Sandbox | Long sessions, WebSocket streaming, code execution | [Claude Code Agent](/guides/claude-code-agent) |
+
+**Cloudflare Agents** are the primary deployment target - they run on edge, scale automatically, and persist state in Durable Objects. **Claude Code Agents** are for scenarios requiring long-running processes or local code execution.
 
 ---
 
 ## System Overview
 
-**duyetbot-agent** is a sophisticated multi-agent system built entirely on Cloudflare Workers + Durable Objects. It routes incoming messages (from Telegram/GitHub webhooks) to one of 8 specialized agents based on query classification.
+**duyetbot-agent** is a multi-agent system built on Cloudflare Workers + Durable Objects. It routes incoming messages (from Telegram/GitHub webhooks) to one of 8 specialized agents based on query classification.
 
 ### Architecture Diagram
 

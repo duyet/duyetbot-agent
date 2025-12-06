@@ -1,0 +1,1 @@
+{"version":3,"file":"noop-adapter.d.ts","sourceRoot":"","sources":["noop-adapter.ts"],"names":[],"mappings":"AAAA;;;;;GAKG;AAEH,OAAO,KAAK,EAAE,qBAAqB,EAAE,sBAAsB,EAAE,MAAM,YAAY,CAAC;AAEhF;;GAEG;AACH,qBAAa,wBAAyB,YAAW,qBAAqB;IACpE;;;;OAIG;IACH,WAAW,CAAC,KAAK,EAAE,sBAAsB,GAAG,IAAI;CAGjD"}

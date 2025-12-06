@@ -1,19 +1,4 @@
 {
   "title": "Guides",
-  "pages": [
-    "cloudflare-first",
-    "env-setup",
-    "telegram-bot-setup",
-    "telegram-bot",
-    "github-bot-setup",
-    "github-bot",
-    "slack-setup",
-    "deploy",
-    "deployment",
-    "cloudflare-deploy",
-    "build-custom-agent",
-    "custom-tools",
-    "custom-do",
-    "webhook"
-  ]
+  "pages": ["env-setup", "telegram-bot", "github-bot", "cloudflare-deploy", "claude-code-agent"]
 }

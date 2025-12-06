@@ -37,7 +37,21 @@
     "config:github": "bun scripts/config.ts github",
     "config:shared-agents": "bun scripts/config.ts agents",
     "config:memory-mcp": "bun scripts/config.ts memory",
-    "config:show": "bun scripts/config.ts show"
+    "config:show": "bun scripts/config.ts show",
+    "ci:build:shared-agents": "cd apps/shared-agents && cd ../.. && bun install && turbo run build --filter=@duyetbot/shared-agents...",
+    "ci:build:telegram": "cd apps/telegram-bot && cd ../.. && bun install && turbo run build --filter=@duyetbot/telegram-bot...",
+    "ci:build:github": "cd apps/github-bot && cd ../.. && bun install && turbo run build --filter=@duyetbot/github-bot...",
+    "ci:build:memory-mcp": "cd apps/memory-mcp && cd ../.. && bun install && turbo run build --filter=@duyetbot/memory-mcp...",
+    "ci:build:docs": "cd apps/docs && cd ../.. && bun install && turbo run build --filter=@duyetbot/docs...",
+    "ci:deploy:shared-agents": "wrangler deploy --cwd apps/shared-agents",
+    "ci:deploy:telegram": "wrangler deploy --cwd apps/telegram-bot",
+    "ci:deploy:github": "wrangler deploy --cwd apps/github-bot",
+    "ci:deploy:memory-mcp": "wrangler deploy --cwd apps/memory-mcp",
+    "ci:deploy:docs": "wrangler pages deploy out --project-name=duyetbot-docs --cwd apps/docs",
+    "ci:deploy-version:shared-agents": "wrangler versions upload --cwd apps/shared-agents",
+    "ci:deploy-version:telegram": "wrangler versions upload --cwd apps/telegram-bot",
+    "ci:deploy-version:github": "wrangler versions upload --cwd apps/github-bot",
+    "ci:deploy-version:memory-mcp": "wrangler versions upload --cwd apps/memory-mcp"
   },
   "keywords": [
     "agent",

@@ -47,15 +47,15 @@
     "format": {
       "cache": false
     },
+    "config": {
+      "cache": false
+    },
     "@duyetbot/telegram-bot#deploy": {
       "dependsOn": ["@duyetbot/shared-agents#deploy"],
       "cache": false
     },
     "@duyetbot/github-bot#deploy": {
       "dependsOn": ["@duyetbot/shared-agents#deploy"],
-      "cache": false
-    },
-    "config": {
       "cache": false
     },
     "@duyetbot/shared-agents#config": {
