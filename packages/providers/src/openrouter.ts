@@ -19,7 +19,7 @@ import type {
   LLMProvider,
   LLMResponse,
   OpenAITool,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 
 /**
  * Cloudflare AI binding interface for AI Gateway URL generation

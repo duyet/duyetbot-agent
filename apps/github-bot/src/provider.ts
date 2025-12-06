@@ -17,7 +17,7 @@ import type {
   MessageRef,
   ParsedInput,
   ProviderExecutionContext,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 import {
   createOpenRouterProvider,
   type OpenRouterProviderEnv,

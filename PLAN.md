@@ -363,7 +363,7 @@ Recovery:
                  @duyetbot/core
             (SDK adapter + session mgmt)
                         ↓
-              @duyetbot/chat-agent
+              @duyetbot/cloudflare-agent
            (2400+ LOC: agents, routing, batch)
                         ↓
         ┌───────────────┼───────────────┬───────────────┐
@@ -382,7 +382,7 @@ Recovery:
 | **@duyetbot/prompts** | System prompts & templates | Telegram, GitHub, router prompts | 18 |
 | **@duyetbot/hono-middleware** | Shared HTTP utilities | logger, auth, health routes | 6 |
 | **@duyetbot/core** | SDK adapter & session | query(), sdkTool(), MCP client | 32 |
-| **@duyetbot/chat-agent** | Multi-agent system | CloudflareChatAgent, routing, agents | 226 |
+| **@duyetbot/cloudflare-agent** | Multi-agent system | CloudflareChatAgent, routing, agents | 226 |
 | **@duyetbot/cli** | Command-line interface | chat, ask, sessions commands | 14 |
 | **@duyetbot/config-typescript** | TypeScript config | Shared tsconfig.json | 0 |
 | **@duyetbot/config-vitest** | Vitest config | Shared vitest.config.ts | 0 |
@@ -600,7 +600,7 @@ logger.info('[ROUTER] Query classified', {
 bun run test
 
 # Specific package
-bun run test --filter @duyetbot/chat-agent
+bun run test --filter @duyetbot/cloudflare-agent
 
 # Watch mode
 bun run test -- --watch

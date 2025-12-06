@@ -260,11 +260,11 @@ if (activeBatch && noHeartbeatFor(30s)) {
 
 | File | Purpose |
 |------|---------|
-| `packages/chat-agent/src/cloudflare-agent.ts` | Main DO wrapper |
-| `packages/chat-agent/src/agents/router-agent.ts` | Hybrid classifier |
-| `packages/chat-agent/src/routing/classifier.ts` | Pattern + LLM logic |
-| `packages/chat-agent/src/batch-types.ts` | Dual-batch implementation |
-| `packages/chat-agent/src/feature-flags.ts` | Configuration |
+| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main DO wrapper |
+| `packages/cloudflare-agent/src/agents/router-agent.ts` | Hybrid classifier |
+| `packages/cloudflare-agent/src/routing/classifier.ts` | Pattern + LLM logic |
+| `packages/cloudflare-agent/src/batch-types.ts` | Dual-batch implementation |
+| `packages/cloudflare-agent/src/feature-flags.ts` | Configuration |
 | `packages/prompts/src/agents/router.ts` | Classification prompt |
 | `docs/architecture.md` | Full architecture docs |
 | `docs/multiagent-flows.html` | Interactive dashboard |
@@ -276,7 +276,7 @@ if (activeBatch && noHeartbeatFor(30s)) {
 2. **Interactive view** → `docs/multiagent-flows.html` (10 min explore)
 3. **Deep dive** → `docs/token-optimization-guide.md` (20 min read)
 4. **Implementation** → `docs/architecture.md` (30 min study)
-5. **Code review** → `packages/chat-agent/src/` (60 min exploration)
+5. **Code review** → `packages/cloudflare-agent/src/` (60 min exploration)
 
 ## 💡 Quick Stats
 

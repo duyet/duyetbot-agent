@@ -1,4 +1,4 @@
-import type { DebugContext } from '@duyetbot/chat-agent';
+import type { DebugContext } from '@duyetbot/cloudflare-agent';
 import { describe, expect, it } from 'vitest';
 import {
   formatDebugFooter,

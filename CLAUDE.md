@@ -74,7 +74,7 @@ interface Transport<TContext> {
 | Package | Purpose | Key Exports |
 |---------|---------|-------------|
 | `@duyetbot/core` | SDK adapter, session, MCP client | `query()`, `sdkTool()` |
-| `@duyetbot/chat-agent` | Cloudflare agent patterns | `CloudflareChatAgent`, routing, HITL |
+| `@duyetbot/cloudflare-agent` | Cloudflare agent patterns | `CloudflareChatAgent`, routing, HITL |
 | `@duyetbot/tools` | Built-in tools | `bash`, `git`, `github`, `research`, `plan` |
 | `@duyetbot/providers` | LLM providers | Claude, OpenRouter, AI Gateway |
 | `@duyetbot/prompts` | System prompts | `getTelegramPrompt()`, `getGitHubBotPrompt()` |
@@ -147,18 +147,18 @@ bun run config:github
 **746+ tests** across all packages:
 
 ```bash
-bun run test                              # All tests
-bun run test --filter @duyetbot/core      # Specific package
-bun run test --filter @duyetbot/chat-agent # Routing tests (226)
+bun run test                                 # All tests
+bun run test --filter @duyetbot/core         # Specific package
+bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
 ```
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `packages/chat-agent/src/cloudflare-agent.ts` | Main Cloudflare agent (2400+ LOC) |
-| `packages/chat-agent/src/agents/router-agent.ts` | Query classification & routing |
-| `packages/chat-agent/src/routing/classifier.ts` | Hybrid classifier (pattern + LLM) |
+| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main Cloudflare agent (2400+ LOC) |
+| `packages/cloudflare-agent/src/agents/router-agent.ts` | Query classification & routing |
+| `packages/cloudflare-agent/src/routing/classifier.ts` | Hybrid classifier (pattern + LLM) |
 | `packages/core/src/sdk/query.ts` | SDK query execution |
 | `apps/*/src/transport.ts` | Platform-specific transports |
 

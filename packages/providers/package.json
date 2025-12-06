@@ -43,7 +43,7 @@
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/cloudflare-agent": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

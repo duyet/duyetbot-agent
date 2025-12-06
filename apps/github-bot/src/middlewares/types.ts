@@ -6,7 +6,7 @@
  * parser, and mention middlewares.
  */
 
-import type { CloudflareChatAgentNamespace } from '@duyetbot/chat-agent';
+import type { CloudflareChatAgentNamespace } from '@duyetbot/cloudflare-agent';
 import type { GitHubContext } from '../transport.js';
 
 /**

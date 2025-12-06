@@ -1,5 +1,5 @@
 {
-  "name": "@duyetbot/chat-agent",
+  "name": "@duyetbot/cloudflare-agent",
   "version": "0.1.0",
   "description": "Reusable chat agent with LLM and MCP tools support",
   "type": "module",
