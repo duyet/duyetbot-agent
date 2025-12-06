@@ -3,7 +3,7 @@ title: Getting Started
 description: Installation, configuration, and setup guide. Clone, install, run dev server, CLI chat, tests, and GitHub Bot.
 ---
 
-**Related:** [Use Cases](usecases.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](deploy.md)
+**Related:** [Use Cases](usecases.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](guides/cloudflare-deploy.md)
 
 Complete guide to installing, configuring, and running duyetbot-agent.
 
@@ -293,6 +293,6 @@ pnpm install
 
 - [Use Cases](usecases.md) - See what you can do with @duyetbot
 - [Architecture](architecture.md) - Understand the system design
-- [Deployment](deploy.md) - Deploy to production
+- [Deployment](guides/cloudflare-deploy.md) - Deploy to production
 - [API Reference](api.md) - Explore the API endpoints
 - [Contributing](contributing.md) - Contribute to the project

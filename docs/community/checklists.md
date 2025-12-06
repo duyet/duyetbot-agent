@@ -57,5 +57,5 @@ A: `bun run test` ✅
 
 ## 🚀 Next
 
-[Cloudflare First ->](/getting-started/cloudflare-first)  
+[Cloudflare Deploy ->](/guides/cloudflare-deploy)  
 **Test now**: `bun run test`! {{t('checklists.all_green')}}

@@ -3,6 +3,34 @@ title: Telegram Bot
 description: Deploy Telegram bot on Cloudflare Workers. Configure BotFather token, AI Gateway, webhook. Session persistence via Durable Objects.
 ---
 
+# Telegram Bot
+
+**Back to:** [Cloudflare Deploy](cloudflare-deploy.md)
+
+## TL;DR (2 mins)
+
+[@BotFather](https://t.me/botfather) → token → `bun scripts/config.ts telegram` → `bun run deploy:telegram` → webhook → "hi"!
+
+### Quick Steps
+
+1. [@BotFather](https://t.me/botfather) → `/newbot` → Copy token
+2. `bun scripts/config.ts telegram` (paste token)
+3. `bun run deploy:telegram`
+4. Set webhook: `/setwebhook` → `https://YOUR_WORKER.workers.dev/webhook`
+5. Test: Message "hi" → Bot responds!
+
+### Quick Checklist
+
+- [ ] Token from BotFather
+- [ ] `bun scripts/config.ts telegram`
+- [ ] `bun run deploy:telegram`
+- [ ] Webhook set
+- [ ] Test: "hi" responds
+
+---
+
+## Full Guide
+
 # Telegram Bot Deployment
 
 **Back to:** [Deployment Overview](README.md)
