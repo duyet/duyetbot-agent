@@ -45,7 +45,6 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.1.0",
     "@duyetbot/hono-middleware": "workspace:*",
     "@modelcontextprotocol/sdk": "catalog:",
     "agents": "catalog:",
