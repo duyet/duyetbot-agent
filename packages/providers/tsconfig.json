@@ -12,7 +12,13 @@
       "@duyetbot/cloudflare-agent": ["../../packages/cloudflare-agent/src"],
       "@duyetbot/cloudflare-agent/*": ["../../packages/cloudflare-agent/src/*"],
       "@duyetbot/types": ["../../packages/types/src"],
-      "@duyetbot/types/*": ["../../packages/types/src/*"]
+      "@duyetbot/types/*": ["../../packages/types/src/*"],
+      "@duyetbot/hono-middleware": ["../../packages/hono-middleware/src"],
+      "@duyetbot/hono-middleware/*": ["../../packages/hono-middleware/src/*"],
+      "@duyetbot/observability": ["../../packages/observability/src"],
+      "@duyetbot/observability/*": ["../../packages/observability/src/*"],
+      "@duyetbot/prompts": ["../../packages/prompts/src"],
+      "@duyetbot/prompts/*": ["../../packages/prompts/src/*"]
     },
     "types": ["node", "@cloudflare/workers-types"]
   },
