@@ -36,7 +36,7 @@ import {
   type SimpleAgentClass,
   StateDO as StateDOClass,
   type WorkerClass,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 import { getSimpleAgentPrompt } from '@duyetbot/prompts';
 import { createLLMProvider, createProvider, type ProviderEnv } from './provider.js';
 

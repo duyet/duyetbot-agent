@@ -1,5 +1,5 @@
 /**
- * @duyetbot/chat-agent
+ * @duyetbot/cloudflare-agent
  *
  * Reusable chat agent with LLM and MCP tools support
  */
@@ -108,6 +108,10 @@ export {
   StepProgressTracker,
 } from './step-progress.js';
 // Transport layer
+export {
+  TransportManager,
+  type TransportManagerConfig,
+} from './transport/index.js';
 export type {
   MessageRef,
   ParsedInput,
@@ -471,3 +475,47 @@ export {
   triggerSchedulerTick,
   type WakeUpDecision,
 } from './scheduler/index.js';
+
+// =============================================================================
+// NEW: Modular Architecture (Phase 2-5 Refactoring)
+// =============================================================================
+
+// Adapters (Dependency Injection)
+export {
+  type CompleteBatchParams as StateCompleteBatchParams,
+  D1MessagePersistence,
+  D1ObservabilityAdapter,
+  type HeartbeatParams as StateHeartbeatParams,
+  // Message Persistence
+  type IMessagePersistence,
+  // Observability
+  type IObservabilityAdapter,
+  // State Reporting
+  type IStateReporter,
+  MemoryMessagePersistence,
+  NoOpObservabilityAdapter,
+  NoOpStateReporter,
+  type ObservabilityEventData,
+  type RegisterBatchParams as StateRegisterBatchParams,
+  type SessionId,
+  StateDOReporter,
+} from './adapters/index.js';
+
+// Batch Processing Module
+export {
+  type BatchProcessingResult,
+  BatchProcessor,
+  type BatchProcessorConfig,
+  type BatchProcessorDeps,
+  BatchQueue,
+  ContextBuilder,
+  createBatchProcessor,
+  type QueueResult,
+  StuckDetector,
+} from './batch/index.js';
+
+// Core Module (Slim Orchestrator) - Re-exports for convenience
+export {
+  type AdapterBundle,
+  createAdapterFactory,
+} from './core/index.js';

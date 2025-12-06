@@ -5,8 +5,8 @@
  * Uses transport layer pattern for clean separation of concerns.
  */
 
-import type { ParsedInput } from '@duyetbot/chat-agent';
-import { getChatAgent } from '@duyetbot/chat-agent';
+import type { ParsedInput } from '@duyetbot/cloudflare-agent';
+import { getChatAgent } from '@duyetbot/cloudflare-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import {
   EventCollector,

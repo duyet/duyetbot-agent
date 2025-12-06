@@ -72,10 +72,10 @@ This index guides you through comprehensive documentation on the hybrid router a
 
 #### Phase 3: Implementation (55 minutes)
 7. **Code Review** (55 min)
-   - `packages/chat-agent/src/cloudflare-agent.ts` (20 min)
-   - `packages/chat-agent/src/agents/router-agent.ts` (15 min)
-   - `packages/chat-agent/src/routing/classifier.ts` (12 min)
-   - `packages/chat-agent/test/routing.test.ts` (8 min)
+   - `packages/cloudflare-agent/src/cloudflare-agent.ts` (20 min)
+   - `packages/cloudflare-agent/src/agents/router-agent.ts` (15 min)
+   - `packages/cloudflare-agent/src/routing/classifier.ts` (12 min)
+   - `packages/cloudflare-agent/test/routing.test.ts` (8 min)
 
 ---
 
@@ -119,7 +119,7 @@ This index guides you through comprehensive documentation on the hybrid router a
 1. Read: [`ROUTER-CHEATSHEET.md`](./ROUTER-CHEATSHEET.md) (5 min)
 2. View: [`multiagent-flows.html`](./multiagent-flows.html) (10 min)
 3. Read: [`token-optimization-guide.md`](./token-optimization-guide.md) (20 min)
-4. Study: `packages/chat-agent/src/` code (45 min)
+4. Study: `packages/cloudflare-agent/src/` code (45 min)
 5. Total: **80 minutes**
 
 **Key Takeaway:** How routing and batching save tokens in practice
@@ -131,7 +131,7 @@ This index guides you through comprehensive documentation on the hybrid router a
 1. Read: [`architecture.md`](./architecture.md) (30 min)
 2. Read: [`token-optimization-guide.md`](./token-optimization-guide.md) (20 min)
 3. Read: [`FLOW-DIAGRAMS.md`](./FLOW-DIAGRAMS.md) (15 min)
-4. Review: `packages/chat-agent/src/` (60 min)
+4. Review: `packages/cloudflare-agent/src/` (60 min)
 5. Total: **125 minutes**
 
 **Key Takeaway:** Full system understanding for design decisions
@@ -141,7 +141,7 @@ This index guides you through comprehensive documentation on the hybrid router a
 ### 🧪 QA / Testing Engineer
 **Goal:** Validate and monitor the system
 1. Read: [`ROUTER-CHEATSHEET.md`](./ROUTER-CHEATSHEET.md) - Monitoring Checklist (5 min)
-2. Review: `packages/chat-agent/test/routing.test.ts` (15 min)
+2. Review: `packages/cloudflare-agent/test/routing.test.ts` (15 min)
 3. Study: Token logging patterns (10 min)
 4. Total: **30 minutes**
 
@@ -246,8 +246,8 @@ Annual (1000 queries/day):
 
 ### To Contribute
 1. Review [`architecture.md`](./architecture.md)
-2. Read relevant code in `packages/chat-agent/src/`
-3. Check tests in `packages/chat-agent/test/`
+2. Read relevant code in `packages/cloudflare-agent/src/`
+3. Check tests in `packages/cloudflare-agent/test/`
 4. See [`PLAN.md`](../PLAN.md) for outstanding work
 
 ### To Monitor Production
@@ -268,7 +268,7 @@ Annual (1000 queries/day):
 A: Read `ROUTER-CHEATSHEET.md` (5 min), then open `multiagent-flows.html` in your browser (10 min).
 
 **Q: I'm implementing this, where do I look?**
-A: Start with `token-optimization-guide.md` for the how/why, then review the code in `packages/chat-agent/src/`.
+A: Start with `token-optimization-guide.md` for the how/why, then review the code in `packages/cloudflare-agent/src/`.
 
 **Q: I need the complete picture**
 A: Read the full learning path: Cheatsheet → Dashboard → README → Token Guide → Architecture → Code review.
@@ -277,7 +277,7 @@ A: Read the full learning path: Cheatsheet → Dashboard → README → Token Gu
 A: `token-optimization-guide.md` has TypeScript examples throughout.
 
 **Q: Where are the tests?**
-A: `packages/chat-agent/test/routing.test.ts` and `batch.test.ts`
+A: `packages/cloudflare-agent/test/routing.test.ts` and `batch.test.ts`
 
 **Q: How do I monitor in production?**
 A: See "Monitoring" section in `token-optimization-guide.md`

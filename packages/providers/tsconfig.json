@@ -8,12 +8,7 @@
     "declarationMap": true,
     "sourceMap": true,
     "baseUrl": ".",
-    "paths": {
-      "@duyetbot/chat-agent": ["../../packages/chat-agent/src"],
-      "@duyetbot/chat-agent/*": ["../../packages/chat-agent/src/*"],
-      "@duyetbot/types": ["../../packages/types/src"],
-      "@duyetbot/types/*": ["../../packages/types/src/*"]
-    },
+    "paths": {},
     "types": ["node", "@cloudflare/workers-types"]
   },
   "include": ["src/**/*"],

@@ -316,7 +316,7 @@ Comprehensive test suite in `orchestration.test.ts`:
 Run tests:
 
 ```bash
-bun run test --filter @duyetbot/chat-agent -- orchestration
+bun run test --filter @duyetbot/cloudflare-agent -- orchestration
 ```
 
 ## Best Practices
@@ -354,7 +354,7 @@ Potential improvements:
 
 ## References
 
-- **Executor**: `packages/chat-agent/src/orchestration/executor.ts`
-- **Schemas**: `packages/chat-agent/src/routing/schemas.ts`
-- **Tests**: `packages/chat-agent/src/__tests__/orchestration.test.ts`
+- **Executor**: `packages/cloudflare-agent/src/orchestration/executor.ts`
+- **Schemas**: `packages/cloudflare-agent/src/routing/schemas.ts`
+- **Tests**: `packages/cloudflare-agent/src/__tests__/orchestration.test.ts`
 - **Orchestration Pattern**: [Cloudflare Agents - Orchestrator-Workers](https://developers.cloudflare.com/agents/patterns/orchestrator-workers/)

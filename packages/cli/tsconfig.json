@@ -2,8 +2,12 @@
   "extends": "../../tsconfig.json",
   "compilerOptions": {
     "outDir": "./dist",
+    "noEmit": false,
+    "allowImportingTsExtensions": false,
     "declaration": true,
     "declarationMap": true,
+    "baseUrl": ".",
+    "paths": {},
     "jsx": "react-jsx",
     "jsxImportSource": "react"
   },
