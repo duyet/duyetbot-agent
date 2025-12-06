@@ -335,7 +335,7 @@ A: The executor catches the error and continues with current results. Check logs
 
 See full examples in:
 - `docs/bounded-replanning.md` - Comprehensive guide
-- `packages/chat-agent/src/__tests__/orchestration.test.ts` - Test suite with real examples
+- `packages/cloudflare-agent/src/__tests__/orchestration.test.ts` - Test suite with real examples
 
 ## Next Steps
 

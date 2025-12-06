@@ -15,7 +15,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/cloudflare-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",

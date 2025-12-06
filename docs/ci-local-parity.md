@@ -57,7 +57,7 @@ Creates per-package `node_modules`:
 project/
 ├── packages/github-bot/
 │   ├── node_modules/
-│   │   ├── @duyetbot/chat-agent/
+│   │   ├── @duyetbot/cloudflare-agent/
 │   │   ├── @duyetbot/hono-middleware/
 │   │   └── ... (only declared dependencies)
 │   └── package.json        ← Missing @duyetbot/types!
@@ -79,7 +79,7 @@ error TS2307: Cannot find module '@duyetbot/types/mention-parser'
 ```json
 {
   "dependencies": {
-    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/cloudflare-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
@@ -95,7 +95,7 @@ error TS2307: Cannot find module '@duyetbot/types/mention-parser'
 ```json
 {
   "dependencies": {
-    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/cloudflare-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",

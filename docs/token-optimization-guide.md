@@ -30,7 +30,7 @@ Daily Savings:     $0.0675 per 100 queries (5x reduction)
 #### Pattern Matching (Zero Tokens)
 
 ```typescript
-// packages/chat-agent/src/routing/classifier.ts
+// packages/cloudflare-agent/src/routing/classifier.ts
 
 const QUICK_ROUTES = [
   // Greetings → SimpleAgent (direct response)
@@ -118,7 +118,7 @@ Total: 3 LLM calls = 450 tokens
 #### With Dual-Batch Queuing (1 Combined Call)
 
 ```typescript
-// packages/chat-agent/src/batch-types.ts
+// packages/cloudflare-agent/src/batch-types.ts
 
 export interface BatchState {
   batchId: string;
@@ -232,7 +232,7 @@ Savings: 55% reduction!
 #### SimpleAgent: Direct LLM (No Planning)
 
 ```typescript
-// packages/chat-agent/src/agents/simple-agent.ts
+// packages/cloudflare-agent/src/agents/simple-agent.ts
 
 export class SimpleAgent extends AgentMixin {
   async execute(context: AgentContext): Promise<AgentResult> {
@@ -262,7 +262,7 @@ export class SimpleAgent extends AgentMixin {
 #### OrchestratorAgent: Planning + Execution (More Tokens)
 
 ```typescript
-// packages/chat-agent/src/agents/orchestrator-agent.ts
+// packages/cloudflare-agent/src/agents/orchestrator-agent.ts
 
 export class OrchestratorAgent extends AgentMixin {
   async execute(context: AgentContext): Promise<AgentResult> {
@@ -308,7 +308,7 @@ export class OrchestratorAgent extends AgentMixin {
 **Routing Decision Tree:**
 
 ```typescript
-// packages/chat-agent/src/routing/index.ts
+// packages/cloudflare-agent/src/routing/index.ts
 
 export function determineRouteTarget(
   classification: QueryClassification
@@ -353,7 +353,7 @@ export function determineRouteTarget(
 **Solution:** Track request IDs, skip duplicate processing.
 
 ```typescript
-// packages/chat-agent/src/cloudflare-agent.ts
+// packages/cloudflare-agent/src/cloudflare-agent.ts
 
 export interface CloudflareAgentState {
   processedRequestIds?: string[]; // Rolling window
@@ -442,7 +442,7 @@ Annual Savings: ~$240/year per 1000 queries/day
 ### Feature Flags
 
 ```typescript
-// packages/chat-agent/src/feature-flags.ts
+// packages/cloudflare-agent/src/feature-flags.ts
 
 export interface RoutingFlags {
   // Enable/disable hybrid classification
@@ -603,7 +603,7 @@ logger.info('[DEDUP] Daily Stats', {
 ### Unit Tests
 
 ```typescript
-// packages/chat-agent/test/routing.test.ts
+// packages/cloudflare-agent/test/routing.test.ts
 
 describe('Hybrid Classification', () => {
   it('should match greeting patterns without LLM', async () => {
@@ -674,5 +674,5 @@ This makes duyetbot-agent **5x more efficient** than naive full-LLM per-query ap
 
 - Architecture: `docs/architecture.md`
 - Interactive Dashboard: `docs/multiagent-flows.html`
-- Implementation: `packages/chat-agent/src/`
-- Tests: `packages/chat-agent/test/`
+- Implementation: `packages/cloudflare-agent/src/`
+- Tests: `packages/cloudflare-agent/test/`

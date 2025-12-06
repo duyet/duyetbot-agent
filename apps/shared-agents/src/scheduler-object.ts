@@ -15,8 +15,8 @@
  */
 
 import { DurableObject } from 'cloudflare:workers';
-import type { ScheduledTask } from '@duyetbot/chat-agent';
-import { SchedulerDO, type SchedulerDOEnv } from '@duyetbot/chat-agent';
+import type { ScheduledTask } from '@duyetbot/cloudflare-agent';
+import { SchedulerDO, type SchedulerDOEnv } from '@duyetbot/cloudflare-agent';
 
 /**
  * Environment bindings for SchedulerObject
