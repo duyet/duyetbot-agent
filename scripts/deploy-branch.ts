@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+
 /**
  * Branch deployment script for Cloudflare Workers
  *
@@ -14,8 +15,8 @@
  *   bun scripts/deploy-branch.ts safety-kernel
  */
 
-import { resolve } from 'node:path';
 import { existsSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { $ } from 'bun';
 
 const rootDir = resolve(import.meta.dir, '..');
