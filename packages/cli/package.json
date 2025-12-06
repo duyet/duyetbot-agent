@@ -32,12 +32,9 @@
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "commander": "^14.0.2",
-    "conf": "^13.0.0",
     "ink": "^6.5.0",
     "ink-spinner": "^5.0.0",
     "ink-text-input": "^6.0.0",
-    "open": "^10.1.0",
-    "ora": "^9.0.0",
     "react": "^19.0.0"
   },
   "devDependencies": {
