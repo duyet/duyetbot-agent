@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-**duyetbot-agent** is a personal AI agent system built as a monorepo. It implements a **Hybrid Supervisor-Worker Architecture** with Cloudflare Workers for edge deployment and Durable Objects for stateful agent persistence.
+**duyetbot-agent** is a personal AI agent system built as a monorepo. It implements multi-agent routing with Cloudflare Workers for edge deployment and Durable Objects for stateful agent persistence.
 
 **Stack**: Bun + TypeScript + Hono + Cloudflare Workers + Vitest
 
@@ -19,62 +19,36 @@ bun run check            # Lint + type-check
 bun run test             # All tests
 
 # Deployment
-bun run deploy           # Deploy all bots
+bun run deploy           # Deploy all
 bun run deploy:telegram  # Telegram only
 bun run deploy:github    # GitHub only
 ```
 
 ## Architecture
 
-> **Full details**: See [docs/architecture.md](docs/architecture.md)
-
-### Two-Tier Agent System
-
-```
-Tier 1 (Cloudflare Workers)          Tier 2 (Container/Fly.io)
-├── telegram-bot (DO)                └── agent-server
-├── github-bot (DO)                      ├── Claude Agent SDK
-└── memory-mcp (D1+KV)                   ├── Filesystem access
-    Fast, serverless, stateful           └── Shell tools (git, bash)
-```
-
-### Multi-Agent Routing (Tier 1)
-
 Each bot deploys Durable Objects implementing [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
 
 ```
-User Message → CloudflareChatAgent → RouterAgent (classifier)
-                                          │
-              ┌───────────────────────────┼──────────────────────┐
-              ↓                           ↓                      ↓
-        SimpleAgent              OrchestratorAgent         DuyetInfoAgent
-        (quick Q&A)              (task decomposition)      (personal info)
-                                          │
-                    ┌─────────────────────┼─────────────────────┐
-                    ↓                     ↓                     ↓
-              CodeWorker          ResearchWorker          GitHubWorker
+User Message → Transport → RouterAgent (classifier)
+                                │
+              ┌─────────────────┼──────────────────────┐
+              ↓                 ↓                      ↓
+        SimpleAgent      OrchestratorAgent       HITLAgent
+        (quick Q&A)      (task decomposition)    (approval)
+                                │
+                  ┌─────────────┼─────────────────┐
+                  ↓             ↓                 ↓
+            CodeWorker   ResearchWorker     GitHubWorker
 ```
 
-**Note**: Router dispatches to **Agents** only. Workers are dispatched by OrchestratorAgent.
-
-### Transport Layer Pattern
-
-Platform-agnostic messaging abstraction (~50 lines per app):
-
-```typescript
-interface Transport<TContext> {
-  send: (ctx: TContext, text: string) => Promise<MessageRef>;
-  edit?: (ctx: TContext, ref: MessageRef, text: string) => Promise<void>;
-  parseContext: (ctx: TContext) => ParsedInput;
-}
-```
+**Note**: Router dispatches to Agents only. Workers are dispatched by OrchestratorAgent.
 
 ## Packages
 
 | Package | Purpose | Key Exports |
 |---------|---------|-------------|
-| `@duyetbot/core` | SDK adapter, session, MCP client | `query()`, `sdkTool()` |
 | `@duyetbot/cloudflare-agent` | Cloudflare agent patterns | `CloudflareChatAgent`, routing, HITL |
+| `@duyetbot/core` | SDK adapter, session, MCP client | `query()`, `sdkTool()` |
 | `@duyetbot/tools` | Built-in tools | `bash`, `git`, `github`, `research`, `plan` |
 | `@duyetbot/providers` | LLM providers | Claude, OpenRouter, AI Gateway |
 | `@duyetbot/prompts` | System prompts | `getTelegramPrompt()`, `getGitHubBotPrompt()` |
@@ -87,8 +61,9 @@ interface Transport<TContext> {
 |-----|---------|---------|
 | `apps/telegram-bot` | Workers + DO | Telegram chat interface |
 | `apps/github-bot` | Workers + DO | GitHub @mentions and webhooks |
+| `apps/shared-agents` | Workers + DO | 8 shared Durable Objects |
 | `apps/memory-mcp` | Workers + D1 | Cross-session memory (MCP server) |
-| `apps/agent-server` | Container | Long-running agent with filesystem |
+| `apps/safety-kernel` | Workers | Health checks and rollback |
 
 ## Development Workflow
 
@@ -112,23 +87,14 @@ git commit -m "fix: resolve session error"
 
 Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
 
-### PLAN.md Maintenance
-
-- Read PLAN.md before starting work
-- Check off completed tasks with `[x]`
-- Commit PLAN.md with code changes
-
 ## Configuration
 
 ### Environment Variables
 
 ```bash
-# Platform Tokens
 TELEGRAM_BOT_TOKEN=xxx
 GITHUB_TOKEN=ghp_xxx
 GITHUB_WEBHOOK_SECRET=xxx
-
-# Optional
 ROUTER_DEBUG=false  # Enable routing logs
 ```
 
@@ -140,25 +106,21 @@ bun run config:telegram
 bun run config:github
 ```
 
-> **Deployment details**: See [docs/deployment.md](docs/deployment.md)
-
 ## Testing
 
-**746+ tests** across all packages:
-
 ```bash
-bun run test                                 # All tests
-bun run test --filter @duyetbot/core         # Specific package
-bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
+bun run test                                      # All tests
+bun run test --filter @duyetbot/core              # Specific package
+bun run test --filter @duyetbot/cloudflare-agent  # Routing tests
 ```
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main Cloudflare agent (2400+ LOC) |
-| `packages/cloudflare-agent/src/agents/router-agent.ts` | Query classification & routing |
-| `packages/cloudflare-agent/src/routing/classifier.ts` | Hybrid classifier (pattern + LLM) |
+| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main Cloudflare agent |
+| `packages/cloudflare-agent/src/agents/router-agent.ts` | Query classification |
+| `packages/cloudflare-agent/src/routing/classifier.ts` | Hybrid classifier |
 | `packages/core/src/sdk/query.ts` | SDK query execution |
 | `apps/*/src/transport.ts` | Platform-specific transports |
 
@@ -166,15 +128,14 @@ bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
 
 | Document | Content |
 |----------|---------|
-| [docs/architecture.md](docs/architecture.md) | System design, routing flow, patterns |
-| [docs/deployment.md](docs/deployment.md) | Deployment commands and secrets |
+| [docs/architecture.md](docs/architecture.md) | System design, routing flow |
+| [docs/guides/deployment.md](docs/guides/deployment.md) | Deployment commands |
 | [docs/getting-started.md](docs/getting-started.md) | Setup guide |
-| [docs/api.md](docs/api.md) | API reference |
-| [PLAN.md](PLAN.md) | Implementation roadmap |
+| [docs/reference/api.md](docs/reference/api.md) | API reference |
+| [PLAN.md](PLAN.md) | Roadmap |
 
 ## External References
 
-- [Claude Agent SDK](https://docs.anthropic.com/en/docs/agents-and-tools/claude-code/sdk)
-- [Cloudflare Agents Patterns](https://developers.cloudflare.com/agents/patterns/)
+- [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/)
 - [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)

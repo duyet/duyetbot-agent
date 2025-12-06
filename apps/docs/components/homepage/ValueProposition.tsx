@@ -13,7 +13,7 @@ export function ValueProposition({ className = '' }: ValuePropositionProps) {
     <div className={className}>
       {/* Headline */}
       <h2 className="text-2xl font-semibold tracking-tight text-fd-foreground sm:text-3xl">
-        Personal AI Agent System on Cloudflare Edge
+        You are absolutely right!
       </h2>
 
       {/* Subheadline */}
