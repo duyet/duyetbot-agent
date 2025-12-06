@@ -1,11 +1,13 @@
 {
   "title": "Advanced",
   "pages": [
+    "build-custom-agent",
+    "custom-tools",
+    "cloudflare-agents",
     "token-optimization",
     "token-optimization-guide",
     "benchmarks",
     "flow-diagrams",
-    "cloudflare-agents",
     "use-cases"
   ]
 }

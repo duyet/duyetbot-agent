@@ -1,26 +1,26 @@
 ---
-title: Agent Server
-description: Deploy long-running agent server with WebSocket streaming. Docker deployment, session lifecycle, health checks, MCP integration.
+title: Claude Code Agent
+description: Deploy Claude Code Agent on VM or sandbox. Long-running sessions, WebSocket streaming, Docker deployment.
 ---
 
-# Agent Server Deployment
+# Claude Code Agent
 
-**Back to:** [Deployment Overview](README.md)
-
-Deploy the long-running agent server with WebSocket support.
+Deploy the Claude Code Agent for long-running sessions on a VM, container, or sandbox environment. See [Architecture](/architecture#agent-types) for comparison with Cloudflare Agents.
 
 ## Overview
 
-The Agent Server provides:
+The Claude Code Agent provides:
 - Long-running agent sessions
 - WebSocket streaming
 - Session lifecycle management
 - Health check endpoints
+- MCP integration
 
 ## Prerequisites
 
 1. Docker installed
 2. Server with persistent storage
+3. Anthropic API key
 
 ## Environment Variables
 
@@ -82,7 +82,8 @@ services:
 curl http://localhost:3003/health
 ```
 
-## Next Steps
+## Related
 
-- [GitHub Bot Deployment](github-bot.md) - Deploy the main bot
-- [Deployment Overview](README.md) - Other components
+- [Telegram Bot](/guides/telegram-bot) - Cloudflare Agent
+- [GitHub Bot](/guides/github-bot) - Cloudflare Agent
+- [Cloudflare Deployment](/guides/cloudflare-deploy)
