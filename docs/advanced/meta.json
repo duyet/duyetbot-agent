@@ -1,6 +1,8 @@
 {
   "title": "Advanced",
   "pages": [
+    "build-custom-agent",
+    "custom-tools",
     "token-optimization",
     "token-optimization-guide",
     "benchmarks",

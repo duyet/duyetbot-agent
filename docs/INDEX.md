@@ -73,7 +73,7 @@ Set webhook at [@BotFather](https://t.me/botfather). Ping bot!
 ## 📖 Sections
 
 - [Getting Started](/getting-started/env-setup)
-- [Guides](/guides/telegram-bot-setup)
+- [Guides](/guides/telegram-bot)
 - [Architecture](/architecture)
 - [Deployment](/deployment)
 

@@ -87,6 +87,58 @@ description: System design overview of duyetbot-agent's hybrid supervisor-worker
 
 ---
 
+## Agent Types
+
+This system supports two deployment models with different trade-offs:
+
+| Type | Runtime | Timeout | Best For | Guides |
+|------|---------|---------|----------|--------|
+| **Cloudflare Agent** | Cloudflare Workers + Durable Objects | 30s | Webhooks, short sessions, serverless, global edge | [Telegram Bot](/guides/telegram-bot), [GitHub Bot](/guides/github-bot) |
+| **Claude Code Agent** | VM, Docker, Sandbox | Unlimited | Long sessions, WebSocket streaming, code execution | [Claude Code Agent](/guides/claude-code-agent) |
+
+### Routing Between Agent Types
+
+The RouterAgent classifies queries and dispatches to the appropriate agent:
+
+1. **Lightweight agents** (SimpleAgent, DuyetInfoAgent) - Handled entirely in Tier 1 (Cloudflare)
+2. **Complex tasks** (OrchestratorAgent) - May delegate to workers within Tier 1
+3. **Long-running tasks** - Can escalate to Claude Code Agent (Tier 2)
+
+```
+User Message → CloudflareChatAgent → RouterAgent
+                                          │
+              ┌───────────────────────────┼──────────────────────┐
+              ↓                           ↓                      ↓
+        SimpleAgent              OrchestratorAgent         [Tier 2]
+        (Tier 1)                 (Tier 1 + Workers)     Claude Code Agent
+              │                           │                      │
+              │                    ┌──────┴──────┐              │
+              │                    ↓             ↓              │
+              │              CodeWorker    ResearchWorker       │
+              │                                                 │
+              └──────────── Response to User ───────────────────┘
+```
+
+### Tier 1: Cloudflare Agent (Edge)
+
+- **Runtime**: Cloudflare Workers + Durable Objects
+- **Timeout**: 30 seconds per request
+- **State**: SQLite via Durable Objects
+- **Latency**: Ultra-low (global edge network)
+- **Scaling**: Automatic, zero-config
+- **Use cases**: Webhooks, chat bots, quick Q&A
+
+### Tier 2: Claude Code Agent (Container)
+
+- **Runtime**: Docker container (Fly.io, Railway, VM)
+- **Timeout**: Unlimited (container lifetime)
+- **State**: Filesystem, in-memory
+- **Latency**: Higher (single region)
+- **Scaling**: Manual container management
+- **Use cases**: Complex research, code generation, long workflows
+
+---
+
 ## Message Flow: Webhook to Response
 
 ### Complete Execution Timeline
