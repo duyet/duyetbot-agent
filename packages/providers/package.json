@@ -37,13 +37,13 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
+    "@duyetbot/cloudflare-agent": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "@openrouter/sdk": "^0.1.27",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "@duyetbot/cloudflare-agent": "workspace:*",
     "@types/node": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
