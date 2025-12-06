@@ -150,10 +150,38 @@ async function deploy(databaseId: string) {
 
     // Support both production deploy and branch versions upload
     const command = process.env.WRANGLER_COMMAND || 'deploy';
-    const args = process.env.WRANGLER_ARGS ? ` ${process.env.WRANGLER_ARGS}` : '';
+    const args = process.env.WRANGLER_ARGS || '';
 
     console.log('\n🚀 Deploying to Cloudflare Workers...');
-    await $`bun --cwd ${rootDir} wrangler ${command}${args} --config ${configPath}`;
+
+    // Build command array - split command into parts (e.g., "versions upload" → ["versions", "upload"])
+    // Note: Bun's shell doesn't split interpolated strings, so we need to build the command manually
+    const commandParts = command.split(/\s+/).filter(Boolean);
+    const argsParts = args.split(/\s+/).filter(Boolean);
+    const fullCommand = [
+      'bun',
+      '--cwd',
+      rootDir,
+      'wrangler',
+      ...commandParts,
+      ...argsParts,
+      '--config',
+      configPath,
+    ];
+
+    console.log(`Running: ${fullCommand.join(' ')}`);
+
+    // Use Bun.spawn for proper argument handling
+    const proc = Bun.spawn(fullCommand, {
+      cwd: rootDir,
+      stdout: 'inherit',
+      stderr: 'inherit',
+    });
+    const exitCode = await proc.exited;
+    if (exitCode !== 0) {
+      throw new Error(`Wrangler command failed with exit code ${exitCode}`);
+    }
+
     console.log('\n✅ Deployment complete!');
   } finally {
     // Always revert wrangler.toml back to placeholder

@@ -15,7 +15,7 @@
     "clean": "rm -rf dist",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "deploy:branch": "wrangler versions upload --message=\"Branch deploy: $(git branch --show-current)\" --tag=$(git branch --show-current)",
+    "deploy:branch": "bun ../../scripts/deploy-branch.ts telegram",
     "config": "bun ../../scripts/config.ts telegram",
     "test": "bun run test:unit",
     "test:unit": "vitest run --passWithNoTests",
