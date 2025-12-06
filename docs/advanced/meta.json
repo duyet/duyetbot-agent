@@ -1,0 +1,11 @@
+{
+  "title": "Advanced",
+  "pages": [
+    "token-optimization",
+    "token-optimization-guide",
+    "benchmarks",
+    "flow-diagrams",
+    "cloudflare-agents",
+    "use-cases"
+  ]
+}
