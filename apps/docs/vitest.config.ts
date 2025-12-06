@@ -19,6 +19,17 @@ export default mergeConfig(
       environment: 'jsdom',
       include: ['**/?(*.)+(spec|test).[jt]s?(x)', '**/__tests__/**/*.[jt]s?(x)'],
       setupFiles: ['./src/test-setup.tsx'],
+      coverage: {
+        include: ['app/layout.tsx', 'app/page.tsx', 'lib/layout.shared.ts'],
+        exclude: [
+          'node_modules/**',
+          '.next/**',
+          '.source/**',
+          'src/__mocks__/**',
+          'src/__tests__/**',
+          '**/*.config.{ts,js,mjs}',
+        ],
+      },
     },
   })
 );
