@@ -63,6 +63,16 @@ Thumbs.db
 
 # Monorepo build outputs
 packages/*/dist/
+packages/*/src/**/*.js
+packages/*/src/**/*.js.map
+packages/*/src/**/*.d.ts
+packages/*/src/**/*.d.ts.map
+apps/*/src/**/*.js
+apps/*/src/**/*.js.map
+apps/*/src/**/*.d.ts
+apps/*/src/**/*.d.ts.map
+*.tsbuildinfo
 .turbo/
 .turbo
 apps/docs/out/
+apps/docs/.next/
