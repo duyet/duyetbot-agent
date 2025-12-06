@@ -3,7 +3,7 @@ title: Use Cases
 description: duyetbot as personal AI assistant for CLI, GitHub, Telegram, research, automation, and development workflows
 ---
 
-**Related:** [Getting Started](getting-started.md) | [Architecture](architecture.md) | [API Reference](api.md) | [Deployment](deploy.md)
+**Related:** [Getting Started](../getting-started.md) | [Architecture](../architecture.md) | [API Reference](../reference/api.md) | [Deployment](../guides/cloudflare-deploy.md)
 
 duyetbot is your personal AI assistant that helps automate daily workflows across CLI, GitHub, and Telegram.
 

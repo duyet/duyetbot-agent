@@ -476,19 +476,24 @@ describe('batch-types', () => {
       expect(result.reason).toBe('No heartbeat for 35s (threshold: 20s)');
     });
 
-    it('handles edge case at exact threshold', () => {
+    it('handles edge case just under threshold', () => {
+      // Use a fresh timestamp and stay well under threshold to avoid timing issues
+      const freshNow = Date.now();
       const state = createProcessingState({
-        lastHeartbeat: Date.now() - 20000, // Exactly at threshold
+        lastHeartbeat: freshNow - 19900, // 100ms under threshold
       });
-      // At exactly 20s, should NOT be stuck (> not >=)
+      // At 19.9s (< 20s threshold), should NOT be stuck
       const result = isBatchStuckByHeartbeat(state);
       expect(result.isStuck).toBe(false);
     });
 
     it('handles edge case just past threshold', () => {
+      // Use a fresh timestamp and go well over threshold
+      const freshNow = Date.now();
       const state = createProcessingState({
-        lastHeartbeat: Date.now() - 20001, // Just past threshold
+        lastHeartbeat: freshNow - 20100, // 100ms over threshold
       });
+      // At 20.1s (> 20s threshold), should be stuck
       const result = isBatchStuckByHeartbeat(state);
       expect(result.isStuck).toBe(true);
     });

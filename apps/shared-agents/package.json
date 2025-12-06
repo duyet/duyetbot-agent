@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
+    "build": "tsc --noEmit",
     "deploy": "wrangler deploy",
-    "deploy:branch": "wrangler versions upload --message=\"Branch deploy: $(git branch --show-current)\" --tag=$(git branch --show-current)",
+    "deploy:branch": "bun ../../scripts/deploy-branch.ts shared-agents",
     "config": "bun ../../scripts/config.ts agents",
     "test": "vitest run --passWithNoTests",
     "type-check": "tsc --noEmit"
