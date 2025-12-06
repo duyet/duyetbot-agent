@@ -3,6 +3,36 @@ title: GitHub Bot
 description: Deploy GitHub bot as webhook handler on Cloudflare Workers. GitHub App setup, PAT token, webhook secret, PR/issue integration.
 ---
 
+# GitHub Bot
+
+**Back to:** [Cloudflare Deploy](cloudflare-deploy.md)
+
+## TL;DR (3 mins)
+
+GitHub App → PAT/webhook secret → `bun scripts/config.ts github` → `bun run deploy:github` → `@duyetbot hi`!
+
+### Quick Steps
+
+1. [Developer Settings](https://github.com/settings/apps) → New GitHub App
+2. Configure permissions: Issues/PRs read/write
+3. `bun scripts/config.ts github` (PAT + webhook secret)
+4. `bun run deploy:github`
+5. Install app on repository
+6. Test: Comment `@duyetbot hello` → Bot responds!
+
+### Quick Checklist
+
+- [ ] GitHub App created
+- [ ] Permissions: Issues/PRs read/write
+- [ ] `bun scripts/config.ts github`
+- [ ] `bun run deploy:github`
+- [ ] App installed on repository
+- [ ] Test: `@duyetbot hi` responds
+
+---
+
+## Full Guide
+
 # GitHub Bot Deployment
 
 **Back to:** [Deployment Overview](README.md)

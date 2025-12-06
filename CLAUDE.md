@@ -18,10 +18,16 @@ bun run build            # Build all
 bun run check            # Lint + type-check
 bun run test             # All tests
 
-# Deployment
+# Local Deployment (includes dependencies)
 bun run deploy           # Deploy all bots
-bun run deploy:telegram  # Telegram only
-bun run deploy:github    # GitHub only
+bun run deploy:telegram  # Telegram + shared-agents
+bun run deploy:github    # GitHub + shared-agents
+
+# CI Deployment (single app, for Cloudflare Dashboard)
+bun run ci:deploy:shared-agents  # Deploy shared-agents only
+bun run ci:deploy:telegram       # Deploy telegram only
+bun run ci:deploy:github         # Deploy github only
+bun run ci:deploy-version:*      # Branch deploy
 ```
 
 ## Architecture
@@ -111,6 +117,13 @@ git commit -m "fix: resolve session error"
 ```
 
 Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
+
+
+Commit Co-Author:
+
+```
+Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
+```
 
 ### PLAN.md Maintenance
 

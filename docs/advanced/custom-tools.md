@@ -44,7 +44,7 @@ export const myTool = tool(
 
 [`CLAUDE.md`](CLAUDE.md:180): Model Context Protocol tools.
 
-**Quiz**: Register where?  
+**Quiz**: Register where?
 A: packages/tools/src/registry.ts ✅
 
 **Pro Tip** ✅: 10+ built-in tools.
@@ -53,4 +53,4 @@ A: packages/tools/src/registry.ts ✅
 
 **Contrib**: "Added X MCP tool via Y!"
 
-**Next**: [Custom DO ->](custom-do.md)
+**Next**: [Build Custom Agent ->](build-custom-agent.md)
