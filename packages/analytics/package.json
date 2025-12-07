@@ -1,0 +1,56 @@
+{
+  "name": "@duyetbot/analytics",
+  "version": "0.1.0",
+  "description": "Analytics and metrics collection for duyetbot-agent",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./collector": {
+      "types": "./dist/collector/index.d.ts",
+      "import": "./dist/collector/index.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "test:watch": "vitest"
+  },
+  "keywords": [
+    "analytics",
+    "metrics",
+    "collector",
+    "d1",
+    "cloudflare",
+    "duyetbot"
+  ],
+  "author": "duyet",
+  "license": "MIT",
+  "dependencies": {
+    "uuid": "^10.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@types/node": "catalog:",
+    "@types/uuid": "^10.0.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "peerDependencies": {
+    "@cloudflare/workers-types": "^4.0.0"
+  }
+}

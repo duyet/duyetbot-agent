@@ -13,6 +13,7 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { AnalyticsCollector } from '@duyetbot/analytics';
 import {
   type AgentStep,
   type ChatMessageRole,
@@ -353,6 +354,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _batchStartTime = 0; // Track batch start time for duration calculation
     private _lastResponse: string | undefined; // Capture response for observability
     private _lastDebugContext: DebugContext | undefined; // Capture debug context for observability
+    private _analyticsCollector?: AnalyticsCollector; // Analytics collector for persistent message storage
 
     // ============================================
     // State DO Reporting (Fire-and-Forget)
@@ -761,10 +763,30 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
+     * Generate session ID for analytics (format: platform:userId:chatId)
+     */
+    private getSessionId(): string {
+      const platform = routerConfig?.platform ?? 'api';
+      const userId = this.state.userId?.toString() ?? 'unknown';
+      const chatId = this.state.chatId?.toString() ?? 'unknown';
+      return `${platform}:${userId}:${chatId}`;
+    }
+
+    /**
      * Initialize agent with context (userId, chatId)
      * Also attempts to restore messages from D1 if DO state is empty.
      */
     async init(userId?: string | number, chatId?: string | number): Promise<void> {
+      // Initialize analytics collector if DB is available
+      if (!this._analyticsCollector) {
+        const env = (this as unknown as { env: TEnv }).env as unknown as {
+          OBSERVABILITY_DB?: D1Database;
+        };
+        if (env.OBSERVABILITY_DB) {
+          this._analyticsCollector = new AnalyticsCollector(env.OBSERVABILITY_DB);
+        }
+      }
+
       const needsUpdate =
         (this.state.userId === undefined && userId !== undefined) ||
         (this.state.chatId === undefined && chatId !== undefined);
@@ -1031,6 +1053,43 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       // Persist messages to D1 (fire-and-forget)
       this.persistMessages(eventId);
+
+      // Capture assistant response to analytics (append-only, never deleted)
+      // Fire-and-forget pattern - don't block on analytics capture
+      if (this._analyticsCollector) {
+        const platform = routerConfig?.platform ?? 'api';
+        const sessionId = `${platform}:${this.state.userId ?? 'unknown'}:${this.state.chatId ?? 'unknown'}`;
+        void (async () => {
+          try {
+            await this._analyticsCollector!.captureAssistantMessage({
+              sessionId,
+              content: assistantContent,
+              platform,
+              userId: (this.state.userId ?? 'unknown').toString(),
+              triggerMessageId: '', // Will be filled by caller if available
+              eventId,
+              inputTokens: response.usage?.inputTokens ?? 0,
+              outputTokens: response.usage?.outputTokens ?? 0,
+              cachedTokens: response.usage?.cachedTokens ?? 0,
+              reasoningTokens: response.usage?.reasoningTokens ?? 0,
+              model: response.model,
+            });
+
+            logger.debug('[CloudflareAgent][ANALYTICS] Assistant message captured', {
+              sessionId,
+              eventId,
+              inputTokens: response.usage?.inputTokens ?? 0,
+              outputTokens: response.usage?.outputTokens ?? 0,
+            });
+          } catch (err) {
+            logger.warn('[CloudflareAgent][ANALYTICS] Failed to capture assistant message', {
+              sessionId,
+              eventId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        })();
+      }
 
       return assistantContent;
     }
@@ -2056,6 +2115,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const traceId = (input.metadata?.requestId as string) || crypto.randomUUID();
       const now = Date.now();
 
+      // Initialize analytics collector if not already done
+      if (!this._analyticsCollector) {
+        const env = (this as unknown as { env: TEnv }).env as unknown as {
+          OBSERVABILITY_DB?: D1Database;
+        };
+        if (env.OBSERVABILITY_DB) {
+          this._analyticsCollector = new AnalyticsCollector(env.OBSERVABILITY_DB);
+        }
+      }
+
       logger.info('[CloudflareAgent] receiveMessage called', {
         traceId,
         text: input.text.substring(0, 50),
@@ -2113,6 +2182,49 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Store metadata for later use (platform info, etc.)
         originalContext: input.metadata,
       };
+
+      // Capture user message to analytics (append-only, never deleted)
+      // Fire-and-forget pattern - don't block on analytics capture
+      if (this._analyticsCollector) {
+        const platform =
+          (input.metadata?.platform as 'telegram' | 'github' | 'cli' | 'api') || 'api';
+        const sessionId = `${platform}:${input.userId}:${input.chatId ?? 'unknown'}`;
+        void (async () => {
+          try {
+            const userMessageId = await this._analyticsCollector!.captureUserMessage({
+              sessionId,
+              content: input.text,
+              platform,
+              userId: input.userId.toString(),
+              username: input.username,
+              chatId: input.chatId?.toString(),
+              platformMessageId: input.metadata?.platformMessageId as string | undefined,
+              eventId,
+            });
+
+            logger.debug('[CloudflareAgent][ANALYTICS] User message captured', {
+              messageId: userMessageId,
+              sessionId,
+              traceId,
+            });
+
+            // Store messageId in metadata for later correlation
+            if (
+              pendingMessage.originalContext &&
+              typeof pendingMessage.originalContext === 'object'
+            ) {
+              (pendingMessage.originalContext as Record<string, unknown>).analyticsMessageId =
+                userMessageId;
+            }
+          } catch (err) {
+            logger.warn('[CloudflareAgent][ANALYTICS] Failed to capture user message', {
+              sessionId,
+              traceId,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+        })();
+      }
 
       // Add to pendingBatch
       pendingBatch.pendingMessages.push(pendingMessage);
