@@ -1183,10 +1183,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           });
 
           if (!hadActiveBatch && !hadPendingBatch) {
-            return '✅ No stuck batches detected. System is healthy.';
+            return '[ok] No stuck batches detected. System is healthy.';
           }
 
-          return `🔧 Recovered from stuck state. Cleared: ${hadActiveBatch ? 'activeBatch' : ''}${hadActiveBatch && hadPendingBatch ? ' + ' : ''}${hadPendingBatch ? 'pendingBatch' : ''}. Try sending a message again.`;
+          return `[fix] Recovered from stuck state. Cleared: ${hadActiveBatch ? 'activeBatch' : ''}${hadActiveBatch && hadPendingBatch ? ' + ' : ''}${hadPendingBatch ? 'pendingBatch' : ''}. Try sending a message again.`;
         }
         default:
           // Return null for unknown commands - will fall back to chat/tools/MCP
@@ -1435,7 +1435,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         }
 
         const errorMessage = error instanceof Error ? error.message : String(error);
-        let userMessage = '❌ Sorry, your message could not be processed after multiple attempts.';
+        let userMessage =
+          '[error] Sorry, your message could not be processed after multiple attempts.';
 
         // Add debug info for admin users
         const isAdmin = (ctx as Record<string, unknown>).isAdmin === true;
@@ -1635,7 +1636,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           }
 
           // Send initial thinking message
-          messageRef = await transport.send(ctx, '🔄 Thinking...');
+          messageRef = await transport.send(ctx, '[~] Thinking...');
 
           // Create step progress tracker for real-time step visibility
           if (transport.edit) {
@@ -1844,7 +1845,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         // Edit thinking message to show error (if we have a message to edit)
         if (messageRef && transport.edit) {
-          const errorMessage = '❌ Sorry, an error occurred. Please try again later.';
+          const errorMessage = '[error] Sorry, an error occurred. Please try again later.';
           try {
             await transport.edit(ctx, messageRef, errorMessage);
           } catch {

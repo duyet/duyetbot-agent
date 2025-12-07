@@ -5,12 +5,14 @@
  * for admin users. Used by both direct responses and fire-and-forget paths.
  *
  * Format:
- * - Simple: 🔍 router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * - Simple: [debug] router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
  * - Orchestrator:
- *   🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
+ *   [debug] router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
  *      ├─ research-worker (2.5s)
  *      └─ code-worker (1.2s)
  * - Progressive: Shows (running) for active agents/workers
+ *
+ * Note: Uses text-based labels instead of emojis for Telegram compatibility.
  */
 
 import type {
@@ -370,26 +372,26 @@ function formatNumber(n: number): string {
 
 /**
  * Format token usage as compact string
- * Examples: "500↓/100↑", "1.2k↓/0.5k↑/0.3k⚡", "5k↓/2k↑/1k⚡/3k🧠"
+ * Examples: "500in/100out", "1.2kin/0.5kout/0.3kcache"
  *
- * Symbols:
- * - ↓ = input tokens (prompt)
- * - ↑ = output tokens (completion)
- * - ⚡ = cached tokens (prompt cache hits)
- * - 🧠 = reasoning tokens (o1/o3 internal reasoning)
+ * Symbols (text-based to avoid Telegram emoji issues):
+ * - in = input tokens (prompt)
+ * - out = output tokens (completion)
+ * - cache = cached tokens (prompt cache hits)
+ * - reason = reasoning tokens (o1/o3 internal reasoning)
  */
 function formatTokenUsage(usage?: TokenUsage): string {
   if (!usage || usage.totalTokens === 0) {
     return '';
   }
 
-  let result = `${formatNumber(usage.inputTokens)}↓/${formatNumber(usage.outputTokens)}↑`;
+  let result = `${formatNumber(usage.inputTokens)}in/${formatNumber(usage.outputTokens)}out`;
 
   if (usage.cachedTokens && usage.cachedTokens > 0) {
-    result += `/${formatNumber(usage.cachedTokens)}⚡`;
+    result += `/${formatNumber(usage.cachedTokens)}cache`;
   }
   if (usage.reasoningTokens && usage.reasoningTokens > 0) {
-    result += `/${formatNumber(usage.reasoningTokens)}🧠`;
+    result += `/${formatNumber(usage.reasoningTokens)}reason`;
   }
 
   return result;
@@ -490,13 +492,13 @@ function formatToolChain(toolChain?: string[]): string {
   if (!toolChain || toolChain.length === 0) {
     return '';
   }
-  return `🔧 Tools: ${toolChain.join(', ')}`;
+  return `[tools: ${toolChain.join(', ')}]`;
 }
 
 /**
  * Format routing flow in new format:
  * router-agent (0.4s, 500↓/100↑) → [classification] → target-agent (3.77s, 1.2k↓/0.5k↑)
- *   🔧 Tools: search, calculator
+ *   [tools: search, calculator]
  *
  * New format places classification between router and target agent
  * for clearer flow visualization. Token usage is shown per-step.
@@ -557,6 +559,8 @@ function formatRoutingFlow(debugContext: DebugContext): string {
  * - Model name (short form)
  * - Trace ID (truncated for readability)
  * - Error messages
+ *
+ * Uses text-based labels to avoid Telegram emoji restrictions.
  */
 function formatMetadata(
   metadata?: DebugMetadata,
@@ -573,16 +577,16 @@ function formatMetadata(
   if (metadata.model) {
     // Shorten model name for readability
     const shortModel = shortenModelName(metadata.model);
-    infoParts.push(`📊 ${shortModel}`);
+    infoParts.push(`model:${shortModel}`);
   }
 
   if (metadata.traceId) {
     // Show first 8 chars of trace ID
-    infoParts.push(`🆔 ${metadata.traceId.slice(0, 8)}`);
+    infoParts.push(`trace:${metadata.traceId.slice(0, 8)}`);
   }
 
   if (metadata.requestId) {
-    infoParts.push(`📋 ${metadata.requestId.slice(0, 8)}`);
+    infoParts.push(`req:${metadata.requestId.slice(0, 8)}`);
   }
 
   if (infoParts.length > 0) {
@@ -591,7 +595,7 @@ function formatMetadata(
 
   // Show error message on separate line if present
   if (metadata.lastToolError) {
-    lines.push(`\n⚠️ ${escapeFn(metadata.lastToolError)}`);
+    lines.push(`\n[!] ${escapeFn(metadata.lastToolError)}`);
   }
 
   return lines.join('');
@@ -631,9 +635,11 @@ function shortenModelName(model: string): string {
  * Shows basic info like duration, model, and trace ID.
  * Used as fallback when routingFlow is empty but metadata exists.
  *
+ * Uses text-based labels to avoid Telegram emoji restrictions.
+ *
  * @example Output:
  * ```
- * 🔍 ⏱️ 2.34s | 📊 sonnet-3.5 | 🆔 abc12345
+ * [debug] 2.34s | model:sonnet-3.5 | trace:abc12345
  * ```
  */
 function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
@@ -641,18 +647,18 @@ function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
 
   // Duration
   if (debugContext.totalDurationMs) {
-    parts.push(`⏱️ ${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
   }
 
   // Model from metadata
   if (debugContext.metadata?.model) {
     const shortModel = shortenModelName(debugContext.metadata.model);
-    parts.push(`📊 ${shortModel}`);
+    parts.push(`model:${shortModel}`);
   }
 
   // Trace ID from metadata
   if (debugContext.metadata?.traceId) {
-    parts.push(`🆔 ${debugContext.metadata.traceId.slice(0, 8)}`);
+    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
   }
 
   // Token usage from metadata
@@ -673,30 +679,32 @@ function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
 
   // Add error if present
   if (debugContext.metadata?.lastToolError) {
-    content += `\n⚠️ ${escapeHtml(debugContext.metadata.lastToolError)}`;
+    content += `\n[!] ${escapeHtml(debugContext.metadata.lastToolError)}`;
   }
 
-  return `\n\n<blockquote expandable>🔍 ${content}</blockquote>`;
+  return `\n\n<blockquote expandable>[debug] ${content}</blockquote>`;
 }
 
 /**
  * Format debug context as expandable blockquote footer
  *
+ * Uses text-based labels to avoid Telegram emoji restrictions.
+ *
  * @example Output (simple agent):
  * ```
- * 🔍 router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * [debug] router-agent (0.4s) -> [simple/general/low] -> simple-agent (3.77s)
  * ```
  *
  * @example Output (orchestrator with workers):
  * ```
- * 🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
- *    ├─ research-worker (2.5s)
- *    └─ code-worker (1.2s)
+ * [debug] router-agent (0.4s) -> [complex/research/low] -> orchestrator-agent (5.2s)
+ *    |- research-worker (2.5s)
+ *    +- code-worker (1.2s)
  * ```
  *
  * @example Output (minimal fallback):
  * ```
- * 🔍 ⏱️ 2.34s | 📊 sonnet-3.5 | 🆔 abc12345
+ * [debug] 2.34s | model:sonnet-3.5 | trace:abc12345
  * ```
  */
 export function formatDebugFooter(debugContext?: DebugContext): string | null {
@@ -713,7 +721,7 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
   const workers = formatWorkers(debugContext.workers);
   const metadata = formatMetadata(debugContext.metadata);
 
-  return `\n\n<blockquote expandable>🔍 ${flow}${workers}${metadata}</blockquote>`;
+  return `\n\n<blockquote expandable>[debug] ${flow}${workers}${metadata}</blockquote>`;
 }
 
 /**
@@ -747,18 +755,18 @@ function formatMinimalDebugFooterMarkdownV2(debugContext: DebugContext): string 
 
   // Duration
   if (debugContext.totalDurationMs) {
-    parts.push(`⏱️ ${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
   }
 
   // Model from metadata
   if (debugContext.metadata?.model) {
     const shortModel = shortenModelName(debugContext.metadata.model);
-    parts.push(`📊 ${shortModel}`);
+    parts.push(`model:${shortModel}`);
   }
 
   // Trace ID from metadata
   if (debugContext.metadata?.traceId) {
-    parts.push(`🆔 ${debugContext.metadata.traceId.slice(0, 8)}`);
+    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
   }
 
   // Token usage from metadata
@@ -777,10 +785,10 @@ function formatMinimalDebugFooterMarkdownV2(debugContext: DebugContext): string 
   let content = escapeMarkdownV2(parts.join(' | '));
 
   if (debugContext.metadata?.lastToolError) {
-    content += `\n⚠️ ${escapeMarkdownV2(debugContext.metadata.lastToolError)}`;
+    content += `\n[!] ${escapeMarkdownV2(debugContext.metadata.lastToolError)}`;
   }
 
-  return `\n\n**>🔍 ${content}||`;
+  return `\n\n**>[debug] ${content}||`;
 }
 
 /**
@@ -788,10 +796,11 @@ function formatMinimalDebugFooterMarkdownV2(debugContext: DebugContext): string 
  *
  * Uses MarkdownV2 expandable blockquote syntax: **>content||
  * All special characters in content are escaped.
+ * Uses text-based labels to avoid Telegram emoji restrictions.
  *
  * @example Output (simple agent):
  * ```
- * **>🔍 router\-agent \(0\.4s\) → \[simple/general/low\] → simple\-agent \(3\.77s\)||
+ * **>[debug] router\-agent \(0\.4s\) \-> \[simple/general/low\] \-> simple\-agent \(3\.77s\)||
  * ```
  */
 export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string | null {
@@ -812,7 +821,7 @@ export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string
   const escapedFlow = escapeMarkdownV2(flow);
 
   // MarkdownV2 expandable blockquote: **>content||
-  return `\n\n**>🔍 ${escapedFlow}${workers}${metadata}||`;
+  return `\n\n**>[debug] ${escapedFlow}${workers}${metadata}||`;
 }
 
 /**
@@ -824,7 +833,7 @@ export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string
  *
  * @example Output:
  * ```
- * 🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (running)
+ * [debug] router-agent (0.4s) → [complex/research/low] → orchestrator-agent (running)
  *    ├─ research-worker (running)
  * ```
  */
@@ -836,7 +845,7 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkers(debugContext.workers);
 
-  return `🔍 ${flow}${workers}`;
+  return `[debug] ${flow}${workers}`;
 }
 
 /**
@@ -848,7 +857,7 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
  * @example Output (simple agent):
  * ```markdown
  * <details>
- * <summary>🔍 Debug Info</summary>
+ * <summary>[debug] Info</summary>
  *
  * ```
  * router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
@@ -860,13 +869,13 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
  * @example Output (orchestrator with workers):
  * ```markdown
  * <details>
- * <summary>🔍 Debug Info</summary>
+ * <summary>[debug] Info</summary>
  *
  * ```
  * router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
  *    ├─ research-worker (2.5s)
  *    └─ code-worker (1.2s)
- * ⚠️ Tool timeout: external_api
+ * [!] Tool timeout: external_api
  * ```
  *
  * </details>
@@ -879,16 +888,16 @@ function formatMinimalDebugFooterMarkdown(debugContext: DebugContext): string | 
   const parts: string[] = [];
 
   if (debugContext.totalDurationMs) {
-    parts.push(`⏱️ ${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
   }
 
   if (debugContext.metadata?.model) {
     const shortModel = shortenModelName(debugContext.metadata.model);
-    parts.push(`📊 ${shortModel}`);
+    parts.push(`model:${shortModel}`);
   }
 
   if (debugContext.metadata?.traceId) {
-    parts.push(`🆔 ${debugContext.metadata.traceId.slice(0, 8)}`);
+    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
   }
 
   if (debugContext.metadata?.tokenUsage) {
@@ -904,13 +913,13 @@ function formatMinimalDebugFooterMarkdown(debugContext: DebugContext): string | 
 
   let content = parts.join(' | ');
   if (debugContext.metadata?.lastToolError) {
-    content += `\n⚠️ ${debugContext.metadata.lastToolError}`;
+    content += `\n[!] ${debugContext.metadata.lastToolError}`;
   }
 
   return `
 
 <details>
-<summary>🔍 Debug Info</summary>
+<summary>[debug] Info</summary>
 
 \`\`\`
 ${content}
@@ -935,7 +944,7 @@ export function formatDebugFooterMarkdown(debugContext?: DebugContext): string |
   const metadata = formatMetadata(debugContext.metadata, (s) => s);
 
   // Build content lines
-  const contentLines = [`🔍 ${flow}${workers}`];
+  const contentLines = [`[debug] ${flow}${workers}`];
   if (metadata) {
     contentLines.push(metadata);
   }
@@ -944,7 +953,7 @@ export function formatDebugFooterMarkdown(debugContext?: DebugContext): string |
   return `
 
 <details>
-<summary>🔍 Debug Info</summary>
+<summary>[debug] Info</summary>
 
 \`\`\`
 ${contentLines.join('\n')}

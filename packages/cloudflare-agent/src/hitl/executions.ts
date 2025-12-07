@@ -221,15 +221,15 @@ export function formatExecutionResults(result: BatchExecutionResult): string {
   let message = '';
 
   if (result.allSucceeded) {
-    message += `✅ **All ${result.successCount} tool(s) executed successfully**\n\n`;
+    message += `[ok] **All ${result.successCount} tool(s) executed successfully**\n\n`;
   } else {
-    message += `⚠️ **Execution completed with ${result.failureCount} error(s)**\n\n`;
-    message += `✅ Succeeded: ${result.successCount}\n`;
-    message += `❌ Failed: ${result.failureCount}\n\n`;
+    message += `[!] **Execution completed with ${result.failureCount} error(s)**\n\n`;
+    message += `[ok] Succeeded: ${result.successCount}\n`;
+    message += `[x] Failed: ${result.failureCount}\n\n`;
   }
 
   for (const entry of result.results) {
-    const statusIcon = entry.success ? '✅' : '❌';
+    const statusIcon = entry.success ? '[ok]' : '[x]';
     message += `${statusIcon} **${entry.toolName}** (${entry.durationMs}ms)\n`;
 
     if (!entry.success && entry.error) {
@@ -237,7 +237,7 @@ export function formatExecutionResults(result: BatchExecutionResult): string {
     }
   }
 
-  message += `\n⏱️ Total time: ${result.totalDurationMs}ms`;
+  message += `\nTotal time: ${result.totalDurationMs}ms`;
 
   return message;
 }

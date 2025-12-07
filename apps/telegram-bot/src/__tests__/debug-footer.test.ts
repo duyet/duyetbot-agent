@@ -83,8 +83,8 @@ describe('debug-footer', () => {
         },
       });
       const footer = formatDebugFooter(ctx);
-      expect(footer).toContain('⏱️ 1.50s');
-      expect(footer).toContain('📊 sonnet-3.5');
+      expect(footer).toContain('1.50s');
+      expect(footer).toContain('model:sonnet-3.5');
       expect(footer).toContain('<blockquote expandable>');
     });
 
@@ -101,7 +101,7 @@ describe('debug-footer', () => {
       });
       const footer = formatDebugFooter(ctx);
       expect(footer).toContain('<blockquote expandable>');
-      expect(footer).toContain('🔍');
+      expect(footer).toContain('[debug]');
       expect(footer).toContain('router-agent');
       expect(footer).toContain('simple-agent');
       expect(footer).toContain('</blockquote>');
@@ -125,7 +125,7 @@ describe('debug-footer', () => {
       });
       const footer = formatDebugFooter(ctx);
       expect(footer).toContain('duyet-info-agent');
-      expect(footer).toContain('⚠️ get_latest_posts: timeout');
+      expect(footer).toContain('[!] get_latest_posts: timeout');
     });
 
     it('escapes HTML in error messages', () => {
