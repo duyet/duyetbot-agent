@@ -220,10 +220,13 @@ async function withRetry<T>(
         break;
       }
 
-      const delay = options.delayMs * Math.pow(2, attempt - 1);
-      log.warn(`${operationName} failed (attempt ${attempt}/${options.maxAttempts}), retrying in ${delay}ms...`, {
-        error: getErrorMessage(error),
-      });
+      const delay = options.delayMs * 2 ** (attempt - 1);
+      log.warn(
+        `${operationName} failed (attempt ${attempt}/${options.maxAttempts}), retrying in ${delay}ms...`,
+        {
+          error: getErrorMessage(error),
+        }
+      );
       await sleep(delay);
     }
   }
@@ -400,7 +403,9 @@ async function createDatabase(name: string): Promise<Result<string>> {
       // Not JSON, continue to error
     }
 
-    return err(createError(`Could not parse database ID from wrangler output: ${output.slice(0, 200)}`));
+    return err(
+      createError(`Could not parse database ID from wrangler output: ${output.slice(0, 200)}`)
+    );
   } catch (error) {
     return err(createError('Failed to create D1 database', error));
   }

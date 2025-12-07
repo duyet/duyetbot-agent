@@ -159,7 +159,8 @@ export class InMemorySessionManager implements SessionManager {
    * Generate unique session ID
    */
   private generateId(): string {
-    return `session-${Date.now()}-${++this.idCounter}`;
+    this.idCounter++;
+    return `session-${Date.now()}-${this.idCounter}`;
   }
 
   /**

@@ -11,11 +11,8 @@ describe('RootLayout', () => {
 
   it('renders children with proper HTML structure', () => {
     const testContent = 'Test child content';
-    const html = renderToString(
-      createElement(RootLayout, {
-        children: createElement('div', {}, testContent),
-      })
-    );
+    const childElement = createElement('div', {}, testContent);
+    const html = renderToString(createElement(RootLayout, null, childElement));
 
     expect(html).toContain(testContent);
     expect(html).toContain('lang="en"');

@@ -36,21 +36,21 @@ describe('StepProgressTracker', () => {
     it('should handle thinking step', async () => {
       await tracker.addStep({ type: 'thinking' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('🔄 Thinking. ...');
+      expect(mockOnUpdate).toHaveBeenCalledWith('[~] Thinking. ...');
       expect(tracker.getExecutionPath()).toContain('thinking');
     });
 
     it('should handle routing step', async () => {
       await tracker.addStep({ type: 'routing', agentName: 'SimpleAgent' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('📡 Router → SimpleAgent');
+      expect(mockOnUpdate).toHaveBeenCalledWith('[>] Router -> SimpleAgent');
       expect(tracker.getExecutionPath()).toContain('routing:SimpleAgent');
     });
 
     it('should handle tool_start step', async () => {
       await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('⚙️ get_posts running. ...');
+      expect(mockOnUpdate).toHaveBeenCalledWith('[~] get_posts running. ...');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:start');
     });
 
@@ -61,7 +61,7 @@ describe('StepProgressTracker', () => {
         result: 'a'.repeat(1000), // 1KB
       });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringContaining('✅ get_posts returned'));
+      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringContaining('[ok] get_posts returned'));
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:complete');
     });
 
@@ -73,7 +73,7 @@ describe('StepProgressTracker', () => {
       });
 
       expect(mockOnUpdate).toHaveBeenCalledWith(
-        expect.stringContaining('❌ get_posts: Connection failed')
+        expect.stringContaining('[x] get_posts: Connection failed')
       );
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:error');
     });
@@ -95,13 +95,13 @@ describe('StepProgressTracker', () => {
         maxIterations: 5,
       });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringContaining('🔄 Processing (2/5)'));
+      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringContaining('[~] Processing (2/5)'));
     });
 
     it('should handle preparing step', async () => {
       await tracker.addStep({ type: 'preparing' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('📦 Preparing response. ...');
+      expect(mockOnUpdate).toHaveBeenCalledWith('[...] Preparing response. ...');
       expect(tracker.getExecutionPath()).toContain('preparing');
     });
   });
@@ -119,8 +119,8 @@ describe('StepProgressTracker', () => {
 
       // Should show both steps
       const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
-      expect(lastCall).toContain('📡 Router → SimpleAgent');
-      expect(lastCall).toContain('✅ get_posts returned');
+      expect(lastCall).toContain('[>] Router -> SimpleAgent');
+      expect(lastCall).toContain('[ok] get_posts returned');
     });
 
     it('should show current step with rotating suffix', async () => {
@@ -131,8 +131,8 @@ describe('StepProgressTracker', () => {
 
       // Should show completed routing + current tool running
       const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
-      expect(lastCall).toContain('📡 Router → SimpleAgent');
-      expect(lastCall).toContain('⚙️ get_posts running. ...');
+      expect(lastCall).toContain('[>] Router -> SimpleAgent');
+      expect(lastCall).toContain('[~] get_posts running. ...');
     });
   });
 
@@ -140,14 +140,14 @@ describe('StepProgressTracker', () => {
     it('should rotate suffix after interval', async () => {
       await tracker.addStep({ type: 'thinking' });
 
-      expect(mockOnUpdate).toHaveBeenLastCalledWith('🔄 Thinking. ...');
+      expect(mockOnUpdate).toHaveBeenLastCalledWith('[~] Thinking. ...');
 
       // Advance timer to trigger rotation
       await vi.advanceTimersByTime(5000);
 
       // Should have rotated to a different suffix
       expect(mockOnUpdate).toHaveBeenLastCalledWith(
-        expect.stringMatching(/🔄 Thinking\. .+\.\.\./)
+        expect.stringMatching(/\[~\] Thinking\. .+\.\.\./)
       );
     });
 

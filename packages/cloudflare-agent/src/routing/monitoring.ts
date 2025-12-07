@@ -59,7 +59,7 @@ export function formatRoutingStats(stats: {
   avgDurationMs: number;
 }): string {
   const lines: string[] = [];
-  lines.push('📊 Routing Statistics');
+  lines.push('[stats] Routing Statistics');
   lines.push(`Total Requests: ${stats.totalRouted}`);
   lines.push(`Average Duration: ${stats.avgDurationMs.toFixed(2)}ms`);
   lines.push('');
@@ -280,7 +280,7 @@ export function formatAccuracyMetrics(metrics: AccuracyMetrics): string {
  */
 export function formatEnhancedStats(stats: EnhancedRoutingStats): string {
   const lines: string[] = [];
-  lines.push('📊 Enhanced Routing Statistics');
+  lines.push('[stats] Enhanced Routing Statistics');
   lines.push(`Total Requests: ${stats.totalRouted}`);
   lines.push(`Success Rate: ${stats.successRate.toFixed(1)}%`);
   lines.push('');

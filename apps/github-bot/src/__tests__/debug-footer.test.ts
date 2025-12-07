@@ -37,9 +37,9 @@ describe('formatGitHubDebugFooter', () => {
     const footer = formatGitHubDebugFooter(ctx);
 
     expect(footer).toContain('<details>');
-    expect(footer).toContain('<summary>🔍 Debug Info</summary>');
+    expect(footer).toContain('<summary>[debug] Info</summary>');
     expect(footer).toContain('```');
-    expect(footer).toContain('🔍 router-agent → simple-agent');
+    expect(footer).toContain('[debug] router-agent → simple-agent');
     expect(footer).toContain('</details>');
   });
 
@@ -107,7 +107,7 @@ describe('formatGitHubDebugFooter', () => {
     };
     const footer = formatGitHubDebugFooter(ctx);
 
-    expect(footer).toContain('⚠️');
+    expect(footer).toContain('[!]');
     expect(footer).toContain('get_posts');
     expect(footer).toContain('Connection timeout');
   });

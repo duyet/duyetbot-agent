@@ -781,7 +781,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         const responseText =
           result.success && result.content
             ? result.content
-            : `❌ Error: ${result.error || 'Unknown error'}`;
+            : `[error] ${result.error || 'Unknown error'}`;
         await sendPlatformResponse(
           envWithTokens,
           execution.responseTarget,
@@ -813,7 +813,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           await sendPlatformResponse(
             envForError,
             execution.responseTarget,
-            '❌ Sorry, an error occurred processing your request.'
+            '[error] Sorry, an error occurred processing your request.'
           );
         } catch (sendError) {
           logger.error('[RouterAgent] Failed to send error message', {
