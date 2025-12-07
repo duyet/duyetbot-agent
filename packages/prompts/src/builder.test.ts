@@ -298,7 +298,7 @@ describe('OutputFormat', () => {
       const section = guidelinesSection('github-markdown');
 
       expect(section).toContain('GitHub-flavored markdown');
-      expect(section).toContain('code blocks with syntax highlighting');
+      expect(section).toContain('Code blocks with language hints for syntax highlighting');
     });
 
     it('should return base guidelines only for plain', () => {
