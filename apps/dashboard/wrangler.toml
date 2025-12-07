@@ -1,0 +1,14 @@
+name = "duyetbot-dashboard"
+type = "javascript"
+account_id = ""
+workers_dev = true
+route = ""
+zone_id = ""
+
+[env.production]
+name = "duyetbot-dashboard"
+route = "duyetbot-dashboard.duyet.net"
+
+[[env.production.routes]]
+pattern = "duyetbot-dashboard.duyet.net/*"
+zone_name = "duyet.net"

@@ -1,0 +1,137 @@
+# Analytics Dashboard API Routes - Files to Create
+
+## Core Supporting Files (Ready)
+✓ apps/dashboard/app/api/types.ts                          [220 lines] CREATED
+  - All type definitions
+  - Response helpers
+  - Parameter parsing
+
+## Route Files to Create (21 total)
+
+### Messages Routes (5)
+[ ] apps/dashboard/app/api/messages/route.ts               [~90 lines]
+    - GET: List messages with filtering
+    - POST: Full-text search
+[ ] apps/dashboard/app/api/messages/[messageId]/route.ts   [~85 lines]
+    - GET: Get message detail with related event
+    - PATCH: Update message properties
+[ ] apps/dashboard/app/api/messages/[messageId]/visibility/route.ts [~70 lines]
+    - PATCH: Toggle visibility status
+
+### Sessions Routes (3)
+[ ] apps/dashboard/app/api/sessions/route.ts               [~70 lines]
+    - GET: List sessions with filtering
+[ ] apps/dashboard/app/api/sessions/[sessionId]/route.ts   [~40 lines]
+    - GET: Get session detail
+[ ] apps/dashboard/app/api/sessions/[sessionId]/messages/route.ts [~60 lines]
+    - GET: Get messages in session
+
+### Events Routes (3)
+[ ] apps/dashboard/app/api/events/route.ts                 [~70 lines]
+    - GET: List events with filtering
+[ ] apps/dashboard/app/api/events/[eventId]/route.ts       [~40 lines]
+    - GET: Get event detail
+[ ] apps/dashboard/app/api/events/[eventId]/steps/route.ts [~70 lines]
+    - GET: Get hierarchical agent steps
+
+### Aggregates Routes (3)
+[ ] apps/dashboard/app/api/aggregates/daily/route.ts       [~70 lines]
+    - GET: Daily metrics by type
+[ ] apps/dashboard/app/api/aggregates/weekly/route.ts      [~90 lines]
+    - GET: Weekly metrics by type
+[ ] apps/dashboard/app/api/aggregates/monthly/route.ts     [~90 lines]
+    - GET: Monthly metrics by type
+
+### Tokens Routes (2)
+[ ] apps/dashboard/app/api/tokens/summary/route.ts         [~90 lines]
+    - GET: Token usage summary
+[ ] apps/dashboard/app/api/tokens/timeline/route.ts        [~70 lines]
+    - GET: Token timeline for charting
+
+### Cost Routes (3)
+[ ] apps/dashboard/app/api/cost/summary/route.ts           [~90 lines]
+    - GET: Cost summary for period
+[ ] apps/dashboard/app/api/cost/config/route.ts            [~110 lines]
+    - GET: Get pricing configuration
+    - POST: Update pricing configuration
+
+### Export Routes (2)
+[ ] apps/dashboard/app/api/export/messages/route.ts        [~120 lines]
+    - GET: Export messages as CSV or JSON
+[ ] apps/dashboard/app/api/export/report/route.ts          [~140 lines]
+    - GET: Generate analytics report
+
+### Stream Route (1)
+[ ] apps/dashboard/app/api/stream/route.ts                 [~110 lines]
+    - GET: Server-Sent Events endpoint
+
+## Optional Supporting Files
+[ ] apps/dashboard/app/api/mocks.ts                        [~320 lines]
+    - Mock data generators for all types
+    - Useful for testing before database integration
+[ ] apps/dashboard/app/api/__tests__/messages.test.ts      [~280 lines]
+    - Example unit tests
+    - Test patterns for all routes
+[ ] apps/dashboard/app/api/README.md                       [~400 lines]
+    - Comprehensive API documentation
+
+## Pattern for Each Route File
+
+```typescript
+import { NextRequest, NextResponse } from 'next/server';
+import { /* helpers from types */ } from '../types';
+
+export async function METHOD(
+  request: NextRequest,
+  { params }: { params: { [key]: string } }
+) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    // Parse parameters using helpers
+    
+    // TODO: Replace with real database query
+    // const result = await db.collection.operation(...);
+    
+    // Return response using helpers
+    return NextResponse.json(response, { status });
+  } catch (error) {
+    return handleRouteError(error);
+  }
+}
+
+export const runtime = 'nodejs';
+```
+
+## Summary
+- Core types: 1 file (220 lines) ✓ CREATED
+- Route handlers: 21 files (~1,800 lines total)
+- Supporting files: 3 optional files (~1,000 lines)
+- Documentation: Already created (1,800+ lines)
+
+TOTAL: ~3,500 lines of code + comprehensive documentation
+
+## Instructions for Implementation
+
+1. Review types.ts for all type definitions
+2. For each route file:
+   - Create appropriate directory structure
+   - Implement route handler following pattern above
+   - Use type helpers from types.ts
+   - Mark database integration points with TODO
+   - Use consistent error handling
+   - Export runtime = 'nodejs'
+
+3. Reference API_ROUTES_MANIFEST.md for:
+   - Parameter specifications
+   - Response format details
+   - Error codes
+   - Database schema
+
+4. Use INTEGRATION.md for:
+   - Database schema examples
+   - Service layer patterns
+   - Integration strategies
+
+All files ready for creation. See specific endpoints documentation in:
+- API_ROUTES_MANIFEST.md (quick reference)
+- API_STRUCTURE.md (detailed documentation)

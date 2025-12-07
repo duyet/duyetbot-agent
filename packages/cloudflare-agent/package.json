@@ -22,6 +22,7 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@duyetbot/analytics": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
