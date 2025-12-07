@@ -357,7 +357,7 @@ function formatGitHubDebugFooter(debugContext: DebugContext): string {
   return `
 
 <details>
-<summary>🔧 Debug Info</summary>
+<summary>[debug] Info</summary>
 
 | Property | Value |
 |----------|-------|

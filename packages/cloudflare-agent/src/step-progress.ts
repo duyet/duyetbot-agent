@@ -15,17 +15,17 @@
  * });
  *
  * await tracker.addStep({ type: 'thinking' });
- * // Shows: "🔄 Thinking..."
+ * // Shows: "[~] Thinking..."
  *
  * await tracker.addStep({ type: 'routing', agentName: 'SimpleAgent' });
  * // Shows:
- * // "📡 Router → SimpleAgent
- * //  🔄 Thinking..."
+ * // "[>] Router -> SimpleAgent
+ * //  [~] Thinking..."
  *
  * await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
  * // Shows:
- * // "📡 Router → SimpleAgent
- * //  ⚙️ get_posts running..."
+ * // "[>] Router -> SimpleAgent
+ * //  [~] get_posts running..."
  *
  * tracker.destroy();
  * ```
@@ -469,13 +469,13 @@ export class StepProgressTracker {
     switch (event.type) {
       case 'thinking':
         this.executionPath.push('thinking');
-        this.currentPrefix = '🔄 Thinking';
+        this.currentPrefix = '[~] Thinking';
         await this.startRotation();
         break;
 
       case 'routing':
         this.executionPath.push(`routing:${event.agentName}`);
-        this.completedSteps.push(`📡 Router → ${event.agentName}`);
+        this.completedSteps.push(`[>] Router -> ${event.agentName}`);
         // Reset tools list for the new agent
         this.currentAgentTools = [];
         await this.update();
@@ -483,7 +483,7 @@ export class StepProgressTracker {
 
       case 'tool_start':
         this.executionPath.push(`tool:${event.toolName}:start`);
-        this.currentPrefix = `⚙️ ${event.toolName} running`;
+        this.currentPrefix = `[~] ${event.toolName} running`;
         // Track this tool for the current agent
         if (event.toolName && !this.currentAgentTools.includes(event.toolName)) {
           this.currentAgentTools.push(event.toolName);
@@ -495,7 +495,7 @@ export class StepProgressTracker {
         this.executionPath.push(`tool:${event.toolName}:complete`);
         const resultLength = event.result?.length ?? 0;
         const size = resultLength > 0 ? ` (${formatSize(resultLength)})` : '';
-        this.completedSteps.push(`✅ ${event.toolName} returned${size}`);
+        this.completedSteps.push(`[ok] ${event.toolName} returned${size}`);
         this.currentPrefix = '';
         await this.update();
         break;
@@ -504,7 +504,7 @@ export class StepProgressTracker {
       case 'tool_error': {
         this.executionPath.push(`tool:${event.toolName}:error`);
         const errorMsg = event.error ? truncate(event.error, 50) : 'Unknown error';
-        this.completedSteps.push(`❌ ${event.toolName}: ${errorMsg}`);
+        this.completedSteps.push(`[x] ${event.toolName}: ${errorMsg}`);
         this.currentPrefix = '';
         await this.update();
         break;
@@ -513,14 +513,14 @@ export class StepProgressTracker {
       case 'llm_iteration':
         this.executionPath.push(`llm:${event.iteration}/${event.maxIterations}`);
         if (event.iteration && event.maxIterations && event.iteration > 1) {
-          this.currentPrefix = `🔄 Processing (${event.iteration}/${event.maxIterations})`;
+          this.currentPrefix = `[~] Processing (${event.iteration}/${event.maxIterations})`;
           await this.startRotation();
         }
         break;
 
       case 'preparing':
         this.executionPath.push('preparing');
-        this.currentPrefix = '📦 Preparing response';
+        this.currentPrefix = '[...] Preparing response';
         await this.startRotation();
         break;
     }
@@ -573,7 +573,7 @@ export class StepProgressTracker {
     }
 
     // If no lines yet, show a default
-    const message = lines.length > 0 ? lines.join('\n') : '🔄 Starting...';
+    const message = lines.length > 0 ? lines.join('\n') : '[~] Starting...';
 
     try {
       await this.onUpdate(message);
