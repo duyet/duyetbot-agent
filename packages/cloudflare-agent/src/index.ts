@@ -396,6 +396,7 @@ export {
   emitHeartbeat,
   emitHeartbeatHttp,
   HEARTBEAT_KEYS,
+  HEARTBEAT_MIN_INTERVAL_MS,
   type HeartbeatData,
   type HeartbeatEnv,
   type HeartbeatMetadata,
