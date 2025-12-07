@@ -971,7 +971,7 @@ describe('HITL Executions', () => {
 
       const formatted = formatExecutionResults(result);
 
-      expect(formatted).toContain('✅');
+      expect(formatted).toContain('[ok]');
       expect(formatted).toContain('tool1');
       expect(formatted).toContain('100ms');
     });

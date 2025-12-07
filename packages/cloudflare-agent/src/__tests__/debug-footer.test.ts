@@ -49,9 +49,38 @@ describe('formatDebugFooter', () => {
     expect(formatDebugFooter(undefined)).toBeNull();
   });
 
-  it('returns null when routingFlow is empty', () => {
+  it('returns null when routingFlow is empty and no metadata', () => {
     const ctx: DebugContext = { routingFlow: [] };
     expect(formatDebugFooter(ctx)).toBeNull();
+  });
+
+  it('returns minimal footer when routingFlow is empty but has metadata', () => {
+    const ctx: DebugContext = {
+      routingFlow: [],
+      totalDurationMs: 2340,
+      metadata: {
+        model: 'claude-3-5-sonnet-20241022',
+        traceId: 'abc123456789',
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).toContain('2.34s');
+    expect(footer).toContain('model:sonnet-3.5');
+    expect(footer).toContain('trace:abc12345');
+    expect(footer).toContain('<blockquote expandable>');
+  });
+
+  it('shortens model names correctly', () => {
+    const ctx: DebugContext = {
+      routingFlow: [],
+      totalDurationMs: 1000, // Need at least one piece of info for minimal footer
+      metadata: {
+        model: 'claude-3-5-haiku-20241022',
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).not.toBeNull();
+    expect(footer).toContain('haiku-3.5');
   });
 
   it('formats basic routing flow', () => {
@@ -60,7 +89,7 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('🔍');
+    expect(footer).toContain('[debug]');
     // New format: router-agent → target-agent
     expect(footer).toContain('router-agent → simple-agent');
     expect(footer).toContain('<blockquote expandable>');
@@ -145,7 +174,7 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('⚠️');
+    expect(footer).toContain('[!]');
     expect(footer).toContain('get_latest_posts');
     expect(footer).toContain('&lt;timeout&gt;'); // HTML escaped
     expect(footer).not.toContain('<timeout>'); // Not raw HTML
@@ -181,7 +210,7 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('⚠️ search: timeout');
+    expect(footer).toContain('[!] search: timeout');
   });
 
   it('escapes HTML in error messages with special XML characters', () => {
@@ -223,10 +252,10 @@ describe('formatDebugFooter', () => {
     const footer = formatDebugFooter(ctx);
 
     // New format: router-agent (time) → [classification] → target (time)
-    expect(footer).toContain('🔍 router-agent (0.12s)');
+    expect(footer).toContain('[debug] router-agent (0.12s)');
     expect(footer).toContain('[simple/duyet/low]');
     expect(footer).toContain('duyet-info-agent (2.35s)');
-    expect(footer).not.toContain('⚠️'); // No error
+    expect(footer).not.toContain('[!]'); // No error
   });
 
   it('handles complex real world scenario - error with fallback', () => {
@@ -252,10 +281,10 @@ describe('formatDebugFooter', () => {
     const footer = formatDebugFooter(ctx);
 
     // New format: router-agent (time) → [classification] → target (time, error)
-    expect(footer).toContain('🔍 router-agent (0.12s)');
+    expect(footer).toContain('[debug] router-agent (0.12s)');
     expect(footer).toContain('[simple/duyet/low]');
     expect(footer).toContain('duyet-info-agent (27.92s, error)');
-    expect(footer).toContain('⚠️ duyet-info-agent: MCP connection timeout');
+    expect(footer).toContain('[!] duyet-info-agent: MCP connection timeout');
   });
 
   it('handles agent with only duration (no tools)', () => {
@@ -274,7 +303,7 @@ describe('formatDebugFooter', () => {
 
     // New format: classification is inline between router and target
     expect(footer).toContain(
-      '🔍 router-agent (0.08s) → [simple/general/low] → simple-agent (0.45s)'
+      '[debug] router-agent (0.08s) → [simple/general/low] → simple-agent (0.45s)'
     );
   });
 
@@ -454,9 +483,9 @@ describe('formatDebugFooterMarkdown', () => {
     const footer = formatDebugFooterMarkdown(ctx);
 
     expect(footer).toContain('<details>');
-    expect(footer).toContain('<summary>🔍 Debug Info</summary>');
+    expect(footer).toContain('<summary>[debug] Info</summary>');
     expect(footer).toContain('```');
-    expect(footer).toContain('🔍 router-agent → simple-agent');
+    expect(footer).toContain('[debug] router-agent → simple-agent');
     expect(footer).toContain('</details>');
   });
 
@@ -546,7 +575,7 @@ describe('formatDebugFooterMarkdown', () => {
     };
     const footer = formatDebugFooterMarkdown(ctx);
 
-    expect(footer).toContain('⚠️');
+    expect(footer).toContain('[!]');
     expect(footer).toContain('get_posts');
     // Markdown code blocks don't need HTML escaping
     expect(footer).toContain('<timeout>');
@@ -594,6 +623,6 @@ describe('formatDebugFooterMarkdown', () => {
     expect(footer).toContain('orchestrator-agent (27.92s, error)');
     expect(footer).toContain('├─ research-worker (2.50s)');
     expect(footer).toContain('└─ code-worker (1.20s, error)');
-    expect(footer).toContain('⚠️ code-worker: MCP connection timeout');
+    expect(footer).toContain('[!] code-worker: MCP connection timeout');
   });
 });

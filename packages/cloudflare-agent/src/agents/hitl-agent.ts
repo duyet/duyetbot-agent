@@ -572,7 +572,7 @@ export function createHITLAgent<TEnv extends HITLAgentEnv>(
           updatedAt: Date.now(),
         });
 
-        const message = '❌ Tool execution cancelled.';
+        const message = '[cancelled] Tool execution cancelled.';
         await this.respond(ctx, message);
 
         return createSuccessResultFn(message, Date.now() - startTime, {

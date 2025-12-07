@@ -5,12 +5,14 @@
  * for admin users. Used by both direct responses and fire-and-forget paths.
  *
  * Format:
- * - Simple: 🔍 router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * - Simple: [debug] router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
  * - Orchestrator:
- *   🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
+ *   [debug] router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
  *      ├─ research-worker (2.5s)
  *      └─ code-worker (1.2s)
  * - Progressive: Shows (running) for active agents/workers
+ *
+ * Note: Uses text-based labels instead of emojis for Telegram compatibility.
  */
 
 import type {
@@ -370,26 +372,26 @@ function formatNumber(n: number): string {
 
 /**
  * Format token usage as compact string
- * Examples: "500↓/100↑", "1.2k↓/0.5k↑/0.3k⚡", "5k↓/2k↑/1k⚡/3k🧠"
+ * Examples: "500in/100out", "1.2kin/0.5kout/0.3kcache"
  *
- * Symbols:
- * - ↓ = input tokens (prompt)
- * - ↑ = output tokens (completion)
- * - ⚡ = cached tokens (prompt cache hits)
- * - 🧠 = reasoning tokens (o1/o3 internal reasoning)
+ * Symbols (text-based to avoid Telegram emoji issues):
+ * - in = input tokens (prompt)
+ * - out = output tokens (completion)
+ * - cache = cached tokens (prompt cache hits)
+ * - reason = reasoning tokens (o1/o3 internal reasoning)
  */
 function formatTokenUsage(usage?: TokenUsage): string {
   if (!usage || usage.totalTokens === 0) {
     return '';
   }
 
-  let result = `${formatNumber(usage.inputTokens)}↓/${formatNumber(usage.outputTokens)}↑`;
+  let result = `${formatNumber(usage.inputTokens)}in/${formatNumber(usage.outputTokens)}out`;
 
   if (usage.cachedTokens && usage.cachedTokens > 0) {
-    result += `/${formatNumber(usage.cachedTokens)}⚡`;
+    result += `/${formatNumber(usage.cachedTokens)}cache`;
   }
   if (usage.reasoningTokens && usage.reasoningTokens > 0) {
-    result += `/${formatNumber(usage.reasoningTokens)}🧠`;
+    result += `/${formatNumber(usage.reasoningTokens)}reason`;
   }
 
   return result;
@@ -490,13 +492,13 @@ function formatToolChain(toolChain?: string[]): string {
   if (!toolChain || toolChain.length === 0) {
     return '';
   }
-  return `🔧 Tools: ${toolChain.join(', ')}`;
+  return `[tools: ${toolChain.join(', ')}]`;
 }
 
 /**
  * Format routing flow in new format:
  * router-agent (0.4s, 500↓/100↑) → [classification] → target-agent (3.77s, 1.2k↓/0.5k↑)
- *   🔧 Tools: search, calculator
+ *   [tools: search, calculator]
  *
  * New format places classification between router and target agent
  * for clearer flow visualization. Token usage is shown per-step.
@@ -551,8 +553,14 @@ function formatRoutingFlow(debugContext: DebugContext): string {
 }
 
 /**
- * Format metadata - simplified to only show error messages (HTML version)
- * Removed cache/timeout/err counts as they're redundant with error message
+ * Format metadata with model, trace ID, and error info
+ *
+ * Enhanced to show:
+ * - Model name (short form)
+ * - Trace ID (truncated for readability)
+ * - Error messages
+ *
+ * Uses text-based labels to avoid Telegram emoji restrictions.
  */
 function formatMetadata(
   metadata?: DebugMetadata,
@@ -562,39 +570,158 @@ function formatMetadata(
     return '';
   }
 
-  // Only show error message on separate line if present
-  if (metadata.lastToolError) {
-    return `\n⚠️ ${escapeFn(metadata.lastToolError)}`;
+  const lines: string[] = [];
+
+  // Add model info on same line if present
+  const infoParts: string[] = [];
+  if (metadata.model) {
+    // Shorten model name for readability
+    const shortModel = shortenModelName(metadata.model);
+    infoParts.push(`model:${shortModel}`);
   }
 
-  return '';
+  if (metadata.traceId) {
+    // Show first 8 chars of trace ID
+    infoParts.push(`trace:${metadata.traceId.slice(0, 8)}`);
+  }
+
+  if (metadata.requestId) {
+    infoParts.push(`req:${metadata.requestId.slice(0, 8)}`);
+  }
+
+  if (infoParts.length > 0) {
+    lines.push(`\n   ${infoParts.join(' | ')}`);
+  }
+
+  // Show error message on separate line if present
+  if (metadata.lastToolError) {
+    lines.push(`\n[!] ${escapeFn(metadata.lastToolError)}`);
+  }
+
+  return lines.join('');
+}
+
+/**
+ * Shorten model name for display
+ * Examples:
+ * - 'claude-3-5-sonnet-20241022' → 'sonnet-3.5'
+ * - 'claude-3-5-haiku-20241022' → 'haiku-3.5'
+ * - 'gpt-4o-mini' → 'gpt-4o-mini'
+ */
+function shortenModelName(model: string): string {
+  // Claude models
+  if (model.includes('claude')) {
+    if (model.includes('opus')) {
+      return model.includes('3-5') ? 'opus-3.5' : model.includes('4') ? 'opus-4' : 'opus';
+    }
+    if (model.includes('sonnet')) {
+      return model.includes('3-5') ? 'sonnet-3.5' : model.includes('4') ? 'sonnet-4' : 'sonnet';
+    }
+    if (model.includes('haiku')) {
+      return model.includes('3-5') ? 'haiku-3.5' : 'haiku';
+    }
+  }
+  // GPT models - keep short
+  if (model.startsWith('gpt-')) {
+    return model.replace(/-\d{4}-\d{2}-\d{2}$/, '');
+  }
+  // Other models - return as-is but truncate if too long
+  return model.length > 20 ? `${model.slice(0, 17)}...` : model;
+}
+
+/**
+ * Format minimal debug footer when full routing flow is unavailable
+ *
+ * Shows basic info like duration, model, and trace ID.
+ * Used as fallback when routingFlow is empty but metadata exists.
+ *
+ * Uses text-based labels to avoid Telegram emoji restrictions.
+ *
+ * @example Output:
+ * ```
+ * [debug] 2.34s | model:sonnet-3.5 | trace:abc12345
+ * ```
+ */
+function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
+  const parts: string[] = [];
+
+  // Duration
+  if (debugContext.totalDurationMs) {
+    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+  }
+
+  // Model from metadata
+  if (debugContext.metadata?.model) {
+    const shortModel = shortenModelName(debugContext.metadata.model);
+    parts.push(`model:${shortModel}`);
+  }
+
+  // Trace ID from metadata
+  if (debugContext.metadata?.traceId) {
+    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
+  }
+
+  // Token usage from metadata
+  if (debugContext.metadata?.tokenUsage) {
+    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+    if (tokens) {
+      parts.push(tokens);
+    }
+  }
+
+  // If no meaningful info, return null
+  if (parts.length === 0) {
+    return null;
+  }
+
+  // Build minimal footer
+  let content = parts.join(' | ');
+
+  // Add error if present
+  if (debugContext.metadata?.lastToolError) {
+    content += `\n[!] ${escapeHtml(debugContext.metadata.lastToolError)}`;
+  }
+
+  return `\n\n<blockquote expandable>[debug] ${content}</blockquote>`;
 }
 
 /**
  * Format debug context as expandable blockquote footer
  *
+ * Uses text-based labels to avoid Telegram emoji restrictions.
+ *
  * @example Output (simple agent):
  * ```
- * 🔍 router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * [debug] router-agent (0.4s) -> [simple/general/low] -> simple-agent (3.77s)
  * ```
  *
  * @example Output (orchestrator with workers):
  * ```
- * 🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
- *    ├─ research-worker (2.5s)
- *    └─ code-worker (1.2s)
+ * [debug] router-agent (0.4s) -> [complex/research/low] -> orchestrator-agent (5.2s)
+ *    |- research-worker (2.5s)
+ *    +- code-worker (1.2s)
+ * ```
+ *
+ * @example Output (minimal fallback):
+ * ```
+ * [debug] 2.34s | model:sonnet-3.5 | trace:abc12345
  * ```
  */
 export function formatDebugFooter(debugContext?: DebugContext): string | null {
-  if (!debugContext?.routingFlow?.length) {
+  if (!debugContext) {
     return null;
+  }
+
+  // If no routing flow, try minimal fallback
+  if (!debugContext.routingFlow?.length) {
+    return formatMinimalDebugFooter(debugContext);
   }
 
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkers(debugContext.workers);
   const metadata = formatMetadata(debugContext.metadata);
 
-  return `\n\n<blockquote expandable>🔍 ${flow}${workers}${metadata}</blockquote>`;
+  return `\n\n<blockquote expandable>[debug] ${flow}${workers}${metadata}</blockquote>`;
 }
 
 /**
@@ -621,19 +748,69 @@ function formatWorkersMarkdownV2(workers?: WorkerDebugInfo[]): string {
 }
 
 /**
+ * Format minimal debug footer for MarkdownV2 when routing flow is unavailable
+ */
+function formatMinimalDebugFooterMarkdownV2(debugContext: DebugContext): string | null {
+  const parts: string[] = [];
+
+  // Duration
+  if (debugContext.totalDurationMs) {
+    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+  }
+
+  // Model from metadata
+  if (debugContext.metadata?.model) {
+    const shortModel = shortenModelName(debugContext.metadata.model);
+    parts.push(`model:${shortModel}`);
+  }
+
+  // Trace ID from metadata
+  if (debugContext.metadata?.traceId) {
+    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
+  }
+
+  // Token usage from metadata
+  if (debugContext.metadata?.tokenUsage) {
+    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+    if (tokens) {
+      parts.push(tokens);
+    }
+  }
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  // Build minimal footer with escaping
+  let content = escapeMarkdownV2(parts.join(' | '));
+
+  if (debugContext.metadata?.lastToolError) {
+    content += `\n[!] ${escapeMarkdownV2(debugContext.metadata.lastToolError)}`;
+  }
+
+  return `\n\n**>[debug] ${content}||`;
+}
+
+/**
  * Format debug context as expandable quote for MarkdownV2
  *
  * Uses MarkdownV2 expandable blockquote syntax: **>content||
  * All special characters in content are escaped.
+ * Uses text-based labels to avoid Telegram emoji restrictions.
  *
  * @example Output (simple agent):
  * ```
- * **>🔍 router\-agent \(0\.4s\) → \[simple/general/low\] → simple\-agent \(3\.77s\)||
+ * **>[debug] router\-agent \(0\.4s\) \-> \[simple/general/low\] \-> simple\-agent \(3\.77s\)||
  * ```
  */
 export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string | null {
-  if (!debugContext?.routingFlow?.length) {
+  if (!debugContext) {
     return null;
+  }
+
+  // If no routing flow, try minimal fallback
+  if (!debugContext.routingFlow?.length) {
+    return formatMinimalDebugFooterMarkdownV2(debugContext);
   }
 
   const flow = formatRoutingFlow(debugContext);
@@ -644,7 +821,7 @@ export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string
   const escapedFlow = escapeMarkdownV2(flow);
 
   // MarkdownV2 expandable blockquote: **>content||
-  return `\n\n**>🔍 ${escapedFlow}${workers}${metadata}||`;
+  return `\n\n**>[debug] ${escapedFlow}${workers}${metadata}||`;
 }
 
 /**
@@ -656,7 +833,7 @@ export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string
  *
  * @example Output:
  * ```
- * 🔍 router-agent (0.4s) → [complex/research/low] → orchestrator-agent (running)
+ * [debug] router-agent (0.4s) → [complex/research/low] → orchestrator-agent (running)
  *    ├─ research-worker (running)
  * ```
  */
@@ -668,7 +845,7 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkers(debugContext.workers);
 
-  return `🔍 ${flow}${workers}`;
+  return `[debug] ${flow}${workers}`;
 }
 
 /**
@@ -680,7 +857,7 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
  * @example Output (simple agent):
  * ```markdown
  * <details>
- * <summary>🔍 Debug Info</summary>
+ * <summary>[debug] Info</summary>
  *
  * ```
  * router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
@@ -692,21 +869,73 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
  * @example Output (orchestrator with workers):
  * ```markdown
  * <details>
- * <summary>🔍 Debug Info</summary>
+ * <summary>[debug] Info</summary>
  *
  * ```
  * router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
  *    ├─ research-worker (2.5s)
  *    └─ code-worker (1.2s)
- * ⚠️ Tool timeout: external_api
+ * [!] Tool timeout: external_api
  * ```
  *
  * </details>
  * ```
  */
-export function formatDebugFooterMarkdown(debugContext?: DebugContext): string | null {
-  if (!debugContext?.routingFlow?.length) {
+/**
+ * Format minimal debug footer for GitHub Markdown when routing flow is unavailable
+ */
+function formatMinimalDebugFooterMarkdown(debugContext: DebugContext): string | null {
+  const parts: string[] = [];
+
+  if (debugContext.totalDurationMs) {
+    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+  }
+
+  if (debugContext.metadata?.model) {
+    const shortModel = shortenModelName(debugContext.metadata.model);
+    parts.push(`model:${shortModel}`);
+  }
+
+  if (debugContext.metadata?.traceId) {
+    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
+  }
+
+  if (debugContext.metadata?.tokenUsage) {
+    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+    if (tokens) {
+      parts.push(tokens);
+    }
+  }
+
+  if (parts.length === 0) {
     return null;
+  }
+
+  let content = parts.join(' | ');
+  if (debugContext.metadata?.lastToolError) {
+    content += `\n[!] ${debugContext.metadata.lastToolError}`;
+  }
+
+  return `
+
+<details>
+<summary>[debug] Info</summary>
+
+\`\`\`
+${content}
+\`\`\`
+
+</details>`;
+}
+
+export function formatDebugFooterMarkdown(debugContext?: DebugContext): string | null {
+  if (!debugContext) {
+    return null;
+  }
+
+  // If no routing flow, try minimal fallback
+  if (!debugContext.routingFlow?.length) {
+    return formatMinimalDebugFooterMarkdown(debugContext);
   }
 
   const flow = formatRoutingFlow(debugContext);
@@ -715,7 +944,7 @@ export function formatDebugFooterMarkdown(debugContext?: DebugContext): string |
   const metadata = formatMetadata(debugContext.metadata, (s) => s);
 
   // Build content lines
-  const contentLines = [`🔍 ${flow}${workers}`];
+  const contentLines = [`[debug] ${flow}${workers}`];
   if (metadata) {
     contentLines.push(metadata);
   }
@@ -724,7 +953,7 @@ export function formatDebugFooterMarkdown(debugContext?: DebugContext): string |
   return `
 
 <details>
-<summary>🔍 Debug Info</summary>
+<summary>[debug] Info</summary>
 
 \`\`\`
 ${contentLines.join('\n')}

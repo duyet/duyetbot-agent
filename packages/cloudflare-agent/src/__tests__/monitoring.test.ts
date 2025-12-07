@@ -75,7 +75,7 @@ describe('Routing Monitoring', () => {
 
       const formatted = formatRoutingStats(stats);
 
-      expect(formatted).toContain('📊 Routing Statistics');
+      expect(formatted).toContain('[stats] Routing Statistics');
       expect(formatted).toContain('Total Requests: 100');
       expect(formatted).toContain('Average Duration: 250.50ms');
       expect(formatted).toContain('simple-agent: 60 (60.0%)');
@@ -343,7 +343,7 @@ describe('Routing Monitoring', () => {
       const stats = calculateEnhancedStats(sampleHistory);
       const formatted = formatEnhancedStats(stats);
 
-      expect(formatted).toContain('📊 Enhanced Routing Statistics');
+      expect(formatted).toContain('[stats] Enhanced Routing Statistics');
       expect(formatted).toContain('Total Requests: 3');
       expect(formatted).toContain('Success Rate: 100.0%');
       expect(formatted).toContain('Average Duration:');
