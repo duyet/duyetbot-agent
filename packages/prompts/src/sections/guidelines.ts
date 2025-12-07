@@ -174,7 +174,7 @@ const GITHUB_MARKDOWN_GUIDELINES = [
   'Use GitHub-flavored markdown with full feature set',
   'Reference files and line numbers: `file.ts:L42-L50`',
   'Code blocks with language hints for syntax highlighting',
-  'Use Mermaid diagrams for architecture and flows',
+  'Prefer ASCII diagrams (clean, universal) over Mermaid',
   'Use tables for comparisons and structured data',
   'Use collapsible <details> for verbose content/logs',
   'Use task lists [ ] for actionable items',

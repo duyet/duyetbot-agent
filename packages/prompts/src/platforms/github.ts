@@ -70,71 +70,58 @@ Here's the context for your current task:
     .withCustomSection(
       'diagrams',
       `
-## Diagrams (Mermaid + ASCII)
+## Diagrams (ASCII preferred)
 
-<goal>Use Mermaid diagrams for rich visualizations. Fall back to ASCII for simple inline flows.</goal>
+<goal>Use ASCII diagrams for clean, universal visualizations. They render consistently everywhere.</goal>
 
-<mermaid_diagrams>
-GitHub renders Mermaid natively. Use for:
-- Architecture diagrams (flowchart)
-- Sequence diagrams (interactions)
-- State diagrams (workflows)
-- Entity relationships (ERD)
-- Gantt charts (timelines)
+<ascii_diagrams>
+Preferred for most cases - clean, readable, works everywhere:
 
-Architecture flowchart:
-\`\`\`mermaid
-flowchart LR
-    Client --> API[API Gateway]
-    API --> Auth
-    API --> Service
-    Service --> DB[(Database)]
-    Service --> Cache[(Redis)]
+Data flow with branches:
+\`\`\`
+Request → Validate → Transform → Process → Respond
+            │            │           │
+            ▼            ▼           ▼
+         [Error]     [Cache]     [Log]
 \`\`\`
 
-Sequence diagram:
+Architecture:
+\`\`\`
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│   Client    │────▶│   API GW    │────▶│   Service   │
+└─────────────┘     └─────────────┘     └─────────────┘
+                           │                    │
+                           ▼                    ▼
+                    ┌─────────────┐     ┌─────────────┐
+                    │    Auth     │     │   Database  │
+                    └─────────────┘     └─────────────┘
+\`\`\`
+
+State machine:
+\`\`\`
+[Pending] ──approve──▶ [Approved] ──merge──▶ [Merged]
+    │                       │
+    │                       │
+ reject                  request
+    │                   changes
+    ▼                       │
+[Rejected]◀─────────────────┘
+\`\`\`
+
+Simple inline (no code block):
+Request → Validate → Process → Respond
+</ascii_diagrams>
+
+<mermaid_optional>
+Use Mermaid only for complex interactive diagrams (sequence, ERD, Gantt):
 \`\`\`mermaid
 sequenceDiagram
-    participant U as User
-    participant A as API
-    participant D as Database
     U->>A: POST /users
-    A->>D: INSERT user
-    D-->>A: Success
-    A-->>U: 201 Created
+    A->>D: INSERT
+    D-->>A: OK
+    A-->>U: 201
 \`\`\`
-
-State diagram:
-\`\`\`mermaid
-stateDiagram-v2
-    [*] --> Pending
-    Pending --> Approved: approve
-    Pending --> Rejected: reject
-    Approved --> Merged: merge
-    Approved --> Pending: request changes
-    Rejected --> [*]
-    Merged --> [*]
-\`\`\`
-
-Class diagram:
-\`\`\`mermaid
-classDiagram
-    class Agent {
-        +name: string
-        +process(input): Response
-    }
-    class Router {
-        +classify(query): Agent
-    }
-    Router --> Agent: routes to
-\`\`\`
-</mermaid_diagrams>
-
-<ascii_fallback>
-Use ASCII for simple inline flows (no code block needed):
-Request → Validate → Process → Respond
-A ──▶ B ──▶ C
-</ascii_fallback>
+</mermaid_optional>
 `
     )
     .withCustomSection(
