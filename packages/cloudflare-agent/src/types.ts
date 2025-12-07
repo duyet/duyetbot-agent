@@ -187,6 +187,12 @@ export interface DebugMetadata {
   lastToolError?: string;
   /** Aggregated token usage for entire request */
   tokenUsage?: TokenUsage;
+  /** Primary model used for generation (e.g., 'claude-3-5-sonnet-20241022') */
+  model?: string;
+  /** Trace ID for log correlation */
+  traceId?: string;
+  /** Request ID from platform */
+  requestId?: string;
   /** Index signature for extensibility */
   [key: string]: unknown;
 }

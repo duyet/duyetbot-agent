@@ -49,9 +49,38 @@ describe('formatDebugFooter', () => {
     expect(formatDebugFooter(undefined)).toBeNull();
   });
 
-  it('returns null when routingFlow is empty', () => {
+  it('returns null when routingFlow is empty and no metadata', () => {
     const ctx: DebugContext = { routingFlow: [] };
     expect(formatDebugFooter(ctx)).toBeNull();
+  });
+
+  it('returns minimal footer when routingFlow is empty but has metadata', () => {
+    const ctx: DebugContext = {
+      routingFlow: [],
+      totalDurationMs: 2340,
+      metadata: {
+        model: 'claude-3-5-sonnet-20241022',
+        traceId: 'abc123456789',
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).toContain('⏱️ 2.34s');
+    expect(footer).toContain('📊 sonnet-3.5');
+    expect(footer).toContain('🆔 abc12345');
+    expect(footer).toContain('<blockquote expandable>');
+  });
+
+  it('shortens model names correctly', () => {
+    const ctx: DebugContext = {
+      routingFlow: [],
+      totalDurationMs: 1000, // Need at least one piece of info for minimal footer
+      metadata: {
+        model: 'claude-3-5-haiku-20241022',
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).not.toBeNull();
+    expect(footer).toContain('haiku-3.5');
   });
 
   it('formats basic routing flow', () => {
