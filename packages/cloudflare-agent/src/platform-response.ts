@@ -102,6 +102,18 @@ export async function sendPlatformResponse(
 ): Promise<void> {
   const { platform, chatId, messageRef, botToken } = target;
 
+  // Diagnostic logging for debug footer troubleshooting
+  logger.debug('[sendPlatformResponse] Debug footer check', {
+    platform,
+    isAdmin: isAdminUser(target),
+    username: target.username,
+    adminUsername: target.adminUsername,
+    hasDebugContext: !!debugContext,
+    routingFlowLength: debugContext?.routingFlow?.length ?? 0,
+    hasClassification: !!debugContext?.classification,
+    totalDurationMs: debugContext?.totalDurationMs,
+  });
+
   if (platform === 'telegram') {
     // Determine if admin and should show debug footer
     let finalText = text;

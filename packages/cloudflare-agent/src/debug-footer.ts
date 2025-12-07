@@ -551,8 +551,12 @@ function formatRoutingFlow(debugContext: DebugContext): string {
 }
 
 /**
- * Format metadata - simplified to only show error messages (HTML version)
- * Removed cache/timeout/err counts as they're redundant with error message
+ * Format metadata with model, trace ID, and error info
+ *
+ * Enhanced to show:
+ * - Model name (short form)
+ * - Trace ID (truncated for readability)
+ * - Error messages
  */
 function formatMetadata(
   metadata?: DebugMetadata,
@@ -562,12 +566,117 @@ function formatMetadata(
     return '';
   }
 
-  // Only show error message on separate line if present
-  if (metadata.lastToolError) {
-    return `\n⚠️ ${escapeFn(metadata.lastToolError)}`;
+  const lines: string[] = [];
+
+  // Add model info on same line if present
+  const infoParts: string[] = [];
+  if (metadata.model) {
+    // Shorten model name for readability
+    const shortModel = shortenModelName(metadata.model);
+    infoParts.push(`📊 ${shortModel}`);
   }
 
-  return '';
+  if (metadata.traceId) {
+    // Show first 8 chars of trace ID
+    infoParts.push(`🆔 ${metadata.traceId.slice(0, 8)}`);
+  }
+
+  if (metadata.requestId) {
+    infoParts.push(`📋 ${metadata.requestId.slice(0, 8)}`);
+  }
+
+  if (infoParts.length > 0) {
+    lines.push(`\n   ${infoParts.join(' | ')}`);
+  }
+
+  // Show error message on separate line if present
+  if (metadata.lastToolError) {
+    lines.push(`\n⚠️ ${escapeFn(metadata.lastToolError)}`);
+  }
+
+  return lines.join('');
+}
+
+/**
+ * Shorten model name for display
+ * Examples:
+ * - 'claude-3-5-sonnet-20241022' → 'sonnet-3.5'
+ * - 'claude-3-5-haiku-20241022' → 'haiku-3.5'
+ * - 'gpt-4o-mini' → 'gpt-4o-mini'
+ */
+function shortenModelName(model: string): string {
+  // Claude models
+  if (model.includes('claude')) {
+    if (model.includes('opus')) {
+      return model.includes('3-5') ? 'opus-3.5' : model.includes('4') ? 'opus-4' : 'opus';
+    }
+    if (model.includes('sonnet')) {
+      return model.includes('3-5') ? 'sonnet-3.5' : model.includes('4') ? 'sonnet-4' : 'sonnet';
+    }
+    if (model.includes('haiku')) {
+      return model.includes('3-5') ? 'haiku-3.5' : 'haiku';
+    }
+  }
+  // GPT models - keep short
+  if (model.startsWith('gpt-')) {
+    return model.replace(/-\d{4}-\d{2}-\d{2}$/, '');
+  }
+  // Other models - return as-is but truncate if too long
+  return model.length > 20 ? `${model.slice(0, 17)}...` : model;
+}
+
+/**
+ * Format minimal debug footer when full routing flow is unavailable
+ *
+ * Shows basic info like duration, model, and trace ID.
+ * Used as fallback when routingFlow is empty but metadata exists.
+ *
+ * @example Output:
+ * ```
+ * 🔍 ⏱️ 2.34s | 📊 sonnet-3.5 | 🆔 abc12345
+ * ```
+ */
+function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
+  const parts: string[] = [];
+
+  // Duration
+  if (debugContext.totalDurationMs) {
+    parts.push(`⏱️ ${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+  }
+
+  // Model from metadata
+  if (debugContext.metadata?.model) {
+    const shortModel = shortenModelName(debugContext.metadata.model);
+    parts.push(`📊 ${shortModel}`);
+  }
+
+  // Trace ID from metadata
+  if (debugContext.metadata?.traceId) {
+    parts.push(`🆔 ${debugContext.metadata.traceId.slice(0, 8)}`);
+  }
+
+  // Token usage from metadata
+  if (debugContext.metadata?.tokenUsage) {
+    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+    if (tokens) {
+      parts.push(tokens);
+    }
+  }
+
+  // If no meaningful info, return null
+  if (parts.length === 0) {
+    return null;
+  }
+
+  // Build minimal footer
+  let content = parts.join(' | ');
+
+  // Add error if present
+  if (debugContext.metadata?.lastToolError) {
+    content += `\n⚠️ ${escapeHtml(debugContext.metadata.lastToolError)}`;
+  }
+
+  return `\n\n<blockquote expandable>🔍 ${content}</blockquote>`;
 }
 
 /**
@@ -584,10 +693,20 @@ function formatMetadata(
  *    ├─ research-worker (2.5s)
  *    └─ code-worker (1.2s)
  * ```
+ *
+ * @example Output (minimal fallback):
+ * ```
+ * 🔍 ⏱️ 2.34s | 📊 sonnet-3.5 | 🆔 abc12345
+ * ```
  */
 export function formatDebugFooter(debugContext?: DebugContext): string | null {
-  if (!debugContext?.routingFlow?.length) {
+  if (!debugContext) {
     return null;
+  }
+
+  // If no routing flow, try minimal fallback
+  if (!debugContext.routingFlow?.length) {
+    return formatMinimalDebugFooter(debugContext);
   }
 
   const flow = formatRoutingFlow(debugContext);
@@ -621,6 +740,50 @@ function formatWorkersMarkdownV2(workers?: WorkerDebugInfo[]): string {
 }
 
 /**
+ * Format minimal debug footer for MarkdownV2 when routing flow is unavailable
+ */
+function formatMinimalDebugFooterMarkdownV2(debugContext: DebugContext): string | null {
+  const parts: string[] = [];
+
+  // Duration
+  if (debugContext.totalDurationMs) {
+    parts.push(`⏱️ ${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+  }
+
+  // Model from metadata
+  if (debugContext.metadata?.model) {
+    const shortModel = shortenModelName(debugContext.metadata.model);
+    parts.push(`📊 ${shortModel}`);
+  }
+
+  // Trace ID from metadata
+  if (debugContext.metadata?.traceId) {
+    parts.push(`🆔 ${debugContext.metadata.traceId.slice(0, 8)}`);
+  }
+
+  // Token usage from metadata
+  if (debugContext.metadata?.tokenUsage) {
+    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+    if (tokens) {
+      parts.push(tokens);
+    }
+  }
+
+  if (parts.length === 0) {
+    return null;
+  }
+
+  // Build minimal footer with escaping
+  let content = escapeMarkdownV2(parts.join(' | '));
+
+  if (debugContext.metadata?.lastToolError) {
+    content += `\n⚠️ ${escapeMarkdownV2(debugContext.metadata.lastToolError)}`;
+  }
+
+  return `\n\n**>🔍 ${content}||`;
+}
+
+/**
  * Format debug context as expandable quote for MarkdownV2
  *
  * Uses MarkdownV2 expandable blockquote syntax: **>content||
@@ -632,8 +795,13 @@ function formatWorkersMarkdownV2(workers?: WorkerDebugInfo[]): string {
  * ```
  */
 export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string | null {
-  if (!debugContext?.routingFlow?.length) {
+  if (!debugContext) {
     return null;
+  }
+
+  // If no routing flow, try minimal fallback
+  if (!debugContext.routingFlow?.length) {
+    return formatMinimalDebugFooterMarkdownV2(debugContext);
   }
 
   const flow = formatRoutingFlow(debugContext);
@@ -704,9 +872,61 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
  * </details>
  * ```
  */
-export function formatDebugFooterMarkdown(debugContext?: DebugContext): string | null {
-  if (!debugContext?.routingFlow?.length) {
+/**
+ * Format minimal debug footer for GitHub Markdown when routing flow is unavailable
+ */
+function formatMinimalDebugFooterMarkdown(debugContext: DebugContext): string | null {
+  const parts: string[] = [];
+
+  if (debugContext.totalDurationMs) {
+    parts.push(`⏱️ ${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
+  }
+
+  if (debugContext.metadata?.model) {
+    const shortModel = shortenModelName(debugContext.metadata.model);
+    parts.push(`📊 ${shortModel}`);
+  }
+
+  if (debugContext.metadata?.traceId) {
+    parts.push(`🆔 ${debugContext.metadata.traceId.slice(0, 8)}`);
+  }
+
+  if (debugContext.metadata?.tokenUsage) {
+    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+    if (tokens) {
+      parts.push(tokens);
+    }
+  }
+
+  if (parts.length === 0) {
     return null;
+  }
+
+  let content = parts.join(' | ');
+  if (debugContext.metadata?.lastToolError) {
+    content += `\n⚠️ ${debugContext.metadata.lastToolError}`;
+  }
+
+  return `
+
+<details>
+<summary>🔍 Debug Info</summary>
+
+\`\`\`
+${content}
+\`\`\`
+
+</details>`;
+}
+
+export function formatDebugFooterMarkdown(debugContext?: DebugContext): string | null {
+  if (!debugContext) {
+    return null;
+  }
+
+  // If no routing flow, try minimal fallback
+  if (!debugContext.routingFlow?.length) {
+    return formatMinimalDebugFooterMarkdown(debugContext);
   }
 
   const flow = formatRoutingFlow(debugContext);
