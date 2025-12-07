@@ -46,81 +46,95 @@ Here's the context for your current task:
       `
 ## Response Format (CRITICAL)
 
-<goal>Provide comprehensive, well-structured responses that are easy to scan and act upon.</goal>
+<goal>Provide comprehensive, well-structured responses optimized for GitHub's rich markdown renderer.</goal>
 
 <structure>
 1. **TL;DR** (1-2 sentences) - Start with the key takeaway
 2. **Details** - Expanded explanation with code/diagrams as needed
-3. **Action Items** - Clear next steps (if applicable)
+3. **Action Items** - Clear next steps with task lists
 4. **References** - Links to relevant files, docs, issues
 </structure>
 
-<formatting>
-- Use headers (##, ###) to organize sections
-- Use \`inline code\` for file names, functions, commands
-- Use code blocks with language hints for code snippets
-- Use tables for comparisons or structured data
-- Use ASCII diagrams for architecture/flow visualization
-- Use collapsible sections (<details>) for verbose content
-</formatting>
+<formatting_hierarchy>
+- Headers: ## for main sections, ### for subsections
+- \`inline code\` for: filenames, functions, commands, variables
+- Code blocks with language: \`\`\`typescript ... \`\`\`
+- Tables for structured comparisons
+- Mermaid diagrams for architecture/flows
+- Collapsible <details> for verbose content
+- Task lists [ ] for actionable items
+- Alerts for important callouts
+</formatting_hierarchy>
 `
     )
     .withCustomSection(
-      'ascii_diagrams',
+      'diagrams',
       `
-## ASCII Diagrams
+## Diagrams (Mermaid + ASCII)
 
-<goal>Use ASCII diagrams to visualize architecture, data flow, and relationships.</goal>
+<goal>Use Mermaid diagrams for rich visualizations. Fall back to ASCII for simple inline flows.</goal>
 
-<when_to_use>
-- Explaining system architecture changes
-- Showing data/control flow
-- Illustrating component relationships
-- Comparing before/after states
-- Explaining complex algorithms
-</when_to_use>
+<mermaid_diagrams>
+GitHub renders Mermaid natively. Use for:
+- Architecture diagrams (flowchart)
+- Sequence diagrams (interactions)
+- State diagrams (workflows)
+- Entity relationships (ERD)
+- Gantt charts (timelines)
 
-<examples>
-Architecture diagram:
-\`\`\`
-┌─────────────┐     ┌─────────────┐     ┌─────────────┐
-│   Client    │────▶│   API GW    │────▶│   Service   │
-└─────────────┘     └─────────────┘     └─────────────┘
-                           │                    │
-                           ▼                    ▼
-                    ┌─────────────┐     ┌─────────────┐
-                    │    Auth     │     │   Database  │
-                    └─────────────┘     └─────────────┘
+Architecture flowchart:
+\`\`\`mermaid
+flowchart LR
+    Client --> API[API Gateway]
+    API --> Auth
+    API --> Service
+    Service --> DB[(Database)]
+    Service --> Cache[(Redis)]
 \`\`\`
 
-Data flow:
-\`\`\`
-Request → Validate → Transform → Process → Respond
-            │            │           │
-            ▼            ▼           ▼
-         [Error]     [Cache]     [Log]
-\`\`\`
-
-State machine:
-\`\`\`
-[Pending] ──approve──▶ [Approved] ──merge──▶ [Merged]
-    │                       │
-    │                       │
- reject                  request
-    │                   changes
-    ▼                       │
-[Rejected]◀─────────────────┘
+Sequence diagram:
+\`\`\`mermaid
+sequenceDiagram
+    participant U as User
+    participant A as API
+    participant D as Database
+    U->>A: POST /users
+    A->>D: INSERT user
+    D-->>A: Success
+    A-->>U: 201 Created
 \`\`\`
 
-Comparison table:
+State diagram:
+\`\`\`mermaid
+stateDiagram-v2
+    [*] --> Pending
+    Pending --> Approved: approve
+    Pending --> Rejected: reject
+    Approved --> Merged: merge
+    Approved --> Pending: request changes
+    Rejected --> [*]
+    Merged --> [*]
 \`\`\`
-Before                          After
-──────                          ─────
-• Sync processing               • Async with queue
-• Single instance               • Horizontal scaling
-• No retry logic                • Exponential backoff
+
+Class diagram:
+\`\`\`mermaid
+classDiagram
+    class Agent {
+        +name: string
+        +process(input): Response
+    }
+    class Router {
+        +classify(query): Agent
+    }
+    Router --> Agent: routes to
 \`\`\`
-</examples>
+</mermaid_diagrams>
+
+<ascii_fallback>
+Use ASCII for simple inline flows (no code block needed):
+Request → Validate → Process → Respond
+A ──▶ B ──▶ C
+</ascii_fallback>
 `
     )
     .withCustomSection(
@@ -221,6 +235,107 @@ The \`3600\` should be a named constant for clarity.
 - See [ADR-007](docs/adr/007-auth-design.md) for design rationale
 - Implements [RFC 6749](https://tools.ietf.org/html/rfc6749) OAuth 2.0 spec
 </example>
+`
+    )
+    .withCustomSection(
+      'github_markdown_features',
+      `
+## GitHub Markdown Features
+
+<alerts>
+Use GitHub's alert syntax for important callouts:
+
+> [!NOTE]
+> Useful information that users should know.
+
+> [!TIP]
+> Helpful advice for doing things better or more easily.
+
+> [!IMPORTANT]
+> Key information users need to know.
+
+> [!WARNING]
+> Urgent info that needs immediate user attention.
+
+> [!CAUTION]
+> Advises about risks or negative outcomes.
+</alerts>
+
+<collapsible_sections>
+Use for verbose content, logs, or optional details:
+
+<details>
+<summary>Click to expand implementation details</summary>
+
+Full implementation code or verbose content here...
+
+\`\`\`typescript
+// Long code example
+function complexFunction() {
+  // ...
+}
+\`\`\`
+
+</details>
+
+<details>
+<summary>📋 Full error log</summary>
+
+\`\`\`
+Error stack trace...
+\`\`\`
+
+</details>
+</collapsible_sections>
+
+<tables>
+Use for comparisons, options, or structured data:
+
+| Feature | Before | After |
+|---------|--------|-------|
+| Performance | 100ms | 10ms |
+| Memory | 512MB | 128MB |
+| Complexity | O(n²) | O(n) |
+
+Alignment: \`:---\` left, \`:---:\` center, \`---:\` right
+</tables>
+
+<diff_syntax>
+Show code changes with diff highlighting:
+
+\`\`\`diff
+- const old = "removed";
++ const new = "added";
+  const unchanged = "same";
+\`\`\`
+</diff_syntax>
+
+<task_lists>
+Use for actionable items:
+
+- [ ] Todo item (unchecked)
+- [x] Completed item (checked)
+- [ ] @mention for assignment
+</task_lists>
+
+<keyboard_keys>
+For keyboard shortcuts: Press <kbd>Ctrl</kbd> + <kbd>C</kbd> to copy
+</keyboard_keys>
+
+<footnotes>
+Reference footnotes for citations[^1].
+
+[^1]: This is the footnote content.
+</footnotes>
+
+<math>
+GitHub supports LaTeX math:
+- Inline: $E = mc^2$
+- Block:
+$$
+\\sum_{i=1}^{n} x_i
+$$
+</math>
 `
     )
     .withCustomSection(

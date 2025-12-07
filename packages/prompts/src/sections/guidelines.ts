@@ -157,15 +157,37 @@ DO NOT USE THESE (they break Telegram parsing):
 </telegram_markdownv2>`;
 
 /**
+ * Shared Telegram mobile guidelines
+ */
+const TELEGRAM_MOBILE_GUIDELINES = [
+  'Optimize for small screens (< 60 char lines when possible)',
+  'Use inline code for short snippets, code blocks for 3+ lines',
+  'Progressive disclosure: short answer first, offer to expand',
+  '2 items inline, 3-5 bullets, 6+ numbered/categorized',
+  'NEVER nest bullet points (hard to read on mobile)',
+];
+
+/**
+ * GitHub comprehensive markdown guidelines
+ */
+const GITHUB_MARKDOWN_GUIDELINES = [
+  'Use GitHub-flavored markdown with full feature set',
+  'Reference files and line numbers: `file.ts:L42-L50`',
+  'Code blocks with language hints for syntax highlighting',
+  'Use Mermaid diagrams for architecture and flows',
+  'Use tables for comparisons and structured data',
+  'Use collapsible <details> for verbose content/logs',
+  'Use task lists [ ] for actionable items',
+  'Use alerts (NOTE, TIP, IMPORTANT, WARNING, CAUTION)',
+  'Use diff syntax for showing code changes',
+  'Link to issues #123, PRs, commits, and files',
+];
+
+/**
  * Platform-specific guidelines for non-output-format platforms
  */
 const PLATFORM_GUIDELINES = {
-  github: [
-    'Use GitHub-flavored markdown',
-    'Reference specific files and line numbers when relevant',
-    'Include code blocks with syntax highlighting',
-    'Be precise about code changes and diffs',
-  ],
+  github: GITHUB_MARKDOWN_GUIDELINES,
   api: [
     'Structure responses for programmatic parsing',
     'Be consistent with formatting',
@@ -189,9 +211,17 @@ const PLATFORM_GUIDELINES = {
 function getFormatGuidelines(outputFormat: OutputFormat): string[] {
   switch (outputFormat) {
     case 'telegram-html':
-      return [...TELEGRAM_BASE_GUIDELINES, TELEGRAM_HTML_FORMAT];
+      return [
+        ...TELEGRAM_BASE_GUIDELINES,
+        ...TELEGRAM_MOBILE_GUIDELINES,
+        TELEGRAM_HTML_FORMAT,
+      ];
     case 'telegram-markdown':
-      return [...TELEGRAM_BASE_GUIDELINES, TELEGRAM_MARKDOWNV2_FORMAT];
+      return [
+        ...TELEGRAM_BASE_GUIDELINES,
+        ...TELEGRAM_MOBILE_GUIDELINES,
+        TELEGRAM_MARKDOWNV2_FORMAT,
+      ];
     case 'github-markdown':
       return PLATFORM_GUIDELINES.github;
     default:
