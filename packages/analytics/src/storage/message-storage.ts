@@ -1,79 +1,27 @@
 /**
  * Analytics Message Storage
- * Provides TypeScript interface to analytics_messages table
- * Append-only semantics - messages are never deleted, only archived
+ *
+ * This module provides TypeScript interface to the message analytics system.
+ *
+ * Architecture (Centralized Data Monitoring):
+ * - WRITE operations go to `chat_messages` table (source of truth)
+ * - READ operations use `analytics_messages` view (computed from chat_messages + observability_events)
+ * - The view `analytics_messages` is an alias to `analytics_messages_view` (created in migration 0009)
+ *
+ * Design principle: Append-only semantics - messages are never deleted, only archived via soft-delete.
  */
 
 import type {
   AnalyticsMessage,
+  DateRange,
   MessageCreateInput,
-  MessageQueryFilter,
+  PaginatedResult,
+  PaginationOptions,
+  QueryOptions,
+  SessionStats,
+  UserStats,
 } from '../types.js';
 import { BaseStorage } from './base.js';
-
-/**
- * Session statistics
- */
-export interface SessionStats {
-  messageCount: number;
-  userMessageCount: number;
-  assistantMessageCount: number;
-  activeMessageCount: number;
-  totalInputTokens: number;
-  totalOutputTokens: number;
-  totalCachedTokens: number;
-  totalReasoningTokens: number;
-  firstMessageAt: number;
-  lastMessageAt: number;
-  sessionDurationMs: number;
-}
-
-/**
- * User statistics
- */
-export interface UserStats {
-  userId: string;
-  messageCount: number;
-  sessionCount: number;
-  totalTokens: number;
-  userMessages: number;
-  assistantMessages: number;
-  startTime: number;
-  endTime: number;
-}
-
-/**
- * Pagination options
- */
-export interface PaginationOptions {
-  limit?: number;
-  offset?: number;
-}
-
-/**
- * Date range filter
- */
-export interface DateRange {
-  startTime: number;
-  endTime: number;
-}
-
-/**
- * Query options
- */
-export interface QueryOptions extends PaginationOptions {
-  filters?: MessageQueryFilter;
-}
-
-/**
- * Paginated result
- */
-export interface PaginatedResult<T> {
-  data: T[];
-  total: number;
-  limit: number;
-  offset: number;
-}
 
 /**
  * AnalyticsMessageStorage handles D1 operations for analytics messages.
@@ -87,30 +35,35 @@ export class AnalyticsMessageStorage extends BaseStorage {
    */
   async createMessage(input: MessageCreateInput): Promise<AnalyticsMessage> {
     const messages = await this.createMessages([input]);
+    if (!messages[0]) {
+      throw new Error('Failed to create message');
+    }
     return messages[0];
   }
 
   /**
    * Create multiple messages in batch (more efficient)
+   *
+   * ARCHITECTURE NOTE: Writes go to `chat_messages` (source of truth).
+   * The `analytics_messages` view provides enriched read access.
+   *
    * @param inputs Array of message creation inputs
    * @returns Array of created messages
    */
-  async createMessages(
-    inputs: MessageCreateInput[]
-  ): Promise<AnalyticsMessage[]> {
+  async createMessages(inputs: MessageCreateInput[]): Promise<AnalyticsMessage[]> {
     if (inputs.length === 0) {
       return [];
     }
 
     const now = Date.now();
 
-    // Get max sequence for each session first
+    // Get max sequence for each session first (from source table)
     const sessionSequences = new Map<string, number>();
 
     for (const input of inputs) {
       if (!sessionSequences.has(input.sessionId)) {
         const result = await this.first<{ max_seq: number | null }>(
-          'SELECT MAX(sequence) as max_seq FROM analytics_messages WHERE session_id = ?',
+          'SELECT MAX(sequence) as max_seq FROM chat_messages WHERE session_id = ?',
           [input.sessionId]
         );
         sessionSequences.set(input.sessionId, (result?.max_seq ?? -1) + 1);
@@ -124,51 +77,49 @@ export class AnalyticsMessageStorage extends BaseStorage {
       sessionSequences.set(input.sessionId, sequence + 1);
 
       const messageId = crypto.randomUUID();
-      const totalTokens =
-        (input.inputTokens || 0) +
-        (input.outputTokens || 0) +
-        (input.cachedTokens || 0) +
-        (input.reasoningTokens || 0);
+      // Note: totalTokens is computed on read via the view, not stored
 
-      const message = await this.first<AnalyticsMessage>(
-        `INSERT INTO analytics_messages (
-          message_id, session_id, conversation_id, parent_message_id,
+      // Insert into chat_messages (source of truth)
+      await this.run(
+        `INSERT INTO chat_messages (
+          message_id, session_id, event_id,
           sequence, role, content,
+          platform, user_id, username, chat_id,
           visibility, is_archived, is_pinned,
-          event_id, trigger_message_id, platform_message_id,
-          platform, user_id, username, chat_id, repo,
           input_tokens, output_tokens, cached_tokens, reasoning_tokens,
-          model, created_at, updated_at, metadata
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        RETURNING *`,
+          model, metadata,
+          timestamp, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           messageId,
           input.sessionId,
-          input.conversationId ?? null,
-          input.parentMessageId ?? null,
+          input.eventId ?? null,
           sequence,
           input.role,
           input.content,
-          input.visibility ?? 'private',
-          0,
-          0,
-          input.eventId ?? null,
-          input.triggerMessageId ?? null,
-          input.platformMessageId ?? null,
           input.platform,
           input.userId,
           input.username ?? null,
           input.chatId ?? null,
-          input.repo ?? null,
+          input.visibility ?? 'private',
+          0, // is_archived
+          0, // is_pinned
           input.inputTokens ?? 0,
           input.outputTokens ?? 0,
           input.cachedTokens ?? 0,
           input.reasoningTokens ?? 0,
           input.model ?? null,
-          now,
-          now,
           input.metadata ? JSON.stringify(input.metadata) : null,
+          now, // timestamp
+          now, // created_at
+          now, // updated_at
         ]
+      );
+
+      // Read back from view to get enriched data (includes joined observability_events data)
+      const message = await this.first<AnalyticsMessage>(
+        'SELECT * FROM analytics_messages WHERE message_id = ?',
+        [messageId]
       );
 
       if (message) {
@@ -229,8 +180,9 @@ export class AnalyticsMessageStorage extends BaseStorage {
     userId: string,
     options?: QueryOptions
   ): Promise<PaginatedResult<AnalyticsMessage>> {
-    const limit = options?.limit ?? 50;
-    const offset = options?.offset ?? 0;
+    const pageSize = options?.limit ?? 50;
+    const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
+    const offset = (page - 1) * pageSize;
 
     // Get total count
     const countResult = await this.first<{ total: number }>(
@@ -243,10 +195,10 @@ export class AnalyticsMessageStorage extends BaseStorage {
     // Get paginated results
     const data = await this.all<AnalyticsMessage>(
       'SELECT * FROM analytics_messages WHERE user_id = ? AND is_archived = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [userId, limit, offset]
+      [userId, pageSize, offset]
     );
 
-    return { data, total, limit, offset };
+    return { data, total, page, pageSize, hasMore: offset + data.length < total };
   }
 
   /**
@@ -254,9 +206,7 @@ export class AnalyticsMessageStorage extends BaseStorage {
    * @param conversationId Conversation identifier
    * @returns Array of messages ordered by sequence
    */
-  async getMessagesByConversation(
-    conversationId: string
-  ): Promise<AnalyticsMessage[]> {
+  async getMessagesByConversation(conversationId: string): Promise<AnalyticsMessage[]> {
     return this.all<AnalyticsMessage>(
       'SELECT * FROM analytics_messages WHERE conversation_id = ? AND is_archived = 0 ORDER BY sequence ASC',
       [conversationId]
@@ -273,8 +223,9 @@ export class AnalyticsMessageStorage extends BaseStorage {
     query: string,
     options?: QueryOptions
   ): Promise<PaginatedResult<AnalyticsMessage>> {
-    const limit = options?.limit ?? 50;
-    const offset = options?.offset ?? 0;
+    const pageSize = options?.limit ?? 50;
+    const page = options?.offset ? Math.floor(options.offset / pageSize) + 1 : 1;
+    const offset = (page - 1) * pageSize;
     const searchTerm = `%${query}%`;
 
     // Count total matches
@@ -288,10 +239,10 @@ export class AnalyticsMessageStorage extends BaseStorage {
     // Get paginated results
     const data = await this.all<AnalyticsMessage>(
       'SELECT * FROM analytics_messages WHERE content LIKE ? AND is_archived = 0 ORDER BY created_at DESC LIMIT ? OFFSET ?',
-      [searchTerm, limit, offset]
+      [searchTerm, pageSize, offset]
     );
 
-    return { data, total, limit, offset };
+    return { data, total, page, pageSize, hasMore: offset + data.length < total };
   }
 
   /**
@@ -308,6 +259,7 @@ export class AnalyticsMessageStorage extends BaseStorage {
 
   /**
    * Set visibility of a message
+   * NOTE: Updates go to chat_messages (source table)
    * @param messageId Message identifier
    * @param visibility Visibility level
    */
@@ -315,70 +267,74 @@ export class AnalyticsMessageStorage extends BaseStorage {
     messageId: string,
     visibility: 'private' | 'public' | 'unlisted'
   ): Promise<void> {
-    await this.run(
-      'UPDATE analytics_messages SET visibility = ?, updated_at = ? WHERE message_id = ?',
-      [visibility, Date.now(), messageId]
-    );
+    await this.run('UPDATE chat_messages SET visibility = ?, updated_at = ? WHERE message_id = ?', [
+      visibility,
+      Date.now(),
+      messageId,
+    ]);
   }
 
   /**
-   * Set visibility for all messages in a conversation
-   * @param conversationId Conversation identifier
+   * Set visibility for all messages in a session
+   * NOTE: Updates go to chat_messages (source table)
+   * @param sessionId Session identifier (acts as conversation_id)
    * @param visibility Visibility level
    */
-  async setConversationVisibility(
-    conversationId: string,
-    visibility: string
-  ): Promise<void> {
+  async setConversationVisibility(sessionId: string, visibility: string): Promise<void> {
     await this.run(
-      'UPDATE analytics_messages SET visibility = ?, updated_at = ? WHERE conversation_id = ? AND is_archived = 0',
-      [visibility, Date.now(), conversationId]
+      'UPDATE chat_messages SET visibility = ?, updated_at = ? WHERE session_id = ? AND COALESCE(is_archived, 0) = 0',
+      [visibility, Date.now(), sessionId]
     );
   }
 
   /**
    * Archive a message (soft-delete)
+   * NOTE: Updates go to chat_messages (source table)
    * @param messageId Message identifier
    */
   async archiveMessage(messageId: string): Promise<void> {
     await this.run(
-      'UPDATE analytics_messages SET is_archived = 1, updated_at = ? WHERE message_id = ?',
+      'UPDATE chat_messages SET is_archived = 1, updated_at = ? WHERE message_id = ?',
       [Date.now(), messageId]
     );
   }
 
   /**
    * Archive all messages in a session
+   * NOTE: Updates go to chat_messages (source table)
    * @param sessionId Session identifier
    */
   async archiveSession(sessionId: string): Promise<void> {
     await this.run(
-      'UPDATE analytics_messages SET is_archived = 1, updated_at = ? WHERE session_id = ? AND is_archived = 0',
+      'UPDATE chat_messages SET is_archived = 1, updated_at = ? WHERE session_id = ? AND COALESCE(is_archived, 0) = 0',
       [Date.now(), sessionId]
     );
   }
 
   /**
    * Unarchive a message
+   * NOTE: Updates go to chat_messages (source table)
    * @param messageId Message identifier
    */
   async unarchiveMessage(messageId: string): Promise<void> {
     await this.run(
-      'UPDATE analytics_messages SET is_archived = 0, updated_at = ? WHERE message_id = ?',
+      'UPDATE chat_messages SET is_archived = 0, updated_at = ? WHERE message_id = ?',
       [Date.now(), messageId]
     );
   }
 
   /**
    * Pin or unpin a message
+   * NOTE: Updates go to chat_messages (source table)
    * @param messageId Message identifier
    * @param pinned True to pin, false to unpin
    */
   async pinMessage(messageId: string, pinned: boolean): Promise<void> {
-    await this.run(
-      'UPDATE analytics_messages SET is_pinned = ?, updated_at = ? WHERE message_id = ?',
-      [pinned ? 1 : 0, Date.now(), messageId]
-    );
+    await this.run('UPDATE chat_messages SET is_pinned = ?, updated_at = ? WHERE message_id = ?', [
+      pinned ? 1 : 0,
+      Date.now(),
+      messageId,
+    ]);
   }
 
   /**
@@ -391,11 +347,8 @@ export class AnalyticsMessageStorage extends BaseStorage {
       message_count: number;
       user_message_count: number;
       assistant_message_count: number;
-      active_message_count: number;
       total_input_tokens: number;
       total_output_tokens: number;
-      total_cached_tokens: number;
-      total_reasoning_tokens: number;
       first_message_at: number;
       last_message_at: number;
     }>(
@@ -403,11 +356,8 @@ export class AnalyticsMessageStorage extends BaseStorage {
         COUNT(*) as message_count,
         SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as user_message_count,
         SUM(CASE WHEN role = 'assistant' THEN 1 ELSE 0 END) as assistant_message_count,
-        SUM(CASE WHEN is_archived = 0 THEN 1 ELSE 0 END) as active_message_count,
         COALESCE(SUM(input_tokens), 0) as total_input_tokens,
         COALESCE(SUM(output_tokens), 0) as total_output_tokens,
-        COALESCE(SUM(cached_tokens), 0) as total_cached_tokens,
-        COALESCE(SUM(reasoning_tokens), 0) as total_reasoning_tokens,
         MIN(created_at) as first_message_at,
         MAX(created_at) as last_message_at
       FROM analytics_messages
@@ -420,17 +370,16 @@ export class AnalyticsMessageStorage extends BaseStorage {
     }
 
     return {
+      sessionId,
       messageCount: result.message_count,
-      userMessageCount: result.user_message_count,
-      assistantMessageCount: result.assistant_message_count,
-      activeMessageCount: result.active_message_count,
+      userMessages: result.user_message_count,
+      assistantMessages: result.assistant_message_count,
       totalInputTokens: result.total_input_tokens,
       totalOutputTokens: result.total_output_tokens,
-      totalCachedTokens: result.total_cached_tokens,
-      totalReasoningTokens: result.total_reasoning_tokens,
+      totalTokens: result.total_input_tokens + result.total_output_tokens,
       firstMessageAt: result.first_message_at,
       lastMessageAt: result.last_message_at,
-      sessionDurationMs: result.last_message_at - result.first_message_at,
+      durationMs: result.last_message_at - result.first_message_at,
     };
   }
 
@@ -440,35 +389,28 @@ export class AnalyticsMessageStorage extends BaseStorage {
    * @param dateRange Optional date range filter
    * @returns User statistics
    */
-  async getUserStats(
-    userId: string,
-    dateRange?: DateRange
-  ): Promise<UserStats | null> {
+  async getUserStats(userId: string, dateRange?: DateRange): Promise<UserStats | null> {
     const params: unknown[] = [userId];
     let sql = `SELECT
       COUNT(*) as message_count,
       COUNT(DISTINCT session_id) as session_count,
-      COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens,
-      SUM(CASE WHEN role = 'user' THEN 1 ELSE 0 END) as user_messages,
-      SUM(CASE WHEN role = 'assistant' THEN 1 ELSE 0 END) as assistant_messages,
-      MIN(created_at) as start_time,
-      MAX(created_at) as end_time
+      COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+      COALESCE(SUM(output_tokens), 0) as total_output_tokens,
+      COALESCE(SUM(input_tokens + output_tokens), 0) as total_tokens
     FROM analytics_messages
     WHERE user_id = ? AND is_archived = 0`;
 
     if (dateRange) {
       sql += ` AND created_at >= ? AND created_at <= ?`;
-      params.push(dateRange.startTime, dateRange.endTime);
+      params.push(dateRange.from, dateRange.to);
     }
 
     const result = await this.first<{
       message_count: number;
       session_count: number;
+      total_input_tokens: number;
+      total_output_tokens: number;
       total_tokens: number;
-      user_messages: number;
-      assistant_messages: number;
-      start_time: number;
-      end_time: number;
     }>(sql, params);
 
     if (!result) {
@@ -479,25 +421,75 @@ export class AnalyticsMessageStorage extends BaseStorage {
       userId,
       messageCount: result.message_count,
       sessionCount: result.session_count,
+      totalInputTokens: result.total_input_tokens,
+      totalOutputTokens: result.total_output_tokens,
       totalTokens: result.total_tokens,
-      userMessages: result.user_messages,
-      assistantMessages: result.assistant_messages,
-      startTime: result.start_time,
-      endTime: result.end_time,
+      estimatedCostUsd: 0, // TODO: Calculate based on cost config
     };
   }
 
   /**
    * Get the next sequence number for a session
+   * NOTE: Reads from chat_messages (source table) for accuracy
    * @param sessionId Session identifier
    * @returns Next available sequence number
    */
   async getNextSequence(sessionId: string): Promise<number> {
     const result = await this.first<{ max_seq: number | null }>(
-      'SELECT MAX(sequence) as max_seq FROM analytics_messages WHERE session_id = ?',
+      'SELECT MAX(sequence) as max_seq FROM chat_messages WHERE session_id = ?',
       [sessionId]
     );
 
     return (result?.max_seq ?? -1) + 1;
+  }
+
+  /**
+   * Get global statistics across all users and sessions
+   * Used for dashboard overview without requiring a userId
+   * @returns Global statistics
+   */
+  async getGlobalStats(): Promise<{
+    totalMessages: number;
+    totalSessions: number;
+    totalUsers: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalTokens: number;
+    platformBreakdown: { platform: string; count: number }[];
+  }> {
+    const statsResult = await this.first<{
+      total_messages: number;
+      total_sessions: number;
+      total_users: number;
+      total_input_tokens: number;
+      total_output_tokens: number;
+    }>(
+      `SELECT
+        COUNT(*) as total_messages,
+        COUNT(DISTINCT session_id) as total_sessions,
+        COUNT(DISTINCT user_id) as total_users,
+        COALESCE(SUM(input_tokens), 0) as total_input_tokens,
+        COALESCE(SUM(output_tokens), 0) as total_output_tokens
+      FROM analytics_messages
+      WHERE is_archived = 0`
+    );
+
+    const platformResults = await this.all<{ platform: string; count: number }>(
+      `SELECT platform, COUNT(*) as count
+      FROM analytics_messages
+      WHERE is_archived = 0
+      GROUP BY platform
+      ORDER BY count DESC`
+    );
+
+    return {
+      totalMessages: statsResult?.total_messages ?? 0,
+      totalSessions: statsResult?.total_sessions ?? 0,
+      totalUsers: statsResult?.total_users ?? 0,
+      totalInputTokens: statsResult?.total_input_tokens ?? 0,
+      totalOutputTokens: statsResult?.total_output_tokens ?? 0,
+      totalTokens: (statsResult?.total_input_tokens ?? 0) + (statsResult?.total_output_tokens ?? 0),
+      platformBreakdown: platformResults,
+    };
   }
 }

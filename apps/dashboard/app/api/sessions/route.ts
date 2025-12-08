@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getDB, type Env } from '@/lib/db';
-import { listResponse, handleRouteError, getPaginationParams } from '../types';
+import { type Env, getDB } from '@/lib/db';
+import { getPaginationParams, handleRouteError, listResponse } from '../types';
 
 export async function GET(request: NextRequest) {
   try {
     const env = (request as any).cf?.env as Env;
     if (!env?.DB) {
-      return NextResponse.json(
-        { error: 'Database not configured' },
-        { status: 500 }
-      );
+      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
     }
 
     const searchParams = request.nextUrl.searchParams;
@@ -17,16 +14,15 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get('userId');
 
     const db = getDB(env);
-    
-    if (!userId) {
-      return NextResponse.json(
-        { error: 'userId parameter required' },
-        { status: 400 }
-      );
+
+    // If userId is provided, filter by user
+    if (userId) {
+      const sessions = await db.conversations.getConversationsByUser(userId);
+      return NextResponse.json(listResponse(sessions, sessions.length, page, limit));
     }
 
-    const sessions = await db.conversations.getUserConversations(userId, limit, offset);
-    
+    // Otherwise, return recent conversations across all users
+    const sessions = await db.conversations.getRecentConversations(limit);
     return NextResponse.json(listResponse(sessions, sessions.length, page, limit));
   } catch (error) {
     return handleRouteError(error);

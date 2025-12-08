@@ -12,8 +12,8 @@
  * refactored into a dedicated module in a future phase.
  */
 
-import { logger } from '@duyetbot/hono-middleware';
 import { AnalyticsCollector } from '@duyetbot/analytics';
+import { logger } from '@duyetbot/hono-middleware';
 import {
   type AgentStep,
   type ChatMessageRole,
@@ -764,8 +764,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Generate session ID for analytics (format: platform:userId:chatId)
+     * @internal Used for analytics tracking
      */
-    private getSessionId(): string {
+    private _getSessionId(): string {
       const platform = routerConfig?.platform ?? 'api';
       const userId = this.state.userId?.toString() ?? 'unknown';
       const chatId = this.state.chatId?.toString() ?? 'unknown';
@@ -1058,7 +1059,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Fire-and-forget pattern - don't block on analytics capture
       if (this._analyticsCollector) {
         const platform = routerConfig?.platform ?? 'api';
-        const sessionId = `${platform}:${this.state.userId ?? 'unknown'}:${this.state.chatId ?? 'unknown'}`;
+        const sessionId = this._getSessionId();
         void (async () => {
           try {
             await this._analyticsCollector!.captureAssistantMessage({
@@ -1067,12 +1068,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               platform,
               userId: (this.state.userId ?? 'unknown').toString(),
               triggerMessageId: '', // Will be filled by caller if available
-              eventId,
+              ...(eventId ? { eventId } : {}),
               inputTokens: response.usage?.inputTokens ?? 0,
               outputTokens: response.usage?.outputTokens ?? 0,
               cachedTokens: response.usage?.cachedTokens ?? 0,
               reasoningTokens: response.usage?.reasoningTokens ?? 0,
-              model: response.model,
+              ...(response.model ? { model: response.model } : {}),
             });
 
             logger.debug('[CloudflareAgent][ANALYTICS] Assistant message captured', {
@@ -2196,10 +2197,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               content: input.text,
               platform,
               userId: input.userId.toString(),
-              username: input.username,
-              chatId: input.chatId?.toString(),
-              platformMessageId: input.metadata?.platformMessageId as string | undefined,
-              eventId,
+              ...(input.username ? { username: input.username } : {}),
+              ...(input.chatId ? { chatId: input.chatId.toString() } : {}),
+              ...(input.metadata?.platformMessageId
+                ? { platformMessageId: input.metadata.platformMessageId as string }
+                : {}),
+              ...(eventId ? { eventId } : {}),
             });
 
             logger.debug('[CloudflareAgent][ANALYTICS] User message captured', {
