@@ -12,6 +12,10 @@ out/
 build/
 dist/
 
+# OpenNext / Cloudflare
+.open-next/
+.vercel/
+
 # Environment
 .env
 .env.local
