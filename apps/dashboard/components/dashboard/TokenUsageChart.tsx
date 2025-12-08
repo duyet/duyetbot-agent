@@ -1,6 +1,6 @@
 import React from 'react';
-import { chartColors, TokenUsageData } from '../../types';
-import { AreaChart } from '../charts/AreaChart';
+import { AreaChart } from '@/components/charts';
+import { chartColors, TokenUsageData } from '@/types';
 
 interface TokenUsageChartProps {
   data: TokenUsageData[];

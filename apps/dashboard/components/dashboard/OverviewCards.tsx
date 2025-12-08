@@ -1,6 +1,6 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import React from 'react';
-import { KPICard } from '../../types';
+import { KPICard } from '@/types';
 
 interface OverviewCardsProps {
   cards: KPICard[];

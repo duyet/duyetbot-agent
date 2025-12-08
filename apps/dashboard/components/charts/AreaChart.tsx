@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { AreaChartConfig, ChartDataPoint } from '../../types';
+import { AreaChartConfig, ChartDataPoint } from '@/types';
 import { ChartTooltip } from './ChartTooltip';
 
 interface AreaChartProps<T extends ChartDataPoint> extends AreaChartConfig<T> {

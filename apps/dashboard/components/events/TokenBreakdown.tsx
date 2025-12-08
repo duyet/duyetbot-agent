@@ -1,5 +1,5 @@
 import React from 'react';
-import { chartColors } from '../../types';
+import { chartColors } from '@/types';
 
 interface TokenBreakdownProps {
   input: number;

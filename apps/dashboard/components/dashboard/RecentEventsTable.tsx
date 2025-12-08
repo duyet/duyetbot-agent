@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle, MessageSquare, Zap } from 'lucide-react';
 import React from 'react';
-import { RecentEvent } from '../../types';
+import { RecentEvent } from '@/types';
 
 interface RecentEventsTableProps {
   events: RecentEvent[];

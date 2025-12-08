@@ -9,7 +9,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { BarChartConfig, ChartDataPoint } from '../../types';
+import { BarChartConfig, ChartDataPoint } from '@/types';
 import { ChartTooltip } from './ChartTooltip';
 
 interface BarChartProps<T extends ChartDataPoint> extends BarChartConfig<T> {

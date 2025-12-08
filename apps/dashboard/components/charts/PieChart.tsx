@@ -7,7 +7,7 @@ import {
   ResponsiveContainer,
   Tooltip,
 } from 'recharts';
-import { ChartDataPoint, PieChartConfig } from '../../types';
+import { ChartDataPoint, PieChartConfig } from '@/types';
 import { ChartTooltip } from './ChartTooltip';
 
 const COLORS = [
