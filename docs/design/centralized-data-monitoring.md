@@ -1,3 +1,8 @@
+---
+title: Centralized Data Monitoring Architecture
+description: Design document for the centralized data monitoring system using SQL views
+---
+
 # Centralized Data Monitoring Architecture
 
 ## Overview
