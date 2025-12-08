@@ -16,3 +16,15 @@ database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
 
 [observability]
 enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[placement]
+mode = "smart"
