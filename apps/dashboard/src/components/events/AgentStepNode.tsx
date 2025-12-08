@@ -33,6 +33,7 @@ export const AgentStepNode: React.FC<AgentStepNodeProps> = ({
       >
         {hasChildren && (
           <button
+            type="button"
             onClick={() => onToggle?.(step.id)}
             className="flex h-5 w-5 items-center justify-center rounded hover:bg-gray-200 dark:hover:bg-gray-600"
           >

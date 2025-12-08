@@ -33,7 +33,9 @@ async function getEvents(): Promise<AgentStep[]> {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/events?limit=20`, {
       cache: 'no-store',
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      return [];
+    }
     const json = await res.json();
     return json.data || [];
   } catch {
@@ -42,22 +44,34 @@ async function getEvents(): Promise<AgentStep[]> {
 }
 
 function formatTimestamp(ts: number | undefined): string {
-  if (!ts) return 'Unknown';
+  if (!ts) {
+    return 'Unknown';
+  }
   const date = new Date(ts);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const minutes = Math.floor(diff / (1000 * 60));
   const hours = Math.floor(diff / (1000 * 60 * 60));
 
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
+  if (minutes < 1) {
+    return 'Just now';
+  }
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
   return `${Math.floor(hours / 24)}d ago`;
 }
 
 function formatDuration(ms: number): string {
-  if (ms < 1000) return `${ms}ms`;
-  if (ms < 60000) return `${(ms / 1000).toFixed(1)}s`;
+  if (ms < 1000) {
+    return `${ms}ms`;
+  }
+  if (ms < 60000) {
+    return `${(ms / 1000).toFixed(1)}s`;
+  }
   return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
 }
 

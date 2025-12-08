@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const { page, limit, offset } = getPaginationParams(searchParams);
+    const { page, limit } = getPaginationParams(searchParams);
     const userId = searchParams.get('userId');
 
     const db = getDB(env);

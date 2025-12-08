@@ -26,7 +26,9 @@ async function getMessages(): Promise<Message[]> {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/messages?limit=20`, {
       cache: 'no-store',
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      return [];
+    }
     const json = await res.json();
     return json.data || [];
   } catch {
@@ -40,9 +42,15 @@ function formatTimestamp(ts: number): string {
   const diff = now.getTime() - date.getTime();
   const minutes = Math.floor(diff / (1000 * 60));
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
-  if (hours < 24) return `${hours}h ago`;
+  if (minutes < 1) {
+    return 'Just now';
+  }
+  if (minutes < 60) {
+    return `${minutes}m ago`;
+  }
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
   return `${Math.floor(hours / 24)}d ago`;
 }
 

@@ -20,12 +20,16 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="space-y-6">
             <div className="space-y-2">
-              <label className="text-sm font-medium">Dashboard Name</label>
-              <Input defaultValue="duyetbot Dashboard" />
+              <label htmlFor="dashboard-name" className="text-sm font-medium">
+                Dashboard Name
+              </label>
+              <Input id="dashboard-name" defaultValue="duyetbot Dashboard" />
             </div>
             <div className="space-y-2">
-              <label className="text-sm font-medium">Time Zone</label>
-              <Input defaultValue="UTC" type="text" />
+              <label htmlFor="time-zone" className="text-sm font-medium">
+                Time Zone
+              </label>
+              <Input id="time-zone" defaultValue="UTC" type="text" />
             </div>
             <Button>Save Changes</Button>
           </CardContent>

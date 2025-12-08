@@ -32,11 +32,6 @@ interface D1Result<T = unknown> {
   };
 }
 
-interface D1BatchResult {
-  count: number;
-  duration: number;
-}
-
 interface D1Database {
   prepare(query: string): D1PreparedStatement;
   batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
