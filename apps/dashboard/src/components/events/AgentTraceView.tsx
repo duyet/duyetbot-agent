@@ -1,3 +1,4 @@
+import { Clock, Hash, Zap } from 'lucide-react';
 import React from 'react';
 import { AgentTrace } from '../../types';
 import { AgentStepNode } from './AgentStepNode';
@@ -26,13 +27,11 @@ export const AgentTraceView: React.FC<AgentTraceViewProps> = ({ trace, loading =
 
   if (loading) {
     return (
-      <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-        <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-          Agent Execution Trace
-        </h2>
+      <div className="rounded-xl border border-border bg-card p-6">
+        <h2 className="mb-4 text-lg font-semibold">Agent Execution Trace</h2>
         <div className="animate-pulse space-y-4">
           {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-8 w-full rounded bg-gray-200 dark:bg-gray-700" />
+            <div key={i} className="h-8 w-full rounded bg-secondary" />
           ))}
         </div>
       </div>
@@ -55,45 +54,49 @@ export const AgentTraceView: React.FC<AgentTraceViewProps> = ({ trace, loading =
   };
 
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-      <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+    <div className="rounded-xl border border-border bg-card p-6">
+      <h2 className="mb-4 text-lg font-semibold flex items-center gap-2">
+        <Zap className="h-5 w-5 text-primary" />
         Agent Execution Trace
       </h2>
 
       {/* Summary */}
       <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <div className="rounded border border-gray-200 p-4 dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Trace ID</p>
-          <p className="mt-1 font-mono text-sm font-semibold text-gray-900 dark:text-white">
-            {trace.id}
+        <div className="rounded-lg border border-border bg-secondary/50 p-4">
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Hash className="h-4 w-4" />
+            Trace ID
           </p>
+          <p className="mt-1 font-mono text-sm font-semibold">{trace.id}</p>
         </div>
 
-        <div className="rounded border border-gray-200 p-4 dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Total Duration</p>
-          <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-            {formatDuration(trace.totalDuration)}
+        <div className="rounded-lg border border-border bg-secondary/50 p-4">
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Total Duration
           </p>
+          <p className="mt-1 text-sm font-semibold">{formatDuration(trace.totalDuration)}</p>
         </div>
 
-        <div className="rounded border border-gray-200 p-4 dark:border-gray-700">
-          <p className="text-sm text-gray-600 dark:text-gray-400">Started</p>
-          <p className="mt-1 text-sm font-semibold text-gray-900 dark:text-white">
-            {formatTime(trace.startTime)}
+        <div className="rounded-lg border border-border bg-secondary/50 p-4">
+          <p className="text-sm text-muted-foreground flex items-center gap-2">
+            <Clock className="h-4 w-4" />
+            Started
           </p>
+          <p className="mt-1 text-sm font-semibold">{formatTime(trace.startTime)}</p>
         </div>
       </div>
 
       {/* Token breakdown */}
-      <div className="mb-6 rounded border border-gray-200 p-4 dark:border-gray-700">
-        <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Token Usage</h3>
+      <div className="mb-6 rounded-lg border border-border bg-secondary/30 p-4">
+        <h3 className="mb-4 font-semibold">Token Usage</h3>
         <TokenBreakdown input={trace.rootStep.tokens} output={0} cached={0} />
       </div>
 
       {/* Trace tree */}
       <div className="mb-6">
-        <h3 className="mb-4 font-semibold text-gray-900 dark:text-white">Execution Steps</h3>
-        <div className="space-y-1 rounded border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">
+        <h3 className="mb-4 font-semibold">Execution Steps</h3>
+        <div className="space-y-1 rounded-lg border border-border bg-background p-4">
           <AgentStepNode
             step={trace.rootStep}
             level={0}
