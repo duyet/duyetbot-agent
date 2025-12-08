@@ -84,10 +84,13 @@ app.post(
 
     if (env.OBSERVABILITY_DB) {
       storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
+      // Determine event type based on webhook context (will be updated after parser runs)
+      const webhookCtxForType = c.get('webhookContext');
+      const eventType = webhookCtxForType?.isReviewRequest ? 'review_request' : 'mention';
       collector = new EventCollector({
         eventId: crypto.randomUUID(),
         appSource: 'github-webhook',
-        eventType: 'mention',
+        eventType,
         triggeredAt: startTime,
         requestId,
       });
