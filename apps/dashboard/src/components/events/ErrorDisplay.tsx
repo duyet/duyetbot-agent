@@ -32,6 +32,7 @@ export const ErrorDisplay: React.FC<ErrorDisplayProps> = ({
               {error}
             </pre>
             <button
+              type="button"
               onClick={handleCopy}
               className="flex items-center gap-1 text-xs font-medium text-red-700 hover:text-red-900 dark:text-red-300 dark:hover:text-red-100"
             >

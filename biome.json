@@ -9,6 +9,13 @@
   "files": {
     "ignoreUnknown": true
   },
+  "css": {
+    "parser": {
+      "cssModules": true,
+      "tailwindDirectives": true
+    },
+    "linter": { "enabled": false }
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
@@ -148,11 +155,17 @@
       "includes": ["**/*.css"],
       "linter": {
         "rules": {
+          "suspicious": {},
+          "complexity": {}
+        }
+      }
+    },
+    {
+      "includes": ["**/loading.tsx", "**/loading.ts", "**/page.tsx", "**/src/components/**/*.tsx"],
+      "linter": {
+        "rules": {
           "suspicious": {
-            "noUnknownAtRules": "off"
-          },
-          "complexity": {
-            "noImportantStyles": "off"
+            "noArrayIndexKey": "off"
           }
         }
       }

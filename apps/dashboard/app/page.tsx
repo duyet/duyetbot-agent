@@ -15,7 +15,9 @@ async function getStats(): Promise<Stats | null> {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/stats`, {
       cache: 'no-store',
     });
-    if (!res.ok) return null;
+    if (!res.ok) {
+      return null;
+    }
     const json = await res.json();
     return json.data;
   } catch {
@@ -28,7 +30,9 @@ async function getRecentMessages() {
     const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/messages?limit=5`, {
       cache: 'no-store',
     });
-    if (!res.ok) return [];
+    if (!res.ok) {
+      return [];
+    }
     const json = await res.json();
     return json.data || [];
   } catch {
@@ -37,8 +41,12 @@ async function getRecentMessages() {
 }
 
 function formatNumber(num: number): string {
-  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  if (num >= 1000000) {
+    return `${(num / 1000000).toFixed(1)}M`;
+  }
+  if (num >= 1000) {
+    return `${(num / 1000).toFixed(1)}K`;
+  }
   return num.toString();
 }
 
@@ -47,8 +55,12 @@ function formatTimestamp(ts: number): string {
   const now = new Date();
   const diff = now.getTime() - date.getTime();
   const hours = Math.floor(diff / (1000 * 60 * 60));
-  if (hours < 1) return 'Just now';
-  if (hours < 24) return `${hours}h ago`;
+  if (hours < 1) {
+    return 'Just now';
+  }
+  if (hours < 24) {
+    return `${hours}h ago`;
+  }
   return `${Math.floor(hours / 24)}d ago`;
 }
 

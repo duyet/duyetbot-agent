@@ -9,9 +9,15 @@ interface TokenHeatmapProps {
 
 const defaultColorScale = (value: number, max: number): string => {
   const ratio = value / max;
-  if (ratio < 0.25) return '#e0e7ff'; // indigo-100
-  if (ratio < 0.5) return '#a5b4fc'; // indigo-300
-  if (ratio < 0.75) return '#6366f1'; // indigo-500
+  if (ratio < 0.25) {
+    return '#e0e7ff'; // indigo-100
+  }
+  if (ratio < 0.5) {
+    return '#a5b4fc'; // indigo-300
+  }
+  if (ratio < 0.75) {
+    return '#6366f1'; // indigo-500
+  }
   return '#4f46e5'; // indigo-600
 };
 
