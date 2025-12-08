@@ -17,7 +17,7 @@
     "@types/mdx": "^2.0.13",
     "fumadocs-core": "^14.7.7",
     "fumadocs-mdx": "^14.0.4",
-    "fumadocs-ui": "^14.7.7",
+    "fumadocs-ui": "^16.2.3",
     "next": "^15.1.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
