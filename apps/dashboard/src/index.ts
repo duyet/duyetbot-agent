@@ -9,6 +9,4 @@ export * from './components/events';
 
 // Token components
 export * from './components/tokens';
-// Mock data for development
-export * from './lib/mockData';
 export * from './types';

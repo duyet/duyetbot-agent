@@ -97,6 +97,7 @@ export interface MessageCreateInput {
   userId: string;
   username?: string;
   chatId?: string;
+  repo?: string;
   eventId?: string;
   triggerMessageId?: string;
   platformMessageId?: string;
@@ -211,4 +212,221 @@ export interface PendingStep {
   sequence: number;
   startedAt: number;
   status: 'running';
+}
+
+/**
+ * Analytics conversation type
+ */
+export interface AnalyticsConversation {
+  id: number;
+  conversationId: string;
+  userId: string;
+  platform: 'telegram' | 'github' | 'cli' | 'api';
+  title?: string;
+  summary?: string;
+  visibility: 'private' | 'public' | 'unlisted';
+  isArchived: boolean;
+  isStarred: boolean;
+  messageCount: number;
+  sessionCount: number;
+  totalTokens: number;
+  firstMessageAt?: number;
+  lastMessageAt?: number;
+  createdAt: number;
+  updatedAt: number;
+  metadata?: Record<string, unknown>;
+}
+
+/**
+ * Alias for AnalyticsConversation
+ */
+export type Conversation = AnalyticsConversation;
+
+/**
+ * Daily aggregate type
+ */
+export interface DailyAggregate {
+  id: number;
+  aggregateType: AggregateType;
+  aggregateKey: string;
+  periodType: PeriodType;
+  periodStart: number;
+  periodEnd: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cachedTokens: number;
+  reasoningTokens: number;
+  messageCount: number;
+  userMessageCount: number;
+  assistantMessageCount: number;
+  eventCount: number;
+  sessionCount: number;
+  successCount: number;
+  errorCount: number;
+  totalDurationMs: number;
+  avgDurationMs: number;
+  minDurationMs?: number;
+  maxDurationMs?: number;
+  p50DurationMs?: number;
+  p95DurationMs?: number;
+  p99DurationMs?: number;
+  estimatedCostUsd: number;
+  lastComputedAt: number;
+  computationDurationMs?: number;
+  createdAt: number;
+}
+
+/**
+ * Token aggregate (alias for DailyAggregate)
+ */
+export type TokenAggregate = DailyAggregate;
+
+/**
+ * Cost configuration for model pricing
+ */
+export interface CostConfig {
+  id: number;
+  model: string;
+  provider: string;
+  inputCostPer1k: number;
+  outputCostPer1k: number;
+  cachedCostPer1k: number;
+  reasoningCostPer1k: number;
+  effectiveFrom: number;
+  effectiveTo?: number;
+  notes?: string;
+  createdAt: number;
+  createdBy?: string;
+}
+
+/**
+ * Date range for queries
+ */
+export interface DateRange {
+  from: number;
+  to: number;
+}
+
+/**
+ * Pagination options
+ */
+export interface PaginationOptions {
+  limit?: number;
+  offset?: number;
+}
+
+/**
+ * Query options with pagination and date range
+ */
+export interface QueryOptions extends PaginationOptions {
+  dateRange?: DateRange;
+}
+
+/**
+ * Search options
+ */
+export interface SearchOptions extends PaginationOptions {
+  dateRange?: DateRange;
+  platform?: 'telegram' | 'github' | 'cli' | 'api';
+  visibility?: 'private' | 'public' | 'unlisted';
+}
+
+/**
+ * Paginated result
+ */
+export interface PaginatedResult<T> {
+  data: T[];
+  total: number;
+  page: number;
+  pageSize: number;
+  hasMore: boolean;
+}
+
+/**
+ * Session stats
+ */
+export interface SessionStats {
+  sessionId: string;
+  messageCount: number;
+  userMessages: number;
+  assistantMessages: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  firstMessageAt?: number;
+  lastMessageAt?: number;
+  durationMs?: number;
+}
+
+/**
+ * User stats
+ */
+export interface UserStats {
+  userId: string;
+  messageCount: number;
+  sessionCount: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+}
+
+/**
+ * Agent step hierarchy (nested structure)
+ */
+export interface AgentStepHierarchy {
+  step: AnalyticsAgentStep;
+  children: AgentStepHierarchy[];
+}
+
+/**
+ * Agent performance stats
+ */
+export interface AgentPerformanceStats {
+  agentName: string;
+  totalExecutions: number;
+  successCount: number;
+  errorCount: number;
+  successRate: number;
+  avgDurationMs: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  avgTokensPerExecution: number;
+}
+
+/**
+ * Time series data point
+ */
+export interface TimeSeriesData {
+  timestamp: number;
+  inputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  cachedTokens: number;
+  messageCount: number;
+}
+
+/**
+ * Platform stats
+ */
+export interface PlatformStats {
+  platform: 'telegram' | 'github' | 'cli' | 'api';
+  messageCount: number;
+  userCount: number;
+  sessionCount: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
+}
+
+/**
+ * Model usage stats
+ */
+export interface ModelUsageStats {
+  model: string;
+  messageCount: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokens: number;
+  estimatedCostUsd: number;
 }

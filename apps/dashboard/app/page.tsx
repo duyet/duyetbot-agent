@@ -2,7 +2,61 @@ import { Shell } from '@/components/layout/shell';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function DashboardPage() {
+interface Stats {
+  totalMessages: number;
+  totalSessions: number;
+  totalUsers: number;
+  totalTokens: number;
+  platformBreakdown: { platform: string; count: number }[];
+}
+
+async function getStats(): Promise<Stats | null> {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/stats`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data;
+  } catch {
+    return null;
+  }
+}
+
+async function getRecentMessages() {
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL || ''}/api/messages?limit=5`, {
+      cache: 'no-store',
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || [];
+  } catch {
+    return [];
+  }
+}
+
+function formatNumber(num: number): string {
+  if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+  if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+  return num.toString();
+}
+
+function formatTimestamp(ts: number): string {
+  const date = new Date(ts);
+  const now = new Date();
+  const diff = now.getTime() - date.getTime();
+  const hours = Math.floor(diff / (1000 * 60 * 60));
+  if (hours < 1) return 'Just now';
+  if (hours < 24) return `${hours}h ago`;
+  return `${Math.floor(hours / 24)}d ago`;
+}
+
+export default async function DashboardPage() {
+  const [stats, messages] = await Promise.all([getStats(), getRecentMessages()]);
+
+  const hasData = stats && stats.totalMessages > 0;
+
   return (
     <Shell
       title="Dashboard Overview"
@@ -14,33 +68,45 @@ export default function DashboardPage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Total Messages</CardTitle>
-              <Badge variant="secondary">New</Badge>
+              {hasData && <Badge variant="secondary">Live</Badge>}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">1,234</div>
-              <p className="text-xs text-muted-foreground">+5% from last period</p>
+              <div className="text-2xl font-bold">
+                {hasData ? formatNumber(stats.totalMessages) : '—'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {hasData ? 'All time' : 'No data yet'}
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Sessions</CardTitle>
-              <Badge variant="success">Online</Badge>
+              {hasData && <Badge variant="success">Online</Badge>}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">12</div>
-              <p className="text-xs text-muted-foreground">3 agents running</p>
+              <div className="text-2xl font-bold">
+                {hasData ? formatNumber(stats.totalSessions) : '—'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {hasData ? `${stats.totalUsers} unique users` : 'No sessions'}
+              </p>
             </CardContent>
           </Card>
 
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Token Usage</CardTitle>
-              <Badge variant="info">75%</Badge>
+              {hasData && <Badge variant="info">Active</Badge>}
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">75%</div>
-              <p className="text-xs text-muted-foreground">Of monthly quota</p>
+              <div className="text-2xl font-bold">
+                {hasData ? formatNumber(stats.totalTokens) : '—'}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {hasData ? 'Total tokens used' : 'No usage'}
+              </p>
             </CardContent>
           </Card>
 
@@ -64,48 +130,65 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between border-b border-border last:border-0 pb-4 last:pb-0"
-                >
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">Message from user</p>
-                    <p className="text-xs text-muted-foreground">2 hours ago</p>
+              {messages.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">
+                  No messages yet. Start a conversation to see activity here.
+                </p>
+              ) : (
+                messages.map((msg: any) => (
+                  <div
+                    key={msg.message_id || msg.id}
+                    className="flex items-center justify-between border-b border-border last:border-0 pb-4 last:pb-0"
+                  >
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none truncate max-w-md">
+                        {msg.content?.substring(0, 60)}
+                        {msg.content?.length > 60 ? '...' : ''}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {msg.platform} • {formatTimestamp(msg.created_at)}
+                      </p>
+                    </div>
+                    <Badge variant="outline">{msg.role}</Badge>
                   </div>
-                  <Badge variant="outline">Processing</Badge>
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
 
-        {/* Quick Stats */}
+        {/* Platform Distribution */}
         <div className="grid gap-4 md:grid-cols-2">
           <Card>
             <CardHeader>
-              <CardTitle className="text-base">Model Usage</CardTitle>
+              <CardTitle className="text-base">Platform Distribution</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium">Claude Opus</p>
-                  <p className="text-xs text-muted-foreground">45%</p>
-                </div>
-                <div className="h-2 w-full rounded-full bg-secondary">
-                  <div className="h-full w-[45%] rounded-full bg-primary" />
-                </div>
-              </div>
-
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium">Claude Haiku</p>
-                  <p className="text-xs text-muted-foreground">55%</p>
-                </div>
-                <div className="h-2 w-full rounded-full bg-secondary">
-                  <div className="h-full w-[55%] rounded-full bg-accent" />
-                </div>
-              </div>
+              {!hasData || stats.platformBreakdown.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No platform data available
+                </p>
+              ) : (
+                stats.platformBreakdown.map((p) => {
+                  const percentage = Math.round((p.count / stats.totalMessages) * 100);
+                  return (
+                    <div key={p.platform}>
+                      <div className="flex items-center justify-between mb-2">
+                        <p className="text-sm font-medium capitalize">{p.platform}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {formatNumber(p.count)} ({percentage}%)
+                        </p>
+                      </div>
+                      <div className="h-2 w-full rounded-full bg-secondary">
+                        <div
+                          className="h-full rounded-full bg-primary transition-all"
+                          style={{ width: `${percentage}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </CardContent>
           </Card>
 

@@ -1,14 +1,18 @@
-name = "duyetbot-dashboard"
-type = "javascript"
-account_id = ""
-workers_dev = true
-route = ""
-zone_id = ""
+#:schema node_modules/wrangler/config-schema.json
 
-[env.production]
 name = "duyetbot-dashboard"
-route = "duyetbot-dashboard.duyet.net"
+main = ".open-next/worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
 
-[[env.production.routes]]
-pattern = "duyetbot-dashboard.duyet.net/*"
-zone_name = "duyet.net"
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+
+[observability]
+enabled = true

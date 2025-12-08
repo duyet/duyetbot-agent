@@ -6,18 +6,17 @@
  */
 
 export { AnalyticsCollector } from './collector/index.js';
-export type {
-  AnalyticsMessage,
-  AnalyticsAgentStep,
-  MessageCreateInput,
-  StepCreateInput,
-  StepCompletion,
-  PeriodType,
-  AggregateType,
-  MessageQueryFilter,
-  StepQueryFilter,
-  PendingStep,
-} from './types.js';
-
 // Storage classes
 export * from './storage/index.js';
+export type {
+  AggregateType,
+  AnalyticsAgentStep,
+  AnalyticsMessage,
+  MessageCreateInput,
+  MessageQueryFilter,
+  PendingStep,
+  PeriodType,
+  StepCompletion,
+  StepCreateInput,
+  StepQueryFilter,
+} from './types.js';
