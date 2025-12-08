@@ -98,6 +98,6 @@
     "zod-to-json-schema": "^3.24.5"
   },
   "dependencies": {
-    "@openrouter/sdk": "^0.1.27"
+    "@openrouter/sdk": "^0.2.9"
   }
 }
