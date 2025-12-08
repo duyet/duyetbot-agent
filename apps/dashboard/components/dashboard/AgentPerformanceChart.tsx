@@ -1,6 +1,6 @@
 import React from 'react';
-import { AgentPerformanceData, chartColors } from '../../types';
-import { BarChart } from '../charts/BarChart';
+import { BarChart } from '@/components/charts';
+import { AgentPerformanceData, chartColors } from '@/types';
 
 interface AgentPerformanceChartProps {
   data: AgentPerformanceData[];

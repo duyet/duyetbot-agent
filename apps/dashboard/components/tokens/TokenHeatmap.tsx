@@ -1,5 +1,5 @@
 import React from 'react';
-import { TokenHeatmapData } from '../../types';
+import { TokenHeatmapData } from '@/types';
 
 interface TokenHeatmapProps {
   data: TokenHeatmapData[];

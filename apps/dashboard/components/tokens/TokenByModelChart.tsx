@@ -1,26 +1,23 @@
 import React from 'react';
-import { chartColors, TokenUsageData } from '../../types';
-import { LineChart } from '../charts/LineChart';
+import { BarChart } from '@/components/charts';
+import { chartColors, TokenByModelData } from '@/types';
 
-interface TokenTrendChartProps {
-  data: TokenUsageData[];
+interface TokenByModelChartProps {
+  data: TokenByModelData[];
   loading?: boolean;
-  title?: string;
 }
 
-export const TokenTrendChart: React.FC<TokenTrendChartProps> = ({
-  data,
-  loading = false,
-  title = 'Token Usage Over Time',
-}) => {
+export const TokenByModelChart: React.FC<TokenByModelChartProps> = ({ data, loading = false }) => {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
-      <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">{title}</h2>
+      <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
+        Token Usage by Model
+      </h2>
 
-      <LineChart
+      <BarChart
         data={data}
-        xKey="date"
-        yKeys={[
+        xKey="model"
+        barKeys={[
           {
             key: 'input',
             color: chartColors.input,
@@ -35,14 +32,14 @@ export const TokenTrendChart: React.FC<TokenTrendChartProps> = ({
             key: 'cached',
             color: chartColors.cached,
             name: 'Cached',
-            dashed: true,
           },
         ]}
         height={300}
         loading={loading}
+        layout="horizontal"
         showGrid={true}
         showLegend={true}
-        yAxisFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
+        xAxisFormatter={(val) => `${(val / 1000).toFixed(0)}k`}
       />
     </div>
   );

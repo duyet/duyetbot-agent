@@ -1,6 +1,6 @@
 import { Clock, Hash, Zap } from 'lucide-react';
 import React from 'react';
-import { AgentTrace } from '../../types';
+import { AgentTrace } from '@/types';
 import { AgentStepNode } from './AgentStepNode';
 import { ErrorDisplay } from './ErrorDisplay';
 import { TokenBreakdown } from './TokenBreakdown';

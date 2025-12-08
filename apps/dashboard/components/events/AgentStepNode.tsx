@@ -1,6 +1,6 @@
 import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Clock, Loader2 } from 'lucide-react';
 import React from 'react';
-import { AgentStep } from '../../types';
+import { AgentStep } from '@/types';
 
 interface AgentStepNodeProps {
   step: AgentStep;

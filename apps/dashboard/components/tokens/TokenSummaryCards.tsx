@@ -1,6 +1,6 @@
 import { Zap } from 'lucide-react';
 import React from 'react';
-import { chartColors, TokenSummary } from '../../types';
+import { chartColors, TokenSummary } from '@/types';
 
 interface TokenSummaryCardsProps {
   summary: TokenSummary;

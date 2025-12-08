@@ -1,6 +1,6 @@
 import React from 'react';
-import { PlatformDistributionData, platformColors } from '../../types';
-import { PieChart } from '../charts/PieChart';
+import { PieChart } from '@/components/charts';
+import { PlatformDistributionData, platformColors } from '@/types';
 
 interface PlatformDistributionProps {
   data: PlatformDistributionData[];

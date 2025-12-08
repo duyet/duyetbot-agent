@@ -1,22 +1,22 @@
 import React from 'react';
-import { chartColors, TokenByModelData } from '../../types';
-import { BarChart } from '../charts/BarChart';
+import { BarChart } from '@/components/charts';
+import { chartColors, TokenByAgentData } from '@/types';
 
-interface TokenByModelChartProps {
-  data: TokenByModelData[];
+interface TokenByAgentChartProps {
+  data: TokenByAgentData[];
   loading?: boolean;
 }
 
-export const TokenByModelChart: React.FC<TokenByModelChartProps> = ({ data, loading = false }) => {
+export const TokenByAgentChart: React.FC<TokenByAgentChartProps> = ({ data, loading = false }) => {
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
       <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">
-        Token Usage by Model
+        Token Usage by Agent
       </h2>
 
       <BarChart
         data={data}
-        xKey="model"
+        xKey="agent"
         barKeys={[
           {
             key: 'input',
