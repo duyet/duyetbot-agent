@@ -22,7 +22,7 @@
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
-    "@octokit/rest": "^21.0.0",
+    "@octokit/rest": "^22.0.1",
     "agents": "catalog:",
     "hono": "catalog:"
   },
