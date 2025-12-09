@@ -70,7 +70,15 @@
     "d1:shell": "wrangler d1 execute duyetbot --remote",
     "d1:shell:memory": "wrangler d1 execute duyetbot-memory --remote",
     "d1:tables": "wrangler d1 execute duyetbot --remote --command \"SELECT name FROM sqlite_master WHERE type='table'\"",
-    "d1:tables:memory": "wrangler d1 execute duyetbot-memory --remote --command \"SELECT name FROM sqlite_master WHERE type='table'\""
+    "d1:tables:memory": "wrangler d1 execute duyetbot-memory --remote --command \"SELECT name FROM sqlite_master WHERE type='table'\"",
+    "prompt:eval": "bun run prompts-eval/scripts/run-all.ts",
+    "prompt:eval:router": "cd prompts-eval && promptfoo eval -c configs/router.promptfoo.yaml",
+    "prompt:eval:telegram": "cd prompts-eval && promptfoo eval -c configs/telegram.promptfoo.yaml",
+    "prompt:eval:github": "cd prompts-eval && promptfoo eval -c configs/github.promptfoo.yaml",
+    "prompt:eval:quality": "cd prompts-eval && promptfoo eval -c configs/quality.promptfoo.yaml",
+    "prompt:view": "cd prompts-eval && promptfoo view",
+    "prompt:share": "cd prompts-eval && promptfoo share",
+    "prompt:report": "bun run prompts-eval/scripts/generate-report.ts"
   },
   "keywords": [
     "agent",
@@ -87,6 +95,7 @@
     "@biomejs/biome": "^2.1.2",
     "@vitest/coverage-v8": "^2.1.8",
     "concurrently": "^9.2.1",
+    "promptfoo": "^0.120.1",
     "turbo": "^2.0.0",
     "vitest": "catalog:",
     "wrangler": "^4.53.0"

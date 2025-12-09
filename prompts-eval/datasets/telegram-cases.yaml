@@ -1,0 +1,110 @@
+# Telegram Format Test Cases
+# Tests HTML and MarkdownV2 format compliance for Telegram bot responses
+# Coverage: 8 test cases across format validation and mobile optimization
+
+description: "Telegram format consistency and mobile optimization tests"
+
+tests:
+  # =============================================================================
+  # HTML FORMAT VALIDATION (3 tests)
+  # =============================================================================
+
+  - name: "HTML format - code example formatting"
+    vars:
+      platform: "telegram"
+      format: "html"
+      query: "Show me a code example for async/await"
+    assert:
+      - type: javascript
+        value: file://../assertions/telegram-html.ts:validateTelegramHtml
+      - type: not-contains
+        value: "<script>"
+      - type: llm-rubric
+        value: "Code examples are presented clearly for mobile viewing"
+
+  - name: "HTML format - explanation with emphasis"
+    vars:
+      platform: "telegram"
+      format: "html"
+      query: "Explain the difference between let and const"
+    assert:
+      - type: javascript
+        value: file://../assertions/telegram-html.ts:validateTelegramHtml
+      - type: llm-rubric
+        value: "Uses HTML emphasis tags appropriately and safely"
+
+  - name: "HTML format - list formatting"
+    vars:
+      platform: "telegram"
+      format: "html"
+      query: "List 5 TypeScript best practices"
+    assert:
+      - type: javascript
+        value: file://../assertions/telegram-html.ts:validateTelegramHtml
+      - type: llm-rubric
+        value: "Lists are formatted clearly for mobile readability"
+
+  # =============================================================================
+  # MARKDOWNV2 FORMAT VALIDATION (3 tests)
+  # =============================================================================
+
+  - name: "MarkdownV2 format - special character escaping"
+    vars:
+      platform: "telegram"
+      format: "markdownv2"
+      query: "Show me a code snippet with special characters like @, #, _, *, [, ], (, ), ~, >, <, &, !, \\"
+    assert:
+      - type: javascript
+        value: file://../assertions/markdown-v2.ts:validateMarkdownV2
+      - type: javascript
+        value: file://../assertions/markdown-v2.ts:validateSpecialCharEscaping
+
+  - name: "MarkdownV2 format - code block syntax"
+    vars:
+      platform: "telegram"
+      format: "markdownv2"
+      query: "Write inline code and code blocks with backticks"
+    assert:
+      - type: javascript
+        value: file://../assertions/markdown-v2.ts:validateMarkdownV2
+      - type: javascript
+        value: file://../assertions/markdown-v2.ts:validateCodeBlockSyntax
+      - type: llm-rubric
+        value: "Code is wrapped in proper backticks or triple backticks with language identifier"
+
+  - name: "MarkdownV2 format - text styling"
+    vars:
+      platform: "telegram"
+      format: "markdownv2"
+      query: "Use bold and italic formatting to emphasize important points"
+    assert:
+      - type: javascript
+        value: file://../assertions/markdown-v2.ts:validateMarkdownV2
+      - type: llm-rubric
+        value: "Text styling uses MarkdownV2 syntax with proper escape sequences"
+
+  # =============================================================================
+  # MOBILE OPTIMIZATION (2 tests)
+  # =============================================================================
+
+  - name: "Mobile optimization - concise explanation"
+    vars:
+      platform: "telegram"
+      format: "html"
+      query: "Explain React hooks in detail"
+    assert:
+      - type: javascript
+        value: file://../assertions/telegram-html.ts:validateTelegramHtml
+      - type: llm-rubric
+        value: "Response is concise and suitable for mobile viewing with short paragraphs and bullet points"
+
+  - name: "Mobile optimization - progressive disclosure"
+    vars:
+      platform: "telegram"
+      format: "html"
+      query: "What is a binary tree data structure?"
+    assert:
+      - type: javascript
+        value: file://../assertions/telegram-html.ts:validateTelegramHtml
+      - type: llm-rubric
+        value: "Initial response is brief with offer to expand or provides progressive disclosure"

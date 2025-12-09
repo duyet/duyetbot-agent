@@ -1,0 +1,25 @@
+# Telegram Format Tests Configuration
+# Tests HTML and MarkdownV2 format compliance
+
+description: "Telegram format consistency evaluation"
+
+prompts:
+  - "{{query}}"
+
+# Test both HTML and MarkdownV2 providers
+providers:
+  - id: file://../providers/prompt-builder-provider.ts:telegramHtml
+    label: telegram-html
+  - id: file://../providers/prompt-builder-provider.ts:telegramMarkdownV2
+    label: telegram-markdownv2
+
+# Test cases from dataset
+tests: file://../datasets/telegram-cases.yaml
+
+# Output configuration
+outputPath: ../results/telegram-results.json
+
+# Evaluation settings
+evaluateOptions:
+  maxConcurrency: 4
+  showProgressBar: true

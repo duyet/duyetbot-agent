@@ -1,0 +1,142 @@
+# Response Quality Test Cases
+# Tests response quality, platform-specific behavior, and tool usage
+# Coverage: 11 test cases across conciseness, completeness, and platform guidelines
+
+description: "Response quality and platform-specific behavior tests"
+
+tests:
+  # =============================================================================
+  # CONCISENESS - TELEGRAM PLATFORM (2 tests)
+  # =============================================================================
+
+  - name: "Telegram conciseness - brief technical explanation"
+    vars:
+      platform: "telegram"
+      query: "What is Docker?"
+    assert:
+      - type: llm-rubric
+        value: "Response is concise and suitable for mobile viewing, avoiding lengthy paragraphs"
+      - type: llm-rubric
+        value: "Answer prioritizes brevity while maintaining technical accuracy"
+
+  - name: "Telegram conciseness - architectural overview"
+    vars:
+      platform: "telegram"
+      query: "Explain microservices architecture"
+    assert:
+      - type: llm-rubric
+        value: "Explanation uses bullet points and short paragraphs optimized for mobile screens"
+      - type: llm-rubric
+        value: "Complex concepts are broken down into digestible chunks"
+
+  # =============================================================================
+  # COMPLETENESS - GITHUB PLATFORM (2 tests)
+  # =============================================================================
+
+  - name: "GitHub completeness - comprehensive code review"
+    vars:
+      platform: "github"
+      query: "Review this authentication implementation for security and best practices"
+    assert:
+      - type: llm-rubric
+        value: "Response provides detailed analysis with multiple perspectives and code examples"
+      - type: llm-rubric
+        value: "Recommendations are comprehensive and reference industry best practices"
+
+  - name: "GitHub completeness - architectural guidance"
+    vars:
+      platform: "github"
+      query: "Suggest improvements for this API design with examples and trade-offs"
+    assert:
+      - type: llm-rubric
+        value: "Response includes detailed analysis, examples, and trade-offs discussion"
+      - type: llm-rubric
+        value: "Suggestions are structured and actionable with implementation guidance"
+
+  # =============================================================================
+  # TOOL USAGE CORRECTNESS (2 tests)
+  # =============================================================================
+
+  - name: "Tool usage - bash and git commands"
+    vars:
+      query: "Clone the repository and run the tests"
+    assert:
+      - type: contains-any
+        value:
+          - "bash"
+          - "git"
+          - "shell"
+          - "command"
+          - "```"
+      - type: llm-rubric
+        value: "Response provides actual commands or references shell tools appropriately"
+
+  - name: "Tool usage - research and web search"
+    vars:
+      query: "Search for the latest security vulnerabilities in npm packages"
+    assert:
+      - type: contains-any
+        value:
+          - "search"
+          - "research"
+          - "web"
+          - "online"
+      - type: llm-rubric
+        value: "Response acknowledges web search requirement or suggests research approach"
+
+  # =============================================================================
+  # PLATFORM-SPECIFIC GUIDELINES (4 tests)
+  # =============================================================================
+
+  - name: "Telegram platform guideline - handling large code examples"
+    vars:
+      platform: "telegram"
+      query: "Show me a comprehensive code example for a complete REST API with authentication"
+    assert:
+      - type: llm-rubric
+        value: "Response acknowledges code length constraints or suggests progressive disclosure"
+      - type: llm-rubric
+        value: "Large examples are broken down or alternative presentations are offered"
+
+  - name: "GitHub platform guideline - rich markdown features"
+    vars:
+      platform: "github"
+      query: "Summarize these complex architectural changes and their implications"
+    assert:
+      - type: llm-rubric
+        value: "Response uses GitHub-specific markdown features like alerts or code blocks"
+      - type: llm-rubric
+        value: "Complex information is structured using headings and formatted text"
+
+  - name: "Telegram platform guideline - progressive disclosure"
+    vars:
+      platform: "telegram"
+      query: "Explain this error message and how to debug it step-by-step"
+    assert:
+      - type: llm-rubric
+        value: "Response offers to provide more details or expand on topics as needed"
+      - type: llm-rubric
+        value: "Initial response focuses on key information with option for depth"
+
+  - name: "GitHub platform guideline - code documentation"
+    vars:
+      platform: "github"
+      query: "Document this function with parameters, return values, and examples"
+    assert:
+      - type: llm-rubric
+        value: "Response uses code blocks with language identifiers for proper syntax highlighting"
+      - type: llm-rubric
+        value: "Documentation includes structured sections like Parameters, Returns, and Examples"
+
+  # =============================================================================
+  # CROSS-PLATFORM CONSISTENCY (1 test)
+  # =============================================================================
+
+  - name: "Cross-platform consistency - query understanding"
+    vars:
+      query: "What is the difference between async/await and promises?"
+    assert:
+      - type: llm-rubric
+        value: "Response demonstrates deep understanding regardless of platform"
+      - type: llm-rubric
+        value: "Technical accuracy is maintained while adapting to platform constraints"
