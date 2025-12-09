@@ -69,8 +69,8 @@ export const PieChart = React.forwardRef<any, PieChartProps<any>>(function PieCh
             innerRadius={innerRadius}
             isAnimationActive={false}
           >
-            {data.map((_, index) => (
-              <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />
+            {data.map((entry, index) => (
+              <Cell key={`cell-${String(entry[nameKey])}`} fill={colors[index % colors.length]} />
             ))}
           </Pie>
           <Tooltip content={<ChartTooltip />} />

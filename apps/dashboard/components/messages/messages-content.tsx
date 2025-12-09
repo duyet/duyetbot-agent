@@ -219,6 +219,7 @@ function FilterDropdown({
   return (
     <div className="relative">
       <button
+        type="button"
         onClick={() => setOpen(!open)}
         className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm transition-all duration-200 ${
           value !== 'all'
@@ -233,9 +234,10 @@ function FilterDropdown({
 
       {open && (
         <>
-          <div
-            role="presentation"
-            className="fixed inset-0 z-40"
+          <button
+            type="button"
+            aria-label="Close dropdown"
+            className="fixed inset-0 z-40 cursor-default bg-transparent"
             onClick={() => setOpen(false)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
@@ -246,6 +248,7 @@ function FilterDropdown({
           <div className="absolute left-0 top-full z-50 mt-1 min-w-[140px] rounded-lg border border-border bg-popover p-1 shadow-lg animate-scale-in">
             {options.map((option) => (
               <button
+                type="button"
                 key={option.value}
                 onClick={() => {
                   onChange(option.value);
@@ -373,6 +376,7 @@ export function MessagesContent() {
             />
             {filters.search && (
               <button
+                type="button"
                 onClick={() => updateFilter('search', '')}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
@@ -554,15 +558,18 @@ export function MessagesContent() {
                       </div>
 
                       {/* Message Pair Rows */}
-                      {messagePairs.map((pair, pairIndex) => {
-                        const userKey = pair.user?.messageId || `user-${pairIndex}`;
-                        const assistantKey = pair.assistant?.messageId || `assistant-${pairIndex}`;
+                      {messagePairs.map((pair) => {
+                        const userKey =
+                          pair.user?.messageId || `user-orphan-${pair.assistant?.messageId}`;
+                        const assistantKey =
+                          pair.assistant?.messageId || `assistant-orphan-${pair.user?.messageId}`;
+                        const pairKey = `${userKey}-${assistantKey}`;
                         const isUserExpanded = allExpanded || expandedMessage === userKey;
                         const isAssistantExpanded = allExpanded || expandedMessage === assistantKey;
                         const hasError = isErrorResponse(pair.assistant);
 
                         return (
-                          <div key={`pair-${pairIndex}`} className="grid grid-cols-2 gap-4 py-3">
+                          <div key={pairKey} className="grid grid-cols-2 gap-4 py-3">
                             {/* User Cell */}
                             <div
                               className={

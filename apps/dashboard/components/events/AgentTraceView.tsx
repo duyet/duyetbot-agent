@@ -30,8 +30,8 @@ export const AgentTraceView: React.FC<AgentTraceViewProps> = ({ trace, loading =
       <div className="rounded-xl border border-border bg-card p-6">
         <h2 className="mb-4 text-lg font-semibold">Agent Execution Trace</h2>
         <div className="animate-pulse space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div key={i} className="h-8 w-full rounded bg-secondary" />
+          {['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4', 'skeleton-5'].map((id) => (
+            <div key={id} className="h-8 w-full rounded bg-secondary" />
           ))}
         </div>
       </div>

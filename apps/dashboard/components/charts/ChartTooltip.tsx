@@ -30,8 +30,8 @@ export const ChartTooltip: React.FC<ChartTooltipProps> = ({
         <p className="text-sm font-semibold text-gray-900 dark:text-white">{displayLabel}</p>
       )}
       <div className="mt-2 space-y-1">
-        {payload.map((entry, index) => (
-          <div key={index} className="flex items-center gap-2 text-sm">
+        {payload.map((entry) => (
+          <div key={entry.name} className="flex items-center gap-2 text-sm">
             <div className="h-3 w-3 rounded" style={{ backgroundColor: entry.color }} />
             <span className="text-gray-700 dark:text-gray-300">{entry.name}:</span>
             <span className="font-semibold text-gray-900 dark:text-white">
