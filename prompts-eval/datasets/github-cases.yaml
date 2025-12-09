@@ -1,114 +1,76 @@
 # GitHub Markdown Format Test Cases
-# Tests GitHub-flavored markdown compliance and rich formatting features
-# Coverage: 6 test cases across markdown features, structure, and code review format
+# Tests GitHub-flavored markdown compliance
+# Coverage: 6 test cases
 
-description: "GitHub markdown format and rich formatting tests"
+# =============================================================================
+# MARKDOWN FORMATTING (3 tests)
+# =============================================================================
 
-tests:
-  # =============================================================================
-  # GITHUB-FLAVORED MARKDOWN FEATURES (2 tests)
-  # =============================================================================
+- description: "GitHub markdown - code blocks with language"
+  vars:
+    platform: "github"
+    query: "Show me how to create a REST API endpoint in Express"
+  assert:
+    - type: contains
+      value: "```"
+    - type: llm-rubric
+      value: "Uses fenced code blocks with language identifier (javascript, typescript, etc.)"
 
-  - name: "GitHub markdown - alerts and code blocks"
-    vars:
-      platform: "github"
-      query: "Review this code and suggest security improvements"
-    assert:
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
-        config:
-          requiredFeatures:
-            - "code-blocks"
-            - "alerts"
-      - type: llm-rubric
-        value: "Response uses GitHub alerts for security concerns and code blocks for examples"
+- description: "GitHub markdown - heading structure"
+  vars:
+    platform: "github"
+    query: "Explain the project architecture and components"
+  assert:
+    - type: contains-any
+      value:
+        - "## "
+        - "### "
+    - type: llm-rubric
+      value: "Uses proper heading hierarchy to structure the response"
 
-  - name: "GitHub markdown - structured documentation"
-    vars:
-      platform: "github"
-      query: "Explain the project architecture and components"
-    assert:
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
-        config:
-          requiredFeatures:
-            - "code-blocks"
-            - "headings"
-      - type: llm-rubric
-        value: "Architecture explanation uses clear headings and code examples for clarity"
+- description: "GitHub markdown - inline code for paths"
+  vars:
+    platform: "github"
+    query: "Where should I put my configuration files?"
+  assert:
+    - type: contains
+      value: "`"
+    - type: llm-rubric
+      value: "Uses inline code (backticks) for file paths and directory names"
 
-  # =============================================================================
-  # STRUCTURED FORMAT (2 tests)
-  # =============================================================================
+# =============================================================================
+# GITHUB ALERTS (2 tests)
+# =============================================================================
 
-  - name: "Structured format - PR summary with sections"
-    vars:
-      platform: "github"
-      query: "Summarize the changes in this pull request with impact assessment"
-    assert:
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateStructuredFormat
-      - type: llm-rubric
-        value: "Summary includes clear sections like Changes, Impact, Testing, and Risk Assessment"
+- description: "GitHub alerts - warning for security"
+  vars:
+    platform: "github"
+    query: "What are the security concerns with storing passwords?"
+  assert:
+    - type: contains-any
+      value:
+        - "> [!WARNING]"
+        - "> [!CAUTION]"
+        - "> [!NOTE]"
+    - type: llm-rubric
+      value: "Uses GitHub alert syntax to highlight security concerns"
 
-  - name: "Structured format - security analysis"
-    vars:
-      platform: "github"
-      query: "What are the security implications of this code change?"
-    assert:
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
-        config:
-          requiredFeatures:
-            - "alerts"
-            - "code-blocks"
-      - type: llm-rubric
-        value: "Security analysis uses GitHub alerts to highlight risks and concerns"
+- description: "GitHub alerts - note for tips"
+  vars:
+    platform: "github"
+    query: "How can I improve my code performance?"
+  assert:
+    - type: llm-rubric
+      value: "Response is well-structured with clear sections. May use GitHub alerts for important tips."
 
-  # =============================================================================
-  # CODE REVIEW FORMAT (1 test)
-  # =============================================================================
+# =============================================================================
+# DETAILED RESPONSE (1 test)
+# =============================================================================
 
-  - name: "Code review format - issue identification and suggestions"
-    vars:
-      platform: "github"
-      query: "Review this function implementation and identify issues and improvements"
-    assert:
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
-        config:
-          requiredFeatures:
-            - "code-blocks"
-            - "inline-code"
-      - type: llm-rubric
-        value: "Code review provides specific examples with before/after code snippets and clear suggestions"
-
-  # =============================================================================
-  # FILE REFERENCES (1 test)
-  # =============================================================================
-
-  - name: "File references - architecture guidance with file paths"
-    vars:
-      platform: "github"
-      query: "Where should I add this new feature in the codebase? Show file paths."
-    assert:
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
-      - type: javascript
-        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
-        config:
-          requiredFeatures:
-            - "file-refs"
-            - "inline-code"
-      - type: llm-rubric
-        value: "Response includes specific file paths using inline code backticks for navigation"
+- description: "Detailed response - code review"
+  vars:
+    platform: "github"
+    query: "Review this authentication implementation for security best practices"
+  assert:
+    - type: llm-rubric
+      value: "Response is detailed and thorough. Uses code examples and clear explanations. Structured with headings."

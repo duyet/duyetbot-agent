@@ -9,14 +9,13 @@
  * @example
  * ```yaml
  * providers:
- *   - id: prompt-builder:classifier
- *     config: {}
+ *   - id: file://providers/classifier-provider.ts
  * ```
  */
 
 import { agentRegistry } from '../../packages/cloudflare-agent/src/agents/registry.js';
 
-interface ProviderContext {
+interface CallApiContext {
   vars?: Record<string, unknown>;
 }
 
@@ -27,53 +26,27 @@ interface ProviderResponse {
 }
 
 /**
- * Classifier provider that uses quick pattern matching
+ * Classifier provider class that uses quick pattern matching
  * Returns the classified agent name
  */
-export async function classifierProvider(
-  prompt: string,
-  _context: ProviderContext
-): Promise<ProviderResponse> {
-  // Use the agent registry's quick classify method
-  const agentName = agentRegistry.quickClassify(prompt);
+export default class ClassifierProvider {
+  id(): string {
+    return 'classifier-provider';
+  }
 
-  return {
-    output: agentName || 'simple-agent',
-    tokenUsage: { total: 0, prompt: 0, completion: 0 },
-    metadata: {
-      query: prompt,
-      matched: agentName !== null,
-      method: 'pattern',
-      timestamp: new Date().toISOString(),
-    },
-  };
+  async callApi(prompt: string, _context?: CallApiContext): Promise<ProviderResponse> {
+    // Use the agent registry's quick classify method
+    const agentName = agentRegistry.quickClassify(prompt);
+
+    return {
+      output: agentName || 'simple-agent',
+      tokenUsage: { total: 0, prompt: 0, completion: 0 },
+      metadata: {
+        query: prompt,
+        matched: agentName !== null,
+        method: 'pattern',
+        timestamp: new Date().toISOString(),
+      },
+    };
+  }
 }
-
-/**
- * Get classification metadata for debugging
- */
-export async function classifierDebugProvider(
-  prompt: string,
-  _context: ProviderContext
-): Promise<ProviderResponse> {
-  const agentName = agentRegistry.quickClassify(prompt);
-  const agent = agentName ? agentRegistry.get(agentName) : null;
-
-  return {
-    output: JSON.stringify({
-      query: prompt,
-      matched: agentName !== null,
-      agentName: agentName || 'simple-agent',
-      agentDescription: agent?.description,
-      priority: agent?.priority,
-      capabilities: agent?.capabilities,
-    }),
-    tokenUsage: { total: 0, prompt: 0, completion: 0 },
-    metadata: {
-      method: 'pattern-debug',
-    },
-  };
-}
-
-// Default export for promptfoo CLI
-export default classifierProvider;

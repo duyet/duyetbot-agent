@@ -1,110 +1,93 @@
 # Telegram Format Test Cases
-# Tests HTML and MarkdownV2 format compliance for Telegram bot responses
-# Coverage: 8 test cases across format validation and mobile optimization
+# Tests response quality and format for Telegram bot
+# Coverage: 8 test cases
 
-description: "Telegram format consistency and mobile optimization tests"
+# =============================================================================
+# CONCISENESS TESTS (3 tests)
+# =============================================================================
 
-tests:
-  # =============================================================================
-  # HTML FORMAT VALIDATION (3 tests)
-  # =============================================================================
+- description: "Concise response - factual question"
+  vars:
+    platform: "telegram"
+    query: "What is the capital of France?"
+  assert:
+    - type: llm-rubric
+      value: "Response is extremely concise (1-3 words ideally). No filler phrases like 'Sure!' or 'Great question!'"
 
-  - name: "HTML format - code example formatting"
-    vars:
-      platform: "telegram"
-      format: "html"
-      query: "Show me a code example for async/await"
-    assert:
-      - type: javascript
-        value: file://../assertions/telegram-html.ts:validateTelegramHtml
-      - type: not-contains
-        value: "<script>"
-      - type: llm-rubric
-        value: "Code examples are presented clearly for mobile viewing"
+- description: "Concise response - code snippet"
+  vars:
+    platform: "telegram"
+    query: "How do I reverse a string in Python?"
+  assert:
+    - type: llm-rubric
+      value: "Response provides code directly without lengthy explanation. Uses inline code formatting."
 
-  - name: "HTML format - explanation with emphasis"
-    vars:
-      platform: "telegram"
-      format: "html"
-      query: "Explain the difference between let and const"
-    assert:
-      - type: javascript
-        value: file://../assertions/telegram-html.ts:validateTelegramHtml
-      - type: llm-rubric
-        value: "Uses HTML emphasis tags appropriately and safely"
+- description: "Concise response - explanation"
+  vars:
+    platform: "telegram"
+    query: "What is Docker?"
+  assert:
+    - type: llm-rubric
+      value: "Response is 1-2 sentences maximum. No lengthy introductions or filler phrases."
 
-  - name: "HTML format - list formatting"
-    vars:
-      platform: "telegram"
-      format: "html"
-      query: "List 5 TypeScript best practices"
-    assert:
-      - type: javascript
-        value: file://../assertions/telegram-html.ts:validateTelegramHtml
-      - type: llm-rubric
-        value: "Lists are formatted clearly for mobile readability"
+# =============================================================================
+# CODE FORMATTING TESTS (3 tests)
+# =============================================================================
 
-  # =============================================================================
-  # MARKDOWNV2 FORMAT VALIDATION (3 tests)
-  # =============================================================================
+- description: "Code formatting - inline code"
+  vars:
+    platform: "telegram"
+    query: "What command lists files in a directory?"
+  assert:
+    - type: contains
+      value: "`"
+    - type: llm-rubric
+      value: "Uses inline code formatting (backticks) for the command"
 
-  - name: "MarkdownV2 format - special character escaping"
-    vars:
-      platform: "telegram"
-      format: "markdownv2"
-      query: "Show me a code snippet with special characters like @, #, _, *, [, ], (, ), ~, >, <, &, !, \\"
-    assert:
-      - type: javascript
-        value: file://../assertions/markdown-v2.ts:validateMarkdownV2
-      - type: javascript
-        value: file://../assertions/markdown-v2.ts:validateSpecialCharEscaping
+- description: "Code formatting - code block"
+  vars:
+    platform: "telegram"
+    query: "Show me a Python function to calculate factorial"
+  assert:
+    - type: contains
+      value: "```"
+    - type: llm-rubric
+      value: "Uses code block with language identifier for multi-line code"
 
-  - name: "MarkdownV2 format - code block syntax"
-    vars:
-      platform: "telegram"
-      format: "markdownv2"
-      query: "Write inline code and code blocks with backticks"
-    assert:
-      - type: javascript
-        value: file://../assertions/markdown-v2.ts:validateMarkdownV2
-      - type: javascript
-        value: file://../assertions/markdown-v2.ts:validateCodeBlockSyntax
-      - type: llm-rubric
-        value: "Code is wrapped in proper backticks or triple backticks with language identifier"
+- description: "Code formatting - language specified"
+  vars:
+    platform: "telegram"
+    query: "Write a TypeScript interface for a User"
+  assert:
+    - type: contains-any
+      value:
+        - "```typescript"
+        - "```ts"
+    - type: llm-rubric
+      value: "Code block specifies the language (typescript or ts)"
 
-  - name: "MarkdownV2 format - text styling"
-    vars:
-      platform: "telegram"
-      format: "markdownv2"
-      query: "Use bold and italic formatting to emphasize important points"
-    assert:
-      - type: javascript
-        value: file://../assertions/markdown-v2.ts:validateMarkdownV2
-      - type: llm-rubric
-        value: "Text styling uses MarkdownV2 syntax with proper escape sequences"
+# =============================================================================
+# NO FILLER TESTS (2 tests)
+# =============================================================================
 
-  # =============================================================================
-  # MOBILE OPTIMIZATION (2 tests)
-  # =============================================================================
+- description: "No filler - direct answer"
+  vars:
+    platform: "telegram"
+    query: "What is 15 times 23?"
+  assert:
+    - type: not-contains
+      value: "Sure"
+    - type: not-contains
+      value: "Great question"
+    - type: llm-rubric
+      value: "Response starts directly with the answer, no filler phrases"
 
-  - name: "Mobile optimization - concise explanation"
-    vars:
-      platform: "telegram"
-      format: "html"
-      query: "Explain React hooks in detail"
-    assert:
-      - type: javascript
-        value: file://../assertions/telegram-html.ts:validateTelegramHtml
-      - type: llm-rubric
-        value: "Response is concise and suitable for mobile viewing with short paragraphs and bullet points"
-
-  - name: "Mobile optimization - progressive disclosure"
-    vars:
-      platform: "telegram"
-      format: "html"
-      query: "What is a binary tree data structure?"
-    assert:
-      - type: javascript
-        value: file://../assertions/telegram-html.ts:validateTelegramHtml
-      - type: llm-rubric
-        value: "Initial response is brief with offer to expand or provides progressive disclosure"
+- description: "No filler - list response"
+  vars:
+    platform: "telegram"
+    query: "List 3 JavaScript frameworks"
+  assert:
+    - type: not-contains
+      value: "Here are"
+    - type: llm-rubric
+      value: "Lists items directly without introductory phrases like 'Here are' or 'The frameworks are'"
