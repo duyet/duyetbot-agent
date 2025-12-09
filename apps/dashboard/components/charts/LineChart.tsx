@@ -51,9 +51,9 @@ export const LineChart = React.forwardRef<any, LineChartProps<any>>(function Lin
           <YAxis tickFormatter={yAxisFormatter} />
           <Tooltip content={<ChartTooltip />} />
           {showLegend && <Legend />}
-          {yKeys.map((yKey, index) => (
+          {yKeys.map((yKey) => (
             <Line
-              key={index}
+              key={String(yKey.key)}
               type="monotone"
               dataKey={String(yKey.key)}
               stroke={yKey.color}

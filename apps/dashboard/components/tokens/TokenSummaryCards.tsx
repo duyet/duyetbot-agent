@@ -37,9 +37,9 @@ export const TokenSummaryCards: React.FC<TokenSummaryCardsProps> = ({
   if (loading) {
     return (
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {Array.from({ length: 4 }).map((_, i) => (
+        {['skeleton-input', 'skeleton-output', 'skeleton-cached', 'skeleton-total'].map((id) => (
           <div
-            key={i}
+            key={id}
             className="animate-pulse rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800"
           >
             <div className="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
@@ -52,9 +52,9 @@ export const TokenSummaryCards: React.FC<TokenSummaryCardsProps> = ({
 
   return (
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {cards.map((card, index) => (
+      {cards.map((card) => (
         <div
-          key={index}
+          key={card.label}
           className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800"
         >
           <div className="flex items-center justify-between">

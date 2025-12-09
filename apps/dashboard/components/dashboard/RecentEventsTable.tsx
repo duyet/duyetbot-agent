@@ -29,9 +29,9 @@ export const RecentEventsTable: React.FC<RecentEventsTableProps> = ({
       <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
         <h2 className="mb-4 text-lg font-semibold text-gray-900 dark:text-white">Recent Events</h2>
         <div className="space-y-4">
-          {Array.from({ length: 5 }).map((_, i) => (
+          {['skeleton-1', 'skeleton-2', 'skeleton-3', 'skeleton-4', 'skeleton-5'].map((id) => (
             <div
-              key={i}
+              key={id}
               className="animate-pulse rounded border border-gray-200 p-4 dark:border-gray-700"
             >
               <div className="h-4 w-32 rounded bg-gray-200 dark:bg-gray-700" />
