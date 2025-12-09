@@ -147,7 +147,9 @@ export class AgentStepStorage extends BaseStorage {
       [stepId]
     );
 
-    if (!stepInfo) return undefined;
+    if (!stepInfo) {
+      return undefined;
+    }
 
     const durationMs = now - (stepInfo.started_at || now);
 
@@ -157,7 +159,9 @@ export class AgentStepStorage extends BaseStorage {
       [stepInfo.event_id]
     );
 
-    if (!event?.agents) return undefined;
+    if (!event?.agents) {
+      return undefined;
+    }
 
     // Parse agents and find the step to update
     let agents: Record<string, unknown>[];
@@ -172,7 +176,9 @@ export class AgentStepStorage extends BaseStorage {
       (a) =>
         a.step_id === stepId || `${stepInfo.event_id}-${a.sequence ?? agents.indexOf(a)}` === stepId
     );
-    if (stepIndex === -1) return undefined;
+    if (stepIndex === -1) {
+      return undefined;
+    }
 
     // Update the step with completion data
     agents[stepIndex] = {

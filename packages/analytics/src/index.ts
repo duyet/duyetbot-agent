@@ -11,6 +11,7 @@ export * from './storage/index.js';
 export type {
   AggregateType,
   AnalyticsAgentStep,
+  AnalyticsConversation,
   AnalyticsMessage,
   MessageCreateInput,
   MessageQueryFilter,
