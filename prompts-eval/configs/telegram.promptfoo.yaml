@@ -1,17 +1,22 @@
 # Telegram Format Tests Configuration
-# Tests HTML and MarkdownV2 format compliance
+# Tests HTML and MarkdownV2 format compliance with real LLMs
 
 description: "Telegram format consistency evaluation"
 
+# Use the actual Telegram system prompt from the codebase
 prompts:
-  - "{{query}}"
+  - file://../prompts/telegram-system-prompt.txt
 
-# Test both HTML and MarkdownV2 providers
+# Test with multiple LLM providers
 providers:
-  - id: file://../providers/prompt-builder-provider.ts:telegramHtml
-    label: telegram-html
-  - id: file://../providers/prompt-builder-provider.ts:telegramMarkdownV2
-    label: telegram-markdownv2
+  # Free models for rapid iteration
+  - id: openrouter:google/gemini-2.0-flash-exp:free
+    label: gemini-flash-free
+  - id: openrouter:deepseek/deepseek-chat-v3-0324:free
+    label: deepseek-free
+  # Fast commercial models
+  - id: openrouter:x-ai/grok-3-mini-beta
+    label: grok-3-mini
 
 # Test cases from dataset
 tests: file://../datasets/telegram-cases.yaml
@@ -21,5 +26,10 @@ outputPath: ../results/telegram-results.json
 
 # Evaluation settings
 evaluateOptions:
-  maxConcurrency: 4
+  maxConcurrency: 3
   showProgressBar: true
+
+# Default test options
+defaultTest:
+  options:
+    timeout: 30000

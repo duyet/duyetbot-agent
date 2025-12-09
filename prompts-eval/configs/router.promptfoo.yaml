@@ -3,13 +3,30 @@
 
 description: "Router classification accuracy evaluation"
 
-# Use the classifier provider for all tests
+# System prompt that instructs the LLM to classify queries
 prompts:
-  - "{{query}}"
+  - |
+    You are a query router. Your task is to classify the user's query into one of these categories:
 
+    1. simple-agent: For simple factual questions, greetings, calculations, jokes
+    2. orchestrator-agent: For complex tasks requiring code, debugging, architecture, GitHub operations
+    3. lead-researcher-agent: For research queries, current events, comparisons, finding information
+    4. duyet-info-agent: For questions about Duyet (the bot's creator)
+
+    Respond with ONLY the agent name (e.g., "simple-agent") and nothing else.
+
+    User query: {{query}}
+
+# Test with multiple LLM providers
 providers:
-  - id: file://../providers/classifier-provider.ts
-    label: pattern-classifier
+  # Free/fast models for rapid iteration
+  - id: openrouter:google/gemini-2.0-flash-exp:free
+    label: gemini-flash-free
+  - id: openrouter:deepseek/deepseek-chat-v3-0324:free
+    label: deepseek-free
+  # Fast commercial models
+  - id: openrouter:x-ai/grok-3-mini-beta
+    label: grok-3-mini
 
 # Test cases from dataset
 tests: file://../datasets/router-cases.yaml
@@ -19,5 +36,10 @@ outputPath: ../results/router-results.json
 
 # Evaluation settings
 evaluateOptions:
-  maxConcurrency: 4
+  maxConcurrency: 3
   showProgressBar: true
+
+# Default test options
+defaultTest:
+  options:
+    timeout: 30000

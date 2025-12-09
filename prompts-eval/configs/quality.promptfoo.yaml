@@ -1,17 +1,37 @@
 # Response Quality Tests Configuration
 # Tests response quality across platforms
 
-description: "Response quality and platform behavior evaluation"
+description: "Response quality evaluation"
 
+# Generic system prompt for quality testing
 prompts:
-  - "{{query}}"
+  - |
+    You are @duyetbot, a helpful AI assistant. Respond to the user's query appropriately.
 
-# Use different providers based on platform variable
+    Platform: {{platform}}
+
+    If platform is "telegram":
+    - Be brief and mobile-optimized
+    - Use markdown formatting
+    - Avoid filler phrases
+
+    If platform is "github":
+    - Be detailed and thorough
+    - Use GitHub-flavored markdown
+    - Include code examples when relevant
+
+    User query: {{query}}
+
+# Test with multiple LLM providers
 providers:
-  - id: file://../providers/prompt-builder-provider.ts:telegramHtml
-    label: telegram
-  - id: file://../providers/prompt-builder-provider.ts:githubMarkdown
-    label: github
+  # Free models for rapid iteration
+  - id: openrouter:google/gemini-2.0-flash-exp:free
+    label: gemini-flash-free
+  - id: openrouter:deepseek/deepseek-chat-v3-0324:free
+    label: deepseek-free
+  # Fast commercial models
+  - id: openrouter:x-ai/grok-3-mini-beta
+    label: grok-3-mini
 
 # Test cases from dataset
 tests: file://../datasets/quality-cases.yaml
@@ -21,10 +41,10 @@ outputPath: ../results/quality-results.json
 
 # Evaluation settings
 evaluateOptions:
-  maxConcurrency: 2
+  maxConcurrency: 3
   showProgressBar: true
 
-# Default test settings for LLM rubric assertions
+# Default test options
 defaultTest:
   options:
-    provider: openai:gpt-4o-mini
+    timeout: 30000
