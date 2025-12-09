@@ -31,7 +31,6 @@ const BASE_GUIDELINES = [
 const TELEGRAM_BASE_GUIDELINES = [
   'Keep responses concise for mobile reading',
   'Break long responses into paragraphs',
-  'Use bullet points (• or -) for lists',
   'Use emojis sparingly for friendly tone',
 ];
 
@@ -45,6 +44,14 @@ const TELEGRAM_BASE_GUIDELINES = [
  * Solution: Use HTML tags ONLY. Never use markdown patterns.
  */
 const TELEGRAM_HTML_FORMAT = `
+<format_reasoning>
+BEFORE generating any response, verify your format choice:
+1. Am I in HTML mode? YES - use ONLY HTML tags
+2. For code: use <code> for inline, <pre> for blocks - NEVER backticks
+3. For emphasis: use <b> for bold, <i> for italic - NEVER asterisks
+4. For lists: use hyphen (-) for bullets, numbers (1. 2. 3.) for numbered - NO indentation or nesting
+</format_reasoning>
+
 <html_format_priority>
 GOAL: Respond using ONLY HTML tags. Never use Markdown syntax.
 
@@ -70,6 +77,40 @@ CORRECT HTML TAGS (use these):
 - <blockquote>quoted text</blockquote> for quotes
 </html_tags_reference>
 
+<list_formatting>
+LIST RULES (critical for mobile readability):
+
+For bullet lists, use hyphen (-):
+- First item
+- Second item
+- Third item
+
+For numbered lists, use plain numbers:
+1. First item
+2. Second item
+3. Third item
+
+CRITICAL: NEVER nest bullets or create sub-items with indentation.
+Telegram mobile renders nested items poorly.
+
+✗ WRONG (nested bullets):
+- Main category
+  - Sub item 1
+  - Sub item 2
+
+✓ CORRECT (flat with inline detail):
+- <b>Main category</b>: Sub item 1, Sub item 2
+- <b>Another category</b>: Detail here
+
+✗ WRONG (indented examples):
+- Imperative
+  - Example: C, Pascal
+
+✓ CORRECT (flat structure):
+- <b>Imperative</b> (C, Pascal): Focuses on how to perform tasks
+- <b>Declarative</b> (Haskell, SQL): Focuses on what to achieve
+</list_formatting>
+
 <forbidden_markdown_patterns>
 FORBIDDEN (these will break formatting):
 ✗ **bold** or **bold text** → use <b>bold text</b> instead
@@ -89,6 +130,9 @@ COMMON MISTAKES TO AVOID:
 ✗ "Here's a \`command\`:" → WRONG: backticks trigger markdown parsing
 ✓ "Here's a <code>command</code>:" → CORRECT: HTML tag
 
+✗ "Reverse a string: \`s[::-1]\`" → WRONG: backticks
+✓ "Reverse a string: <code>s[::-1]</code>" → CORRECT: HTML code tag
+
 ✗ "\`\`\`python
 def hello():
     pass
@@ -106,7 +150,7 @@ Escape these characters in regular text (but NOT inside HTML tags):
 EXAMPLES:
 ✓ "Array<T> &lt;T&gt; means generic" → Correctly escaped angle brackets outside tags
 ✓ "<code>Array&lt;T&gt;</code>" → Inside <code> tag, special chars are also escaped
-✓ "Cost: $5 & benefits" → Use &amp; for standalone ampersand
+✓ "Cost: $5 &amp; benefits" → Use &amp; for standalone ampersand
 </character_escaping>
 
 <mobile_optimization>
@@ -127,6 +171,15 @@ Mobile-specific HTML practices:
  * @see https://core.telegram.org/bots/api#markdownv2-style
  */
 const TELEGRAM_MARKDOWNV2_FORMAT = `
+<format_reasoning>
+BEFORE generating any response, verify your format choice:
+1. Am I in MarkdownV2 mode? YES - use Telegram MarkdownV2 syntax
+2. For code: use \`backticks\` for inline, \`\`\` for blocks - NEVER HTML tags
+3. For emphasis: use *asterisks* for bold, _underscores_ for italic - NEVER HTML
+4. For lists: use hyphen (-) for bullets, numbers (1. 2. 3.) for numbered - NO indentation or nesting
+5. Do NOT manually escape characters - transport layer handles it
+</format_reasoning>
+
 <telegram_markdownv2>
 Format responses using Telegram MarkdownV2 syntax:
 
@@ -141,6 +194,42 @@ Format responses using Telegram MarkdownV2 syntax:
 code block
 \`\`\` for multi-line code with syntax highlighting
 </basic_formatting>
+
+<list_formatting>
+LIST RULES (critical for mobile readability):
+
+For bullet lists, use hyphen (-):
+- First item
+- Second item
+- Third item
+
+For numbered lists, use plain numbers:
+1. First item
+2. Second item
+3. Third item
+
+CRITICAL: NEVER nest bullets or create sub-items with indentation.
+Telegram mobile renders nested items poorly.
+
+✗ WRONG (nested bullets):
+- Main category
+  - Sub item 1
+  - Sub item 2
+
+✓ CORRECT (flat with inline detail):
+- *Main category*: Sub item 1, Sub item 2
+- *Another category*: Detail here
+
+✗ WRONG (indented examples with markdown):
+- **Imperative** – Focuses on *how*
+  - Example: Procedural (C, Pascal)
+  - Code: \`for (i=0; i<n; i++)\`
+
+✓ CORRECT (flat structure):
+- *Imperative* (C, Pascal): Focuses on how to perform tasks via statements
+- *Declarative* (Haskell, SQL): Focuses on what to achieve, not how
+- *Object-Oriented* (Java, Python): Organizes code around objects and classes
+</list_formatting>
 
 <links>
 <critical_rule>
@@ -189,15 +278,21 @@ DO NOT write escaped text like:
 ✗ "\\(1\\.6k★ Python\\)" → WRONG, shows literal backslashes
 </character_escaping>
 
+<forbidden_html_patterns>
+FORBIDDEN (use MarkdownV2 instead):
+✗ <b>bold</b> → use *bold* instead
+✗ <i>italic</i> → use _italic_ instead
+✗ <code>code</code> → use \`code\` instead
+✗ <pre>block</pre> → use \`\`\`block\`\`\` instead
+✗ <a href="url">text</a> → use [text](url) instead
+</forbidden_html_patterns>
+
 <examples>
 
 <blog_posts>
 Blog posts with correctly formatted bold links:
-• *[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)* Nov 2024
-  Custom UDFs in Rust for data transformations
-
-• *[Building AI Agents](https://example.com/post)* 15 Jan 2024
-  How to build production AI agents with Claude
+- *[ClickHouse Rust UDFs](https://blog.duyet.net/2024/11/clickhouse-rust-udf.html)* Nov 2024: Custom UDFs in Rust for data transformations
+- *[Building AI Agents](https://example.com/post)* 15 Jan 2024: How to build production AI agents with Claude
 </blog_posts>
 
 <mixed_formatting>
