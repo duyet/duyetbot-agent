@@ -95,7 +95,8 @@
     "@biomejs/biome": "^2.1.2",
     "@vitest/coverage-v8": "^2.1.8",
     "concurrently": "^9.2.1",
-    "promptfoo": "^0.120.1",
+    "promptfoo": "^0.120.2",
+    "tsx": "^4.21.0",
     "turbo": "^2.0.0",
     "vitest": "catalog:",
     "wrangler": "^4.53.0"
