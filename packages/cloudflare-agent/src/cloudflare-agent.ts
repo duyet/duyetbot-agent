@@ -355,6 +355,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _lastResponse: string | undefined; // Capture response for observability
     private _lastDebugContext: DebugContext | undefined; // Capture debug context for observability
     private _analyticsCollector?: AnalyticsCollector; // Analytics collector for persistent message storage
+    private _lastUserMessageId?: string; // Track last user message ID for assistant response correlation
 
     // ============================================
     // State DO Reporting (Fire-and-Forget)
@@ -1067,7 +1068,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               content: assistantContent,
               platform,
               userId: (this.state.userId ?? 'unknown').toString(),
-              triggerMessageId: '', // Will be filled by caller if available
+              triggerMessageId: this._lastUserMessageId ?? '',
               ...(eventId ? { eventId } : {}),
               inputTokens: response.usage?.inputTokens ?? 0,
               outputTokens: response.usage?.outputTokens ?? 0,
@@ -2210,6 +2211,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               sessionId,
               traceId,
             });
+
+            // Store userMessageId for assistant response correlation
+            this._lastUserMessageId = userMessageId;
 
             // Store messageId in metadata for later correlation
             if (

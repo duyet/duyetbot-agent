@@ -1,16 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { type Env, getDB } from '@/lib/db';
+import { getDBFromContext } from '@/lib/db';
 import { handleRouteError, successResponse } from '../../types';
 
-export async function GET(request: NextRequest, { params }: { params: { messageId: string } }) {
+export async function GET(
+  _request: NextRequest,
+  { params }: { params: Promise<{ messageId: string }> }
+) {
   try {
-    const env = (request as any).cf?.env as Env;
-    if (!env?.DB) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
-
-    const db = getDB(env);
-    const message = await db.messages.getMessageById(params.messageId);
+    const db = await getDBFromContext();
+    const { messageId } = await params;
+    const message = await db.messages.getMessageById(messageId);
 
     if (!message) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
