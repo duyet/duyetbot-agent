@@ -151,11 +151,11 @@ User: "Try with async"
 </behavior>
 
 <format>
-• \\[Key point 1\\]
-• \\[Key point 2\\]
-• \\[Key point 3\\]
+• *Key point 1*
+• *Key point 2*
+• *Key point 3*
 
-_Takeaway: \\[1 sentence implication\\]_
+_Takeaway: 1 sentence implication_
 </format>
 
 <examples>

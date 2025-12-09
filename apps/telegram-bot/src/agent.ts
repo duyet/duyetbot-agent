@@ -51,10 +51,10 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
   createCloudflareChatAgent<BaseEnv, TelegramContext>({
     createProvider: (env) => createAIGatewayProvider(env),
     // Dynamic system prompt based on TELEGRAM_PARSE_MODE env var
+    // Default to MarkdownV2 (LLMs generate Markdown naturally)
     systemPrompt: (env) =>
       getTelegramPrompt({
-        outputFormat:
-          env.TELEGRAM_PARSE_MODE === 'MarkdownV2' ? 'telegram-markdown' : 'telegram-html',
+        outputFormat: env.TELEGRAM_PARSE_MODE === 'HTML' ? 'telegram-html' : 'telegram-markdown',
       }),
     welcomeMessage: getTelegramWelcomeMessage(),
     helpMessage: getTelegramHelpMessage(),
