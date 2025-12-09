@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Providers } from './providers';
 import './globals.css';
 import { Header } from '@/components/layout/header';
@@ -7,11 +7,12 @@ import { Sidebar } from '@/components/layout/sidebar';
 export const metadata: Metadata = {
   title: 'duyetbot Dashboard',
   description: 'AI Agent Dashboard and Monitor',
-  viewport: {
-    width: 'device-width',
-    initialScale: 1,
-    maximumScale: 1,
-  },
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

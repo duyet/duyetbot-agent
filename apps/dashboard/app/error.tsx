@@ -6,16 +6,16 @@ import { Shell } from '@/components/layout/shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 
-export default function Error({
-  error,
+export default function ErrorPage({
+  error: errorData,
   reset,
 }: {
   error: Error & { digest?: string };
   reset: () => void;
 }) {
   useEffect(() => {
-    console.error(error);
-  }, [error]);
+    console.error(errorData);
+  }, [errorData]);
 
   return (
     <Shell>
@@ -28,11 +28,11 @@ export default function Error({
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            {error.message || 'An unexpected error occurred. Please try again.'}
+            {errorData.message || 'An unexpected error occurred. Please try again.'}
           </p>
-          {error.digest && (
+          {errorData.digest && (
             <p className="text-xs font-mono text-muted-foreground break-all">
-              Error ID: {error.digest}
+              Error ID: {errorData.digest}
             </p>
           )}
           <Button onClick={() => reset()} variant="outline">

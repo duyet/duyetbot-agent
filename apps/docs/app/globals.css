@@ -54,6 +54,6 @@
   .animate-fade-slide-in,
   .animate-flow,
   .animate-pulse-subtle {
-    animation: none !important;
+    animation: none;
   }
 }

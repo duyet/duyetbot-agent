@@ -1,18 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { type Env, getDB } from '@/lib/db';
+import { getDBFromContext } from '@/lib/db';
 import { handleRouteError, successResponse } from '../../types';
 
 export async function GET(request: NextRequest) {
   try {
-    const env = (request as any).cf?.env as Env;
-    if (!env?.DB) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
-
+    const db = await getDBFromContext();
     const searchParams = request.nextUrl.searchParams;
     const userId = searchParams.get('userId');
-
-    const db = getDB(env);
 
     // If userId provided, return user-specific stats
     if (userId) {

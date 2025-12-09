@@ -1,20 +1,14 @@
 import type { AggregateType } from '@duyetbot/analytics';
 import { NextRequest, NextResponse } from 'next/server';
-import { type Env, getDB } from '@/lib/db';
+import { getDBFromContext } from '@/lib/db';
 import { getDateRangeParams, handleRouteError, listResponse } from '../../types';
 
 export async function GET(request: NextRequest) {
   try {
-    const env = (request as any).cf?.env as Env;
-    if (!env?.DB) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
-
+    const db = await getDBFromContext();
     const searchParams = request.nextUrl.searchParams;
     const { from, to } = getDateRangeParams(searchParams);
     const type = searchParams.get('type') as AggregateType | null;
-
-    const db = getDB(env);
 
     if (!from || !to) {
       return NextResponse.json({ error: 'from and to date parameters required' }, { status: 400 });

@@ -1,6 +1,7 @@
 /**
  * Database Connection Helper
  * Provides initialized storage classes bound to D1 database
+ * Uses getCloudflareContext() for proper binding access in OpenNext
  */
 
 import {
@@ -10,43 +11,16 @@ import {
   ConversationStorage,
   CostConfigStorage,
 } from '@duyetbot/analytics';
+import { getCloudflareContext } from '@opennextjs/cloudflare';
 
-// D1Database interface for Cloudflare Workers D1
-// This mirrors the Cloudflare Workers D1 database interface
-interface D1PreparedStatement {
-  bind(...values: unknown[]): D1PreparedStatement;
-  first<T = unknown>(colName?: string): Promise<T | null>;
-  run<T = unknown>(): Promise<D1Result<T>>;
-  all<T = unknown>(): Promise<D1Result<T>>;
-  raw<T = unknown[]>(options?: { columnNames?: boolean }): Promise<T[]>;
-}
-
-interface D1Result<T = unknown> {
-  results: T[];
-  success: boolean;
-  meta: {
-    duration: number;
-    changes: number;
-    last_row_id: number;
-    served_by: string;
-  };
-}
-
-interface D1BatchResult {
-  count: number;
-  duration: number;
-}
-
-interface D1Database {
-  prepare(query: string): D1PreparedStatement;
-  batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
-  dump(): Promise<ArrayBuffer>;
-}
-
+// Env interface matching wrangler.toml bindings
 export interface Env {
   DB: D1Database;
 }
 
+/**
+ * Get database instance from explicit env (for API routes)
+ */
 export function getDB(env: Env) {
   return {
     messages: new AnalyticsMessageStorage(env.DB),
@@ -54,6 +28,25 @@ export function getDB(env: Env) {
     aggregates: new AggregateStorage(env.DB),
     conversations: new ConversationStorage(env.DB),
     costs: new CostConfigStorage(env.DB),
+  };
+}
+
+/**
+ * Get database instance using Cloudflare context
+ * Use this in Server Components and API routes
+ * Uses async mode to support both static and dynamic routes
+ */
+export async function getDBFromContext() {
+  const ctx = await getCloudflareContext<{ DB: D1Database }>({ async: true });
+  if (!ctx.env?.DB) {
+    throw new Error('Database binding not available. Ensure D1 is configured in wrangler.toml');
+  }
+  return {
+    messages: new AnalyticsMessageStorage(ctx.env.DB),
+    steps: new AgentStepStorage(ctx.env.DB),
+    aggregates: new AggregateStorage(ctx.env.DB),
+    conversations: new ConversationStorage(ctx.env.DB),
+    costs: new CostConfigStorage(ctx.env.DB),
   };
 }
 

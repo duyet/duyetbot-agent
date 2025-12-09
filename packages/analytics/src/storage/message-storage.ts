@@ -247,10 +247,24 @@ export class AnalyticsMessageStorage extends BaseStorage {
 
   /**
    * Get the most recent messages across all sessions
-   * @param limit Maximum number of messages to return
+   * @param options Either a limit number or an options object with limit and since timestamp
    * @returns Array of recent messages
    */
-  async getRecentMessages(limit: number = 50): Promise<AnalyticsMessage[]> {
+  async getRecentMessages(
+    options: number | { limit?: number; since?: number } = 50
+  ): Promise<AnalyticsMessage[]> {
+    const opts = typeof options === 'number' ? { limit: options } : options;
+    const limit = opts.limit ?? 50;
+    const since = opts.since;
+
+    if (since) {
+      // Return messages created after the given timestamp
+      return this.all<AnalyticsMessage>(
+        'SELECT * FROM analytics_messages WHERE is_archived = 0 AND created_at > ? ORDER BY created_at ASC LIMIT ?',
+        [since, limit]
+      );
+    }
+
     return this.all<AnalyticsMessage>(
       'SELECT * FROM analytics_messages WHERE is_archived = 0 ORDER BY created_at DESC LIMIT ?',
       [limit]
