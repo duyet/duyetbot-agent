@@ -1,4 +1,4 @@
-description: "Telegram format evaluation with production prompts"
+description: "Telegram format evaluation - HTML and MarkdownV2"
 
 prompts:
   - file://../prompts/telegram-prompt.cjs
@@ -11,7 +11,9 @@ providers:
   - id: openrouter:mistralai/ministral-8b-2512
     label: ministral-8b
 
-tests: file://../datasets/telegram-cases.yaml
+tests:
+  - file://../datasets/telegram-cases.yaml
+  - file://../datasets/telegram-markdown-cases.yaml
 outputPath: ../results/telegram-results.json
 
 evaluateOptions:
@@ -21,3 +23,6 @@ evaluateOptions:
 defaultTest:
   options:
     timeout: 60000
+  assert:
+    - type: javascript
+      value: file://../assertions/telegram-format-assertion.cjs

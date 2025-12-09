@@ -23,7 +23,7 @@ module.exports = (output, context) => {
     return {
       pass: true,
       score: 1,
-      reason: `Short response - format validation skipped`
+      reason: `Short response - format validation skipped`,
     };
   }
 
@@ -39,7 +39,7 @@ module.exports = (output, context) => {
 
   // Calculate score: start at 1, subtract for errors and warnings
   let score = 1;
-  score -= errors.length * 0.25;  // Each error costs 0.25
+  score -= errors.length * 0.25; // Each error costs 0.25
   score -= warnings.length * 0.1; // Each warning costs 0.1
   score = Math.max(0, Math.min(1, score));
 
@@ -107,8 +107,10 @@ function validateTelegramHtml(output) {
   // Check for unescaped special characters - be less strict
   const textContent = output.replace(/<[^>]+>/g, '');
   // Only warn if there are multiple unescaped characters
-  const unescapedLt = (textContent.match(/</g) || []).length - (textContent.match(/&lt;/g) || []).length;
-  const unescapedGt = (textContent.match(/>/g) || []).length - (textContent.match(/&gt;/g) || []).length;
+  const unescapedLt =
+    (textContent.match(/</g) || []).length - (textContent.match(/&lt;/g) || []).length;
+  const unescapedGt =
+    (textContent.match(/>/g) || []).length - (textContent.match(/&gt;/g) || []).length;
 
   if (unescapedLt > 1) {
     warnings.push('Multiple unescaped < in text (should be &lt;)');
@@ -145,11 +147,13 @@ function validateTelegramMarkdown(output) {
     warnings.push('Italic markers inside link brackets [_text_](url) - better: _[text](url)_');
   }
   if (/\[__[^\]]+__\]\(/.test(output)) {
-    warnings.push('Underline markers inside link brackets [__text__](url) - better: __[text](url)__');
+    warnings.push(
+      'Underline markers inside link brackets [__text__](url) - better: __[text](url)__'
+    );
   }
 
   // Check for manual escaping - only error if it's excessive (multiple patterns)
-  const escapePatterns = output.match(/\\[._\-\[\]()~`>#+=|{}!]/g) || [];
+  const escapePatterns = output.match(/\\[._\-[\]()~`>#+=|{}!]/g) || [];
   if (escapePatterns.length > 5) {
     errors.push('Contains excessive manual escaping - transport layer handles escaping');
   } else if (escapePatterns.length > 0) {
@@ -171,7 +175,9 @@ function validateTelegramMarkdown(output) {
   const codeBlockCount = (output.match(/```/g) || []).length / 2;
   if (codeBlockCount > 0 && /```\s*\n/.test(output)) {
     if (codeBlockCount > 1) {
-      warnings.push('Some code blocks missing language identifier (recommend ```python, ```typescript, etc.)');
+      warnings.push(
+        'Some code blocks missing language identifier (recommend ```python, ```typescript, etc.)'
+      );
     }
   }
 
