@@ -86,7 +86,7 @@ export async function markdownV2Valid(
   ];
 
   let unpairedIssues = 0;
-  for (const { char, name } of formatChecks) {
+  for (const { char } of formatChecks) {
     // Remove code blocks before checking (they don't count)
     const withoutCode = content.replace(/```[\s\S]*?```/g, '').replace(/`[^`]*`/g, '');
 
