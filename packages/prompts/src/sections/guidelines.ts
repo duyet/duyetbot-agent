@@ -173,7 +173,7 @@ const TELEGRAM_MOBILE_GUIDELINES = [
 const GITHUB_MARKDOWN_GUIDELINES = [
   'Use GitHub-flavored markdown with full feature set',
   'Reference files and line numbers: `file.ts:L42-L50`',
-  'Code blocks with language hints for syntax highlighting',
+  'code blocks with language hints for syntax highlighting',
   'Prefer ASCII diagrams (clean, universal) over Mermaid',
   'Use tables for comparisons and structured data',
   'Use collapsible <details> for verbose content/logs',
@@ -211,11 +211,7 @@ const PLATFORM_GUIDELINES = {
 function getFormatGuidelines(outputFormat: OutputFormat): string[] {
   switch (outputFormat) {
     case 'telegram-html':
-      return [
-        ...TELEGRAM_BASE_GUIDELINES,
-        ...TELEGRAM_MOBILE_GUIDELINES,
-        TELEGRAM_HTML_FORMAT,
-      ];
+      return [...TELEGRAM_BASE_GUIDELINES, ...TELEGRAM_MOBILE_GUIDELINES, TELEGRAM_HTML_FORMAT];
     case 'telegram-markdown':
       return [
         ...TELEGRAM_BASE_GUIDELINES,
