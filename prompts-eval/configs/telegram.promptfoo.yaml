@@ -5,15 +5,14 @@ prompts:
 
 providers:
   - id: openrouter:x-ai/grok-4.1-fast
-    label: grok-4.1-fast
   - id: openrouter:google/gemini-2.5-flash-lite
-    label: gemini-2.5-flash-lite
   - id: openrouter:mistralai/ministral-8b-2512
-    label: ministral-8b
+  - id: openrouter:mistralai/devstral-2512:free
 
 tests:
   - file://../datasets/telegram-cases.yaml
   - file://../datasets/telegram-markdown-cases.yaml
+
 outputPath: ../results/telegram-results.json
 
 evaluateOptions:
