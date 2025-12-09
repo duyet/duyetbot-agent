@@ -211,11 +211,7 @@ const PLATFORM_GUIDELINES = {
 function getFormatGuidelines(outputFormat: OutputFormat): string[] {
   switch (outputFormat) {
     case 'telegram-html':
-      return [
-        ...TELEGRAM_BASE_GUIDELINES,
-        ...TELEGRAM_MOBILE_GUIDELINES,
-        TELEGRAM_HTML_FORMAT,
-      ];
+      return [...TELEGRAM_BASE_GUIDELINES, ...TELEGRAM_MOBILE_GUIDELINES, TELEGRAM_HTML_FORMAT];
     case 'telegram-markdown':
       return [
         ...TELEGRAM_BASE_GUIDELINES,

@@ -107,7 +107,7 @@ app.post(
           webhookCtx,
           env.TELEGRAM_ADMIN,
           requestId,
-          env.TELEGRAM_PARSE_MODE
+          env.TELEGRAM_PARSE_MODE ?? 'MarkdownV2'
         );
         await telegramTransport.send(ctx, 'Sorry, you are not authorized.');
       }
@@ -125,12 +125,13 @@ app.post(
     }
 
     // Create transport context with requestId for trace correlation
+    // Default to MarkdownV2 (LLMs generate Markdown naturally)
     const ctx = createTelegramContext(
       env.TELEGRAM_BOT_TOKEN,
       webhookCtx,
       env.TELEGRAM_ADMIN,
       requestId,
-      env.TELEGRAM_PARSE_MODE
+      env.TELEGRAM_PARSE_MODE ?? 'MarkdownV2'
     );
 
     // Set observability context (user info for event tracking)

@@ -104,7 +104,7 @@ async function sendTelegramMessage(
   token: string,
   chatId: number,
   text: string,
-  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML',
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2',
   replyToMessageId?: number
 ): Promise<number> {
   const chunks = splitMessage(text);
@@ -197,7 +197,7 @@ async function editTelegramMessage(
   chatId: number,
   messageId: number,
   text: string,
-  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML'
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2'
 ): Promise<void> {
   // Truncate if too long for edit
   const truncatedText =
