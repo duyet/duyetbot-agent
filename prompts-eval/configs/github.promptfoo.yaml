@@ -1,35 +1,23 @@
-# GitHub Format Tests Configuration
-# Tests GitHub-flavored markdown compliance with real LLMs
+description: "GitHub format evaluation with production prompts"
 
-description: "GitHub markdown format evaluation"
-
-# Use the actual GitHub system prompt
 prompts:
-  - file://../prompts/github-system-prompt.txt
+  - file://../prompts/github-prompt.cjs
 
-# Test with multiple LLM providers
 providers:
-  # Free models for rapid iteration
-  - id: openrouter:google/gemini-2.0-flash-exp:free
-    label: gemini-flash-free
-  - id: openrouter:deepseek/deepseek-chat-v3-0324:free
-    label: deepseek-free
-  # Fast commercial models
-  - id: openrouter:x-ai/grok-3-mini-beta
-    label: grok-3-mini
+  - id: openrouter:x-ai/grok-4.1-fast
+    label: grok-4.1-fast
+  - id: openrouter:google/gemini-2.5-flash-lite
+    label: gemini-2.5-flash-lite
+  - id: openrouter:mistralai/ministral-8b-2512
+    label: ministral-8b
 
-# Test cases from dataset
 tests: file://../datasets/github-cases.yaml
-
-# Output configuration
 outputPath: ../results/github-results.json
 
-# Evaluation settings
 evaluateOptions:
   maxConcurrency: 3
   showProgressBar: true
 
-# Default test options
 defaultTest:
   options:
-    timeout: 30000
+    timeout: 60000

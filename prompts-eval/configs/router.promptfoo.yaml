@@ -1,45 +1,23 @@
-# Router Classification Tests Configuration
-# Tests that queries are classified to the correct agent
+description: "Router classification evaluation with production prompts"
 
-description: "Router classification accuracy evaluation"
-
-# System prompt that instructs the LLM to classify queries
 prompts:
-  - |
-    You are a query router. Your task is to classify the user's query into one of these categories:
+  - file://../prompts/router-prompt.cjs
 
-    1. simple-agent: For simple factual questions, greetings, calculations, jokes
-    2. orchestrator-agent: For complex tasks requiring code, debugging, architecture, GitHub operations
-    3. lead-researcher-agent: For research queries, current events, comparisons, finding information
-    4. duyet-info-agent: For questions about Duyet (the bot's creator)
-
-    Respond with ONLY the agent name (e.g., "simple-agent") and nothing else.
-
-    User query: {{query}}
-
-# Test with multiple LLM providers
 providers:
-  # Free/fast models for rapid iteration
-  - id: openrouter:google/gemini-2.0-flash-exp:free
-    label: gemini-flash-free
-  - id: openrouter:deepseek/deepseek-chat-v3-0324:free
-    label: deepseek-free
-  # Fast commercial models
-  - id: openrouter:x-ai/grok-3-mini-beta
-    label: grok-3-mini
+  - id: openrouter:x-ai/grok-4.1-fast
+    label: grok-4.1-fast
+  - id: openrouter:google/gemini-2.5-flash-lite
+    label: gemini-2.5-flash-lite
+  - id: openrouter:mistralai/ministral-8b-2512
+    label: ministral-8b
 
-# Test cases from dataset
 tests: file://../datasets/router-cases.yaml
-
-# Output configuration
 outputPath: ../results/router-results.json
 
-# Evaluation settings
 evaluateOptions:
   maxConcurrency: 3
   showProgressBar: true
 
-# Default test options
 defaultTest:
   options:
-    timeout: 30000
+    timeout: 60000

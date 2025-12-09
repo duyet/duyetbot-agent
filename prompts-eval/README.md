@@ -2,6 +2,18 @@
 
 Comprehensive testing for duyetbot-agent prompts using [promptfoo](https://www.promptfoo.dev/).
 
+## Key Design: Production Prompts
+
+**This suite tests the ACTUAL production prompts**, not separate test prompts:
+
+| Evaluation | Production Source |
+|------------|-------------------|
+| Router | `packages/prompts/src/agents/router.ts` → `getRouterPrompt()` |
+| Telegram | `packages/prompts/src/platforms/telegram.ts` → `getTelegramPrompt()` |
+| GitHub | `packages/prompts/src/platforms/github.ts` → `getGitHubBotPrompt()` |
+
+JavaScript prompt helpers in `prompts/` import and use the real prompt functions, ensuring tests validate actual production behavior.
+
 ## Test Coverage
 
 | Category | Tests | Description |
@@ -17,14 +29,10 @@ Comprehensive testing for duyetbot-agent prompts using [promptfoo](https://www.p
 
 ### Prerequisites
 
-Set your API key for LLM providers:
+Set your OpenRouter API key:
 
 ```bash
-# OpenRouter (recommended - access to many models)
 export OPENROUTER_API_KEY=your_key_here
-
-# Or use OpenAI directly
-export OPENAI_API_KEY=your_key_here
 ```
 
 ### Run Tests
@@ -50,13 +58,28 @@ bun run prompt:share           # Upload to promptfoo cloud
 ```
 prompts-eval/
 ├── configs/           # promptfoo YAML configs
-├── prompts/           # System prompt files
 ├── datasets/          # Test case definitions
-├── assertions/        # Custom validation logic (optional)
-├── providers/         # Custom providers (optional)
+├── prompts/           # JS prompt helpers that use REAL prompts
+│   ├── router-prompt.cjs      # Uses getRouterPrompt()
+│   ├── telegram-prompt.cjs    # Uses getTelegramPrompt()
+│   └── github-prompt.cjs      # Uses getGitHubBotPrompt()
+├── assertions/        # Custom validation logic
+│   └── router-assertion.cjs   # Maps JSON response to agent name
 ├── scripts/           # Automation scripts
 └── results/           # JSON + HTML outputs
 ```
+
+## LLM Providers (SOTA Models)
+
+The tests use promptfoo's built-in OpenRouter provider with state-of-the-art fast models:
+
+| Model | ID | Use Case |
+|-------|------|----------|
+| Grok 4.1 Fast | `openrouter:x-ai/grok-4.1-fast` | Primary evaluation model |
+| Gemini 2.5 Flash Lite | `openrouter:google/gemini-2.5-flash-lite` | Fast alternative |
+| Ministral 8B | `openrouter:mistralai/ministral-8b-2512` | Small model comparison |
+
+To change models, edit the `providers` section in config files.
 
 ## Test Categories
 
@@ -84,14 +107,29 @@ Evaluates platform-specific behavior:
 - Telegram: brevity, progressive disclosure
 - GitHub: comprehensive detail, structured sections
 
-## LLM Providers
+## How Prompt Helpers Work
 
-The tests use OpenRouter by default with these models:
-- `google/gemini-2.0-flash-exp:free` - Fast, free
-- `deepseek/deepseek-chat-v3-0324:free` - Free tier
-- `x-ai/grok-3-mini-beta` - Fast commercial
+JavaScript prompt helpers import the **real production prompts** and return message arrays:
 
-To change models, edit the `providers` section in config files.
+```javascript
+// prompts/telegram-prompt.cjs
+module.exports = async function ({ vars }) {
+  const { getTelegramPrompt } = await import('../../packages/prompts/src/platforms/telegram.cjs');
+  const systemPrompt = getTelegramPrompt({ outputFormat: 'telegram-html' });
+  const query = vars.query || '';
+
+  return [
+    { role: 'system', content: systemPrompt },
+    { role: 'user', content: query }
+  ];
+};
+```
+
+This ensures:
+1. Tests validate actual production behavior
+2. Prompt changes in `packages/prompts/` are automatically tested
+3. No duplicate/stale test prompts to maintain
+4. Leverages promptfoo's built-in OpenRouter provider (handles retries, rate limits)
 
 ## Adding Tests
 
@@ -100,7 +138,6 @@ To change models, edit the `providers` section in config files.
 - description: "Your test description"
   vars:
     query: "Test query"
-    platform: "telegram"
   assert:
     - type: contains
       value: "expected text"
@@ -108,12 +145,23 @@ To change models, edit the `providers` section in config files.
       value: "Natural language assertion evaluated by LLM"
 ```
 
-### 2. Available assertion types:
+### 2. For router tests, use custom assertion:
+```yaml
+- description: "Router test"
+  vars:
+    query: "Test query"
+    __expected: "simple-agent"  # Expected agent name
+  assert:
+    - type: javascript
+      value: file://assertions/router-assertion.cjs
+```
+
+### 3. Available assertion types:
 - `contains` - Check if output contains text
 - `not-contains` - Check output doesn't contain text
 - `contains-any` - Check for any of multiple values
 - `llm-rubric` - LLM-evaluated quality assertion
-- `javascript` - Custom JS function
+- `javascript` - Custom JS function (e.g., router-assertion.cjs)
 
 ## Resources
 
