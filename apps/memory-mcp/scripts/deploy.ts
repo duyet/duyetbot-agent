@@ -311,9 +311,7 @@ function parseCommandArgs(input: string): string[] {
   let inQuotes = false;
   let quoteChar = '';
 
-  for (let i = 0; i < input.length; i++) {
-    const char = input[i];
-
+  for (const char of input) {
     if ((char === '"' || char === "'") && !inQuotes) {
       inQuotes = true;
       quoteChar = char;
@@ -486,7 +484,7 @@ function substituteWranglerConfig(databaseId: string): WranglerConfigState {
     if (originalContent.includes(databaseId)) {
       log.success('wrangler.toml already has correct database_id');
     } else {
-      log.warn('No ${D1_DATABASE_ID} placeholder found in wrangler.toml');
+      log.warn('No $' + '{D1_DATABASE_ID} placeholder found in wrangler.toml');
     }
     return { modified: false, originalContent: null };
   }
