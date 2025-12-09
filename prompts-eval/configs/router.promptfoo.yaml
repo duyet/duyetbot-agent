@@ -1,0 +1,23 @@
+# Router Classification Tests Configuration
+# Tests that queries are classified to the correct agent
+
+description: "Router classification accuracy evaluation"
+
+# Use the classifier provider for all tests
+prompts:
+  - "{{query}}"
+
+providers:
+  - id: file://../providers/classifier-provider.ts
+    label: pattern-classifier
+
+# Test cases from dataset
+tests: file://../datasets/router-cases.yaml
+
+# Output configuration
+outputPath: ../results/router-results.json
+
+# Evaluation settings
+evaluateOptions:
+  maxConcurrency: 4
+  showProgressBar: true

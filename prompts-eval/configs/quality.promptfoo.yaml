@@ -1,0 +1,30 @@
+# Response Quality Tests Configuration
+# Tests response quality across platforms
+
+description: "Response quality and platform behavior evaluation"
+
+prompts:
+  - "{{query}}"
+
+# Use different providers based on platform variable
+providers:
+  - id: file://../providers/prompt-builder-provider.ts:telegramHtml
+    label: telegram
+  - id: file://../providers/prompt-builder-provider.ts:githubMarkdown
+    label: github
+
+# Test cases from dataset
+tests: file://../datasets/quality-cases.yaml
+
+# Output configuration
+outputPath: ../results/quality-results.json
+
+# Evaluation settings
+evaluateOptions:
+  maxConcurrency: 2
+  showProgressBar: true
+
+# Default test settings for LLM rubric assertions
+defaultTest:
+  options:
+    provider: openai:gpt-4o-mini

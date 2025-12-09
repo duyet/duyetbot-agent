@@ -1,0 +1,114 @@
+# GitHub Markdown Format Test Cases
+# Tests GitHub-flavored markdown compliance and rich formatting features
+# Coverage: 6 test cases across markdown features, structure, and code review format
+
+description: "GitHub markdown format and rich formatting tests"
+
+tests:
+  # =============================================================================
+  # GITHUB-FLAVORED MARKDOWN FEATURES (2 tests)
+  # =============================================================================
+
+  - name: "GitHub markdown - alerts and code blocks"
+    vars:
+      platform: "github"
+      query: "Review this code and suggest security improvements"
+    assert:
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
+        config:
+          requiredFeatures:
+            - "code-blocks"
+            - "alerts"
+      - type: llm-rubric
+        value: "Response uses GitHub alerts for security concerns and code blocks for examples"
+
+  - name: "GitHub markdown - structured documentation"
+    vars:
+      platform: "github"
+      query: "Explain the project architecture and components"
+    assert:
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
+        config:
+          requiredFeatures:
+            - "code-blocks"
+            - "headings"
+      - type: llm-rubric
+        value: "Architecture explanation uses clear headings and code examples for clarity"
+
+  # =============================================================================
+  # STRUCTURED FORMAT (2 tests)
+  # =============================================================================
+
+  - name: "Structured format - PR summary with sections"
+    vars:
+      platform: "github"
+      query: "Summarize the changes in this pull request with impact assessment"
+    assert:
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateStructuredFormat
+      - type: llm-rubric
+        value: "Summary includes clear sections like Changes, Impact, Testing, and Risk Assessment"
+
+  - name: "Structured format - security analysis"
+    vars:
+      platform: "github"
+      query: "What are the security implications of this code change?"
+    assert:
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
+        config:
+          requiredFeatures:
+            - "alerts"
+            - "code-blocks"
+      - type: llm-rubric
+        value: "Security analysis uses GitHub alerts to highlight risks and concerns"
+
+  # =============================================================================
+  # CODE REVIEW FORMAT (1 test)
+  # =============================================================================
+
+  - name: "Code review format - issue identification and suggestions"
+    vars:
+      platform: "github"
+      query: "Review this function implementation and identify issues and improvements"
+    assert:
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
+        config:
+          requiredFeatures:
+            - "code-blocks"
+            - "inline-code"
+      - type: llm-rubric
+        value: "Code review provides specific examples with before/after code snippets and clear suggestions"
+
+  # =============================================================================
+  # FILE REFERENCES (1 test)
+  # =============================================================================
+
+  - name: "File references - architecture guidance with file paths"
+    vars:
+      platform: "github"
+      query: "Where should I add this new feature in the codebase? Show file paths."
+    assert:
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateGitHubMarkdown
+      - type: javascript
+        value: file://../assertions/github-markdown.ts:validateMarkdownFeatures
+        config:
+          requiredFeatures:
+            - "file-refs"
+            - "inline-code"
+      - type: llm-rubric
+        value: "Response includes specific file paths using inline code backticks for navigation"
