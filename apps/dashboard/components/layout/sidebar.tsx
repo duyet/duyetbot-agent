@@ -9,7 +9,6 @@ import {
   LayoutDashboard,
   MessageSquare,
   Radio,
-  Settings,
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -65,12 +64,6 @@ const navItems = [
     icon: Radio,
     description: 'Live monitor',
     hasLiveIndicator: true,
-  },
-  {
-    label: 'Settings',
-    href: '/settings',
-    icon: Settings,
-    description: 'Configuration',
   },
 ];
 
