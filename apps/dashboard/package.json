@@ -2,8 +2,10 @@
   "name": "@duyetbot/dashboard",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "next dev --port 3001",
+    "dev:remote": "opennextjs-cloudflare build && opennextjs-cloudflare preview --remote --port 3001",
     "build": "next build",
     "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",

@@ -63,7 +63,14 @@
     "config:shared-agents": "bun scripts/config.ts agents",
     "config:memory-mcp": "bun scripts/config.ts memory",
     "config:safety-kernel": "bun scripts/config.ts safety-kernel",
-    "config:show": "bun scripts/config.ts show"
+    "config:show": "bun scripts/config.ts show",
+    "d1:list": "wrangler d1 list",
+    "d1:query": "wrangler d1 execute duyetbot --remote --command",
+    "d1:query:memory": "wrangler d1 execute duyetbot-memory --remote --command",
+    "d1:shell": "wrangler d1 execute duyetbot --remote",
+    "d1:shell:memory": "wrangler d1 execute duyetbot-memory --remote",
+    "d1:tables": "wrangler d1 execute duyetbot --remote --command \"SELECT name FROM sqlite_master WHERE type='table'\"",
+    "d1:tables:memory": "wrangler d1 execute duyetbot-memory --remote --command \"SELECT name FROM sqlite_master WHERE type='table'\""
   },
   "keywords": [
     "agent",

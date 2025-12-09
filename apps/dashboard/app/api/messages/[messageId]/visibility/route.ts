@@ -1,26 +1,25 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { type Env, getDB } from '@/lib/db';
+import { getDBFromContext } from '@/lib/db';
 import { handleRouteError, successResponse } from '../../../types';
 
-export async function PATCH(request: NextRequest, { params }: { params: { messageId: string } }) {
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ messageId: string }> }
+) {
   try {
-    const env = (request as any).cf?.env as Env;
-    if (!env?.DB) {
-      return NextResponse.json({ error: 'Database not configured' }, { status: 500 });
-    }
-
-    const body = await request.json();
+    const db = await getDBFromContext();
+    const { messageId } = await params;
+    const body = (await request.json()) as { visibility: string };
     const { visibility } = body;
 
     if (!['private', 'public', 'unlisted'].includes(visibility)) {
       return NextResponse.json({ error: 'Invalid visibility value' }, { status: 400 });
     }
 
-    const db = getDB(env);
-    await db.messages.setVisibility(params.messageId, visibility);
+    await db.messages.setVisibility(messageId, visibility as 'private' | 'public' | 'unlisted');
 
     // Fetch updated message
-    const updated = await db.messages.getMessageById(params.messageId);
+    const updated = await db.messages.getMessageById(messageId);
 
     if (!updated) {
       return NextResponse.json({ error: 'Message not found' }, { status: 404 });
