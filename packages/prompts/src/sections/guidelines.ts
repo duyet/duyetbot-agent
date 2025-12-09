@@ -37,23 +37,86 @@ const TELEGRAM_BASE_GUIDELINES = [
 
 /**
  * Telegram HTML formatting reference for LLM responses
+ *
+ * CRITICAL: This mode requires PURE HTML. NO markdown allowed under any circumstances.
+ * Models trained on markdown (Claude, Ministral) must force HTML output.
+ *
+ * Primary issue: Models default to markdown when they see backticks or asterisks.
+ * Solution: Use HTML tags ONLY. Never use markdown patterns.
  */
 const TELEGRAM_HTML_FORMAT = `
-Format responses using Telegram HTML tags:
+<html_format_priority>
+GOAL: Respond using ONLY HTML tags. Never use Markdown syntax.
+
+CONSTRAINT: HTML mode means PURE HTML. This is not a suggestion - it is MANDATORY.
+Markdown syntax (**, **, \`\`\`, __, ~~) will BREAK the format and fail validation.
+
+DELIVERABLE: Every response must pass these checks:
+- Zero markdown asterisks (**bold** or *italic*) → use <b></b> and <i></i>
+- Zero markdown backticks (\`inline\` or \`\`\`) → use <code></code> and <pre></pre>
+- Zero markdown underscores (__text__) → use <u></u>
+- All special HTML characters properly escaped (&lt;, &gt;, &amp;)
+</html_format_priority>
+
+<html_tags_reference>
+CORRECT HTML TAGS (use these):
 - <b>bold</b> for emphasis
 - <i>italic</i> for titles or terms
+- <u>underlined</u> for underlined text
 - <code>inline code</code> for commands, variables, or short code
-- <pre>code block</pre> for multi-line code
-- <pre><code class="language-python">code</code></pre> for syntax-highlighted code blocks
-- <a href="URL">link text</a> for hyperlinks
+- <pre>multi-line code block</pre> for code
+- <pre><code class="language-python">def hello(): pass</code></pre> for syntax-highlighted code blocks
+- <a href="https://example.com">link text</a> for hyperlinks
 - <blockquote>quoted text</blockquote> for quotes
+</html_tags_reference>
 
-CRITICAL: Escape these characters in regular text (not inside tags):
+<forbidden_markdown_patterns>
+FORBIDDEN (these will break formatting):
+✗ **bold** or **bold text** → use <b>bold text</b> instead
+✗ *italic* or *italic text* → use <i>italic text</i> instead
+✗ __underline__ or __text__ → use <u>text</u> instead
+✗ ~~strikethrough~~ → use <s>strikethrough</s> instead
+✗ \`inline code\` → use <code>inline code</code> instead
+✗ \`\`\`python
+    code block
+\`\`\` → use <pre><code class="language-python">code block</code></pre> instead
+✗ [link](url) → use <a href="url">link</a> instead
+
+COMMON MISTAKES TO AVOID:
+✗ "Use **bold** for emphasis" → WRONG: contains markdown
+✓ "Use <b>bold</b> for emphasis" → CORRECT: HTML only
+
+✗ "Here's a \`command\`:" → WRONG: backticks trigger markdown parsing
+✓ "Here's a <code>command</code>:" → CORRECT: HTML tag
+
+✗ "\`\`\`python
+def hello():
+    pass
+\`\`\`" → WRONG: markdown code fence
+✓ "<pre><code class="language-python">def hello():
+    pass</code></pre>" → CORRECT: HTML pre/code tags
+</forbidden_markdown_patterns>
+
+<character_escaping>
+Escape these characters in regular text (but NOT inside HTML tags):
 - < becomes &lt;
 - > becomes &gt;
 - & becomes &amp;
 
-Do NOT use Markdown syntax (*bold*, _italic_, \`code\`) - use HTML tags only.`;
+EXAMPLES:
+✓ "Array<T> &lt;T&gt; means generic" → Correctly escaped angle brackets outside tags
+✓ "<code>Array&lt;T&gt;</code>" → Inside <code> tag, special chars are also escaped
+✓ "Cost: $5 & benefits" → Use &amp; for standalone ampersand
+</character_escaping>
+
+<mobile_optimization>
+Mobile-specific HTML practices:
+- Prefer <code>single line commands</code> for short snippets
+- Use <pre> for multi-line code (3+ lines)
+- Keep <b> and <i> usage minimal - one emphasis per paragraph
+- Use line breaks naturally, don't fill lines beyond 60 chars when possible
+</mobile_optimization>
+`;
 
 /**
  * Telegram MarkdownV2 formatting reference for LLM responses
