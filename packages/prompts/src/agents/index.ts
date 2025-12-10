@@ -5,6 +5,7 @@
  */
 
 export { getDuyetInfoPrompt } from './duyet-info.js';
+export { type GitHubMCPPromptConfig, getGitHubMCPPrompt } from './github-mcp.js';
 export { getConfirmationPrompt, getHITLAgentPrompt } from './hitl.js';
 export { getMemoryAgentPrompt } from './memory.js';
 export {

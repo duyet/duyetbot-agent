@@ -24,11 +24,13 @@
 // Agent Prompts
 export {
   GITHUB_TOOLS,
+  type GitHubMCPPromptConfig,
   getAggregationPrompt,
   // Workers
   getCodeWorkerPrompt,
   getConfirmationPrompt,
   getDuyetInfoPrompt,
+  getGitHubMCPPrompt,
   getGitHubWorkerPrompt,
   getHITLAgentPrompt,
   getMemoryAgentPrompt,

@@ -13,6 +13,7 @@ const CONFIGS = [
   { name: 'Router Classification', file: 'router.promptfoo.yaml' },
   { name: 'Telegram Format', file: 'telegram.promptfoo.yaml' },
   { name: 'GitHub Format', file: 'github.promptfoo.yaml' },
+  { name: 'GitHub MCP Quality', file: 'github-mcp.promptfoo.yaml' },
   { name: 'Response Quality', file: 'quality.promptfoo.yaml' },
 ];
 

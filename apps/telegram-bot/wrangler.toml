@@ -76,6 +76,11 @@ name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
 script_name = "duyetbot-shared-agents"
 
+[[durable_objects.bindings]]
+name = "GitHubMCPAgent"
+class_name = "GitHubMCPAgent"
+script_name = "duyetbot-shared-agents"
+
 # State Management DO for observability and watchdog recovery
 [[durable_objects.bindings]]
 name = "StateDO"

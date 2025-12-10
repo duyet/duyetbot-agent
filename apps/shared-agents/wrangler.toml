@@ -54,6 +54,10 @@ class_name = "GitHubWorker"
 name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
 
+[[durable_objects.bindings]]
+name = "GitHubMCPAgent"
+class_name = "GitHubMCPAgent"
+
 # State Management DO for observability and watchdog recovery
 [[durable_objects.bindings]]
 name = "StateDO"
@@ -78,6 +82,11 @@ new_sqlite_classes = ["StateDO"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["SchedulerObject"]
+
+# Migration for GitHubMCPAgent (new in v4)
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["GitHubMCPAgent"]
 
 # D1 Database for observability events
 # Schema owner: shared-agents (migrations in ./migrations/)

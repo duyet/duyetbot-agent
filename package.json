@@ -75,6 +75,7 @@
     "prompt:eval:router": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/router.promptfoo.yaml",
     "prompt:eval:telegram": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/telegram.promptfoo.yaml",
     "prompt:eval:github": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/github.promptfoo.yaml",
+    "prompt:eval:github-mcp": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/github-mcp.promptfoo.yaml",
     "prompt:eval:quality": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/quality.promptfoo.yaml",
     "prompt:view": "cd prompts-eval && bun --env-file=../.env.local promptfoo view",
     "prompt:share": "cd prompts-eval && bun --env-file=../.env.local promptfoo share",

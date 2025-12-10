@@ -1,0 +1,120 @@
+# GitHub MCP Agent Response Quality Test Cases
+# Tests that the agent produces high-quality responses for GitHub operations
+
+# =============================================================================
+# PR OPERATIONS (4 tests)
+# =============================================================================
+
+- description: "PR summary includes key info"
+  vars:
+    query: "Summarize the latest open PR"
+  assert:
+    - type: llm-rubric
+      value: "Response should mention PR title, author, and current status. Includes actionable information about reviews or CI status if mentioned."
+
+- description: "PR list is formatted properly"
+  vars:
+    query: "List my open pull requests"
+  assert:
+    - type: llm-rubric
+      value: "Response should be formatted as a list with PR numbers (e.g., #123) and titles. Uses GitHub markdown formatting with proper structure."
+
+- description: "PR review is constructive"
+  vars:
+    query: "Review PR #42 for code quality"
+  assert:
+    - type: llm-rubric
+      value: "Response should provide constructive feedback with specific suggestions. Mentions positive aspects along with areas for improvement. References specific line numbers or code sections."
+
+- description: "PR merge guidance is clear"
+  vars:
+    query: "Can I merge PR #123?"
+  assert:
+    - type: llm-rubric
+      value: "Response should mention CI status, required reviews, and any blocking issues. Provides clear yes/no guidance with reasoning."
+
+# =============================================================================
+# ISSUE OPERATIONS (3 tests)
+# =============================================================================
+
+- description: "Issue list is organized"
+  vars:
+    query: "What issues are assigned to me?"
+  assert:
+    - type: llm-rubric
+      value: "Response should list issues with numbers (e.g., #456), titles, and labels. Organized in a way that's easy to scan. May include priority or status information."
+
+- description: "Issue triage is actionable"
+  vars:
+    query: "Help me triage this new bug report"
+  assert:
+    - type: llm-rubric
+      value: "Response should suggest labels, priority level, and next steps. Provides clear triage recommendations with reasoning based on severity."
+
+- description: "Issue creation guidance is complete"
+  vars:
+    query: "Create an issue for fixing the login bug"
+  assert:
+    - type: llm-rubric
+      value: "Response should include suggested title, description template, and relevant labels. Provides clear guidance on issue creation."
+
+# =============================================================================
+# CI/CD & WORKFLOWS (3 tests)
+# =============================================================================
+
+- description: "CI status is clear"
+  vars:
+    query: "What's the CI status for the main branch?"
+  assert:
+    - type: llm-rubric
+      value: "Response should clearly indicate pass/fail status with specific details about any failures. References failing steps or jobs."
+
+- description: "Security alerts are prioritized"
+  vars:
+    query: "Any security vulnerabilities in my repos?"
+  assert:
+    - type: llm-rubric
+      value: "Response should list security alerts by severity (critical, high, medium, low) and suggest remediation steps. Uses GitHub alert syntax (> [!WARNING]) if appropriate."
+
+- description: "Workflow logs are summarized"
+  vars:
+    query: "Why did the last workflow fail?"
+  assert:
+    - type: llm-rubric
+      value: "Response should identify the failing step and provide the root cause. Includes relevant log excerpts or error messages. Suggests debugging steps."
+
+# =============================================================================
+# GITHUB MCP INTEGRATION (2 tests)
+# =============================================================================
+
+- description: "MCP usage is transparent"
+  vars:
+    query: "What files changed in PR #99?"
+  assert:
+    - type: llm-rubric
+      value: "Response should provide detailed file change information. If using MCP tools, the data presented is accurate and well-formatted."
+
+- description: "Error handling is graceful"
+  vars:
+    query: "Show me the details for a private repository I don't have access to"
+  assert:
+    - type: llm-rubric
+      value: "Response should handle permission errors gracefully. Explains what permissions are needed instead of just stating 'access denied'. Provides helpful next steps."
+
+# =============================================================================
+# COMPLEX SCENARIOS (2 tests)
+# =============================================================================
+
+- description: "Complex PR analysis"
+  vars:
+    query: "Analyze the code changes in PR #250 and suggest improvements"
+  assert:
+    - type: llm-rubric
+      value: "Response should provide detailed analysis of changes. Identifies patterns, potential issues, and best practice improvements. Uses code examples if relevant."
+
+- description: "Workflow troubleshooting"
+  vars:
+    query: "The deployment workflow keeps timing out. What could be wrong?"
+  assert:
+    - type: llm-rubric
+      value: "Response should suggest multiple potential causes of timeout issues. Provides concrete debugging steps and references specific workflow configuration areas."

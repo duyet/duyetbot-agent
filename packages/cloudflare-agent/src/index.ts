@@ -143,7 +143,7 @@ export type {
 // NEW: Routing & Orchestration Architecture
 // =============================================================================
 
-// Agents (Router, Simple, HITL, Orchestrator, DuyetInfo)
+// Agents (Router, Simple, HITL, Orchestrator, DuyetInfo, GitHubMCP)
 export {
   type AgentContext,
   AgentMixin,
@@ -153,6 +153,7 @@ export {
   type CommonPlatformConfig,
   createBaseState,
   createDuyetInfoAgent,
+  createGitHubMCPAgent,
   createHITLAgent,
   createOrchestratorAgent,
   createRouterAgent,
@@ -165,8 +166,15 @@ export {
   type DuyetInfoAgentState,
   duyetToolFilter,
   type GenericPlatformConfig,
+  type GitHubMCPAgentClass,
+  type GitHubMCPAgentConfig,
+  type GitHubMCPAgentEnv,
+  type GitHubMCPAgentInstance,
+  type GitHubMCPAgentMethods,
+  type GitHubMCPAgentState,
   type GitHubPlatformConfig,
   getTypedAgent,
+  githubToolFilter,
   type HITLAgentClass,
   type HITLAgentConfig,
   type HITLAgentEnv,
