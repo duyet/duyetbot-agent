@@ -7,6 +7,7 @@
 
 import type { ParsedInput } from '@duyetbot/cloudflare-agent';
 import { getChatAgent } from '@duyetbot/cloudflare-agent';
+import { createGlobalContext, telegramToWebhookInput } from '@duyetbot/cloudflare-agent/context';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -124,7 +125,34 @@ app.post(
       return c.text('OK');
     }
 
-    // Create transport context with requestId for trace correlation
+    // Create GlobalContext at webhook entry point (ONLY place it's created)
+    const webhookInput = telegramToWebhookInput(
+      { update_id: 0 } as any, // Not used by adapter
+      {
+        TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN,
+        TELEGRAM_ADMIN: env.TELEGRAM_ADMIN,
+        TELEGRAM_PARSE_MODE: env.TELEGRAM_PARSE_MODE,
+      },
+      {
+        userId: webhookCtx.userId,
+        chatId: webhookCtx.chatId,
+        text: webhookCtx.task ?? webhookCtx.text,
+        username: webhookCtx.username,
+        messageId: webhookCtx.messageId,
+        replyToMessageId: webhookCtx.replyToMessageId,
+        quotedText: webhookCtx.quotedText,
+        quotedUsername: webhookCtx.quotedUsername,
+      }
+    );
+
+    // Set observability event ID for correlation
+    webhookInput.eventId = eventId;
+    webhookInput.requestId = requestId;
+
+    // Create GlobalContext - single context for entire request lifecycle
+    const globalContext = createGlobalContext(webhookInput);
+
+    // Create transport context with GlobalContext for backward compatibility
     // Default to MarkdownV2 (LLMs generate Markdown naturally)
     const ctx = createTelegramContext(
       env.TELEGRAM_BOT_TOKEN,
@@ -166,7 +194,7 @@ app.post(
     logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
       requestId,
       agentId,
-      ctx,
+      traceId: globalContext.traceId,
     });
 
     // Fire-and-forget: dispatch to ChatAgent without waiting for response
@@ -175,8 +203,8 @@ app.post(
     try {
       const agent = getChatAgent(env.TelegramAgent, agentId);
 
-      // Create ParsedInput for agent
-      // Use extracted task text if bot was mentioned (removes @mention prefix)
+      // Create ParsedInput for agent (backward compatibility)
+      // The agent will accept both ParsedInput (legacy) and GlobalContext (new)
       const messageText = webhookCtx.task ?? ctx.text;
 
       const parsedInput: ParsedInput = {
@@ -190,6 +218,7 @@ app.post(
           platform: 'telegram',
           requestId,
           eventId, // Full UUID for D1 observability correlation
+          traceId: globalContext.traceId,
           startTime: ctx.startTime,
           adminUsername: ctx.adminUsername,
           parseMode: ctx.parseMode,
