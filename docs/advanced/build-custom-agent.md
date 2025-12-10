@@ -14,7 +14,7 @@ Create "WeatherAgent". Runs in 5 mins.
 
 ## 🛠️ Step 1: Create Agent
 
-In [`packages/chat-agent/src/agents/`](packages/chat-agent/src/agents/):
+In [`packages/cloudflare-agent/src/agents/`](packages/cloudflare-agent/src/agents/):
 
 ```typescript
 // weather-agent.ts
@@ -107,7 +107,7 @@ A: `shared-agents/wrangler.toml` ✅
 
 ### Extend Base
 
-From [`base-agent.ts`](packages/chat-agent/src/agents/base-agent.ts:7):
+From [`base-agent.ts`](packages/cloudflare-agent/src/agents/base-agent.ts:7):
 
 ```typescript
 import { Agent } from 'agents';
@@ -134,11 +134,11 @@ agentRegistry.register({
 });
 ```
 
-Import `agents/my-agent.ts` in [`agents/index.ts`](packages/chat-agent/src/agents/index.ts).
+Import `agents/my-agent.ts` in [`agents/index.ts`](packages/cloudflare-agent/src/agents/index.ts).
 
 ### Router Auto-Uses
 
-Registry builds classification prompt dynamically [`registry.ts`](packages/chat-agent/src/agents/registry.ts:229).
+Registry builds classification prompt dynamically [`registry.ts`](packages/cloudflare-agent/src/agents/registry.ts:229).
 
 **Quiz**: Registration where?
 A: agentRegistry.register() ✅

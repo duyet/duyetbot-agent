@@ -72,7 +72,7 @@ bun run deploy:shared-agents  # Shared DOs
 
 ```
 packages/
-├── chat-agent     # Multi-agent routing system (2400+ LOC, 277 tests)
+├── cloudflare-agent # Multi-agent routing system (2400+ LOC, 277 tests)
 ├── core           # SDK adapter for agent-server
 ├── tools          # Built-in tools (bash, git, github)
 ├── providers      # LLM providers (Claude, OpenRouter)

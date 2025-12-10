@@ -52,13 +52,13 @@ description: Decomposes complex tasks into parallel worker steps. Plans, execute
 | 1 | Deps L0 | CodeWorker | Review code after research |
 | 2 | Deps L1 | GitHubWorker | Comment on PR |
 
-**Planner** -> [`orchestration/planner.ts`](packages/chat-agent/src/orchestration/planner.ts:99)
+**Planner** -> [`orchestration/planner.ts`](packages/cloudflare-agent/src/orchestration/planner.ts:99)
 
 **Executor** -> Levels via topological sort.
 
 ## Code Snippet
 
-[`packages/chat-agent/src/orchestration/executor.ts`](packages/chat-agent/src/orchestration/executor.ts:70)
+[`packages/cloudflare-agent/src/orchestration/executor.ts`](packages/cloudflare-agent/src/orchestration/executor.ts:70)
 ```typescript
 const stepGroups = groupStepsByLevel(plan.steps);
 for (const group of stepGroups) {

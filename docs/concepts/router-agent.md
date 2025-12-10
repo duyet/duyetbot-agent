@@ -58,7 +58,7 @@ RouterAgent uses two-phase classification:
 
 ## Code Snippet
 
-[`packages/chat-agent/src/routing/classifier.ts`](packages/chat-agent/src/routing/classifier.ts:143)
+[`packages/cloudflare-agent/src/routing/classifier.ts`](packages/cloudflare-agent/src/routing/classifier.ts:143)
 ```typescript
 export function determineRouteTarget(classification: QueryClassification): RouteTarget {
   if (classification.type === 'tool_confirmation') return 'hitl-agent';

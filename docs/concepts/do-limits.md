@@ -34,10 +34,10 @@ Alarms trigger `onBatchAlarm()`. Collects pending messages.
 
 Tune window for efficiency.
 
-From [`packages/chat-agent/src/batch-types.ts`](packages/chat-agent/src/batch-types.ts:102):
+From [`packages/cloudflare-agent/src/batch-types.ts`](packages/cloudflare-agent/src/batch-types.ts:102):
 
 ```typescript
-// packages/chat-agent/src/batch-types.ts
+// packages/cloudflare-agent/src/batch-types.ts
 const DEFAULT_BATCH_CONFIG = {
   windowMs: 500,    // Fast collection
   maxWindowMs: 5000, // Max wait
