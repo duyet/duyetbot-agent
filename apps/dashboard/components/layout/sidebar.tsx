@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   MessageSquare,
   Radio,
+  Server,
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
@@ -45,6 +46,12 @@ const navItems = [
     href: '/events',
     icon: Zap,
     description: 'Event timeline',
+  },
+  {
+    label: 'MCP Servers',
+    href: '/mcp',
+    icon: Server,
+    description: 'Server status',
   },
   {
     label: 'Tokens',

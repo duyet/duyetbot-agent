@@ -17,6 +17,7 @@ declare global {
    */
   interface CloudflareEnv {
     DB: D1Database;
+    GITHUB_TOKEN?: string;
   }
 }
 
