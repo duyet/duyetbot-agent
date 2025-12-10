@@ -19,7 +19,7 @@ description: State machine for tool confirmations. Approve/reject high-risk ops 
 
 Auto-classify tools: low/medium/high. High-risk (bash/delete) -> confirm.
 
-From [`confirmation.ts`](packages/chat-agent/src/hitl/confirmation.ts:163)
+From [`confirmation.ts`](packages/cloudflare-agent/src/hitl/confirmation.ts:163)
 
 ```typescript
 export function determineRiskLevel(toolName: string, args?: Record<string, unknown>): RiskLevel {
@@ -69,7 +69,7 @@ START
   +---END---------+---------------------+
 ```
 
-From [`state-machine.ts`](packages/chat-agent/src/hitl/state-machine.ts:38)
+From [`state-machine.ts`](packages/cloudflare-agent/src/hitl/state-machine.ts:38)
 
 ```typescript
 export type HITLStatus = 'idle' | 'awaiting_confirmation' | 'executing' | 'completed' | 'error';
@@ -85,7 +85,7 @@ Parse user reply:
 parseConfirmationResponse("yes") // { action: 'approve' }
 ```
 
-Format request [`confirmation.ts`](packages/chat-agent/src/hitl/confirmation.ts:254)
+Format request [`confirmation.ts`](packages/cloudflare-agent/src/hitl/confirmation.ts:254)
 
 ```
 🔴 **Confirmation Required**
@@ -97,7 +97,7 @@ Reply **yes** or **no**.
 
 ## Code Snippets
 
-HITL Agent integration [`hitl-agent.ts`](packages/chat-agent/src/agents/hitl-agent.ts:211)
+HITL Agent integration [`hitl-agent.ts`](packages/cloudflare-agent/src/agents/hitl-agent.ts:211)
 
 ```typescript
 if (requiresConfirmation(toolName)) {
@@ -105,7 +105,7 @@ if (requiresConfirmation(toolName)) {
 }
 ```
 
-Execute approved [`executions.ts`](packages/chat-agent/src/hitl/executions.ts:125)
+Execute approved [`executions.ts`](packages/cloudflare-agent/src/hitl/executions.ts:125)
 
 ```typescript
 const result = await executeApprovedTools(approved, executor);

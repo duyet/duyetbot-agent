@@ -16,7 +16,7 @@ description: Optimize window, trim history, cap maxMsgs. Reduce LLM calls 55%.
 
 ## Config Table
 
-Tune [`batch-types.ts`](packages/chat-agent/src/batch-types.ts:76) defaults.
+Tune [`batch-types.ts`](packages/cloudflare-agent/src/batch-types.ts:76) defaults.
 
 | Config       | Default | Fast UX | Max Savings | Impact |
 |--------------|---------|---------|-------------|--------|
@@ -28,10 +28,10 @@ Test impacts: `bun test --filter batch`.
 
 ## Trim History
 
-Keep recent messages. Use [`history.ts`](packages/chat-agent/src/history.ts:10).
+Keep recent messages. Use [`history.ts`](packages/cloudflare-agent/src/history.ts:10).
 
 ```typescript
-// packages/chat-agent/src/history.ts
+// packages/cloudflare-agent/src/history.ts
 export function trimHistory(messages: Message[], maxLength: number): Message[] {
   if (messages.length <= maxLength) {
     return messages;
@@ -50,7 +50,7 @@ Long window: More savings, higher latency.
 
 Imperative: Start with 500ms. Measure batch sizes in logs.
 
-From [`batch-types.ts`](packages/chat-agent/src/batch-types.ts:165):
+From [`batch-types.ts`](packages/cloudflare-agent/src/batch-types.ts:165):
 
 ```typescript
 // Check if ready to process

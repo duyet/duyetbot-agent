@@ -65,7 +65,7 @@ New msg checks `now - lastHeartbeat > 30s` -> Clear stuck active -> Promote pend
 
 ## Code Snippets
 
-State from [`cloudflare-agent.ts`](packages/chat-agent/src/cloudflare-agent.ts:56)
+State from [`cloudflare-agent.ts`](packages/cloudflare-agent/src/cloudflare-agent.ts:56)
 
 ```typescript
 interface CloudflareAgentState {
@@ -75,7 +75,7 @@ interface CloudflareAgentState {
 }
 ```
 
-Batch types [`batch-types.ts`](packages/chat-agent/src/batch-types.ts:17)
+Batch types [`batch-types.ts`](packages/cloudflare-agent/src/batch-types.ts:17)
 
 ```typescript
 type BatchStatus = 'idle' | 'collecting' | 'processing' | 'completed' | 'failed';

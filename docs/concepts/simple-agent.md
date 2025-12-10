@@ -67,7 +67,7 @@ Router sends here for:
 
 ## Code Snippet
 
-[`packages/chat-agent/src/agents/simple-agent.ts`](packages/chat-agent/src/agents/simple-agent.ts:190)
+[`packages/cloudflare-agent/src/agents/simple-agent.ts`](packages/cloudflare-agent/src/agents/simple-agent.ts:190)
 ```typescript
 async execute(query: string, context: AgentContext): Promise<AgentResult> {
   const provider = config.createProvider(env, context);
