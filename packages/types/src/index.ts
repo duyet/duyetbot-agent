@@ -14,5 +14,7 @@ export * from './message.js';
 export * from './provider.js';
 // Session types
 export * from './session.js';
+// Telegram types (inline keyboards, callbacks)
+export * from './telegram.js';
 // Tool types
 export * from './tool.js';

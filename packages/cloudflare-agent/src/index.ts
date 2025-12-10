@@ -202,6 +202,19 @@ export {
   type SimpleAgentState,
   type TelegramPlatformConfig,
 } from './agents/index.js';
+// Callbacks (Telegram Inline Keyboard Support)
+export {
+  type CallbackAction,
+  type CallbackContext,
+  type CallbackHandler,
+  type CallbackResult,
+  callbackHandlers,
+  getCallbackDataSize,
+  isValidAction,
+  type ParsedCallback,
+  parseCallbackData,
+  serializeCallbackData,
+} from './callbacks/index.js';
 // Context Module (Unified Pipeline Context)
 export {
   // Types
@@ -266,9 +279,14 @@ export {
   type BatchExecutionResult,
   type ConfirmableTool,
   type ConfirmationParseResult,
+  type ConfirmationWithKeyboard,
   canTransitionTo,
+  createConfirmationKeyboard,
+  createFeedbackKeyboard,
   createInitialHITLState,
   createMockExecutor,
+  createMultiConfirmationKeyboard,
+  createQuickActionsKeyboard,
   createRegistryExecutor,
   createToolConfirmation,
   DEFAULT_CONFIRMATION_EXPIRY_MS,
@@ -281,8 +299,10 @@ export {
   executeToolsParallel,
   filterExpiredConfirmations,
   formatConfirmationRequest,
+  formatConfirmationWithKeyboard,
   formatExecutionResults,
   formatMultipleConfirmations,
+  formatMultipleConfirmationsWithKeyboard,
   getApprovedConfirmations,
   getExpiredConfirmationIds,
   getPendingConfirmations,
@@ -293,11 +313,13 @@ export {
   hasToolConfirmation,
   isAwaitingConfirmation,
   isConfirmationValid,
+  isValidCallbackData,
   parseConfirmationResponse,
   type RiskLevel,
   requiresConfirmation,
   type ToolExecutor as HITLToolExecutor,
   transitionHITLState,
+  validateKeyboard,
 } from './hitl/index.js';
 
 // Orchestration (Planner, Executor, Aggregator)

@@ -9,6 +9,7 @@ import type { Tool } from '@duyetbot/types';
 import type { Agent } from 'agents';
 import type { AgentContext, AgentResult, PlatformConfig } from '../agents/base-agent.js';
 import type { BatchConfig, BatchState, RetryConfig } from '../batch-types.js';
+import type { CallbackContext } from '../callbacks/types.js';
 import type { RoutingFlags } from '../feature-flags.js';
 import type { ParsedInput, Transport, TransportHooks } from '../transport.js';
 import type { LLMProvider, Message, OpenAITool } from '../types.js';
@@ -215,6 +216,13 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
    * Get current batch state for debugging/monitoring
    */
   getBatchState(): { activeBatch?: BatchState; pendingBatch?: BatchState };
+  /**
+   * Receive a callback query from Telegram inline keyboard button press (RPC method)
+   * Parses the callback data and routes to the appropriate handler
+   * @param context - Callback context from Telegram
+   * @returns Result with optional user-facing message
+   */
+  receiveCallback(context: CallbackContext): Promise<{ text?: string }>;
 }
 
 /**

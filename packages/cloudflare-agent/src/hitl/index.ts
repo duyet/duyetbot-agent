@@ -9,13 +9,16 @@
 export {
   type ConfirmableTool,
   type ConfirmationParseResult,
+  type ConfirmationWithKeyboard,
   createToolConfirmation,
   DEFAULT_CONFIRMATION_EXPIRY_MS,
   DEFAULT_HIGH_RISK_TOOLS,
   determineRiskLevel,
   filterExpiredConfirmations,
   formatConfirmationRequest,
+  formatConfirmationWithKeyboard,
   formatMultipleConfirmations,
+  formatMultipleConfirmationsWithKeyboard,
   hasToolConfirmation,
   isConfirmationValid,
   parseConfirmationResponse,
@@ -34,6 +37,15 @@ export {
   formatExecutionResults,
   type ToolExecutor,
 } from './executions.js';
+// Keyboards for Telegram inline interactions
+export {
+  createConfirmationKeyboard,
+  createFeedbackKeyboard,
+  createMultiConfirmationKeyboard,
+  createQuickActionsKeyboard,
+  isValidCallbackData,
+  validateKeyboard,
+} from './keyboards.js';
 // State machine
 export {
   canTransitionTo,
