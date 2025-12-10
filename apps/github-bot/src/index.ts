@@ -6,6 +6,7 @@
  * Uses fire-and-forget pattern with ChatAgent for async message processing.
  */
 
+import { createGlobalContext, githubToWebhookInput } from '@duyetbot/cloudflare-agent';
 import { createBaseApp } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -250,17 +251,50 @@ app.post(
         });
       }
 
-      // Create GitHub context for transport layer
+      // Create GlobalContext at webhook entry point (ONLY place it's created)
+      // Build env object with conditional GITHUB_ADMIN to satisfy exactOptionalPropertyTypes
+      const githubEnv = {
+        GITHUB_TOKEN: env.GITHUB_TOKEN,
+        ...(env.GITHUB_ADMIN && { GITHUB_ADMIN: env.GITHUB_ADMIN }),
+      };
+
+      const webhookInput = githubToWebhookInput(
+        {
+          event,
+          action,
+          owner,
+          repo,
+          sender,
+          issue,
+          isPullRequest,
+          task,
+          requestId,
+        },
+        githubEnv,
+        collector?.getEventId()
+      );
+
+      // Create GlobalContext - single context for entire request lifecycle
+      const globalContext = createGlobalContext(webhookInput);
+
+      // Create GitHub context for transport layer (backward compatibility)
       const githubContext = createGitHubContext(contextOptions);
 
       // Parse context to ParsedInput using transport's parseContext
       const parsedInput = githubTransport.parseContext(githubContext);
+
+      // Add GlobalContext traceId to metadata for correlation
+      if (!parsedInput.metadata) {
+        parsedInput.metadata = {};
+      }
+      parsedInput.metadata.traceId = globalContext.traceId;
 
       // Get agent instance (issue-based session)
       const agentId = `github:${owner}/${repo}#${issue.number}`;
       logger.info(`[${requestId}] [WEBHOOK] Getting agent instance`, {
         requestId,
         agentId,
+        traceId: globalContext.traceId,
         isPullRequest,
         durationMs: Date.now() - startTime,
       });

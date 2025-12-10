@@ -1,0 +1,456 @@
+# Telegram HTML Format Test Cases
+# Tests response quality and HTML format for Telegram bot
+# All tests use outputFormat: telegram-html
+
+# =============================================================================
+# CONCISENESS TESTS (3 tests)
+# =============================================================================
+
+- description: "[HTML] Concise response - factual question"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What is the capital of France?"
+  assert:
+    - type: llm-rubric
+      value: "Response is concise - answers directly with the capital name. Acceptable: 'Paris' or 'Paris, France' or 'The capital is Paris'. Not acceptable: lengthy introductions or explanations."
+
+- description: "[HTML] Concise response - code snippet"
+  vars:
+    outputFormat: "telegram-html"
+    query: "How do I reverse a string in Python?"
+  assert:
+    - type: llm-rubric
+      value: "Response includes code example (using <code> or <pre> tags) as primary content. Can have minimal explanation (1-2 sentences max). No lengthy preambles or filler."
+
+- description: "[HTML] Concise response - explanation"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What is Docker?"
+  assert:
+    - type: llm-rubric
+      value: "Response is concise (1-3 sentences max). Explains Docker's purpose clearly without fluff. Acceptable length: ~50-100 words for a brief explanation."
+
+# =============================================================================
+# NO FILLER TESTS (2 tests)
+# =============================================================================
+
+- description: "[HTML] No filler - direct answer"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What is 15 times 23?"
+  assert:
+    - type: not-contains
+      value: "Sure"
+    - type: not-contains
+      value: "Great question"
+    - type: llm-rubric
+      value: "Response starts directly with the answer, no filler phrases"
+
+- description: "[HTML] No filler - list response"
+  vars:
+    outputFormat: "telegram-html"
+    query: "List 3 JavaScript frameworks"
+  assert:
+    - type: not-contains
+      value: "Here are"
+    - type: llm-rubric
+      value: "Lists items directly without introductory phrases like 'Here are' or 'The frameworks are'"
+
+# =============================================================================
+# HTML FORMAT TESTS (6 tests)
+# =============================================================================
+
+- description: "[HTML] Bold emphasis uses <b> tag"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What is the most important thing to know about Kubernetes?"
+  assert:
+    - type: javascript
+      value: |
+        // Check HTML bold usage, penalize markdown
+        const hasHtmlBold = /<b>/.test(output);
+        const hasMarkdownBold = /\*\*[^*]+\*\*/.test(output);
+        let score = 0.5;  // Base score for valid response
+        if (hasHtmlBold) score = 1;
+        if (hasMarkdownBold) score = Math.max(0, score - 0.5);
+        return {
+          pass: score >= 0.5,
+          score,
+          reason: hasHtmlBold
+            ? 'Correctly uses <b> tags'
+            : (hasMarkdownBold ? 'Uses markdown ** instead of <b>' : 'No bold formatting used')
+        };
+
+- description: "[HTML] Inline code uses <code> tag"
+  vars:
+    outputFormat: "telegram-html"
+    query: "How do I check git branch?"
+  assert:
+    - type: javascript
+      value: |
+        // Check HTML code usage
+        const hasHtmlCode = /<code>/.test(output);
+        const hasMarkdownCode = /```/.test(output);
+        let score = 0.5;
+        if (hasHtmlCode) score = 1;
+        if (hasMarkdownCode && !hasHtmlCode) score = 0.3;
+        return {
+          pass: score >= 0.5,
+          score,
+          reason: hasHtmlCode
+            ? 'Correctly uses <code> tags'
+            : (hasMarkdownCode ? 'Uses markdown ``` instead of <code>' : 'No code formatting')
+        };
+
+- description: "[HTML] Code block uses <pre> tag"
+  vars:
+    outputFormat: "telegram-html"
+    query: "Show a Python function to fetch JSON from an API"
+  assert:
+    - type: javascript
+      value: |
+        // Check HTML pre usage for code blocks
+        const hasHtmlPre = /<pre>/.test(output);
+        const hasMarkdownBlock = /```/.test(output);
+        let score = 0.5;
+        if (hasHtmlPre) score = 1;
+        if (hasMarkdownBlock && !hasHtmlPre) score = 0.3;
+        return {
+          pass: score >= 0.5,
+          score,
+          reason: hasHtmlPre
+            ? 'Correctly uses <pre> tags'
+            : (hasMarkdownBlock ? 'Uses markdown ``` instead of <pre>' : 'No code block formatting')
+        };
+
+- description: "[HTML] Italic uses <i> tag"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What is the definition of 'containerization'?"
+  assert:
+    - type: javascript
+      value: |
+        // Italic is optional - just check no markdown italic if used
+        const hasMarkdownItalic = /(?<!\*)\*[^*]+\*(?!\*)/.test(output) || /_[^_]+_/.test(output);
+        const hasHtmlItalic = /<i>/.test(output);
+        let score = 0.7;  // Default pass for not requiring italic
+        if (hasHtmlItalic) score = 1;
+        if (hasMarkdownItalic && !hasHtmlItalic) score = 0.4;
+        return {
+          pass: score >= 0.5,
+          score,
+          reason: hasHtmlItalic
+            ? 'Correctly uses <i> tags'
+            : (hasMarkdownItalic ? 'Uses markdown * or _ instead of <i>' : 'No italic formatting (acceptable)')
+        };
+
+- description: "[HTML] Links use <a> tag"
+  vars:
+    outputFormat: "telegram-html"
+    query: "Give me a link to the React documentation"
+  assert:
+    - type: javascript
+      value: |
+        // Check for HTML link format
+        const hasHtmlLink = /<a\s+href=/.test(output);
+        const hasMarkdownLink = /\[[^\]]+\]\([^)]+\)/.test(output);
+        let score = 0.5;
+        if (hasHtmlLink) score = 1;
+        if (hasMarkdownLink && !hasHtmlLink) score = 0.3;
+        return {
+          pass: score >= 0.5,
+          score,
+          reason: hasHtmlLink
+            ? 'Correctly uses <a href> tags'
+            : (hasMarkdownLink ? 'Uses markdown [](url) instead of <a>' : 'No link formatting')
+        };
+
+- description: "[HTML] No markdown syntax at all"
+  vars:
+    outputFormat: "telegram-html"
+    query: "Explain the difference between let and const in JavaScript"
+  assert:
+    - type: javascript
+      value: |
+        // Check for absence of markdown syntax
+        const hasMarkdownBold = /\*\*[^*]+\*\*/.test(output);
+        const hasMarkdownUnderline = /__[^_]+__/.test(output);
+        const hasMarkdownCode = /```/.test(output);
+        const violations = [];
+        if (hasMarkdownBold) violations.push('**bold**');
+        if (hasMarkdownUnderline) violations.push('__underline__');
+        if (hasMarkdownCode) violations.push('```code```');
+        const score = 1 - (violations.length * 0.3);
+        return {
+          pass: score >= 0.5,
+          score: Math.max(0, score),
+          reason: violations.length === 0
+            ? 'No markdown syntax found'
+            : `Contains markdown: ${violations.join(', ')}`
+        };
+    - type: llm-rubric
+      value: "Uses HTML formatting only (<b>, <i>, <code>, <pre>), NO markdown syntax"
+
+# =============================================================================
+# URL SUMMARIZATION TESTS (4 tests)
+# =============================================================================
+
+- description: "[HTML] URL only - trigger web fetch"
+  vars:
+    outputFormat: "telegram-html"
+    query: "https://news.ycombinator.com/item?id=42345678"
+  assert:
+    - type: javascript
+      value: |
+        // Check that response indicates action on URL or understanding of content
+        const actionPatterns = [
+          /web_fetch/i,
+          /fetch/i,
+          /read/i,
+          /access/i,
+          /retrieve/i,
+          /tool/i,
+          /let me/i,
+          /I('ll| will| can| need)/i,
+          /I'm.*access/i,
+          /I'm.*fetch/i,
+          /can.*access/i,
+          /will.*fetch/i,
+        ];
+        const understandsContent = [
+          /hacker\s*news/i,
+          /ycombinator/i,
+          /y\s*combinator/i,
+          /hackernews/i,
+          /tech.*news/i,
+          /startup.*news/i,
+        ];
+        const indicatesAction = actionPatterns.some(p => p.test(output));
+        const knowsContent = understandsContent.some(p => p.test(output));
+        // Pass if shows action OR understands content (indicating it would fetch)
+        const indicatesWillProcess = indicatesAction || knowsContent;
+        const asksForClarification = /what would you like|what do you want|how can i help|what.*know about/i.test(output);
+        const score = indicatesWillProcess ? (asksForClarification ? 0.5 : 1) : 0.2;
+        return {
+          pass: score >= 0.5,
+          score,
+          reason: indicatesAction
+            ? (asksForClarification ? 'Preferably act without asking' : 'Correctly indicates action')
+            : (knowsContent ? 'Shows understanding of URL content' : 'Should indicate will fetch/access URL')
+        };
+
+- description: "[HTML] URL with comment - summarize with context"
+  vars:
+    outputFormat: "telegram-html"
+    query: "Check this out https://github.com/anthropics/claude-code"
+  assert:
+    - type: javascript
+      value: |
+        // Check response handles URL appropriately, no filler
+        const hasExcessiveFiller = /^(interesting!|cool!|great!|nice!|awesome!|sounds great|sounds cool)/i.test(output.trim());
+        const handlesUrl = /fetch|read|access|github|anthropic|claude|code.*tool/i.test(output);
+        const understandsContent = /github|anthropic|claude|repository|repo|project/i.test(output);
+        const score = (handlesUrl || understandsContent) ? (hasExcessiveFiller ? 0.5 : 1) : 0.3;
+        return {
+          pass: score >= 0.5,
+          score,
+          reason: hasExcessiveFiller
+            ? 'Avoid excessive filler at start'
+            : (handlesUrl || understandsContent ? 'Appropriately handles URL with context' : 'Should address the GitHub URL or project')
+        };
+
+- description: "[HTML] Multiple URLs - summarize each"
+  vars:
+    outputFormat: "telegram-html"
+    query: "https://react.dev and https://vuejs.org"
+  assert:
+    - type: javascript
+      value: |
+        // Check that response shows understanding of both frameworks
+        const mentionsReact = /react|reactjs/i.test(output);
+        const mentionsVue = /vue|vuejs/i.test(output);
+        const indicatesAction = /fetch|access|read|tool|let me/i.test(output);
+        const asksToPickOne = /which (one|url|framework)|pick one|choose one|which would you like/i.test(output);
+        let score = 0;
+        if (indicatesAction) score = 0.5;  // Says it will fetch
+        if (mentionsReact && mentionsVue) score = Math.max(score, 1);  // Knows both
+        if (mentionsReact || mentionsVue) score = Math.max(score, 0.6);  // Knows at least one
+        if (asksToPickOne && score > 0.5) score -= 0.3;  // Penalty for asking user to pick
+        return {
+          pass: score >= 0.5,
+          score: Math.max(0, score),
+          reason: asksToPickOne && score < 0.5
+            ? 'Should not ask user to pick which URL - process both'
+            : (mentionsReact && mentionsVue ? 'Knows both frameworks' : 'Should address or attempt to access both URLs')
+        };
+
+- description: "[HTML] URL summary format - bullet points"
+  vars:
+    outputFormat: "telegram-html"
+    query: "https://blog.cloudflare.com/workers-ai"
+  assert:
+    - type: javascript
+      value: |
+        // Check for structured format or action
+        const hasBullets = /[•\-\*]\s+\S/.test(output);
+        const hasNumbered = /^\d+[\.\)]/m.test(output);
+        const indicatesAction = /fetch|access|read|tool|cloudflare|workers|ai|let me/i.test(output);
+        const hasMultilineStructure = output.split('\n').filter(l => l.trim()).length >= 3;
+        const hasStructure = hasBullets || hasNumbered || hasMultilineStructure;
+        const hasVerboseIntro = /^(here('s| is) (what|the)|let me now summarize|i('ll| will) now give)/i.test(output.trim());
+        let score = 0;
+        if (indicatesAction) score = 0.6;  // Shows it will fetch
+        if (hasStructure) score = Math.max(score, 1);  // Structured response
+        if (hasVerboseIntro && hasStructure) score -= 0.2;  // Minor penalty for verbose
+        return {
+          pass: score >= 0.5,
+          score: Math.max(0, score),
+          reason: indicatesAction
+            ? (hasStructure ? 'Good structured format with action indication' : 'Shows will fetch/access content')
+            : (hasStructure ? 'Well-structured summary' : 'Consider structured bullet points')
+        };
+
+# =============================================================================
+# CONVERSATION CONTEXT TESTS (2 tests)
+# =============================================================================
+
+- description: "[HTML] Follow-up question understanding"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What about Vue?"
+  assert:
+    - type: llm-rubric
+      value: "Should NOT ask 'What about Vue do you want to know?' Should provide useful info about Vue assuming prior context."
+
+- description: "[HTML] Progressive disclosure"
+  vars:
+    outputFormat: "telegram-html"
+    query: "Explain microservices architecture"
+  assert:
+    - type: javascript
+      value: |
+        // Check for concise response (not a wall of text)
+        const lines = output.trim().split('\n').filter(l => l.trim());
+        const wordCount = output.split(/\s+/).length;
+        const isConcise = wordCount < 200;  // Under 200 words is reasonable
+        const hasOffer = /want.*more|ask.*detail|expand|more info/i.test(output);
+        let score = isConcise ? 0.7 : 0.3;
+        if (hasOffer) score += 0.3;
+        return {
+          pass: score >= 0.5,
+          score: Math.min(1, score),
+          reason: isConcise
+            ? (hasOffer ? 'Concise with offer to expand' : 'Concise response')
+            : 'Response too verbose for mobile'
+        };
+
+# =============================================================================
+# MOBILE OPTIMIZATION TESTS (2 tests)
+# =============================================================================
+
+- description: "[HTML] Short line length for mobile"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What are the SOLID principles?"
+  assert:
+    - type: llm-rubric
+      value: "Response should be mobile-friendly with short paragraphs. Uses bullet points for the 5 principles."
+
+- description: "[HTML] No nested bullets"
+  vars:
+    outputFormat: "telegram-html"
+    query: "List programming paradigms with examples"
+  assert:
+    - type: llm-rubric
+      value: "Should NOT use nested bullet points (hard to read on mobile). Flat list or categories instead."
+
+# =============================================================================
+# EDGE CASES (2 tests)
+# =============================================================================
+
+- description: "[HTML] Empty or unclear query"
+  vars:
+    outputFormat: "telegram-html"
+    query: "?"
+  assert:
+    - type: llm-rubric
+      value: "Should ask for clarification briefly. Should NOT give a long explanation about what it can do."
+
+- description: "[HTML] Code with special HTML characters"
+  vars:
+    outputFormat: "telegram-html"
+    query: "Show a comparison operator in JavaScript"
+  assert:
+    - type: llm-rubric
+      value: "If showing < or > operators, they should be properly escaped as &lt; or &gt; in regular text."
+
+# =============================================================================
+# CREATOR INFO TESTS (2 tests)
+# =============================================================================
+
+- description: "[HTML] Creator CV request"
+  vars:
+    outputFormat: "telegram-html"
+    query: "What is Duyet's CV?"
+  assert:
+    - type: javascript
+      value: |
+        // Check that response indicates using creator_info tool or accesses real data
+        const toolPatterns = [
+          /creator_info/i,
+          /fetch.*duyet/i,
+          /get.*duyet.*info/i,
+          /mcp.*creator/i,
+          /tool.*creator/i,
+          /let me.*fetch/i,
+          /let me.*check/i,
+          /I.*can access/i,
+          /I.*need to.*access/i,
+          /accessing.*information/i,
+          /retrieve.*profile/i,
+        ];
+        const indicatesTool = toolPatterns.some(p => p.test(output));
+        // Only fail if explicitly making up info without any tool mention
+        const makesUpWithoutTool = /(?:duyet is a|duyet works|duyet has|duyet is).*(?:engineer|developer|manager|architect)/i.test(output)
+          && !toolPatterns.some(p => p.test(output));
+        return {
+          pass: !makesUpWithoutTool,
+          score: indicatesTool ? 1 : (makesUpWithoutTool ? 0 : 0.6),
+          reason: indicatesTool
+            ? 'Correctly indicates using tool or accessing real data'
+            : (makesUpWithoutTool ? 'Should NOT make up CV details without indicating tool use' : 'Responds appropriately to CV request')
+        };
+
+- description: "[HTML] Creator info request"
+  vars:
+    outputFormat: "telegram-html"
+    query: "Who is Duyet?"
+  assert:
+    - type: javascript
+      value: |
+        // Check that response indicates using creator_info tool or accesses real data
+        const toolPatterns = [
+          /creator_info/i,
+          /fetch.*duyet/i,
+          /get.*duyet.*info/i,
+          /mcp.*creator/i,
+          /tool.*creator/i,
+          /let me.*fetch/i,
+          /let me.*check/i,
+          /I.*can access/i,
+          /I.*need to.*access/i,
+          /accessing.*information/i,
+          /look.*up/i,
+        ];
+        const indicatesTool = toolPatterns.some(p => p.test(output));
+        // Only fail if fabricating specific personal facts without tool mention
+        const fabricatesWithoutTool = /(?:duyet is|duyet was|duyet lives|duyet works at|duyet is from).*(?:\w+)/i.test(output)
+          && !toolPatterns.some(p => p.test(output))
+          && !/duyet is an?.*(?:ai|agent|bot|assistant)/i.test(output);
+        return {
+          pass: !fabricatesWithoutTool,
+          score: indicatesTool ? 1 : (fabricatesWithoutTool ? 0 : 0.6),
+          reason: indicatesTool
+            ? 'Correctly indicates using tool or accessing real data'
+            : (fabricatesWithoutTool ? 'Should NOT fabricate personal details without indicating tool use' : 'Responds appropriately to personal info request')
+        };

@@ -28,6 +28,12 @@ bun run ci:deploy:shared-agents  # Deploy shared-agents only
 bun run ci:deploy:telegram       # Deploy telegram only
 bun run ci:deploy:github         # Deploy github only
 bun run ci:deploy-version:*      # Branch deploy
+
+# Prompt Evaluation (requires OPENROUTER_API_KEY)
+bun run prompt:eval              # Run all prompt evaluations
+bun run prompt:eval:router       # Router classification tests
+bun run prompt:eval:telegram     # Telegram format tests
+bun run prompt:view              # Interactive results UI
 ```
 
 ## Architecture
@@ -183,6 +189,8 @@ bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
 | [docs/deployment.md](docs/deployment.md) | Deployment commands and secrets |
 | [docs/getting-started.md](docs/getting-started.md) | Setup guide |
 | [docs/api.md](docs/api.md) | API reference |
+| [docs/guides/prompt-evaluation.md](docs/guides/prompt-evaluation.md) | Prompt testing with promptfoo |
+| [prompts-eval/README.md](prompts-eval/README.md) | Prompt evaluation technical details |
 | [PLAN.md](PLAN.md) | Implementation roadmap |
 
 ## External References

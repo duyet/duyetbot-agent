@@ -15,9 +15,9 @@ export const QuickStats: React.FC<QuickStatsProps> = ({ stats, loading = false, 
   if (loading) {
     return (
       <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-${columns}`}>
-        {Array.from({ length: columns }).map((_, i) => (
+        {Array.from({ length: columns }, (_, i) => `skeleton-${i}`).map((id) => (
           <div
-            key={i}
+            key={id}
             className="animate-pulse rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
           >
             <div className="h-4 w-20 rounded bg-gray-200 dark:bg-gray-700" />
@@ -38,9 +38,9 @@ export const QuickStats: React.FC<QuickStatsProps> = ({ stats, loading = false, 
 
   return (
     <div className={`grid gap-4 sm:grid-cols-2 lg:${gridClass}`}>
-      {stats.map((stat, index) => (
+      {stats.map((stat) => (
         <div
-          key={index}
+          key={stat.label}
           className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800"
         >
           <p className="text-sm font-medium text-gray-600 dark:text-gray-400">{stat.label}</p>

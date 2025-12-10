@@ -51,9 +51,9 @@ export const AreaChart = React.forwardRef<any, AreaChartProps<any>>(function Are
           <YAxis tickFormatter={yAxisFormatter} />
           <Tooltip content={<ChartTooltip />} />
           {showLegend && <Legend />}
-          {areaKeys.map((areaKey, index) => (
+          {areaKeys.map((areaKey) => (
             <Area
-              key={index}
+              key={String(areaKey.key)}
               type="monotone"
               dataKey={String(areaKey.key)}
               fill={areaKey.color}

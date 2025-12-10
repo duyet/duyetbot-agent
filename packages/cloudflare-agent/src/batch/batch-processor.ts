@@ -18,6 +18,7 @@ import { logger } from '@duyetbot/hono-middleware';
 import type { AgentContext, AgentResult } from '../agents/base-agent.js';
 import type { BatchState, PendingMessage, RetryConfig } from '../batch-types.js';
 import { combineBatchMessages } from '../batch-types.js';
+import { deserializeContext } from '../context/global-context.js';
 import {
   createThinkingRotator,
   getDefaultThinkingMessages,
@@ -360,7 +361,14 @@ export class BatchProcessor<TContext, TEnv> {
 
   /**
    * Build transport context from pending message
-   * Preserves original context and injects platform-specific secrets from environment
+   *
+   * Priority:
+   * 1. If serializedContext exists, deserialize the full GlobalContext
+   * 2. Otherwise, reconstruct from originalContext and message fields (legacy)
+   * 3. Inject platform-specific secrets from environment
+   *
+   * The serializedContext preserves all debug accumulators, timing, and trace info,
+   * preventing data loss when batching messages in DO storage.
    */
   private buildTransportContext(
     message: PendingMessage,
@@ -369,7 +377,56 @@ export class BatchProcessor<TContext, TEnv> {
     _transport: Transport<TContext>
   ): Record<string, unknown> {
     const envRecord = env as Record<string, unknown>;
+    let base: Record<string, unknown>;
 
+    // Priority 1: Use serialized GlobalContext if available
+    if (message.serializedContext) {
+      try {
+        const globalCtx = deserializeContext(message.serializedContext);
+        // Convert GlobalContext to transport context format
+        base = {
+          ...globalCtx,
+          text, // Update text from combined message
+        };
+        logger.info('[BatchProcessor] Using deserialized GlobalContext for transport', {
+          traceId: globalCtx.traceId,
+        });
+      } catch (error) {
+        // Fall through to legacy method if deserialization fails
+        logger.warn(
+          '[BatchProcessor] Failed to deserialize GlobalContext, falling back to legacy',
+          {
+            error: error instanceof Error ? error.message : String(error),
+          }
+        );
+        base = this._buildLegacyTransportContext(message, text);
+      }
+    } else {
+      // Priority 2: Use legacy reconstruction (backward compatibility)
+      base = this._buildLegacyTransportContext(message, text);
+    }
+
+    // Priority 3: Inject/override platform-specific secrets from environment
+    if (envRecord.TELEGRAM_BOT_TOKEN && !base.token) {
+      base.token = envRecord.TELEGRAM_BOT_TOKEN;
+    }
+    if (envRecord.GITHUB_TOKEN && !base.githubToken) {
+      base.githubToken = envRecord.GITHUB_TOKEN;
+    }
+
+    return base;
+  }
+
+  /**
+   * Legacy method: Build transport context from originalContext
+   * Only used when serializedContext is not available (backward compatibility)
+   *
+   * @internal
+   */
+  private _buildLegacyTransportContext(
+    message: PendingMessage,
+    text: string
+  ): Record<string, unknown> {
     // Start with original context if available
     const base: Record<string, unknown> = {
       ...((message.originalContext as Record<string, unknown>) ?? {}),
@@ -380,14 +437,6 @@ export class BatchProcessor<TContext, TEnv> {
     base.userId = message.userId;
     base.username = message.username;
     base.text = text;
-
-    // Inject platform-specific secrets from environment
-    if (envRecord.TELEGRAM_BOT_TOKEN && !base.token) {
-      base.token = envRecord.TELEGRAM_BOT_TOKEN;
-    }
-    if (envRecord.GITHUB_TOKEN && !base.githubToken) {
-      base.githubToken = envRecord.GITHUB_TOKEN;
-    }
 
     return base;
   }

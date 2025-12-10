@@ -112,6 +112,12 @@ export type PlatformConfig = TelegramPlatformConfig | GitHubPlatformConfig | Gen
 
 /**
  * Context passed between agents during routing
+ *
+ * @deprecated Use GlobalContext from '../context/global-context.js' instead.
+ * This interface is kept for backward compatibility during migration.
+ * GlobalContext provides unified context for the entire pipeline without data reconstruction.
+ *
+ * @see GlobalContext for the new unified context approach
  */
 export interface AgentContext {
   /** Original query from user */
