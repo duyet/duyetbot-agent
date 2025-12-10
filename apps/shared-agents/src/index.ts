@@ -13,12 +13,14 @@
  * - ResearchWorker: Web research and documentation
  * - GitHubWorker: GitHub operations
  * - DuyetInfoAgent: Duyet's blog and personal info
+ * - GitHubMCPAgent: GitHub MCP integration
  */
 
 import {
   type CodeWorkerEnv,
   createCodeWorker,
   createDuyetInfoAgent,
+  createGitHubMCPAgent,
   createGitHubWorker,
   createHITLAgent,
   createOrchestratorAgent,
@@ -26,6 +28,7 @@ import {
   createRouterAgent,
   createSimpleAgent,
   type DuyetInfoAgentClass,
+  type GitHubMCPAgentClass,
   type GitHubWorkerEnv,
   type HITLAgentClass,
   type OrchestratorAgentClass,
@@ -127,6 +130,15 @@ export const GitHubWorker: WorkerClass<SharedEnv> = createGitHubWorker<SharedEnv
 export const DuyetInfoAgent: DuyetInfoAgentClass<SharedEnv> = createDuyetInfoAgent<SharedEnv>({
   createProvider: (env) => createProvider(env),
   debug: true, // Enable detailed logging for observability
+});
+
+/**
+ * GitHubMCPAgent for GitHub MCP integration
+ * Connects to GitHub's remote MCP server for PR, issue, actions, and security operations
+ */
+export const GitHubMCPAgent: GitHubMCPAgentClass<SharedEnv> = createGitHubMCPAgent<SharedEnv>({
+  createProvider: (env) => createProvider(env),
+  debug: false,
 });
 
 /**

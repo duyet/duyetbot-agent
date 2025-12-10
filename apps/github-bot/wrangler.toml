@@ -77,6 +77,11 @@ name = "DuyetInfoAgent"
 class_name = "DuyetInfoAgent"
 script_name = "duyetbot-shared-agents"
 
+[[durable_objects.bindings]]
+name = "GitHubMCPAgent"
+class_name = "GitHubMCPAgent"
+script_name = "duyetbot-shared-agents"
+
 # Migrations for local DO only (shared DOs managed by duyetbot-shared-agents)
 [[migrations]]
 tag = "v1"

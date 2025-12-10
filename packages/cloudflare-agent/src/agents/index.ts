@@ -44,6 +44,17 @@ export {
   type DuyetInfoAgentState,
   duyetToolFilter,
 } from './duyet-info-agent.js';
+// GitHub MCP agent
+export {
+  createGitHubMCPAgent,
+  type GitHubMCPAgentClass,
+  type GitHubMCPAgentConfig,
+  type GitHubMCPAgentEnv,
+  type GitHubMCPAgentInstance,
+  type GitHubMCPAgentMethods,
+  type GitHubMCPAgentState,
+  githubToolFilter,
+} from './github-mcp-agent.js';
 // HITL agent (Human-in-the-Loop)
 export {
   createHITLAgent,

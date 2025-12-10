@@ -1,6 +1,6 @@
 # Router Classification Test Cases
 # Tests that queries are classified to the correct agent
-# Coverage: 15 test cases across 5 agent types
+# Coverage: 25 test cases across 6 agent types
 #
 # Each test case expects the LLM to respond with JSON classification
 # The router-assertion.js custom assertion parses the JSON and maps it to an agent name
@@ -105,6 +105,90 @@
   vars:
     query: "Review pull request #42 and suggest improvements"
     __expected: "orchestrator-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+# =============================================================================
+# GITHUB-MCP-AGENT: GitHub operations via MCP (10 tests)
+# =============================================================================
+
+- description: "GitHub MCP - list open PRs"
+  vars:
+    query: "What PRs are open right now?"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - PRs assigned to me"
+  vars:
+    query: "Any PRs assigned to me?"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - check specific PR"
+  vars:
+    query: "Summarize PR #42"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - merge PR"
+  vars:
+    query: "Merge PR #123 if CI passes"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - list issues"
+  vars:
+    query: "What issues are assigned to duyetbot?"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - check actions"
+  vars:
+    query: "Did the latest workflow pass?"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - security alerts"
+  vars:
+    query: "Any Dependabot alerts on my repos?"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - create gist"
+  vars:
+    query: "Create a gist with this code snippet"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - review PR"
+  vars:
+    query: "Review pull request #55 and add comments"
+    __expected: "github-mcp-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub MCP - label issue"
+  vars:
+    query: "Add bug label to issue #10"
+    __expected: "github-mcp-agent"
   assert:
     - type: javascript
       value: file://../assertions/router-assertion.cjs

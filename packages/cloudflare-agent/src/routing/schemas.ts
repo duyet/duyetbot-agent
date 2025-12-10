@@ -96,6 +96,7 @@ export const RouteTarget = z.enum([
   'lead-researcher-agent', // Multi-agent research orchestration
   'hitl-agent', // Human-in-the-loop workflow
   'duyet-info-agent', // Duyet's blog and personal info
+  'github-mcp-agent', // GitHub operations using MCP server
 ]);
 export type RouteTarget = z.infer<typeof RouteTarget>;
 

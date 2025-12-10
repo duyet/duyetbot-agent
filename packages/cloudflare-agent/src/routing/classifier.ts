@@ -156,6 +156,12 @@ export function determineRouteTarget(classification: QueryClassification): Route
     return 'duyet-info-agent';
   }
 
+  // NOTE: GitHubMCPAgent uses pattern/keyword matching, not classification-based routing.
+  // All classification-based 'github' category queries route to orchestrator-agent
+  // which dispatches to GitHubWorker for complex tasks.
+  // Simple pattern-matched queries (e.g., "show PR #123") are handled by GitHubMCPAgent
+  // through agent registry pattern matching, not through classification.
+
   // High/medium complexity research queries go to lead-researcher-agent
   // This enables multi-agent parallel research (Anthropic pattern)
   if (
