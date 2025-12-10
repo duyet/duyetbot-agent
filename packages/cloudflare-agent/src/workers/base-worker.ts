@@ -72,11 +72,17 @@ export interface BaseWorkerState {
 export interface BaseWorkerEnv {}
 
 /**
+ * Context type that can be passed to createProvider
+ * Supports legacy AgentContext, new GlobalContext, or SpanContext for parallel execution
+ */
+export type ProviderContext = AgentContext | GlobalContext | SpanContext;
+
+/**
  * Configuration for base worker
  */
 export interface BaseWorkerConfig<TEnv extends BaseWorkerEnv> {
   /** Function to create LLM provider from env, optionally with context for credentials */
-  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
+  createProvider: (env: TEnv, context?: ProviderContext) => LLMProvider;
   /** Worker type for identification */
   workerType: WorkerType;
   /** System prompt for the worker's domain */

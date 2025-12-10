@@ -17,6 +17,7 @@ export {
   createBaseWorker,
   formatDependencyContext,
   isSuccessfulResult,
+  type ProviderContext,
   summarizeResults,
   type WorkerClass,
   type WorkerInput,

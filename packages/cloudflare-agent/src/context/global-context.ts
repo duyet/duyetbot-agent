@@ -122,8 +122,8 @@ export interface QueryClassification {
   category: string;
   /** Complexity level (low, medium, high) */
   complexity: string;
-  /** Confidence score (0.0-1.0) */
-  confidence: number;
+  /** Confidence score (0.0-1.0) - optional if not calculated */
+  confidence?: number;
   /** Timestamp when classification was made */
   timestamp: number;
 }

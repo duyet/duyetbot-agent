@@ -9,10 +9,14 @@
  */
 
 import { getResearchWorkerPrompt } from '@duyetbot/prompts';
-import type { AgentContext } from '../agents/base-agent.js';
 import type { PlanStep } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
-import { type BaseWorkerEnv, createBaseWorker, type WorkerClass } from './base-worker.js';
+import {
+  type BaseWorkerEnv,
+  createBaseWorker,
+  type ProviderContext,
+  type WorkerClass,
+} from './base-worker.js';
 
 /**
  * Research task types that this worker handles
@@ -40,7 +44,7 @@ export interface ResearchWorkerEnv extends BaseWorkerEnv {
  */
 export interface ResearchWorkerConfig<TEnv extends ResearchWorkerEnv> {
   /** Function to create LLM provider from env, optionally with context for credentials */
-  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
+  createProvider: (env: TEnv, context?: ProviderContext) => LLMProvider;
   /** Enable web search integration */
   enableWebSearch?: boolean;
   /** Enable detailed logging */

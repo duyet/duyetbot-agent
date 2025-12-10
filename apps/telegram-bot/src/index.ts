@@ -6,8 +6,11 @@
  */
 
 import type { ParsedInput } from '@duyetbot/cloudflare-agent';
-import { getChatAgent } from '@duyetbot/cloudflare-agent';
-import { createGlobalContext, telegramToWebhookInput } from '@duyetbot/cloudflare-agent/context';
+import {
+  createGlobalContext,
+  getChatAgent,
+  telegramToWebhookInput,
+} from '@duyetbot/cloudflare-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import {
   EventCollector,

@@ -196,28 +196,38 @@ export {
 } from './agents/index.js';
 // Context Module (Unified Pipeline Context)
 export {
+  // Types
   type AgentSpan,
-  type GlobalContext,
-  type SpanContext,
-  type ToolCallRecord,
-  type TokenUsageRecord,
-  type RoutingDecisionRecord,
-  type WebhookInput,
-  createGlobalContext,
-  serializeContext,
-  deserializeContext,
-  createSpanContext,
-  completeSpan,
-  recordToolCallSpan,
-  recordTokenUsageSpan,
-  addWarningSpan,
+  // Span context (parallel execution)
   addErrorSpan,
+  addWarningSpan,
+  completeSpan,
+  // Global context factory and serialization
+  createGlobalContext,
+  createSpanContext,
+  deserializeContext,
+  type GitHubEnv,
+  type GitHubWebhookContext,
+  type GlobalContext,
+  githubToWebhookInput,
+  type RoutingDecisionRecord,
+  recordTokenUsageSpan,
+  recordToolCallSpan,
+  type SpanContext,
+  serializeContext,
   setMetadataSpan,
+  type TelegramEnv,
+  type TelegramUpdate,
+  type TokenUsageRecord,
+  type ToolCallRecord,
+  // Webhook adapters
+  telegramToWebhookInput,
+  type WebhookInput,
 } from './context/index.js';
 // Execution Context
 export {
   type AgentProvider,
-  type AgentSpan,
+  type AgentSpan as ExecutionAgentSpan,
   addDebugError,
   addDebugWarning,
   type ChatOptions,

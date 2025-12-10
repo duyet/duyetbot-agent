@@ -192,19 +192,20 @@ export function telegramToWebhookInput(
     quotedUsername?: string;
   }
 ): WebhookInput {
+  // Use conditional spread to handle exactOptionalPropertyTypes compliance
   return {
     platform: 'telegram',
     userId: webhookCtx.userId,
     chatId: webhookCtx.chatId,
     text: webhookCtx.text,
-    username: webhookCtx.username,
+    ...(webhookCtx.username && { username: webhookCtx.username }),
     messageId: webhookCtx.messageId,
-    replyToMessageId: webhookCtx.replyToMessageId,
+    ...(webhookCtx.replyToMessageId && { replyToMessageId: webhookCtx.replyToMessageId }),
     isAdmin:
       webhookCtx.username !== undefined && env.TELEGRAM_ADMIN !== undefined
         ? normalizeUsername(webhookCtx.username) === normalizeUsername(env.TELEGRAM_ADMIN)
         : false,
-    adminUsername: env.TELEGRAM_ADMIN,
+    ...(env.TELEGRAM_ADMIN && { adminUsername: env.TELEGRAM_ADMIN }),
     requestId: crypto.randomUUID().slice(0, 8),
     platformConfig: {
       token: env.TELEGRAM_BOT_TOKEN,
@@ -237,6 +238,7 @@ export function githubToWebhookInput(
   env: GitHubEnv,
   eventId?: string
 ): WebhookInput {
+  // Use conditional spread to handle exactOptionalPropertyTypes compliance
   return {
     platform: 'github',
     userId: webhookCtx.sender.id,
@@ -248,9 +250,9 @@ export function githubToWebhookInput(
       webhookCtx.sender.login !== undefined && env.GITHUB_ADMIN !== undefined
         ? normalizeUsername(webhookCtx.sender.login) === normalizeUsername(env.GITHUB_ADMIN)
         : false,
-    adminUsername: env.GITHUB_ADMIN,
+    ...(env.GITHUB_ADMIN && { adminUsername: env.GITHUB_ADMIN }),
     requestId: webhookCtx.requestId,
-    eventId,
+    ...(eventId && { eventId }),
     platformConfig: {
       githubToken: env.GITHUB_TOKEN,
       owner: webhookCtx.owner,
