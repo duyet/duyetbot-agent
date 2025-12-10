@@ -17,6 +17,7 @@
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type Connection } from 'agents';
 import { type AgentContext, AgentMixin } from '../agents/base-agent.js';
+import type { GlobalContext, SpanContext } from '../context/index.js';
 import type { PlanStep, WorkerResult } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
 import {
@@ -32,14 +33,18 @@ export type { WorkerType };
 
 /**
  * Input passed to workers for execution
+ *
+ * Workers receive either:
+ * - GlobalContext (for sequential execution)
+ * - SpanContext (for parallel execution from orchestrator)
  */
 export interface WorkerInput {
   /** The plan step to execute */
   step: PlanStep;
   /** Results from dependent steps */
   dependencyResults: Map<string, WorkerResult>;
-  /** Additional context from orchestrator */
-  context: AgentContext;
+  /** Full global context OR span context for parallel execution */
+  context: AgentContext | GlobalContext | SpanContext;
   /** Trace ID for distributed tracing */
   traceId: string;
 }

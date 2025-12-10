@@ -19,6 +19,7 @@ import {
   createErrorResult,
   createSuccessResult,
 } from '../base/index.js';
+import { enterAgent, exitAgent, type GlobalContext, setTiming } from '../context/index.js';
 import type { AgentProvider, ExecutionContext } from '../execution/index.js';
 import { createDebugAccumulator } from '../execution/index.js';
 import { type ResponseTarget, sendPlatformResponse } from '../platform-response.js';
@@ -179,6 +180,137 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
     }
 
     /**
+     * Route a query using GlobalContext
+     *
+     * NEW: Uses unified GlobalContext for tracing and debug accumulation.
+     * This method coordinates classification and routing with full context tracking.
+     *
+     * @param gCtx - GlobalContext with query, platform, and accumulated data
+     * @returns AgentResult with content and routing metrics
+     */
+    async routeGlobal(gCtx: GlobalContext): Promise<AgentResult> {
+      const spanId = enterAgent(gCtx, 'router');
+      const startTime = Date.now();
+
+      logger.debug('[RouterAgent] Starting route (global)', {
+        spanId,
+        traceId: gCtx.traceId,
+        queryLength: gCtx.query.length,
+        platform: gCtx.platform,
+      });
+
+      try {
+        // Step 1: Record classification start
+        const classificationStart = Date.now();
+
+        // Step 2: Classify the query (hybrid: patterns + LLM)
+        // TODO: Update classification to work with GlobalContext
+        const classification = await this.classifyGlobal(gCtx);
+
+        // Step 3: Record classification metrics
+        const classificationMs = Date.now() - classificationStart;
+        setTiming(gCtx, 'classificationMs', classificationMs);
+        gCtx.classification = classification;
+
+        // Step 4: Determine target agent
+        const target = determineRouteTarget(classification);
+
+        // Structured debug logging for routing decision
+        if (debug) {
+          logger.info('[ROUTER_DEBUG] Routing decision (global)', {
+            spanId,
+            traceId: gCtx.traceId,
+            query: gCtx.query.slice(0, 100),
+            classification: {
+              type: classification.type,
+              category: classification.category,
+              complexity: classification.complexity,
+            },
+            target,
+            classificationMs,
+          });
+        }
+
+        // Update state with routing history
+        this.setState({
+          ...this.state,
+          sessionId: this.state.sessionId || gCtx.chatId.toString() || gCtx.traceId,
+          lastClassification: classification,
+          routingHistory: [
+            ...this.state.routingHistory.slice(-(maxHistory - 1)),
+            {
+              query: gCtx.query.slice(0, 200),
+              classification: {
+                ...classification,
+                reasoning: classification.reasoning?.slice(0, 100),
+              },
+              routedTo: target,
+              timestamp: Date.now(),
+              durationMs: classificationMs,
+            },
+          ],
+          updatedAt: Date.now(),
+        });
+
+        logger.debug('[RouterAgent] Classification complete', {
+          spanId,
+          type: classification.type,
+          category: classification.category,
+          complexity: classification.complexity,
+          target,
+          classificationMs,
+        });
+
+        // Step 5: Dispatch to target agent
+        // TODO: Dispatch to agents with GlobalContext
+        const result = await this.dispatchGlobal(gCtx, target);
+
+        const durationMs = Date.now() - startTime;
+
+        // Log successful routing outcome
+        if (debug) {
+          logger.info('[ROUTER_DEBUG] Routing outcome (global)', {
+            spanId,
+            traceId: gCtx.traceId,
+            target,
+            success: result.success,
+            totalDurationMs: durationMs,
+          });
+        }
+
+        exitAgent(gCtx, result.success ? 'delegated' : 'error');
+        return result;
+      } catch (error) {
+        const durationMs = Date.now() - startTime;
+
+        // Enhanced error logging
+        if (debug) {
+          logger.error('[ROUTER_DEBUG] Routing error (global)', {
+            spanId,
+            traceId: gCtx.traceId,
+            query: gCtx.query.slice(0, 100),
+            error: error instanceof Error ? error.message : String(error),
+            stack: error instanceof Error ? error.stack : undefined,
+            durationMs,
+          });
+        }
+
+        logger.error('[RouterAgent] Routing failed', {
+          spanId,
+          durationMs,
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        exitAgent(gCtx, 'error');
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs,
+        };
+      }
+    }
+
+    /**
      * Route a query to the appropriate handler
      *
      * Coordinates the classification and routing of incoming queries:
@@ -194,6 +326,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      *
      * @param ctx - ExecutionContext with query, platform, and tracing info
      * @returns AgentResult with content and routing metrics
+     * @deprecated Use routeGlobal(gCtx) instead for unified context handling
      */
     async route(ctx: ExecutionContext): Promise<AgentResult> {
       const startTime = Date.now();
@@ -325,6 +458,41 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
     }
 
     /**
+     * Classify a query using GlobalContext
+     *
+     * NEW: Works with GlobalContext for unified context handling.
+     *
+     * @param gCtx - GlobalContext with query and platform info
+     * @returns QueryClassification with type, category, complexity, etc.
+     * @private
+     */
+    private async classifyGlobal(gCtx: GlobalContext): Promise<QueryClassification> {
+      // Build classification context from global context and routing history
+      const classificationContext: ClassificationContext = {
+        platform: gCtx.platform as 'telegram' | 'github' | 'api' | undefined,
+        recentMessages: this.state.routingHistory.slice(-3).map((h) => ({
+          role: 'user',
+          content: h.query,
+        })),
+      };
+
+      // Get provider from env
+      const env = (this as unknown as { env: TEnv }).env;
+      const provider = config.createProvider(env);
+
+      // Build classifier config (AgentProvider is compatible with LLMProvider)
+      const classifierConfig: ClassifierConfig = {
+        provider: provider as unknown as any,
+      };
+      if (config.customClassificationPrompt) {
+        classifierConfig.customPrompt = config.customClassificationPrompt;
+      }
+
+      // Use hybrid classification (patterns + LLM fallback)
+      return hybridClassify(gCtx.query, classifierConfig, classificationContext);
+    }
+
+    /**
      * Classify a query using hybrid approach (patterns + LLM)
      *
      * Uses the classifier to:
@@ -334,6 +502,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      * @param ctx - ExecutionContext with query and platform info
      * @returns QueryClassification with type, category, complexity, etc.
      * @private
+     * @deprecated Use classifyGlobal instead
      */
     private async classify(ctx: ExecutionContext): Promise<QueryClassification> {
       // Build classification context from execution context and routing history
@@ -477,6 +646,141 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       } catch (error) {
         logger.error('[RouterAgent] Dispatch failed', {
           spanId: ctx.spanId,
+          target,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs: Date.now() - startTime,
+        };
+      }
+    }
+
+    /**
+     * Dispatch to target agent using GlobalContext
+     *
+     * NEW: Routes with GlobalContext for unified context handling.
+     *
+     * Dispatches to the appropriate agent based on classification.
+     * Router only dispatches to AGENTS, never directly to workers.
+     * Workers are dispatched by OrchestratorAgent.
+     *
+     * @param gCtx - GlobalContext with query, user info, and tracing
+     * @param target - Target agent route from classification
+     * @returns AgentResult from the target agent
+     * @private
+     */
+    private async dispatchGlobal(gCtx: GlobalContext, target: RouteTarget): Promise<AgentResult> {
+      const startTime = Date.now();
+      const env = (this as unknown as { env: TEnv }).env;
+
+      try {
+        switch (target) {
+          case 'simple-agent': {
+            if (!env.SimpleAgent) {
+              // Fallback: handle simple queries directly with GlobalContext
+              // TODO: Implement handleSimpleQueryGlobal
+              return {
+                success: false,
+                error: 'SimpleAgent not available and fallback not yet implemented',
+                durationMs: Date.now() - startTime,
+              };
+            }
+            const agent = await getAgentByName(env.SimpleAgent, gCtx.chatId.toString());
+            this.setProviderIfSupported(agent);
+            // TODO: Call executeGlobal on agent if available (when all agents support GlobalContext)
+            // For now: defer to ExecutionContext-based execution
+            return {
+              success: false,
+              error: 'SimpleAgent GlobalContext support in progress - use routeGlobal when complete',
+              durationMs: Date.now() - startTime,
+            };
+          }
+
+          case 'orchestrator-agent': {
+            if (!env.OrchestratorAgent) {
+              return {
+                success: false,
+                error: 'OrchestratorAgent not available',
+                durationMs: Date.now() - startTime,
+              };
+            }
+            const agent = await getAgentByName(env.OrchestratorAgent, gCtx.chatId.toString());
+            this.setProviderIfSupported(agent);
+            // TODO: Call routeGlobal on agent if available
+            return {
+              success: false,
+              error: 'OrchestratorAgent GlobalContext support not yet implemented',
+              durationMs: Date.now() - startTime,
+            };
+          }
+
+          case 'hitl-agent': {
+            if (!env.HITLAgent) {
+              return {
+                success: false,
+                error: 'HITLAgent not available',
+                durationMs: Date.now() - startTime,
+              };
+            }
+            const agent = await getAgentByName(env.HITLAgent, gCtx.chatId.toString());
+            this.setProviderIfSupported(agent);
+            return {
+              success: false,
+              error: 'HITLAgent GlobalContext support not yet implemented',
+              durationMs: Date.now() - startTime,
+            };
+          }
+
+          case 'lead-researcher-agent': {
+            if (!env.LeadResearcherAgent) {
+              // Fallback to orchestrator for multi-agent research
+              return this.dispatchGlobal(gCtx, 'orchestrator-agent');
+            }
+            const agent = await getAgentByName(env.LeadResearcherAgent, gCtx.chatId.toString());
+            this.setProviderIfSupported(agent);
+            return {
+              success: false,
+              error: 'LeadResearcherAgent GlobalContext support not yet implemented',
+              durationMs: Date.now() - startTime,
+            };
+          }
+
+          case 'duyet-info-agent': {
+            if (!env.DuyetInfoAgent) {
+              // TODO: Implement handleSimpleQueryGlobal
+              return {
+                success: false,
+                error: 'DuyetInfoAgent not available and fallback not yet implemented',
+                durationMs: Date.now() - startTime,
+              };
+            }
+            const agent = await getAgentByName(env.DuyetInfoAgent, gCtx.chatId.toString());
+            this.setProviderIfSupported(agent);
+            return {
+              success: false,
+              error: 'DuyetInfoAgent GlobalContext support not yet implemented',
+              durationMs: Date.now() - startTime,
+            };
+          }
+
+          default: {
+            // Fallback for unknown targets
+            logger.warn('[RouterAgent] Unknown target, using fallback', {
+              spanId: gCtx.currentSpanId,
+              target,
+            });
+            return {
+              success: false,
+              error: `Unknown routing target: ${target}`,
+              durationMs: Date.now() - startTime,
+            };
+          }
+        }
+      } catch (error) {
+        logger.error('[RouterAgent] Dispatch (global) failed', {
+          spanId: gCtx.currentSpanId,
           target,
           error: error instanceof Error ? error.message : String(error),
         });

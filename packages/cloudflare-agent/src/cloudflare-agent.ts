@@ -53,6 +53,7 @@ import {
   type QuotedContext,
 } from './format.js';
 import { trimHistory } from './history.js';
+import { AdminNotifier } from './notifications/admin-notifier.js';
 import type {
   CompleteBatchParams,
   HeartbeatParams,
@@ -1481,6 +1482,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Notify user when max retries exceeded
+     * Also sends a separate admin alert with detailed failure information
      */
     private async notifyUserOfFailure(batch: EnhancedBatchState, error: unknown): Promise<void> {
       const firstMessage = batch.pendingMessages[0];
@@ -1499,8 +1501,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         let userMessage =
           '[error] Sorry, your message could not be processed after multiple attempts.';
 
+        // Check if user is admin (from PendingMessage or originalContext)
+        const isAdmin = firstMessage.isAdmin ?? (ctx as Record<string, unknown>).isAdmin === true;
+
         // Add debug info for admin users
-        const isAdmin = (ctx as Record<string, unknown>).isAdmin === true;
         if (isAdmin) {
           const recentErrors =
             batch.retryErrors
@@ -1508,6 +1512,22 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               .map((e) => e.message)
               .join('; ') || errorMessage;
           userMessage += `\n\n<blockquote expandable>Debug: ${recentErrors}</blockquote>`;
+
+          // Send additional admin alert with detailed failure information
+          try {
+            const adminNotifier = new AdminNotifier(transport);
+            await adminNotifier.notifyBatchFailure(ctx, {
+              batchId: batch.batchId,
+              error: errorMessage,
+              retryCount: batch.retryCount,
+              maxRetries: retryConfig.maxRetries,
+              messagesAffected: batch.pendingMessages.length,
+            });
+          } catch (alertError) {
+            logger.warn('[CloudflareAgent] Failed to send admin failure alert', {
+              error: alertError instanceof Error ? alertError.message : String(alertError),
+            });
+          }
         }
 
         await transport.send(ctx, userMessage);
@@ -2129,9 +2149,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       logger.info('[CloudflareAgent] receiveMessage called', {
         traceId,
-        text: input.text.substring(0, 50),
-        userId: input.userId,
-        chatId: input.chatId,
+        ...input,
       });
 
       // Detect and recover from stuck activeBatch
@@ -2139,10 +2157,41 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       if (this.state.activeBatch) {
         const stuckCheck = isBatchStuckByHeartbeat(this.state.activeBatch);
         if (stuckCheck.isStuck) {
+          const stuckBatchId = this.state.activeBatch.batchId;
+          const stuckMessagesCount = this.state.activeBatch.pendingMessages.length;
+          const stuckDurationMs = this.state.activeBatch.lastHeartbeat
+            ? now - this.state.activeBatch.lastHeartbeat
+            : undefined;
+
           logger.warn('[CloudflareAgent][receiveMessage] Detected stuck activeBatch, recovering', {
-            batchId: this.state.activeBatch.batchId,
+            batchId: stuckBatchId,
             reason: stuckCheck.reason,
+            messagesAffected: stuckMessagesCount,
           });
+
+          // Send admin alert if the incoming message is from admin
+          const isAdmin = input.metadata?.isAdmin === true;
+          if (isAdmin && transport) {
+            try {
+              // Build admin context from input metadata
+              const adminCtx = input.metadata as TContext;
+              if (adminCtx) {
+                const adminNotifier = new AdminNotifier(transport);
+                await adminNotifier.notifyStuckBatch(adminCtx, {
+                  batchId: stuckBatchId,
+                  reason: stuckCheck.reason ?? 'Unknown',
+                  messagesAffected: stuckMessagesCount,
+                  // Only include stuckDurationMs if it's defined (exactOptionalPropertyTypes)
+                  ...(stuckDurationMs !== undefined && { stuckDurationMs }),
+                });
+              }
+            } catch (alertError) {
+              logger.warn('[CloudflareAgent] Failed to send stuck batch alert', {
+                error: alertError instanceof Error ? alertError.message : String(alertError),
+              });
+            }
+          }
+
           const { activeBatch: _removed, ...stateWithoutActive } = this.state;
           this.setState({
             ...stateWithoutActive,
@@ -2172,6 +2221,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         });
       }
 
+      // Extract admin info from metadata for propagation
+      const isAdmin = input.metadata?.isAdmin as boolean | undefined;
+      const adminUsername = input.metadata?.adminUsername as string | undefined;
+
       const pendingMessage: PendingMessage<unknown> = {
         text: input.text,
         timestamp: now,
@@ -2179,6 +2232,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         userId: input.userId,
         chatId: input.chatId,
         ...(input.username && { username: input.username }),
+        // Admin information for debug footer and failure alerts
+        ...(isAdmin !== undefined && { isAdmin }),
+        ...(adminUsername && { adminUsername }),
         // Event ID for D1 observability updates when batch completes
         ...(eventId && { eventId }),
         // Store metadata for later use (platform info, etc.)
