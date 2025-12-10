@@ -9,6 +9,8 @@
  */
 
 import { type AgentContext, AgentMixin } from '../agents/base-agent.js';
+import type { GlobalContext, SpanContext } from '../context/index.js';
+import { completeSpan, createSpanContext } from '../context/index.js';
 import type { ExecutionPlan, PlanStep, WorkerResult } from '../routing/schemas.js';
 import type { WorkerInput, WorkerType } from '../workers/base-worker.js';
 import { createPlan, groupStepsByLevel, type PlannerConfig } from './planner.js';
@@ -84,10 +86,12 @@ export interface ExecutionResult {
  * 4. Resume execution with the updated plan
  *
  * Maximum re-planning iterations: 2 (bounded to prevent infinite loops)
+ *
+ * Supports both GlobalContext (for direct execution) and AgentContext (for backward compatibility)
  */
 export async function executePlan(
   plan: ExecutionPlan,
-  context: AgentContext,
+  context: AgentContext | GlobalContext,
   config: ExecutorConfig,
   onProgress?: ExecutionProgressCallback
 ): Promise<ExecutionResult> {
@@ -370,11 +374,14 @@ export async function executePlan(
 /**
  * Execute steps in parallel with concurrency limit and fault tolerance
  * Uses Promise.allSettled for true parallelism - one step failure doesn't block others
+ *
+ * For GlobalContext, creates SpanContext for each worker to prevent race conditions
+ * on shared state while allowing parallel execution.
  */
 async function executeStepsParallelSafe(
   steps: PlanStep[],
   previousResults: Map<string, WorkerResult>,
-  context: AgentContext,
+  context: AgentContext | GlobalContext,
   config: ExecutorConfig,
   traceId: string,
   maxParallel: number,
@@ -411,12 +418,15 @@ async function executeStepsParallelSafe(
 
 /**
  * Execute a single step
+ *
+ * For GlobalContext: Creates a SpanContext for parallel safety
+ * For AgentContext: Uses context directly (backward compatibility)
  */
 async function executeStep(
   step: PlanStep,
   previousResults: Map<string, WorkerResult>,
   currentResults: Map<string, WorkerResult>,
-  context: AgentContext,
+  context: AgentContext | GlobalContext,
   config: ExecutorConfig,
   traceId: string,
   onProgress?: ExecutionProgressCallback
@@ -441,11 +451,22 @@ async function executeStep(
       }
     }
 
-    // Build worker input
+    // Create SpanContext for GlobalContext (for parallel worker safety)
+    let workerContext: AgentContext | GlobalContext | SpanContext = context;
+    let workerSpan: SpanContext | undefined;
+
+    if ('agentChain' in context) {
+      // GlobalContext detected - create SpanContext for parallel safety
+      const globalCtx = context as GlobalContext;
+      workerSpan = createSpanContext(globalCtx, step.workerType, globalCtx.currentSpanId);
+      workerContext = workerSpan;
+    }
+
+    // Build worker input with appropriate context type
     const input: WorkerInput = {
       step,
       dependencyResults,
-      context,
+      context: workerContext,
       traceId,
     };
 
@@ -458,6 +479,11 @@ async function executeStep(
     );
 
     const durationMs = Date.now() - startTime;
+
+    // Complete span if it was created for GlobalContext
+    if (workerSpan) {
+      completeSpan(workerSpan, result.success ? 'success' : 'error');
+    }
 
     const finalResult: WorkerResult = {
       ...result,

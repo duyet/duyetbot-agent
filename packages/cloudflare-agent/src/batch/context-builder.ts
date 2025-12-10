@@ -4,6 +4,11 @@
  * Handles the complex logic of rebuilding platform-specific transport contexts
  * from pending batch messages, including injection of environment-specific
  * secrets (bot tokens, API keys) and platform configuration.
+ *
+ * DEPRECATION NOTICE:
+ * This builder is kept for backward compatibility with older messages that don't have
+ * serializedContext. New code should use deserializeContext() from ../context/global-context.js
+ * when available.
  */
 
 import type { PendingMessage, PlatformConfig } from './types.js';

@@ -51,7 +51,7 @@ bun run dev          # Next.js dev server (port 3001, no bindings)
 bun run dev:remote   # Build + preview with remote D1 bindings
 bun run preview      # Build + preview with local emulated bindings
 bun run deploy       # Build + deploy to Cloudflare
-bun run deploy:branch # Branch deployment (preview URL)
+bun run deploy:branch # Deploy to preview worker (duyetbot-dashboard-preview)
 bun run cf-typegen   # Generate Cloudflare env types
 ```
 

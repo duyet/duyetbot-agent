@@ -69,9 +69,9 @@ export const BarChart = React.forwardRef<any, BarChartProps<any>>(function BarCh
           />
           <Tooltip content={<ChartTooltip />} />
           {showLegend && <Legend />}
-          {barKeys.map((barKey, index) => (
+          {barKeys.map((barKey) => (
             <Bar
-              key={index}
+              key={String(barKey.key)}
               dataKey={String(barKey.key)}
               fill={barKey.color}
               name={barKey.name}

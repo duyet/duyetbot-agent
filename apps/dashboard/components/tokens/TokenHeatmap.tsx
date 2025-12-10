@@ -35,8 +35,8 @@ export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
           Activity Heatmap
         </h2>
         <div className="animate-pulse space-y-2">
-          {Array.from({ length: 7 }).map((_, i) => (
-            <div key={i} className="h-8 w-full rounded bg-gray-200 dark:bg-gray-700" />
+          {dayLabels.map((day) => (
+            <div key={day} className="h-8 w-full rounded bg-gray-200 dark:bg-gray-700" />
           ))}
         </div>
       </div>
@@ -63,9 +63,9 @@ export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
           <div className="flex">
             <div className="w-12" />
             <div className="flex gap-0.5">
-              {Array.from({ length: 24 }).map((_, hour) => (
+              {Array.from({ length: 24 }, (_, h) => h).map((hour) => (
                 <div
-                  key={`hour-${hour}`}
+                  key={`hour-label-${hour}`}
                   className="flex w-6 items-center justify-center text-xs text-gray-600 dark:text-gray-400"
                 >
                   {hour % 6 === 0 ? hour : ''}
@@ -75,21 +75,21 @@ export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
           </div>
 
           {/* Heatmap grid */}
-          {grid.map((row, dayIndex) => (
-            <div key={`row-${dayIndex}`} className="flex gap-1">
+          {dayLabels.map((dayLabel, dayIndex) => (
+            <div key={`row-${dayLabel}`} className="flex gap-1">
               <div className="flex w-12 items-center justify-start text-sm font-medium text-gray-700 dark:text-gray-300">
-                {dayLabels[dayIndex]}
+                {dayLabel}
               </div>
 
               <div className="flex gap-0.5">
-                {row.map((tokens, hourIndex) => (
+                {Array.from({ length: 24 }, (_, h) => h).map((hour) => (
                   <div
-                    key={`${dayIndex}-${hourIndex}`}
+                    key={`${dayLabel}-h${hour}`}
                     className="h-6 w-6 rounded border border-gray-200 dark:border-gray-700"
                     style={{
-                      backgroundColor: colorScale(tokens, maxTokens),
+                      backgroundColor: colorScale(grid[dayIndex][hour], maxTokens),
                     }}
-                    title={`${dayLabels[dayIndex]} ${hourIndex}:00 - ${tokens.toLocaleString()} tokens`}
+                    title={`${dayLabel} ${hour}:00 - ${grid[dayIndex][hour].toLocaleString()} tokens`}
                   />
                 ))}
               </div>
@@ -102,8 +102,8 @@ export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
       <div className="mt-4 flex items-center gap-4 text-xs">
         <span className="text-gray-600 dark:text-gray-400">Less</span>
         <div className="flex gap-1">
-          {['#e0e7ff', '#a5b4fc', '#6366f1', '#4f46e5'].map((color, i) => (
-            <div key={i} className="h-3 w-3 rounded" style={{ backgroundColor: color }} />
+          {['#e0e7ff', '#a5b4fc', '#6366f1', '#4f46e5'].map((color) => (
+            <div key={color} className="h-3 w-3 rounded" style={{ backgroundColor: color }} />
           ))}
         </div>
         <span className="text-gray-600 dark:text-gray-400">More</span>

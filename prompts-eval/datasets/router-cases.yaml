@@ -1,0 +1,150 @@
+# Router Classification Test Cases
+# Tests that queries are classified to the correct agent
+# Coverage: 15 test cases across 5 agent types
+#
+# Each test case expects the LLM to respond with JSON classification
+# The router-assertion.js custom assertion parses the JSON and maps it to an agent name
+
+# =============================================================================
+# SIMPLE-AGENT: Quick Q&A, no tools needed (3 tests)
+# =============================================================================
+
+- description: "Simple query - geography factual question"
+  vars:
+    query: "What is the capital of France?"
+    __expected: "simple-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Simple query - arithmetic calculation"
+  vars:
+    query: "Calculate 15 times 23"
+    __expected: "simple-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Simple query - creative request"
+  vars:
+    query: "Tell me a joke"
+    __expected: "simple-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+# =============================================================================
+# ORCHESTRATOR-AGENT: Complex tasks, code, architecture (3 tests)
+# =============================================================================
+
+- description: "Complex code task - authentication refactor"
+  vars:
+    query: "Refactor the authentication module to use JWT tokens and add refresh token support"
+    __expected: "orchestrator-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Complex debugging - production issue investigation"
+  vars:
+    query: "Debug why the API returns 500 errors intermittently in production"
+    __expected: "orchestrator-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Complex migration - TypeScript adoption"
+  vars:
+    query: "Add TypeScript support to the Express server and update all routes"
+    __expected: "orchestrator-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+# =============================================================================
+# LEAD-RESEARCHER-AGENT: Research, news, web search (3 tests)
+# =============================================================================
+
+- description: "Research query - AI industry trends"
+  vars:
+    query: "What are the latest developments in AI agents in 2024?"
+    __expected: "lead-researcher-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Research query - technology comparison"
+  vars:
+    query: "Compare React Server Components vs Next.js App Router performance"
+    __expected: "lead-researcher-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Research query - security best practices"
+  vars:
+    query: "Find best practices for securing Cloudflare Workers applications"
+    __expected: "lead-researcher-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+# =============================================================================
+# ORCHESTRATOR-AGENT: GitHub operations (2 tests)
+# =============================================================================
+
+- description: "GitHub operation - pull request creation"
+  vars:
+    query: "Create a PR to merge feature-auth branch into main"
+    __expected: "orchestrator-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "GitHub operation - code review"
+  vars:
+    query: "Review pull request #42 and suggest improvements"
+    __expected: "orchestrator-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+# =============================================================================
+# DUYET-INFO-AGENT: Personal information about Duyet (2 tests)
+# =============================================================================
+
+- description: "Personal info - contact details"
+  vars:
+    query: "What is Duyet's email address?"
+    __expected: "duyet-info-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Personal info - professional details"
+  vars:
+    query: "Where does Duyet work and what does he do?"
+    __expected: "duyet-info-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+# =============================================================================
+# EDGE CASES (2 tests)
+# =============================================================================
+
+- description: "Edge case - minimal input"
+  vars:
+    query: "Hi"
+    __expected: "simple-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs
+
+- description: "Edge case - multi-domain complex task"
+  vars:
+    query: "Write a function to parse markdown AND research the best parsing algorithms"
+    __expected: "orchestrator-agent"
+  assert:
+    - type: javascript
+      value: file://../assertions/router-assertion.cjs

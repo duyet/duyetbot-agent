@@ -1,0 +1,76 @@
+# GitHub Markdown Format Test Cases
+# Tests GitHub-flavored markdown compliance
+# Coverage: 6 test cases
+
+# =============================================================================
+# MARKDOWN FORMATTING (3 tests)
+# =============================================================================
+
+- description: "GitHub markdown - code blocks with language"
+  vars:
+    platform: "github"
+    query: "Show me how to create a REST API endpoint in Express"
+  assert:
+    - type: contains
+      value: "```"
+    - type: llm-rubric
+      value: "Uses fenced code blocks with language identifier (javascript, typescript, etc.)"
+
+- description: "GitHub markdown - heading structure"
+  vars:
+    platform: "github"
+    query: "Explain the project architecture and components"
+  assert:
+    - type: contains-any
+      value:
+        - "## "
+        - "### "
+    - type: llm-rubric
+      value: "Uses proper heading hierarchy to structure the response"
+
+- description: "GitHub markdown - inline code for paths"
+  vars:
+    platform: "github"
+    query: "Where should I put my configuration files?"
+  assert:
+    - type: contains
+      value: "`"
+    - type: llm-rubric
+      value: "Uses inline code (backticks) for file paths and directory names"
+
+# =============================================================================
+# GITHUB ALERTS (2 tests)
+# =============================================================================
+
+- description: "GitHub alerts - warning for security"
+  vars:
+    platform: "github"
+    query: "What are the security concerns with storing passwords?"
+  assert:
+    - type: contains-any
+      value:
+        - "> [!WARNING]"
+        - "> [!CAUTION]"
+        - "> [!NOTE]"
+    - type: llm-rubric
+      value: "Uses GitHub alert syntax to highlight security concerns"
+
+- description: "GitHub alerts - note for tips"
+  vars:
+    platform: "github"
+    query: "How can I improve my code performance?"
+  assert:
+    - type: llm-rubric
+      value: "Response is well-structured with clear sections. May use GitHub alerts for important tips."
+
+# =============================================================================
+# DETAILED RESPONSE (1 test)
+# =============================================================================
+
+- description: "Detailed response - code review"
+  vars:
+    platform: "github"
+    query: "Review this authentication implementation for security best practices"
+  assert:
+    - type: llm-rubric
+      value: "Response is detailed and thorough. Uses code examples and clear explanations. Structured with headings."

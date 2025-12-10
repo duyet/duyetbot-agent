@@ -97,6 +97,12 @@ export interface ExecutionContext {
   /** Optional username (not all platforms provide) */
   username?: string;
 
+  // Admin Information
+  /** Whether the user is an admin (for debug footer visibility and failure alerts) */
+  isAdmin?: boolean;
+  /** Admin username for comparison and alert targeting */
+  adminUsername?: string;
+
   // Message References
   /** Message ID from user's message (can be string or number depending on platform) */
   userMessageId: string | number;
@@ -226,6 +232,9 @@ export function createExecutionContext(input: ParsedInput, platform?: string): E
   const traceId = createTraceId();
   const spanId = createSpanId();
   const eventId = input.metadata?.eventId as string | undefined;
+  const isAdmin = input.metadata?.isAdmin as boolean | undefined;
+  const adminUsername = input.metadata?.adminUsername as string | undefined;
+
   return {
     traceId,
     spanId,
@@ -234,6 +243,9 @@ export function createExecutionContext(input: ParsedInput, platform?: string): E
     userId: input.userId,
     chatId: input.chatId,
     ...(input.username && { username: input.username }),
+    // Admin information (for debug footer visibility and failure alerts)
+    ...(isAdmin !== undefined && { isAdmin }),
+    ...(adminUsername && { adminUsername }),
     userMessageId: input.messageRef || 0,
     provider: 'claude',
     model: 'claude-3-5-sonnet-20241022',
