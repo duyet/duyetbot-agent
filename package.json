@@ -97,7 +97,7 @@
     "concurrently": "^9.2.1",
     "promptfoo": "^0.120.2",
     "tsx": "^4.21.0",
-    "turbo": "^2.0.0",
+    "turbo": "^2.6.3",
     "vitest": "catalog:",
     "wrangler": "^4.53.0"
   },
