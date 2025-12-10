@@ -93,7 +93,7 @@
   "license": "MIT",
   "devDependencies": {
     "@biomejs/biome": "2.3.8",
-    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/coverage-v8": "^4.0.15",
     "concurrently": "^9.2.1",
     "promptfoo": "^0.120.2",
     "tsx": "^4.21.0",
