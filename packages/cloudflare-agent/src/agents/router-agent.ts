@@ -1020,7 +1020,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         const target = classification ? determineRouteTarget(classification) : 'router';
 
         // Get router classification duration from routing history (last entry)
-        const lastRouting = this.state.routingHistory[this.state.routingHistory.length - 1];
+        // Guard against undefined routingHistory for persisted state migration
+        const routingHistory = this.state.routingHistory ?? [];
+        const lastRouting = routingHistory[routingHistory.length - 1];
         const routerDurationMs = lastRouting?.durationMs;
 
         // Build debug context for admin users
@@ -1094,6 +1096,12 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           result.success && result.content
             ? result.content
             : `[error] ${result.error || 'Unknown error'}`;
+
+        // Validate responseTarget before sending
+        if (!execution.responseTarget?.messageRef?.messageId) {
+          throw new Error('Missing messageRef.messageId in responseTarget');
+        }
+
         await sendPlatformResponse(
           envWithTokens,
           execution.responseTarget,
@@ -1116,21 +1124,29 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           durationMs: Date.now() - startTime,
         });
 
-        // Try to send error message to user
-        try {
-          const envForError = (this as unknown as { env: TEnv }).env as unknown as {
-            TELEGRAM_BOT_TOKEN?: string;
-            GITHUB_TOKEN?: string;
-          };
-          await sendPlatformResponse(
-            envForError,
-            execution.responseTarget,
-            '[error] Sorry, an error occurred processing your request.'
-          );
-        } catch (sendError) {
-          logger.error('[RouterAgent] Failed to send error message', {
+        // Try to send error message to user (only if responseTarget has valid messageRef)
+        if (execution.responseTarget?.messageRef?.messageId) {
+          try {
+            const envForError = (this as unknown as { env: TEnv }).env as unknown as {
+              TELEGRAM_BOT_TOKEN?: string;
+              GITHUB_TOKEN?: string;
+            };
+            await sendPlatformResponse(
+              envForError,
+              execution.responseTarget,
+              '[error] Sorry, an error occurred processing your request.'
+            );
+          } catch (sendError) {
+            logger.error('[RouterAgent] Failed to send error message', {
+              executionId: data.executionId,
+              error: sendError instanceof Error ? sendError.message : String(sendError),
+            });
+          }
+        } else {
+          logger.warn('[RouterAgent] Cannot send error message, no valid messageRef', {
             executionId: data.executionId,
-            error: sendError instanceof Error ? sendError.message : String(sendError),
+            hasResponseTarget: !!execution.responseTarget,
+            hasMessageRef: !!execution.responseTarget?.messageRef,
           });
         }
       } finally {
