@@ -40,6 +40,8 @@ import { BatchQueue } from '../batch/batch-queue.js';
 import { ContextBuilder } from '../batch/context-builder.js';
 import { StuckDetector } from '../batch/stuck-detector.js';
 import type { BatchState } from '../batch-types.js';
+import { callbackHandlers, parseCallbackData } from '../callbacks/index.js';
+import type { CallbackContext } from '../callbacks/types.js';
 import { getDefaultThinkingMessages } from '../format.js';
 import type { ParsedInput } from '../transport.js';
 import type { OpenAITool } from '../types.js';
@@ -310,6 +312,58 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         result.pendingBatch = this.state.pendingBatch;
       }
       return result;
+    }
+
+    // ============================================
+    // Callback Query Handling (Telegram Inline Buttons)
+    // ============================================
+
+    async receiveCallback(context: CallbackContext): Promise<{ text?: string }> {
+      // Parse the callback data
+      const parsed = parseCallbackData(context.data);
+
+      if (!parsed) {
+        logger.warn('[CloudflareAgent] Invalid callback data', {
+          callbackQueryId: context.callbackQueryId,
+          data: context.data,
+        });
+        return {};
+      }
+
+      // Get the handler for this action
+      const handler = callbackHandlers[parsed.action];
+      if (!handler) {
+        logger.warn('[CloudflareAgent] No handler for callback action', {
+          action: parsed.action,
+          callbackQueryId: context.callbackQueryId,
+        });
+        return {};
+      }
+
+      // Execute the handler
+      try {
+        const result = await handler(context, parsed.payload);
+
+        logger.debug('[CloudflareAgent] Callback handled', {
+          action: parsed.action,
+          success: result.success,
+          callbackQueryId: context.callbackQueryId,
+        });
+
+        // Return text only if message is defined
+        const response: { text?: string } = {};
+        if (result.message !== undefined) {
+          response.text = result.message;
+        }
+        return response;
+      } catch (err) {
+        logger.error('[CloudflareAgent] Callback handler error', {
+          action: parsed.action,
+          error: err instanceof Error ? err.message : String(err),
+          callbackQueryId: context.callbackQueryId,
+        });
+        return {};
+      }
     }
 
     // ============================================

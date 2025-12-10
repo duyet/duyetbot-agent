@@ -59,6 +59,58 @@ export interface TelegramUpdate {
       date: number;
     };
   };
+  /** Inline keyboard button callback from user */
+  callback_query?: {
+    /** Unique identifier of this query */
+    id: string;
+    /** Sender of the callback query */
+    from: {
+      /** Unique user identifier */
+      id: number;
+      /** Username without @ prefix */
+      username?: string;
+      /** User's first name */
+      first_name: string;
+    };
+    /** Chat where the callback was triggered */
+    chat_instance: string;
+    /** Unique identifier of the message the button was in */
+    message?: {
+      /** Unique message identifier */
+      message_id: number;
+      /** Chat where message is located */
+      chat: {
+        /** Unique chat identifier */
+        id: number;
+      };
+    };
+    /** Data associated with the callback button */
+    data?: string;
+  };
+}
+
+/**
+ * Parsed inline keyboard callback context
+ *
+ * Contains extracted data from a callback_query update,
+ * ready for use by callback handlers and agents.
+ * Extends cloudflare-agent's CallbackContext with startTime for latency tracking.
+ */
+export interface CallbackContext {
+  /** Unique callback query ID from Telegram */
+  callbackQueryId: string;
+  /** Chat ID where the button was clicked */
+  chatId: number;
+  /** Message ID of the message containing the button */
+  messageId: number;
+  /** User ID of the user who clicked the button */
+  userId: number;
+  /** Username of the user who clicked the button */
+  username?: string;
+  /** Data payload from the callback button */
+  data: string;
+  /** Timestamp when processing started (for latency tracking) */
+  startTime: number;
 }
 
 /**
@@ -126,6 +178,8 @@ export interface Env {
 export type ParserVariables = {
   /** Parsed webhook context, undefined if parsing failed */
   webhookContext: WebhookContext | undefined;
+  /** Parsed callback query context, undefined if not a callback query */
+  callbackContext: CallbackContext | undefined;
   /** Whether to skip further processing (invalid request) */
   skipProcessing: boolean;
 };

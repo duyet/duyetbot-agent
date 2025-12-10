@@ -6,6 +6,7 @@
 
 import type { DebugContext, Transport } from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
+import type { InlineKeyboardMarkup, SendMessageOptions } from '@duyetbot/types';
 import { prepareMessageWithDebug } from './debug-footer.js';
 
 /** Telegram message length limit */
@@ -296,6 +297,240 @@ async function sendTypingIndicator(token: string, chatId: number): Promise<void>
 }
 
 /**
+ * Send a message with inline keyboard via Telegram Bot API
+ *
+ * @param token - Bot token
+ * @param chatId - Chat to send to
+ * @param text - Message text
+ * @param keyboard - Inline keyboard markup
+ * @param parseMode - Parse mode for formatting
+ * @param replyToMessageId - Message ID to reply to
+ */
+export async function sendTelegramMessageWithKeyboard(
+  token: string,
+  chatId: number,
+  text: string,
+  keyboard: InlineKeyboardMarkup,
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2',
+  replyToMessageId?: number
+): Promise<number> {
+  // Truncate if too long (keyboards don't support chunking well)
+  const truncatedText =
+    text.length > MAX_MESSAGE_LENGTH
+      ? `${text.slice(0, MAX_MESSAGE_LENGTH - 20)}...\n\n[truncated]`
+      : text;
+
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    text: truncatedText,
+    reply_markup: keyboard,
+  };
+  if (parseMode) {
+    payload.parse_mode = parseMode;
+  }
+  if (replyToMessageId) {
+    payload.reply_to_message_id = replyToMessageId;
+  }
+
+  logger.debug('[TRANSPORT] Sending message with keyboard', { chatId, keyboard });
+
+  let response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  // Fallback to plain text if parsing fails
+  if (response.status === 400 && parseMode) {
+    const errorBody = await response.text();
+    let errorDetail = '';
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorDetail = parsed.description || errorBody;
+    } catch {
+      errorDetail = errorBody;
+    }
+
+    logger.warn(
+      `[TRANSPORT] ${parseMode} parse failed with keyboard, retrying without parse_mode`,
+      {
+        chatId,
+        telegramError: errorDetail,
+      }
+    );
+
+    const withoutParseMode = {
+      chat_id: chatId,
+      text: truncatedText,
+      reply_markup: keyboard,
+    };
+
+    response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(withoutParseMode),
+    });
+  }
+
+  if (!response.ok) {
+    const error = await response.text();
+    logger.error('[TRANSPORT] Send message with keyboard failed', {
+      status: response.status,
+      error,
+      chatId,
+    });
+    throw new Error(`Telegram API error: ${response.status}`);
+  }
+
+  const result = await response.json<{ result: { message_id: number } }>();
+  logger.debug('[TRANSPORT] Message with keyboard sent', {
+    chatId,
+    messageId: result.result.message_id,
+  });
+
+  return result.result.message_id;
+}
+
+/**
+ * Edit an existing message with inline keyboard via Telegram Bot API
+ *
+ * @param token - Bot token
+ * @param chatId - Chat containing the message
+ * @param messageId - Message to edit
+ * @param text - New message text
+ * @param keyboard - Inline keyboard markup (pass undefined to remove keyboard)
+ * @param parseMode - Parse mode for formatting
+ */
+export async function editTelegramMessageWithKeyboard(
+  token: string,
+  chatId: number,
+  messageId: number,
+  text: string,
+  keyboard?: InlineKeyboardMarkup,
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2'
+): Promise<void> {
+  const truncatedText =
+    text.length > MAX_MESSAGE_LENGTH
+      ? `${text.slice(0, MAX_MESSAGE_LENGTH - 20)}...\n\n[truncated]`
+      : text;
+
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    message_id: messageId,
+    text: truncatedText,
+  };
+  if (parseMode) {
+    payload.parse_mode = parseMode;
+  }
+  if (keyboard) {
+    payload.reply_markup = keyboard;
+  }
+
+  logger.debug('[TRANSPORT] Editing message with keyboard', { chatId, messageId });
+
+  let response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  // Fallback to plain text if parsing fails
+  if (response.status === 400 && parseMode) {
+    const errorBody = await response.text();
+    let errorDetail = '';
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorDetail = parsed.description || errorBody;
+    } catch {
+      errorDetail = errorBody;
+    }
+
+    logger.warn(
+      `[TRANSPORT] ${parseMode} parse failed in edit with keyboard, retrying without parse_mode`,
+      {
+        chatId,
+        messageId,
+        telegramError: errorDetail,
+      }
+    );
+
+    const withoutParseMode: Record<string, unknown> = {
+      chat_id: chatId,
+      message_id: messageId,
+      text: truncatedText,
+    };
+    if (keyboard) {
+      withoutParseMode.reply_markup = keyboard;
+    }
+
+    response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(withoutParseMode),
+    });
+  }
+
+  if (response?.ok) {
+    logger.info('[TRANSPORT] Message with keyboard edited successfully', {
+      chatId,
+      messageId,
+    });
+  } else {
+    const error = await response.text();
+    logger.error('[TRANSPORT] Edit message with keyboard failed', {
+      status: response.status,
+      error,
+      chatId,
+      messageId,
+    });
+    // Don't throw - message might have been deleted
+  }
+}
+
+/**
+ * Answer a callback query (required within 30s of receiving callback)
+ *
+ * @param token - Bot token
+ * @param callbackQueryId - Callback query ID to answer
+ * @param text - Optional notification text (shows as toast)
+ * @param showAlert - Show as alert dialog instead of toast
+ */
+export async function answerCallbackQuery(
+  token: string,
+  callbackQueryId: string,
+  text?: string,
+  showAlert = false
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    callback_query_id: callbackQueryId,
+  };
+  if (text) {
+    payload.text = text;
+    payload.show_alert = showAlert;
+  }
+
+  logger.debug('[TRANSPORT] Answering callback query', { callbackQueryId, text });
+
+  const response = await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.ok) {
+    logger.debug('[TRANSPORT] Callback query answered', { callbackQueryId });
+  } else {
+    const error = await response.text();
+    logger.error('[TRANSPORT] Answer callback query failed', {
+      status: response.status,
+      error,
+      callbackQueryId,
+    });
+    // Don't throw - callback might have expired
+  }
+}
+
+/**
  * Telegram transport implementation
  *
  * Integrates debug footer for admin users via context chain pattern:
@@ -343,6 +578,76 @@ export const telegramTransport: Transport<TelegramContext> = {
     },
   }),
 };
+
+/**
+ * Send message with options (keyboard support)
+ *
+ * This is a Telegram-specific helper that extends the base transport
+ * with inline keyboard support. Not part of the generic Transport interface.
+ *
+ * @param ctx - Telegram context
+ * @param text - Message text to send
+ * @param options - Optional send options including keyboard
+ * @returns Message ID of the sent message
+ */
+export async function sendWithOptions(
+  ctx: TelegramContext,
+  text: string,
+  options?: SendMessageOptions
+): Promise<number> {
+  const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
+  const effectiveParseMode = options?.parseMode ?? parseMode;
+
+  if (options?.keyboard) {
+    return sendTelegramMessageWithKeyboard(
+      ctx.token,
+      ctx.chatId,
+      finalText,
+      options.keyboard,
+      effectiveParseMode,
+      options?.replyToMessageId ?? ctx.messageId
+    );
+  }
+  return sendTelegramMessage(
+    ctx.token,
+    ctx.chatId,
+    finalText,
+    effectiveParseMode,
+    options?.replyToMessageId ?? ctx.messageId
+  );
+}
+
+/**
+ * Edit message with optional keyboard
+ *
+ * This is a Telegram-specific helper that extends the base transport
+ * with inline keyboard support on edit. Not part of the generic Transport interface.
+ *
+ * @param ctx - Telegram context
+ * @param ref - Message ID to edit
+ * @param text - New message text
+ * @param options - Optional edit options including keyboard
+ */
+export async function editWithOptions(
+  ctx: TelegramContext,
+  ref: number,
+  text: string,
+  options?: { keyboard?: InlineKeyboardMarkup }
+): Promise<void> {
+  const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
+  if (options?.keyboard !== undefined) {
+    await editTelegramMessageWithKeyboard(
+      ctx.token,
+      ctx.chatId,
+      ref,
+      finalText,
+      options.keyboard,
+      parseMode
+    );
+  } else {
+    await editTelegramMessage(ctx.token, ctx.chatId, ref, finalText, parseMode);
+  }
+}
 
 /**
  * Normalize username by removing leading @ if present

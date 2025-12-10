@@ -12,7 +12,13 @@ import { logger } from '@duyetbot/hono-middleware';
 import { extractTask, hasMention } from '@duyetbot/types/mention-parser';
 import type { MiddlewareHandler } from 'hono';
 
-import type { Env, ParserVariables, TelegramUpdate, WebhookContext } from './types.js';
+import type {
+  CallbackContext,
+  Env,
+  ParserVariables,
+  TelegramUpdate,
+  WebhookContext,
+} from './types.js';
 
 /** Default bot username for mention detection */
 const DEFAULT_BOT_USERNAME = 'duyetbot';
@@ -53,6 +59,53 @@ export async function parseWebhookBody(request: Request): Promise<{
   }
 
   return { update, message };
+}
+
+/**
+ * Parse callback query from update and extract context
+ *
+ * @param callbackQuery - The callback_query field from Telegram update
+ * @returns CallbackContext with extracted data, or null if invalid
+ * @internal Exported for testing
+ */
+export function parseCallbackQuery(
+  callbackQuery: NonNullable<TelegramUpdate['callback_query']>
+): CallbackContext | null {
+  // Validate required fields
+  if (!callbackQuery.id || !callbackQuery.from || callbackQuery.data === undefined) {
+    logger.debug('[PARSE] Skipping callback query with missing required fields', {
+      hasId: !!callbackQuery.id,
+      hasFrom: !!callbackQuery.from,
+      hasData: callbackQuery.data !== undefined,
+    });
+    return null;
+  }
+
+  // Validate message context
+  if (!callbackQuery.message?.message_id || !callbackQuery.message?.chat?.id) {
+    logger.debug('[PARSE] Skipping callback query with missing message context', {
+      hasMessageId: !!callbackQuery.message?.message_id,
+      hasChatId: !!callbackQuery.message?.chat?.id,
+    });
+    return null;
+  }
+
+  // Extract and validate data - must be non-empty string
+  const data = callbackQuery.data.trim();
+  if (!data) {
+    logger.debug('[PARSE] Skipping callback query with empty data payload');
+    return null;
+  }
+
+  return {
+    callbackQueryId: callbackQuery.id,
+    chatId: callbackQuery.message.chat.id,
+    messageId: callbackQuery.message.message_id,
+    userId: callbackQuery.from.id,
+    username: callbackQuery.from.username,
+    data,
+    startTime: Date.now(),
+  };
 }
 
 /**
@@ -112,9 +165,14 @@ export function extractWebhookContext(
  *
  * The parser middleware:
  * 1. Parses the JSON body from the webhook request
- * 2. Validates that the message has required fields (text, from)
- * 3. Extracts webhook context for downstream handlers
- * 4. For group chats: skips processing unless bot is mentioned or replied to
+ * 2. Detects update type (message or callback_query)
+ * 3. For messages:
+ *    - Validates that the message has required fields (text, from)
+ *    - Extracts webhook context for downstream handlers
+ *    - For group chats: skips processing unless bot is mentioned or replied to
+ * 4. For callbacks:
+ *    - Validates callback structure
+ *    - Extracts callback context for downstream handlers
  * 5. Sets `skipProcessing: true` for invalid requests or non-targeted group messages
  *
  * @returns Hono middleware handler
@@ -127,8 +185,9 @@ export function extractWebhookContext(
  *   if (c.get('skipProcessing')) {
  *     return c.json({ ok: true });
  *   }
- *   const ctx = c.get('webhookContext');
- *   // Process message...
+ *   const webhookCtx = c.get('webhookContext');
+ *   const callbackCtx = c.get('callbackContext');
+ *   // Process message or callback...
  * });
  * ```
  */
@@ -138,10 +197,61 @@ export function createTelegramParserMiddleware(): MiddlewareHandler<{
 }> {
   return async (c, next) => {
     // Parse request body
-    const parsed = await parseWebhookBody(c.req.raw);
+    let update: TelegramUpdate;
 
-    if (!parsed) {
+    try {
+      update = await c.req.json<TelegramUpdate>();
+      logger.debug('[PARSE] Webhook payload received', {
+        hasMessage: !!update.message,
+        hasCallback: !!update.callback_query,
+      });
+    } catch (error) {
+      logger.error('[PARSE] Invalid JSON payload', {
+        error: error instanceof Error ? error.message : String(error),
+      });
       c.set('webhookContext', undefined);
+      c.set('callbackContext', undefined);
+      c.set('skipProcessing', true);
+      return next();
+    }
+
+    // Handle callback query (inline keyboard button clicks)
+    if (update.callback_query) {
+      const callbackCtx = parseCallbackQuery(update.callback_query);
+
+      if (!callbackCtx) {
+        logger.debug('[PARSE] Invalid callback query structure');
+        c.set('webhookContext', undefined);
+        c.set('callbackContext', undefined);
+        c.set('skipProcessing', true);
+        return next();
+      }
+
+      logger.info('[WEBHOOK] Callback query received', {
+        callbackQueryId: callbackCtx.callbackQueryId,
+        chatId: callbackCtx.chatId,
+        userId: callbackCtx.userId,
+        username: callbackCtx.username,
+        data: callbackCtx.data.substring(0, 100),
+      });
+
+      // Set context for downstream handlers
+      c.set('webhookContext', undefined);
+      c.set('callbackContext', callbackCtx);
+      c.set('skipProcessing', false);
+
+      return next();
+    }
+
+    // Handle regular message
+    const message = update.message;
+    if (!message?.text || !message.from) {
+      logger.debug('[PARSE] Skipping message without text or from', {
+        hasText: !!message?.text,
+        hasFrom: !!message?.from,
+      });
+      c.set('webhookContext', undefined);
+      c.set('callbackContext', undefined);
       c.set('skipProcessing', true);
       return next();
     }
@@ -150,7 +260,6 @@ export function createTelegramParserMiddleware(): MiddlewareHandler<{
     const botUsername = c.env.BOT_USERNAME ?? DEFAULT_BOT_USERNAME;
 
     // Extract context from parsed message
-    const { message } = parsed;
     const webhookCtx = extractWebhookContext(message, botUsername);
 
     logger.info('[WEBHOOK] Message received', JSON.parse(JSON.stringify(webhookCtx)));
@@ -166,12 +275,14 @@ export function createTelegramParserMiddleware(): MiddlewareHandler<{
         chatTitle: webhookCtx.chatTitle,
       });
       c.set('webhookContext', webhookCtx);
+      c.set('callbackContext', undefined);
       c.set('skipProcessing', true);
       return next();
     }
 
     // Set context for downstream handlers
     c.set('webhookContext', webhookCtx);
+    c.set('callbackContext', undefined);
     c.set('skipProcessing', false);
 
     return next();

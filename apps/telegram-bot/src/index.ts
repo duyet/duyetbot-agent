@@ -5,7 +5,10 @@
  * Uses transport layer pattern for clean separation of concerns.
  */
 
-import type { ParsedInput } from '@duyetbot/cloudflare-agent';
+import type {
+  CallbackContext as CloudflareCallbackContext,
+  ParsedInput,
+} from '@duyetbot/cloudflare-agent';
 import {
   createGlobalContext,
   getChatAgent,
@@ -23,7 +26,7 @@ import {
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
 } from './middlewares/index.js';
-import { createTelegramContext, telegramTransport } from './transport.js';
+import { answerCallbackQuery, createTelegramContext, telegramTransport } from './transport.js';
 
 // Extend Env with agent bindings and observability
 type EnvWithAgent = Env & ObservabilityEnv;
@@ -78,13 +81,26 @@ app.post(
 
     // Log incoming webhook (webhookCtx is set by parser middleware)
     const webhookCtx = c.get('webhookContext');
-    logger.info(`[${requestId}] [WEBHOOK] Received`, {
-      requestId,
-      chatId: webhookCtx?.chatId,
-      userId: webhookCtx?.userId,
-      username: webhookCtx?.username,
-      text: webhookCtx?.text?.substring(0, 100), // Truncate for logging
-    });
+    const callbackCtx = c.get('callbackContext');
+
+    if (webhookCtx) {
+      logger.info(`[${requestId}] [WEBHOOK] Received`, {
+        requestId,
+        chatId: webhookCtx.chatId,
+        userId: webhookCtx.userId,
+        username: webhookCtx.username,
+        text: webhookCtx.text?.substring(0, 100), // Truncate for logging
+      });
+    } else if (callbackCtx) {
+      logger.info(`[${requestId}] [WEBHOOK] Received callback`, {
+        requestId,
+        callbackQueryId: callbackCtx.callbackQueryId,
+        chatId: callbackCtx.chatId,
+        userId: callbackCtx.userId,
+        username: callbackCtx.username,
+        data: callbackCtx.data.substring(0, 100),
+      });
+    }
 
     // Check if we should skip processing
     if (c.get('skipProcessing')) {
@@ -118,8 +134,86 @@ app.post(
       return c.text('OK');
     }
 
-    // At this point, skipProcessing is false, so webhookCtx must be defined
-    // Parser middleware ensures webhookCtx is set when skipProcessing is false
+    // At this point, skipProcessing is false, so either webhookCtx or callbackCtx must be defined
+    // Handle callback query (inline keyboard button clicks)
+    if (callbackCtx) {
+      logger.info(`[${requestId}] [CALLBACK] Processing callback query`, {
+        requestId,
+        callbackQueryId: callbackCtx.callbackQueryId,
+        chatId: callbackCtx.chatId,
+      });
+
+      // Acknowledge the callback query to Telegram (removes loading animation)
+      // Must be done within 30 seconds of receiving the callback
+      c.executionCtx.waitUntil(
+        answerCallbackQuery(env.TELEGRAM_BOT_TOKEN, callbackCtx.callbackQueryId)
+      );
+
+      // TODO: Stream 3 will implement receiveCallback() RPC method on CloudflareChatAgent
+      // For now, we dispatch to receiveCallback() once it's available
+      const agentId = `telegram:${callbackCtx.userId}:${callbackCtx.chatId}`;
+      logger.info(`[${requestId}] [CALLBACK] Dispatching to agent`, {
+        requestId,
+        agentId,
+        callbackQueryId: callbackCtx.callbackQueryId,
+      });
+
+      try {
+        const agent = getChatAgent(env.TelegramAgent, agentId);
+
+        // Convert local CallbackContext (with startTime) to cloudflare CallbackContext
+        const cfCallbackCtx: CloudflareCallbackContext = {
+          callbackQueryId: callbackCtx.callbackQueryId,
+          chatId: callbackCtx.chatId,
+          messageId: callbackCtx.messageId,
+          userId: callbackCtx.userId,
+          username: callbackCtx.username,
+          data: callbackCtx.data,
+        };
+
+        // Fire-and-forget: dispatch to ChatAgent without waiting for response
+        // Uses c.executionCtx.waitUntil() to keep worker alive during processing
+        // Returns immediately to Telegram (<100ms)
+        c.executionCtx.waitUntil(
+          (async () => {
+            try {
+              const result = await agent.receiveCallback(cfCallbackCtx);
+              logger.info(`[${requestId}] [CALLBACK] Callback queued`, {
+                requestId,
+                agentId,
+                callbackQueryId: callbackCtx.callbackQueryId,
+                durationMs: Date.now() - startTime,
+                resultMessage: result.text,
+              });
+            } catch (error) {
+              logger.error(`[${requestId}] [CALLBACK] RPC to ChatAgent failed`, {
+                requestId,
+                agentId,
+                error: error instanceof Error ? error.message : String(error),
+                durationMs: Date.now() - startTime,
+              });
+            }
+          })()
+        );
+
+        logger.info(`[${requestId}] [CALLBACK] Returning OK immediately`, {
+          requestId,
+          agentId,
+          durationMs: Date.now() - startTime,
+        });
+      } catch (error) {
+        logger.error(`[${requestId}] [CALLBACK] Failed to dispatch to ChatAgent`, {
+          requestId,
+          agentId,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs: Date.now() - startTime,
+        });
+      }
+
+      return c.text('OK');
+    }
+
+    // Handle regular message
     if (!webhookCtx) {
       logger.error(`[${requestId}] [WEBHOOK] Missing webhookContext`, {
         requestId,

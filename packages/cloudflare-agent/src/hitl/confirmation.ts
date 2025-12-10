@@ -5,8 +5,10 @@
  * Provides utilities for creating confirmation requests and parsing responses.
  */
 
+import type { InlineKeyboardMarkup } from '@duyetbot/types';
 import { AgentMixin } from '../agents/base-agent.js';
 import type { ToolConfirmation } from '../routing/schemas.js';
+import { createConfirmationKeyboard, createMultiConfirmationKeyboard } from './keyboards.js';
 
 /**
  * Risk assessment for tools
@@ -321,4 +323,64 @@ export function isConfirmationValid(confirmation: ToolConfirmation): boolean {
 export function filterExpiredConfirmations(confirmations: ToolConfirmation[]): ToolConfirmation[] {
   const now = Date.now();
   return confirmations.filter((c) => c.status !== 'pending' || c.expiresAt > now);
+}
+
+/**
+ * Confirmation request paired with Telegram inline keyboard
+ */
+export interface ConfirmationWithKeyboard {
+  /** Formatted confirmation message text */
+  text: string;
+  /** Inline keyboard for interaction */
+  keyboard: InlineKeyboardMarkup;
+}
+
+/**
+ * Format a single confirmation request with an inline keyboard
+ *
+ * Combines the formatted message with an interactive inline keyboard
+ * for platforms that support it (e.g., Telegram).
+ *
+ * @param confirmation The tool confirmation to format
+ * @returns Object with both message text and keyboard markup
+ *
+ * @example
+ * ```typescript
+ * const { text, keyboard } = formatConfirmationWithKeyboard(confirmation);
+ * // text: "🔴 **Confirmation Required** ..."
+ * // keyboard: { inline_keyboard: [[{ text: '✅ Approve', callback_data: '...' }, ...]] }
+ * ```
+ */
+export function formatConfirmationWithKeyboard(
+  confirmation: ToolConfirmation
+): ConfirmationWithKeyboard {
+  const text = formatConfirmationRequest(confirmation);
+  const keyboard = createConfirmationKeyboard(confirmation.id);
+
+  return { text, keyboard };
+}
+
+/**
+ * Format multiple confirmations with an inline keyboard
+ *
+ * Combines the formatted message for multiple confirmations with an
+ * interactive inline keyboard for batch and individual approvals.
+ *
+ * @param confirmations Array of tool confirmations to format
+ * @returns Object with both message text and keyboard markup
+ *
+ * @example
+ * ```typescript
+ * const { text, keyboard } = formatMultipleConfirmationsWithKeyboard([conf1, conf2]);
+ * // text: "⚠️ **2 Confirmations Required** ..."
+ * // keyboard includes individual and batch approve/reject buttons
+ * ```
+ */
+export function formatMultipleConfirmationsWithKeyboard(
+  confirmations: ToolConfirmation[]
+): ConfirmationWithKeyboard {
+  const text = formatMultipleConfirmations(confirmations);
+  const keyboard = createMultiConfirmationKeyboard(confirmations.map((c) => c.id));
+
+  return { text, keyboard };
 }

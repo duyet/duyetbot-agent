@@ -3,7 +3,7 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { extractWebhookContext } from '../middlewares/parser.js';
+import { extractWebhookContext, parseCallbackQuery } from '../middlewares/parser.js';
 import type { TelegramUpdate } from '../middlewares/types.js';
 
 describe('extractWebhookContext', () => {
@@ -451,5 +451,181 @@ describe('extractWebhookContext', () => {
       expect(result.isGroupChat).toBe(true);
       expect(result.hasBotMention).toBe(true);
     });
+  });
+});
+
+describe('parseCallbackQuery', () => {
+  const baseCallback: NonNullable<TelegramUpdate['callback_query']> = {
+    id: 'callback_123',
+    from: {
+      id: 12345,
+      username: 'testuser',
+      first_name: 'Test',
+    },
+    chat_instance: 'chat_instance_123',
+    message: {
+      message_id: 456,
+      chat: {
+        id: 67890,
+      },
+    },
+    data: 'button_clicked',
+  };
+
+  it('parses valid callback query', () => {
+    const result = parseCallbackQuery(baseCallback);
+
+    expect(result).not.toBeNull();
+    expect(result!.callbackQueryId).toBe('callback_123');
+    expect(result!.userId).toBe(12345);
+    expect(result!.username).toBe('testuser');
+    expect(result!.chatId).toBe(67890);
+    expect(result!.messageId).toBe(456);
+    expect(result!.data).toBe('button_clicked');
+  });
+
+  it('sets startTime to current timestamp', () => {
+    const before = Date.now();
+    const result = parseCallbackQuery(baseCallback);
+    const after = Date.now();
+
+    expect(result).not.toBeNull();
+    expect(result!.startTime).toBeGreaterThanOrEqual(before);
+    expect(result!.startTime).toBeLessThanOrEqual(after);
+  });
+
+  it('returns null when missing callback ID', () => {
+    const invalidCallback: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      id: '', // Empty ID
+    };
+
+    const result = parseCallbackQuery(invalidCallback);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when missing from field', () => {
+    const invalidCallback: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      from: undefined as any, // Missing from
+    };
+
+    const result = parseCallbackQuery(invalidCallback);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when data is undefined', () => {
+    const invalidCallback: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      data: undefined,
+    };
+
+    const result = parseCallbackQuery(invalidCallback);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when data is empty string', () => {
+    const invalidCallback: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      data: '   ', // Whitespace only
+    };
+
+    const result = parseCallbackQuery(invalidCallback);
+    expect(result).toBeNull();
+  });
+
+  it('trims whitespace from data payload', () => {
+    const callbackWithWhitespace: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      data: '  button_clicked  ',
+    };
+
+    const result = parseCallbackQuery(callbackWithWhitespace);
+
+    expect(result).not.toBeNull();
+    expect(result!.data).toBe('button_clicked');
+  });
+
+  it('returns null when missing message', () => {
+    const invalidCallback: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      message: undefined,
+    };
+
+    const result = parseCallbackQuery(invalidCallback);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when message missing message_id', () => {
+    const invalidCallback: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      message: {
+        message_id: undefined as any,
+        chat: {
+          id: 67890,
+        },
+      },
+    };
+
+    const result = parseCallbackQuery(invalidCallback);
+    expect(result).toBeNull();
+  });
+
+  it('returns null when message missing chat id', () => {
+    const invalidCallback: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      message: {
+        message_id: 456,
+        chat: {
+          id: undefined as any,
+        },
+      },
+    };
+
+    const result = parseCallbackQuery(invalidCallback);
+    expect(result).toBeNull();
+  });
+
+  it('handles callback without username', () => {
+    const callbackNoUsername: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      from: {
+        id: 12345,
+        // No username
+        first_name: 'Test',
+      },
+    };
+
+    const result = parseCallbackQuery(callbackNoUsername);
+
+    expect(result).not.toBeNull();
+    expect(result!.username).toBeUndefined();
+    expect(result!.userId).toBe(12345);
+  });
+
+  it('preserves complex data payloads', () => {
+    const complexData = 'action:update|id:123|value:test';
+    const callbackWithComplexData: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      data: complexData,
+    };
+
+    const result = parseCallbackQuery(callbackWithComplexData);
+
+    expect(result).not.toBeNull();
+    expect(result!.data).toBe(complexData);
+  });
+
+  it('handles large data payloads', () => {
+    const largeData = 'x'.repeat(1000);
+    const callbackWithLargeData: NonNullable<TelegramUpdate['callback_query']> = {
+      ...baseCallback,
+      data: largeData,
+    };
+
+    const result = parseCallbackQuery(callbackWithLargeData);
+
+    expect(result).not.toBeNull();
+    expect(result!.data).toBe(largeData);
   });
 });
