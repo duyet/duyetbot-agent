@@ -239,12 +239,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         }
 
         // Update state with routing history
+        // Guard against undefined routingHistory from persisted state migration
+        const currentHistory = this.state.routingHistory ?? [];
         this.setState({
           ...this.state,
           sessionId: this.state.sessionId || gCtx.chatId.toString() || gCtx.traceId,
           lastClassification: classification,
           routingHistory: [
-            ...this.state.routingHistory.slice(-(maxHistory - 1)),
+            ...currentHistory.slice(-(maxHistory - 1)),
             {
               query: gCtx.query.slice(0, 200),
               classification: {
@@ -385,12 +387,14 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         }
 
         // Update state with routing history (truncate fields to limit storage)
+        // Guard against undefined routingHistory from persisted state migration
+        const currentHistory = this.state.routingHistory ?? [];
         this.setState({
           ...this.state,
           sessionId: this.state.sessionId || ctx.chatId.toString() || ctx.traceId,
           lastClassification: classification,
           routingHistory: [
-            ...this.state.routingHistory.slice(-(maxHistory - 1)),
+            ...currentHistory.slice(-(maxHistory - 1)),
             {
               query: ctx.query.slice(0, 200),
               classification: {
@@ -475,9 +479,11 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      */
     private async classifyGlobal(gCtx: GlobalContext): Promise<QueryClassification> {
       // Build classification context from global context and routing history
+      // Guard against undefined routingHistory from persisted state migration
+      const routingHistory = this.state.routingHistory ?? [];
       const classificationContext: ClassificationContext = {
         platform: gCtx.platform as 'telegram' | 'github' | 'api' | undefined,
-        recentMessages: this.state.routingHistory.slice(-3).map((h) => ({
+        recentMessages: routingHistory.slice(-3).map((h) => ({
           role: 'user',
           content: h.query,
         })),
@@ -513,9 +519,11 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      */
     private async classify(ctx: ExecutionContext): Promise<QueryClassification> {
       // Build classification context from execution context and routing history
+      // Guard against undefined routingHistory from persisted state migration
+      const routingHistory = this.state.routingHistory ?? [];
       const classificationContext: ClassificationContext = {
         platform: ctx.platform as 'telegram' | 'github' | 'api' | undefined,
-        recentMessages: this.state.routingHistory.slice(-3).map((h) => ({
+        recentMessages: routingHistory.slice(-3).map((h) => ({
           role: 'user',
           content: h.query,
         })),
@@ -865,7 +873,8 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       byTarget: Record<string, number>;
       avgDurationMs: number;
     } {
-      const history = this.state.routingHistory;
+      // Guard against undefined routingHistory from persisted state migration
+      const history = this.state.routingHistory ?? [];
       const byTarget: Record<string, number> = {};
 
       for (const entry of history) {
@@ -886,7 +895,8 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      * Get routing history with optional limit
      */
     getRoutingHistory(limit?: number): RouterAgentState['routingHistory'] {
-      const history = this.state.routingHistory;
+      // Guard against undefined routingHistory from persisted state migration
+      const history = this.state.routingHistory ?? [];
       if (limit && limit > 0) {
         return history.slice(-limit);
       }
