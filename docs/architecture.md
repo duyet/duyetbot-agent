@@ -568,7 +568,7 @@ Foundation Layer
          +- Session manager
          +- MCP client
 
-         +- @duyetbot/chat-agent (2400+ LOC)
+         +- @duyetbot/cloudflare-agent (2400+ LOC)
             +- CloudflareChatAgent
             +- RouterAgent + classifier
             +- SimpleAgent, OrchestratorAgent
@@ -612,7 +612,7 @@ Support Packages
              v
        @duyetbot/core
              v
-      @duyetbot/chat-agent
+      @duyetbot/cloudflare-agent
              v
     +---+---+---+
     |   |   |   |
@@ -658,7 +658,7 @@ telegram github memo
 +- Session manager interface
 +- MCP client
 
-@duyetbot/chat-agent
+@duyetbot/cloudflare-agent
 +- CloudflareChatAgent (main DO wrapper)
 +- Message batching logic
 +- Batch state management

@@ -408,16 +408,16 @@ Recovery:
 **Status**: COMPLETE & DEPLOYED
 
 - [x] Monorepo structure (pnpm workspaces)
-- [x] Package organization (types → providers → chat-agent)
+- [x] Package organization (types → providers → cloudflare-agent)
 - [x] Shared Hono middleware (logger, auth, health)
 - [x] Environment configuration system
 - [x] Build & test infrastructure
 - [x] 40+ unit tests
 
 **Key Files**:
-- `packages/chat-agent/src/cloudflare-agent.ts` (main framework)
-- `packages/chat-agent/src/batch-types.ts` (batch structures)
-- `packages/chat-agent/src/transport.ts` (transport interface)
+- `packages/cloudflare-agent/src/cloudflare-agent.ts` (main framework)
+- `packages/cloudflare-agent/src/batch-types.ts` (batch structures)
+- `packages/cloudflare-agent/src/transport.ts` (transport interface)
 
 ### ✅ Phase 2: Multi-Agent Routing
 
@@ -432,9 +432,9 @@ Recovery:
 - [x] 80+ routing tests
 
 **Key Files**:
-- `packages/chat-agent/src/agents/router-agent.ts`
-- `packages/chat-agent/src/routing/classifier.ts`
-- `packages/chat-agent/src/routing/schemas.ts`
+- `packages/cloudflare-agent/src/agents/router-agent.ts`
+- `packages/cloudflare-agent/src/routing/classifier.ts`
+- `packages/cloudflare-agent/src/routing/schemas.ts`
 
 ### ✅ Phase 3: Platform Integration
 
@@ -467,8 +467,8 @@ Recovery:
 - [x] 70+ reliability tests
 
 **Key Files**:
-- `packages/chat-agent/src/cloudflare-agent.ts` (batch logic, lines 1137-1265)
-- `packages/chat-agent/src/cloudflare-agent.ts` (stuck detection, lines 812-880)
+- `packages/cloudflare-agent/src/cloudflare-agent.ts` (batch logic, lines 1137-1265)
+- `packages/cloudflare-agent/src/cloudflare-agent.ts` (stuck detection, lines 812-880)
 
 ### ✅ Phase 5: Specialized Agents & Workers
 
@@ -483,10 +483,10 @@ Recovery:
 - [x] 90+ agent tests
 
 **Key Files**:
-- `packages/chat-agent/src/workers/code-worker.ts`
-- `packages/chat-agent/src/workers/research-worker.ts`
-- `packages/chat-agent/src/workers/github-worker.ts`
-- `packages/chat-agent/src/agents/duyet-info-agent.ts`
+- `packages/cloudflare-agent/src/workers/code-worker.ts`
+- `packages/cloudflare-agent/src/workers/research-worker.ts`
+- `packages/cloudflare-agent/src/workers/github-worker.ts`
+- `packages/cloudflare-agent/src/agents/duyet-info-agent.ts`
 
 ### ✅ Phase 6: Deployment & Monitoring
 

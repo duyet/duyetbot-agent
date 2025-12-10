@@ -56,7 +56,7 @@ From [`PLAN.md`](PLAN.md:43):
 | GitHubWorker | GitHub ops | GitHub | ✅ |
 | DuyetInfoAgent | Personal info | Duyet queries | ✅ |
 
-From [`agents/index.ts`](packages/chat-agent/src/agents/index.ts:11).
+From [`agents/index.ts`](packages/cloudflare-agent/src/agents/index.ts:11).
 
 ## Bindings
 
@@ -69,7 +69,7 @@ script_name = "duyetbot-shared-agents"
 
 ## StateDO
 
-Watchdog from [`state-do.ts`](packages/chat-agent/src/agents/state-do.ts:8):
+Watchdog from [`state-do.ts`](packages/cloudflare-agent/src/agents/state-do.ts:8):
 
 - Tracks sessions/heartbeats
 - Recovers stuck batches
