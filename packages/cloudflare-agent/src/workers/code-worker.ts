@@ -8,10 +8,14 @@
  * - Documentation generation
  */
 
-import type { AgentContext } from '../agents/base-agent.js';
 import type { PlanStep } from '../routing/schemas.js';
 import type { LLMProvider } from '../types.js';
-import { type BaseWorkerEnv, createBaseWorker, type WorkerClass } from './base-worker.js';
+import {
+  type BaseWorkerEnv,
+  createBaseWorker,
+  type ProviderContext,
+  type WorkerClass,
+} from './base-worker.js';
 
 /**
  * Code task types that this worker handles
@@ -39,7 +43,7 @@ export interface CodeWorkerEnv extends BaseWorkerEnv {
  */
 export interface CodeWorkerConfig<TEnv extends CodeWorkerEnv> {
   /** Function to create LLM provider from env, optionally with context for credentials */
-  createProvider: (env: TEnv, context?: AgentContext) => LLMProvider;
+  createProvider: (env: TEnv, context?: ProviderContext) => LLMProvider;
   /** Default programming language */
   defaultLanguage?: string;
   /** Enable detailed logging */

@@ -21,11 +21,7 @@
 import { logger } from '@duyetbot/hono-middleware';
 import { BaseAgent } from '../base/base-agent.js';
 import type { BaseState } from '../base/base-types.js';
-import {
-  enterAgent,
-  exitAgent,
-  type GlobalContext,
-} from '../context/index.js';
+import { enterAgent, exitAgent, type GlobalContext } from '../context/index.js';
 import type { ExecutionContext } from '../execution/index.js';
 import { agentRegistry } from './registry.js';
 

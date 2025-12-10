@@ -6,8 +6,8 @@
  */
 
 import {
-  createSpanId,
   type AgentSpan,
+  createSpanId,
   type GlobalContext,
   type TokenUsageRecord,
   type ToolCallRecord,

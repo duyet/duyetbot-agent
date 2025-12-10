@@ -6,7 +6,7 @@
  * Uses fire-and-forget pattern with ChatAgent for async message processing.
  */
 
-import { createGlobalContext, githubToWebhookInput } from '@duyetbot/cloudflare-agent/context';
+import { createGlobalContext, githubToWebhookInput } from '@duyetbot/cloudflare-agent';
 import { createBaseApp } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -252,6 +252,12 @@ app.post(
       }
 
       // Create GlobalContext at webhook entry point (ONLY place it's created)
+      // Build env object with conditional GITHUB_ADMIN to satisfy exactOptionalPropertyTypes
+      const githubEnv = {
+        GITHUB_TOKEN: env.GITHUB_TOKEN,
+        ...(env.GITHUB_ADMIN && { GITHUB_ADMIN: env.GITHUB_ADMIN }),
+      };
+
       const webhookInput = githubToWebhookInput(
         {
           event,
@@ -264,11 +270,8 @@ app.post(
           task,
           requestId,
         },
-        {
-          GITHUB_TOKEN: env.GITHUB_TOKEN,
-          GITHUB_ADMIN: env.GITHUB_ADMIN,
-        },
-        collector?.eventId
+        githubEnv,
+        collector?.getEventId()
       );
 
       // Create GlobalContext - single context for entire request lifecycle

@@ -209,8 +209,15 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
         // Step 3: Record classification metrics
         const classificationMs = Date.now() - classificationStart;
+        const classificationTimestamp = Date.now();
         setTiming(gCtx, 'classificationMs', classificationMs);
-        gCtx.classification = classification;
+        gCtx.classification = {
+          type: classification.type,
+          category: classification.category,
+          complexity: classification.complexity,
+          ...(classification.confidence !== undefined && { confidence: classification.confidence }),
+          timestamp: classificationTimestamp,
+        };
 
         // Step 4: Determine target agent
         const target = determineRouteTarget(classification);
@@ -693,7 +700,8 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             // For now: defer to ExecutionContext-based execution
             return {
               success: false,
-              error: 'SimpleAgent GlobalContext support in progress - use routeGlobal when complete',
+              error:
+                'SimpleAgent GlobalContext support in progress - use routeGlobal when complete',
               durationMs: Date.now() - startTime,
             };
           }
