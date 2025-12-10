@@ -194,6 +194,26 @@ export {
   type SimpleAgentState,
   type TelegramPlatformConfig,
 } from './agents/index.js';
+// Context Module (Unified Pipeline Context)
+export {
+  type AgentSpan,
+  type GlobalContext,
+  type SpanContext,
+  type ToolCallRecord,
+  type TokenUsageRecord,
+  type RoutingDecisionRecord,
+  type WebhookInput,
+  createGlobalContext,
+  serializeContext,
+  deserializeContext,
+  createSpanContext,
+  completeSpan,
+  recordToolCallSpan,
+  recordTokenUsageSpan,
+  addWarningSpan,
+  addErrorSpan,
+  setMetadataSpan,
+} from './context/index.js';
 // Execution Context
 export {
   type AgentProvider,
@@ -520,3 +540,14 @@ export {
   type AdapterBundle,
   createAdapterFactory,
 } from './core/index.js';
+
+// Notifications Module (Admin Alerts)
+export {
+  AdminNotifier,
+  type AdminNotifierConfig,
+  type BatchFailureDetails,
+  DEFAULT_ADMIN_NOTIFIER_CONFIG,
+  formatBatchFailureMessage,
+  formatStuckBatchMessage,
+  type StuckBatchDetails,
+} from './notifications/index.js';

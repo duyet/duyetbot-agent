@@ -20,6 +20,7 @@ import { Agent } from 'agents';
 import { BaseAgent } from '../base/base-agent.js';
 import type { AgentResult, BaseEnv, BaseState } from '../base/index.js';
 import { createErrorResult, createSuccessResult } from '../base/index.js';
+import { enterAgent, exitAgent, type GlobalContext, recordTokenUsage } from '../context/index.js';
 import type { AgentProvider } from '../execution/agent-provider.js';
 import type { ExecutionContext } from '../execution/context.js';
 import type { ChatOptions, Message } from '../types.js';
@@ -176,6 +177,132 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
     };
 
     /**
+     * Execute a simple query using GlobalContext
+     *
+     * NEW: Handles direct LLM calls using unified GlobalContext.
+     * Records execution metrics using context helpers.
+     *
+     * @param gCtx - GlobalContext with query, history, and unified tracing
+     * @returns AgentResult with success, content, and duration
+     */
+    async executeGlobal(gCtx: GlobalContext): Promise<AgentResult> {
+      const spanId = enterAgent(gCtx, 'simple-agent');
+      const startTime = Date.now();
+
+      logger.debug('[SimpleAgent] Starting execution (global)', {
+        spanId,
+        queryLength: gCtx.query.length,
+        historyLength: gCtx.conversationHistory.length,
+      });
+
+      try {
+        // Build messages for LLM using history from context
+        // Trim to maxHistory to prevent context overflow
+        const trimmedHistory = gCtx.conversationHistory.slice(-maxHistory);
+        const llmMessages: Message[] = [
+          { role: 'system', content: config.systemPrompt },
+          ...trimmedHistory,
+          { role: 'user', content: gCtx.query },
+        ];
+
+        // Build chat options with web search if enabled
+        let chatOptions: ChatOptions | undefined;
+        if (config.webSearch) {
+          const webConfig =
+            typeof config.webSearch === 'boolean'
+              ? { enabled: config.webSearch }
+              : config.webSearch;
+
+          if (webConfig.enabled) {
+            chatOptions = { webSearch: true };
+
+            if (debug) {
+              logger.debug('[SimpleAgent] Web search enabled (global)', {
+                spanId,
+              });
+            }
+          }
+        }
+
+        // TODO: Implement chat call with GlobalContext
+        // For now, create a wrapper ExecutionContext to call the existing chat method
+        const wrappedCtx: ExecutionContext = {
+          traceId: gCtx.traceId,
+          spanId: gCtx.currentSpanId,
+          platform: gCtx.platform,
+          userId: gCtx.userId,
+          chatId: gCtx.chatId,
+          ...(gCtx.username !== undefined && { username: gCtx.username }),
+          ...(gCtx.isAdmin !== undefined && { isAdmin: gCtx.isAdmin }),
+          ...(gCtx.adminUsername !== undefined && { adminUsername: gCtx.adminUsername }),
+          userMessageId: gCtx.userMessageId,
+          provider: gCtx.provider,
+          model: gCtx.model,
+          query: gCtx.query,
+          conversationHistory: gCtx.conversationHistory,
+          debug: {
+            agentChain: [],
+            toolCalls: [],
+            warnings: [],
+            errors: [],
+          },
+          startedAt: gCtx.receivedAt,
+          deadline: gCtx.deadline,
+        };
+
+        // Call LLM via BaseAgent.chat()
+        const response = await this.chat(wrappedCtx, llmMessages, chatOptions);
+
+        // Update state with query count
+        this.setState({
+          ...this.state,
+          sessionId: gCtx.chatId?.toString(),
+          queriesExecuted: this.state.queriesExecuted + 1,
+          updatedAt: Date.now(),
+        });
+
+        const durationMs = Date.now() - startTime;
+
+        // Record token usage in global context
+        if (response.usage?.totalTokens !== undefined) {
+          recordTokenUsage(gCtx, {
+            provider: gCtx.provider,
+            model: gCtx.model,
+            inputTokens: response.usage.inputTokens ?? 0,
+            outputTokens: response.usage.outputTokens ?? 0,
+          });
+        }
+
+        logger.debug('[SimpleAgent] Query completed (global)', {
+          spanId,
+          durationMs,
+          contentLength: response.content.length,
+        });
+
+        exitAgent(gCtx, 'success');
+        return createSuccessResult(response.content, durationMs, {
+          ...(response.usage?.totalTokens !== undefined && {
+            tokensUsed: response.usage.totalTokens,
+          }),
+        });
+      } catch (error) {
+        const durationMs = Date.now() - startTime;
+
+        logger.error('[SimpleAgent] Query failed (global)', {
+          spanId,
+          durationMs,
+          error: error instanceof Error ? error.message : String(error),
+        });
+
+        exitAgent(gCtx, 'error');
+        return createErrorResult(
+          error instanceof Error ? error : new Error(String(error)),
+          durationMs
+        );
+      }
+    }
+
+    /**
      * Execute a simple query using ExecutionContext
      *
      * Handles direct LLM calls without tools. Uses ExecutionContext for:
@@ -186,6 +313,7 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
      *
      * @param ctx - ExecutionContext with query, history, tracing
      * @returns AgentResult with success, content, and duration
+     * @deprecated Use executeGlobal(gCtx) instead for unified context handling
      *
      * @example
      * ```typescript

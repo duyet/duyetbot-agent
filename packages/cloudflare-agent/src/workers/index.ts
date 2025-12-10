@@ -7,6 +7,8 @@
  * @see sub-agent-protocol.ts for multi-model orchestration patterns
  */
 
+// Context types for workers
+export type { GlobalContext, SpanContext } from '../context/index.js';
 // Base worker
 export {
   type BaseWorkerConfig,

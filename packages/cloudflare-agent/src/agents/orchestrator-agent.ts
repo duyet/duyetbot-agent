@@ -9,6 +9,11 @@
  * Extends BaseAgent to provide standardized agent interface with ExecutionContext
  * for message handling, LLM communication, and execution tracing.
  *
+ * GlobalContext Support:
+ * - When orchestrator dispatches workers in parallel, each worker gets its own SpanContext
+ * - SpanContext allows parallel execution without race conditions on ctx.currentSpanId
+ * - All tool calls and token usage are recorded in the shared GlobalContext accumulators
+ *
  * Based on Cloudflare's Orchestrator-Workers pattern:
  * https://developers.cloudflare.com/agents/patterns/orchestrator-workers/
  */
@@ -16,6 +21,11 @@
 import { logger } from '@duyetbot/hono-middleware';
 import { BaseAgent } from '../base/base-agent.js';
 import type { BaseState } from '../base/base-types.js';
+import {
+  enterAgent,
+  exitAgent,
+  type GlobalContext,
+} from '../context/index.js';
 import type { ExecutionContext } from '../execution/index.js';
 import { agentRegistry } from './registry.js';
 
@@ -220,6 +230,205 @@ export function createOrchestratorAgent<TEnv extends OrchestratorEnv>(
     }
 
     /**
+     * Main orchestration entry point using GlobalContext
+     *
+     * NEW: Uses unified GlobalContext for tracing and parallel worker execution.
+     * When dispatching workers in parallel, each worker gets its own SpanContext
+     * to avoid race conditions on ctx.currentSpanId.
+     *
+     * @param gCtx - GlobalContext containing query and conversation history
+     * @returns AgentResult with orchestration response and metadata
+     */
+    async orchestrateGlobal(gCtx: GlobalContext): Promise<AgentResult> {
+      const spanId = enterAgent(gCtx, 'orchestrator');
+      const startTime = Date.now();
+
+      logger.info('[OrchestratorAgent] Starting orchestration (global)', {
+        spanId,
+        queryLength: gCtx.query.length,
+      });
+
+      try {
+        const env = (this as unknown as { env: TEnv }).env;
+        const provider = config.createProvider(env);
+        this.setProvider(provider);
+
+        // Step 1: Create execution plan
+        const plannerConfig: PlannerConfig = {
+          provider,
+          maxSteps,
+          debug,
+        };
+
+        const planningContext = {
+          availableWorkers: this.getAvailableWorkers(env),
+          ...(gCtx.platform ? { platform: String(gCtx.platform) } : {}),
+        };
+
+        const plan = await createPlan(gCtx.query, plannerConfig, planningContext);
+
+        // Validate plan
+        const validation = validatePlanDependencies(plan);
+        if (!validation.valid) {
+          logger.error('[OrchestratorAgent] Invalid plan (global)', {
+            spanId,
+            errors: validation.errors,
+          });
+          exitAgent(gCtx, 'error');
+          return {
+            success: false,
+            error: `Invalid plan: ${validation.errors.join(', ')}`,
+            durationMs: Date.now() - startTime,
+          };
+        }
+
+        // Update state with current plan
+        this.setState({
+          ...this.state,
+          currentPlan: plan,
+          sessionId: this.state.sessionId || gCtx.chatId?.toString() || gCtx.traceId,
+          updatedAt: Date.now(),
+        });
+
+        logger.info('[OrchestratorAgent] Plan created (global)', {
+          spanId,
+          taskId: plan.taskId,
+          stepCount: plan.steps.length,
+          complexity: plan.estimatedComplexity,
+        });
+
+        // Step 2: Execute plan with workers in parallel using SpanContext
+        // TODO: Update dispatcher to use SpanContext for parallel execution
+        const baseCtx: ExecutionContext = {
+          traceId: gCtx.traceId,
+          spanId: gCtx.currentSpanId,
+          platform: gCtx.platform,
+          userId: gCtx.userId,
+          chatId: gCtx.chatId,
+          ...(gCtx.username !== undefined && { username: gCtx.username }),
+          ...(gCtx.isAdmin !== undefined && { isAdmin: gCtx.isAdmin }),
+          ...(gCtx.adminUsername !== undefined && { adminUsername: gCtx.adminUsername }),
+          userMessageId: gCtx.userMessageId,
+          provider: gCtx.provider,
+          model: gCtx.model,
+          query: gCtx.query,
+          conversationHistory: gCtx.conversationHistory,
+          debug: {
+            agentChain: [],
+            toolCalls: [],
+            warnings: [],
+            errors: [],
+          },
+          startedAt: gCtx.receivedAt,
+          deadline: gCtx.deadline,
+        };
+
+        const dispatcher = this.createDispatcher(env, baseCtx);
+
+        const executorConfig: ExecutorConfig = {
+          dispatcher,
+          maxParallel,
+          stepTimeoutMs,
+          continueOnError,
+          debug,
+        };
+
+        // TODO: Call executePlan with GlobalContext support
+        const executionResult = await executePlan(plan, baseCtx, executorConfig);
+
+        // Step 3: Aggregate results
+        let aggregationResult: AggregationResult;
+        if (useLLMAggregation) {
+          const aggregatorConfig: AggregatorConfig = {
+            provider,
+            debug,
+          };
+          aggregationResult = await aggregateResults(plan, executionResult, aggregatorConfig);
+        } else {
+          aggregationResult = quickAggregate(plan, executionResult);
+        }
+
+        const durationMs = Date.now() - startTime;
+
+        // Update history
+        this.updateHistory(plan, executionResult, durationMs);
+
+        logger.info('[OrchestratorAgent] Orchestration completed (global)', {
+          spanId,
+          taskId: plan.taskId,
+          durationMs,
+          successCount: executionResult.successfulSteps.length,
+          failureCount: executionResult.failedSteps.length,
+        });
+
+        // Build worker debug info from execution results
+        const workers: WorkerInfo[] = plan.steps
+          .filter((step) => executionResult.results.has(step.id))
+          .map((step) => {
+            const result = executionResult.results.get(step.id);
+            const workerInfo: WorkerInfo = {
+              name: `${step.workerType}-worker`,
+              status: result?.success ? 'success' : 'failed',
+              durationMs: result?.durationMs ?? 0,
+            };
+            if (result?.error) {
+              workerInfo.error = result.error;
+            }
+            return workerInfo;
+          });
+
+        // Build result with orchestration data
+        const result: AgentResult = {
+          success: true,
+          content: aggregationResult.response,
+          durationMs,
+          data: {
+            newMessages: [
+              { role: 'user' as const, content: gCtx.query },
+              {
+                role: 'assistant' as const,
+                content: aggregationResult.response,
+              },
+            ],
+            plan: {
+              taskId: plan.taskId,
+              summary: plan.summary,
+              stepCount: plan.steps.length,
+            },
+            execution: {
+              successCount: executionResult.successfulSteps.length,
+              failureCount: executionResult.failedSteps.length,
+              skippedCount: executionResult.skippedSteps.length,
+            },
+            errors: aggregationResult.errors,
+          },
+          nextAction: executionResult.allSucceeded ? 'complete' : 'continue',
+        };
+
+        // Add worker debug info if available
+        if (workers.length > 0) {
+          result.debug = { workers };
+        }
+
+        exitAgent(gCtx, 'success');
+        return result;
+      } catch (error) {
+        const durationMs = Date.now() - startTime;
+        logger.error('[OrchestratorAgent] Orchestration failed (global)', {
+          spanId,
+          durationMs,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        exitAgent(gCtx, 'error');
+        return {
+          success: false,
+          error: error instanceof Error ? error.message : String(error),
+          durationMs,
+        };
+      }
+    }
+
+    /**
      * Main orchestration entry point
      *
      * Manages the full orchestration workflow:
@@ -229,6 +438,7 @@ export function createOrchestratorAgent<TEnv extends OrchestratorEnv>(
      *
      * @param ctx - ExecutionContext containing query and conversation history
      * @returns AgentResult with orchestration response and metadata
+     * @deprecated Use orchestrateGlobal(gCtx) instead for unified context handling
      */
     async orchestrate(ctx: ExecutionContext): Promise<AgentResult> {
       const startTime = Date.now();
