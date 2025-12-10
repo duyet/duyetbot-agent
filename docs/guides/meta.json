@@ -6,6 +6,7 @@
     "telegram-bot",
     "github-bot",
     "claude-code-agent",
-    "webhook"
+    "webhook",
+    "prompt-evaluation"
   ]
 }
