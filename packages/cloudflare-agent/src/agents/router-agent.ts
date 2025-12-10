@@ -192,6 +192,20 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       const spanId = enterAgent(gCtx, 'router');
       const startTime = Date.now();
 
+      // Guard against corrupted context from persisted storage migration
+      if (!gCtx.query) {
+        logger.error('[RouterAgent] Corrupted global context, missing query', {
+          spanId,
+          traceId: gCtx.traceId,
+        });
+        return createErrorResult('Corrupted execution context: missing query', 0);
+      }
+
+      // Ensure conversationHistory is initialized (may be undefined from old state)
+      if (!gCtx.conversationHistory) {
+        gCtx.conversationHistory = [];
+      }
+
       logger.debug('[RouterAgent] Starting route (global)', {
         spanId,
         traceId: gCtx.traceId,
@@ -339,6 +353,20 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
      */
     async route(ctx: ExecutionContext): Promise<AgentResult> {
       const startTime = Date.now();
+
+      // Guard against corrupted context from persisted storage migration
+      if (!ctx.query) {
+        logger.error('[RouterAgent] Corrupted context, missing query', {
+          spanId: ctx.spanId,
+          traceId: ctx.traceId,
+        });
+        return createErrorResult('Corrupted execution context: missing query', 0);
+      }
+
+      // Ensure conversationHistory is initialized (may be undefined from old state)
+      if (!ctx.conversationHistory) {
+        ctx.conversationHistory = [];
+      }
 
       logger.debug('[RouterAgent] Starting route', {
         spanId: ctx.spanId,
@@ -1013,6 +1041,35 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         return;
       }
 
+      // Guard against corrupted state from persisted storage migration
+      // Durable Object state may have undefined fields if schema changed
+      // This handles: missing context, query, responseTarget, or messageRef
+      if (
+        !execution.context ||
+        !execution.query ||
+        !execution.responseTarget?.messageRef?.messageId
+      ) {
+        logger.error('[RouterAgent] Corrupted execution state', {
+          executionId: data.executionId,
+          hasContext: !!execution.context,
+          hasQuery: !!execution.query,
+          hasResponseTarget: !!execution.responseTarget,
+          hasMessageRef: !!execution.responseTarget?.messageRef,
+          hasMessageId: !!execution.responseTarget?.messageRef?.messageId,
+        });
+        // Clean up corrupted execution
+        const remainingExecutions = this.state.pendingExecutions?.filter(
+          (e) => e.executionId !== data.executionId
+        );
+        this.setState({
+          ...this.state,
+          pendingExecutions:
+            remainingExecutions && remainingExecutions.length > 0 ? remainingExecutions : undefined,
+          updatedAt: Date.now(),
+        });
+        return;
+      }
+
       const startTime = Date.now();
 
       try {
@@ -1107,11 +1164,7 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             ? result.content
             : `[error] ${result.error || 'Unknown error'}`;
 
-        // Validate responseTarget before sending
-        if (!execution.responseTarget?.messageRef?.messageId) {
-          throw new Error('Missing messageRef.messageId in responseTarget');
-        }
-
+        // Note: responseTarget validation already done at function start (corruption check)
         await sendPlatformResponse(
           envWithTokens,
           execution.responseTarget,
