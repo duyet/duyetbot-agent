@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRecentMessages, useStats } from '@/lib/hooks/use-dashboard-data';
+import { MCPStatusCard } from './mcp-status-card';
 
 function formatNumber(num: number): string {
   if (num >= 1000000) {
@@ -394,6 +395,9 @@ export function DashboardContent() {
               </div>
             </CardContent>
           </Card>
+
+          {/* MCP Servers Status */}
+          <MCPStatusCard />
 
           {/* Quick Actions */}
           <Card className="border-primary/20 bg-primary/5">
