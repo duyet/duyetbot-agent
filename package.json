@@ -71,7 +71,7 @@
     "d1:shell:memory": "wrangler d1 execute duyetbot-memory --remote",
     "d1:tables": "wrangler d1 execute duyetbot --remote --command \"SELECT name FROM sqlite_master WHERE type='table'\"",
     "d1:tables:memory": "wrangler d1 execute duyetbot-memory --remote --command \"SELECT name FROM sqlite_master WHERE type='table'\"",
-    "prompt:eval": "bun --env-file=../.env.local run prompts-eval/scripts/run-all.ts",
+    "prompt:eval": "bun --env-file=.env.local run prompts-eval/scripts/run-all.ts",
     "prompt:eval:router": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/router.promptfoo.yaml",
     "prompt:eval:telegram": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/telegram.promptfoo.yaml",
     "prompt:eval:github": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/github.promptfoo.yaml",

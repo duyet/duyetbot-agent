@@ -46,8 +46,8 @@ mode = "smart"
 # the safety kernel continues to monitor and can trigger recovery
 
 [triggers]
-# Health check: Run every minute to verify bot is responsive
-crons = ["* * * * *"]
+# Health check: Run every 5 minutes to verify bot is responsive
+crons = ["*/5 * * * *"]
 
 # =============================================================================
 # KV NAMESPACE
