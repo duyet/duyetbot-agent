@@ -5,8 +5,6 @@ import { checkServerHealth } from '@/lib/mcp/health-checker';
 import type { MCPOverallStatus, MCPStatusResponse } from '@/lib/mcp/types';
 import { handleRouteError } from '../../types';
 
-export const runtime = 'edge';
-
 /**
  * GET /api/mcp/status
  * Returns health status of all MCP servers
