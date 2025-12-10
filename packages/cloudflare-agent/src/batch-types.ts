@@ -71,10 +71,32 @@ export interface PendingMessage<TContext = unknown> {
   chatId?: string | number;
   /** Username of the sender (for debug footer admin check) */
   username?: string;
+  /** Whether the sender is an admin (for debug footer visibility and failure alerts) */
+  isAdmin?: boolean;
+  /** Admin username for alert targeting (may differ from username if sender is not admin) */
+  adminUsername?: string;
+  /**
+   * Full serialized GlobalContext - no data loss
+   * Contains all debug info, timing, trace IDs, etc.
+   * When processing batch from DO storage/alarms, use this to deserialize
+   * the complete context with all accumulated data.
+   *
+   * @example
+   * ```typescript
+   * if (msg.serializedContext) {
+   *   const ctx = deserializeContext(msg.serializedContext);
+   * } else {
+   *   // Fallback: reconstruct from message fields
+   * }
+   * ```
+   */
+  serializedContext?: string;
   /**
    * Original context for transport operations
    * Stored as serialized JSON to preserve full context (e.g., bot token for Telegram)
    * This is required because processBatch needs the full context to send messages
+   *
+   * @deprecated Use serializedContext instead for full context preservation
    */
   originalContext?: TContext;
 }
