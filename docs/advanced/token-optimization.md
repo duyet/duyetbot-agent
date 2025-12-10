@@ -60,10 +60,10 @@ Integrates batch/trim.
 
 ## Trim Snippets
 
-Trim before LLM. From [`history.ts`](packages/chat-agent/src/history.ts:10).
+Trim before LLM. From [`history.ts`](packages/cloudflare-agent/src/history.ts:10).
 
 ```typescript
-// packages/chat-agent/src/history.ts
+// packages/cloudflare-agent/src/history.ts
 export function trimHistory(messages: Message[], maxLength: 10): Message[] {
   return messages.length > maxLength
     ? messages.slice(-maxLength)
@@ -73,7 +73,7 @@ export function trimHistory(messages: Message[], maxLength: 10): Message[] {
 // Use: const recent = trimHistory(state.messages, 10);
 ```
 
-Combine batch: [`batch-types.ts`](packages/chat-agent/src/batch-types.ts:153) `join('\n---\n')`.
+Combine batch: [`batch-types.ts`](packages/cloudflare-agent/src/batch-types.ts:153) `join('\n---\n')`.
 
 P50 costs: $0.0225/100q.
 
