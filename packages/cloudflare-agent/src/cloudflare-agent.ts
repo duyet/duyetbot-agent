@@ -227,8 +227,15 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
   getMetadata(): Record<string, unknown> | undefined;
   /** @deprecated Use handleBuiltinCommand instead */
   handleCommand(text: string): Promise<string>;
-  /** Handle built-in commands, returns null for unknown commands */
-  handleBuiltinCommand(text: string): Promise<string | null>;
+  /**
+   * Handle built-in commands, returns null for unknown commands
+   * @param text - Command text (e.g., "/debug", "/help")
+   * @param options - Optional context for admin commands (isAdmin, username, parseMode)
+   */
+  handleBuiltinCommand(
+    text: string,
+    options?: { isAdmin?: boolean; username?: string; parseMode?: 'HTML' | 'MarkdownV2' }
+  ): Promise<string | null>;
   /** Transform slash command to natural language for LLM */
   transformSlashCommand(text: string): string;
   handle(ctx: TContext): Promise<void>;
@@ -1167,10 +1174,13 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Handle built-in command and return response message
-     * Routes /start, /help, /clear to appropriate handlers
+     * Routes /start, /help, /clear, /debug to appropriate handlers
      * Returns null for unknown commands (should fall back to chat)
      */
-    async handleBuiltinCommand(text: string): Promise<string | null> {
+    async handleBuiltinCommand(
+      text: string,
+      options?: { isAdmin?: boolean; username?: string; parseMode?: 'HTML' | 'MarkdownV2' }
+    ): Promise<string | null> {
       const command = (text.split(/[\s\n]/)[0] ?? '').toLowerCase();
 
       switch (command) {
@@ -1178,6 +1188,79 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           return this.getWelcome();
         case '/help':
           return this.getHelp();
+        case '/debug': {
+          // Admin-only command
+          if (!options?.isAdmin) {
+            return '🔒 Admin command - access denied';
+          }
+
+          // Use appropriate formatting based on parseMode
+          // For MarkdownV2: use *text* for bold (Markdown style)
+          // For HTML: use <b>text</b> for bold (HTML style)
+          const isHTML = options?.parseMode === 'HTML';
+          const bold = (text: string) => (isHTML ? `<b>${text}</b>` : `*${text}*`);
+
+          const lines: string[] = [`🔍 ${bold('Debug Information')}\n`];
+
+          // User context section
+          lines.push(bold('User Context:'));
+          lines.push(`  userId: ${this.state.userId ?? '-'}`);
+          lines.push(`  chatId: ${this.state.chatId ?? '-'}`);
+          lines.push(`  username: ${options.username ?? '-'}`);
+          lines.push(`  isAdmin: ${options.isAdmin}`);
+          lines.push('');
+
+          // Agent state
+          lines.push(bold('Agent State:'));
+          lines.push(`  messages: ${this.state.messages?.length ?? 0}`);
+          lines.push(`  hasActiveBatch: ${!!this.state.activeBatch}`);
+          lines.push(`  hasPendingBatch: ${!!this.state.pendingBatch}`);
+          lines.push('');
+
+          // Configuration
+          lines.push(bold('Configuration:'));
+          lines.push(`  maxHistory: ${config.maxHistory ?? 100}`);
+          lines.push(`  maxToolIterations: ${config.maxToolIterations ?? 5}`);
+          lines.push(`  maxTools: ${config.maxTools ?? 'unlimited'}`);
+          lines.push(`  thinkingInterval: ${config.thinkingRotationInterval ?? 5000}ms`);
+          lines.push('');
+
+          // Tools
+          const toolCount = config.tools?.length ?? 0;
+          lines.push(`${bold(`Tools (${toolCount})`)}:`);
+          if (toolCount > 0) {
+            for (const tool of config.tools ?? []) {
+              lines.push(`  • ${tool.name}`);
+            }
+          } else {
+            lines.push('  (no tools configured)');
+          }
+          lines.push('');
+
+          // MCP Servers
+          const mcpCount = config.mcpServers?.length ?? 0;
+          lines.push(`${bold(`MCP Servers (${mcpCount})`)}:`);
+          if (mcpCount > 0) {
+            for (const mcp of config.mcpServers ?? []) {
+              lines.push(`  • ${mcp.name}: ${mcp.url}`);
+            }
+          } else {
+            lines.push('  (no MCP servers configured)');
+          }
+          lines.push('');
+
+          // Router config
+          lines.push(bold('Router:'));
+          if (config.router) {
+            lines.push(`  enabled: true`);
+            lines.push(`  platform: ${config.router.platform}`);
+            lines.push(`  debug: ${config.router.debug ?? false}`);
+          } else {
+            lines.push(`  enabled: false`);
+          }
+
+          return lines.join('\n');
+        }
         case '/clear': {
           // Log state BEFORE clear for debugging
           logger.info('[CloudflareAgent][CLEAR] State BEFORE clear', {
@@ -1678,8 +1761,29 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         // Route: Built-in Command, Dynamic Command, or Chat
         if (input.text.startsWith('/')) {
-          // Try built-in commands first (/start, /help, /clear)
-          const builtinResponse = await this.handleBuiltinCommand(input.text);
+          // Try built-in commands first (/start, /help, /clear, /debug)
+          // Extract admin context from transport context if available
+          const ctxWithAdmin = ctx as unknown as {
+            isAdmin?: boolean;
+            username?: string;
+            parseMode?: 'HTML' | 'MarkdownV2';
+          };
+          const adminOptions: {
+            isAdmin?: boolean;
+            username?: string;
+            parseMode?: 'HTML' | 'MarkdownV2';
+          } = {};
+          if (ctxWithAdmin.isAdmin !== undefined) {
+            adminOptions.isAdmin = ctxWithAdmin.isAdmin;
+          }
+          const effectiveUsername = ctxWithAdmin.username ?? input.username;
+          if (effectiveUsername !== undefined) {
+            adminOptions.username = effectiveUsername;
+          }
+          if (ctxWithAdmin.parseMode !== undefined) {
+            adminOptions.parseMode = ctxWithAdmin.parseMode;
+          }
+          const builtinResponse = await this.handleBuiltinCommand(input.text, adminOptions);
 
           if (builtinResponse !== null) {
             // Built-in command handled - send response directly
