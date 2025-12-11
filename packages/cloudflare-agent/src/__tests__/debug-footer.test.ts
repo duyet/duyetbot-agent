@@ -626,3 +626,122 @@ describe('formatDebugFooterMarkdown', () => {
     expect(footer).toContain('[!] code-worker: MCP connection timeout');
   });
 });
+
+describe('web search citations', () => {
+  it('shows web search enabled with no results', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router', durationMs: 100 },
+        { agent: 'simple-agent', durationMs: 500 },
+      ],
+      metadata: {
+        webSearchEnabled: true,
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).toContain('[web: enabled, no results]');
+  });
+
+  it('shows citations with truncated titles and domains', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router', durationMs: 100 },
+        { agent: 'simple-agent', durationMs: 500 },
+      ],
+      metadata: {
+        webSearchEnabled: true,
+        citations: [
+          {
+            url: 'https://www.example.com/very/long/path/to/article',
+            title: 'Breaking News: Something Very Important Happened Today',
+          },
+          {
+            url: 'https://news.com',
+            title: 'Short Title',
+          },
+        ],
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).toContain('[web:');
+    expect(footer).toContain('Breaking News: So...');
+    expect(footer).toContain('example.com/...');
+    expect(footer).toContain('Short Title');
+    expect(footer).toContain('news.com');
+  });
+
+  it('shows +N more indicator when more than 3 citations', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router', durationMs: 100 },
+        { agent: 'simple-agent', durationMs: 500 },
+      ],
+      metadata: {
+        webSearchEnabled: true,
+        citations: [
+          { url: 'https://a.com', title: 'Article A' },
+          { url: 'https://b.com', title: 'Article B' },
+          { url: 'https://c.com', title: 'Article C' },
+          { url: 'https://d.com', title: 'Article D' },
+          { url: 'https://e.com', title: 'Article E' },
+        ],
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).toContain('[web:');
+    expect(footer).toContain('+2'); // 5 - 3 = 2 more
+    // Should only show first 3
+    expect(footer).toContain('Article A');
+    expect(footer).toContain('Article B');
+    expect(footer).toContain('Article C');
+  });
+
+  it('does not show web search line when not enabled', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router', durationMs: 100 },
+        { agent: 'simple-agent', durationMs: 500 },
+      ],
+    };
+    const footer = formatDebugFooter(ctx);
+    expect(footer).not.toContain('[web:');
+  });
+
+  it('escapes special characters in HTML mode', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router', durationMs: 100 },
+        { agent: 'simple-agent', durationMs: 500 },
+      ],
+      metadata: {
+        webSearchEnabled: true,
+        citations: [
+          {
+            url: 'https://example.com',
+            title: 'A <b>bold</b> title', // Short enough to not truncate
+          },
+        ],
+      },
+    };
+    const footer = formatDebugFooter(ctx);
+    // The title gets truncated to 20 chars, so check for escaped < and >
+    expect(footer).toContain('&lt;b&gt;bold&lt;/b&gt;');
+  });
+
+  it('shows web search in GitHub Markdown format', () => {
+    const ctx: DebugContext = {
+      routingFlow: [
+        { agent: 'router', durationMs: 100 },
+        { agent: 'simple-agent', durationMs: 500 },
+      ],
+      metadata: {
+        webSearchEnabled: true,
+        citations: [{ url: 'https://example.com', title: 'Test Article' }],
+      },
+    };
+    const footer = formatDebugFooterMarkdown(ctx);
+    expect(footer).toContain('[web:');
+    expect(footer).toContain('Test Article');
+    expect(footer).toContain('<details>');
+  });
+});

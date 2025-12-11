@@ -122,6 +122,7 @@ export type {
 export type {
   AgentState,
   ChatAgentConfig,
+  Citation,
   DebugContext,
   LLMMessage,
   LLMProvider,

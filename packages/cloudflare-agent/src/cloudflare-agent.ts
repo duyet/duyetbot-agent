@@ -46,6 +46,7 @@ import {
   type StageTransition,
 } from './batch-types.js';
 import { extractMessageMetadata } from './context/batch-context-helpers.js';
+import { escapeHtml, escapeMarkdownV2 } from './debug-footer.js';
 import type { RoutingFlags } from './feature-flags.js';
 import {
   createThinkingRotator,
@@ -1199,14 +1200,17 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // For HTML: use <b>text</b> for bold (HTML style)
           const isHTML = options?.parseMode === 'HTML';
           const bold = (text: string) => (isHTML ? `<b>${text}</b>` : `*${text}*`);
+          // Escape function for dynamic content - HTML needs entity escaping,
+          // MarkdownV2 needs special character escaping
+          const esc = (text: string) => (isHTML ? escapeHtml(text) : escapeMarkdownV2(text));
 
           const lines: string[] = [`🔍 ${bold('Debug Information')}\n`];
 
           // User context section
           lines.push(bold('User Context:'));
-          lines.push(`  userId: ${this.state.userId ?? '-'}`);
-          lines.push(`  chatId: ${this.state.chatId ?? '-'}`);
-          lines.push(`  username: ${options.username ?? '-'}`);
+          lines.push(`  userId: ${esc(String(this.state.userId ?? '-'))}`);
+          lines.push(`  chatId: ${esc(String(this.state.chatId ?? '-'))}`);
+          lines.push(`  username: ${esc(options.username ?? '-')}`);
           lines.push(`  isAdmin: ${options.isAdmin}`);
           lines.push('');
 
@@ -1221,7 +1225,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           lines.push(bold('Configuration:'));
           lines.push(`  maxHistory: ${config.maxHistory ?? 100}`);
           lines.push(`  maxToolIterations: ${config.maxToolIterations ?? 5}`);
-          lines.push(`  maxTools: ${config.maxTools ?? 'unlimited'}`);
+          lines.push(`  maxTools: ${esc(String(config.maxTools ?? 'unlimited'))}`);
           lines.push(`  thinkingInterval: ${config.thinkingRotationInterval ?? 5000}ms`);
           lines.push('');
 
@@ -1230,7 +1234,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           lines.push(`${bold(`Tools (${toolCount})`)}:`);
           if (toolCount > 0) {
             for (const tool of config.tools ?? []) {
-              lines.push(`  • ${tool.name}`);
+              lines.push(`  • ${esc(tool.name)}`);
             }
           } else {
             lines.push('  (no tools configured)');
@@ -1242,7 +1246,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           lines.push(`${bold(`MCP Servers (${mcpCount})`)}:`);
           if (mcpCount > 0) {
             for (const mcp of config.mcpServers ?? []) {
-              lines.push(`  • ${mcp.name}: ${mcp.url}`);
+              lines.push(`  • ${esc(mcp.name)}: ${esc(mcp.url)}`);
             }
           } else {
             lines.push('  (no MCP servers configured)');
@@ -1253,7 +1257,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           lines.push(bold('Router:'));
           if (config.router) {
             lines.push(`  enabled: true`);
-            lines.push(`  platform: ${config.router.platform}`);
+            lines.push(`  platform: ${esc(config.router.platform)}`);
             lines.push(`  debug: ${config.router.debug ?? false}`);
           } else {
             lines.push(`  enabled: false`);
@@ -1629,13 +1633,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * on RouterAgent via its alarm handler. The caller returns immediately
      * after scheduling, and RouterAgent handles response delivery.
      *
-     * @param query - The query to route
-     * @param context - Agent context
+     * @param context - Agent context (must include query field)
      * @param responseTarget - Where to send the response (includes admin context for debug footer)
      * @returns Promise<boolean> - true if scheduling succeeded
      */
     private async scheduleRouting(
-      query: string,
       context: AgentContext,
       responseTarget: ScheduleRoutingTarget
     ): Promise<boolean> {
@@ -1658,15 +1660,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         const routerAgent = await getAgentByName(routerEnv.RouterAgent, routerId);
 
         // Call fire-and-forget method on RouterAgent
+        // Note: scheduleExecution takes (ctx: AgentContext, responseTarget) - ctx.query contains the query
         const result = await (
           routerAgent as unknown as {
             scheduleExecution: (
-              query: string,
               context: AgentContext,
               target: typeof responseTarget
             ) => Promise<{ scheduled: boolean; executionId: string }>;
           }
-        ).scheduleExecution(query, context, responseTarget);
+        ).scheduleExecution(context, responseTarget);
 
         logger.info('[CloudflareAgent] Delegated to RouterAgent (fire-and-forget)', {
           executionId: result.executionId,
@@ -3127,7 +3129,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             responseTarget.githubToken = ctxWithGitHub.githubToken || envWithToken.GITHUB_TOKEN;
           }
 
-          const scheduled = await this.scheduleRouting(combinedText, agentContext, responseTarget);
+          const scheduled = await this.scheduleRouting(agentContext, responseTarget);
 
           if (scheduled) {
             // Successfully delegated to RouterAgent - it will handle response delivery

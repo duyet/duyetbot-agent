@@ -28,7 +28,8 @@ describe('built-in slash commands', () => {
 
     it('formats /debug response correctly for HTML mode', () => {
       // Test the formatting logic without needing agent instantiation
-      const isHTML = 'HTML' === 'HTML'; // parseMode check
+      const parseMode: 'HTML' | 'MarkdownV2' | undefined = 'HTML';
+      const isHTML = parseMode === 'HTML';
       const bold = (text: string) => (isHTML ? `<b>${text}</b>` : `*${text}*`);
 
       const title = bold('Debug Information');

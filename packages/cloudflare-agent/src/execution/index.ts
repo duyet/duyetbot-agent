@@ -28,7 +28,9 @@ export {
   type DebugAccumulator,
   type DebugToolCall,
   type ExecutionContext,
+  type OutputFormat,
   type Platform,
+  parseModeToOutputFormat,
   recordAgentSpan,
   recordToolCall,
 } from './context.js';

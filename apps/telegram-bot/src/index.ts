@@ -26,7 +26,12 @@ import {
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
 } from './middlewares/index.js';
-import { answerCallbackQuery, createTelegramContext, telegramTransport } from './transport.js';
+import {
+  answerCallbackQuery,
+  createTelegramContext,
+  sendRaw,
+  telegramTransport,
+} from './transport.js';
 
 // Extend Env with agent bindings and observability
 type EnvWithAgent = Env & ObservabilityEnv;
@@ -270,36 +275,38 @@ app.post(
       collector.setInput(ctx.text);
     }
 
-    // Check for admin commands
-    if (ctx.text.startsWith('/')) {
-      const response = await handleAdminCommand(ctx.text, ctx);
-      if (response !== undefined) {
-        logger.info(`[${requestId}] [WEBHOOK] Admin command executed`, {
-          requestId,
-          command: ctx.text,
-          isAdmin: ctx.isAdmin,
-          durationMs: Date.now() - startTime,
-        });
-        await telegramTransport.send(ctx, response);
-        return c.text('OK');
-      }
-    }
-
-    // Get agent by name (consistent with github-bot pattern)
+    // Get agent by name (needed for slash commands that require RPC)
     const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
+    const agent = getChatAgent(env.TelegramAgent, agentId);
 
-    logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
+    logger.info(`[${requestId}] [WEBHOOK] Agent ready`, {
       requestId,
       agentId,
       traceId: globalContext.traceId,
     });
 
+    // Check for slash commands - handle at webhook level before batch queue
+    // This ensures immediate response for /start, /help, /debug, /clear, /status
+    if (ctx.text.startsWith('/')) {
+      const response = await handleAdminCommand(ctx.text, ctx, agent);
+      if (response !== undefined) {
+        logger.info(`[${requestId}] [WEBHOOK] Slash command executed`, {
+          requestId,
+          command: ctx.text.split(/[\s\n]/)[0],
+          isAdmin: ctx.isAdmin,
+          durationMs: Date.now() - startTime,
+        });
+        // Use sendRaw for slash commands - responses are pre-formatted by
+        // handleBuiltinCommand() based on parseMode, no additional escaping needed
+        await sendRaw(ctx, response);
+        return c.text('OK');
+      }
+    }
+
     // Fire-and-forget: dispatch to ChatAgent without waiting for response
     // Uses c.executionCtx.waitUntil() to keep worker alive during processing
     // Returns immediately to Telegram (<100ms)
     try {
-      const agent = getChatAgent(env.TelegramAgent, agentId);
-
       // Create ParsedInput for agent (backward compatibility)
       // The agent will accept both ParsedInput (legacy) and GlobalContext (new)
       const messageText = webhookCtx.task ?? ctx.text;

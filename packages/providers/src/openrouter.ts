@@ -376,6 +376,14 @@ export function createOpenRouterProvider(
                 }),
               },
             }),
+            // Include web search citations if present
+            ...(citations?.length && {
+              citations: citations.map((c) => ({
+                url: c.url_citation.url,
+                title: c.url_citation.title,
+                ...(c.url_citation.content && { content: c.url_citation.content }),
+              })),
+            }),
           };
         } finally {
           clearTimeout(timeoutId);

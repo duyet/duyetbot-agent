@@ -15,6 +15,17 @@ import type { Message } from '../types.js';
 export type Platform = 'telegram' | 'github' | 'api';
 
 /**
+ * Output format for LLM responses
+ *
+ * Specifies how the LLM should format its response based on the target platform.
+ * This is propagated through the execution chain to ensure agents generate
+ * properly formatted content.
+ *
+ * @see packages/prompts/src/types.ts for the canonical OutputFormat type
+ */
+export type OutputFormat = 'telegram-html' | 'telegram-markdown' | 'github-markdown' | 'plain';
+
+/**
  * Agent execution span for tracing
  */
 export interface AgentSpan {
@@ -96,6 +107,16 @@ export interface ExecutionContext {
   chatId: string | number;
   /** Optional username (not all platforms provide) */
   username?: string;
+
+  // Output Format
+  /**
+   * Output format for LLM responses
+   *
+   * Specifies how the LLM should format its response (HTML, Markdown, etc.).
+   * Agents should use this to include appropriate formatting instructions in prompts.
+   * Defaults to 'plain' if not specified.
+   */
+  outputFormat?: OutputFormat;
 
   // Admin Information
   /** Whether the user is an admin (for debug footer visibility and failure alerts) */
@@ -220,6 +241,39 @@ export function addDebugError(debug: DebugAccumulator, error: string): void {
 }
 
 /**
+ * Convert parseMode (Telegram-specific) to OutputFormat (platform-neutral)
+ *
+ * @param parseMode - Telegram parse mode ('HTML' or 'MarkdownV2')
+ * @param platform - Platform identifier for context
+ * @returns OutputFormat value
+ */
+export function parseModeToOutputFormat(
+  parseMode?: string,
+  platform?: string
+): OutputFormat | undefined {
+  if (!parseMode) {
+    // Default based on platform
+    if (platform === 'telegram') {
+      return 'telegram-html'; // Default for Telegram
+    }
+    if (platform === 'github') {
+      return 'github-markdown';
+    }
+    return undefined;
+  }
+
+  // Convert Telegram parseMode to OutputFormat
+  if (parseMode === 'HTML') {
+    return 'telegram-html';
+  }
+  if (parseMode === 'MarkdownV2' || parseMode === 'Markdown') {
+    return 'telegram-markdown';
+  }
+
+  return undefined;
+}
+
+/**
  * Create an ExecutionContext from ParsedInput (backward compatibility)
  *
  * @param input - ParsedInput containing extracted message data
@@ -234,6 +288,11 @@ export function createExecutionContext(input: ParsedInput, platform?: string): E
   const eventId = input.metadata?.eventId as string | undefined;
   const isAdmin = input.metadata?.isAdmin as boolean | undefined;
   const adminUsername = input.metadata?.adminUsername as string | undefined;
+  const parseMode = input.metadata?.parseMode as string | undefined;
+  const outputFormat = parseModeToOutputFormat(
+    parseMode,
+    platform || (input.metadata?.platform as string)
+  );
 
   return {
     traceId,
@@ -243,6 +302,8 @@ export function createExecutionContext(input: ParsedInput, platform?: string): E
     userId: input.userId,
     chatId: input.chatId,
     ...(input.username && { username: input.username }),
+    // Output format for LLM responses
+    ...(outputFormat && { outputFormat }),
     // Admin information (for debug footer visibility and failure alerts)
     ...(isAdmin !== undefined && { isAdmin }),
     ...(adminUsername && { adminUsername }),
