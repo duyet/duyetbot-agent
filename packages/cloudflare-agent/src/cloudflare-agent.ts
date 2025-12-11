@@ -45,6 +45,7 @@ import {
   type RetryError,
   type StageTransition,
 } from './batch-types.js';
+import { extractMessageMetadata } from './context/batch-context-helpers.js';
 import type { RoutingFlags } from './feature-flags.js';
 import {
   createThinkingRotator,
@@ -2023,8 +2024,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         return { queued: false };
       }
 
-      // Extract eventId from metadata for observability correlation
-      const eventId = input.metadata?.eventId as string | undefined;
+      // Extract metadata fields using helper for consistent extraction
+      const { eventId, isAdmin, adminUsername } = extractMessageMetadata(input.metadata);
 
       // Create pending message with original context for transport operations
       const pendingMessage: PendingMessage<TContext> = {
@@ -2035,6 +2036,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         userId: input.userId,
         chatId: input.chatId,
         ...(input.username && { username: input.username }),
+        // Admin information for debug footer and failure alerts
+        ...(isAdmin !== undefined && { isAdmin }),
+        ...(adminUsername && { adminUsername }),
         originalContext: ctx,
       };
 
@@ -2998,7 +3002,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             messageRef: { messageId },
             platform: routerConfig?.platform || 'telegram',
             // Pass admin context for debug footer (Phase 5)
-            adminUsername: ctxWithAdmin.adminUsername || envWithToken.ADMIN_USERNAME,
+            // Priority: ctx (transport context) > firstMessage (persisted) > env (fallback)
+            adminUsername:
+              ctxWithAdmin.adminUsername ||
+              firstMessage?.adminUsername ||
+              envWithToken.ADMIN_USERNAME,
             username: ctxWithAdmin.username || firstMessage?.username,
             // Pass platform config for parseMode and other settings
             platformConfig,
