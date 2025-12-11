@@ -165,7 +165,10 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
   /** @deprecated Use handleBuiltinCommand instead */
   handleCommand(text: string): Promise<string>;
   /** Handle built-in commands, returns null for unknown commands */
-  handleBuiltinCommand(text: string): Promise<string | null>;
+  handleBuiltinCommand(
+    text: string,
+    options?: { isAdmin?: boolean; username?: string; parseMode?: 'HTML' | 'MarkdownV2' }
+  ): Promise<string | null>;
   /** Transform slash command to natural language for LLM */
   transformSlashCommand(text: string): string;
   handle(ctx: TContext): Promise<void>;
