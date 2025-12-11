@@ -202,7 +202,7 @@ describe('debug-footer', () => {
       expect(result.parseMode).toBe('HTML');
     });
 
-    it('escapes HTML in message when adding debug footer', () => {
+    it('preserves HTML tags in message (LLM produces formatted HTML)', () => {
       const ctx = createMockContext({
         isAdmin: true,
         debugContext: {
@@ -210,8 +210,9 @@ describe('debug-footer', () => {
           totalDurationMs: 500,
         },
       });
+      // LLM is instructed to produce HTML-formatted output, so tags should be preserved
       const result = prepareMessageWithDebug('Hello <b>world</b>', ctx);
-      expect(result.text).toContain('Hello &lt;b&gt;world&lt;/b&gt;');
+      expect(result.text).toContain('Hello <b>world</b>');
       expect(result.parseMode).toBe('HTML');
     });
 
@@ -224,12 +225,14 @@ describe('debug-footer', () => {
       expect(result.parseMode).toBe('HTML');
     });
 
-    it('escapes HTML special chars even for non-admin users', () => {
+    it('preserves HTML formatting for all users (LLM produces formatted HTML)', () => {
       const ctx = createMockContext({
         isAdmin: false,
       });
-      const result = prepareMessageWithDebug('Use <code> & "quotes"', ctx);
-      expect(result.text).toBe('Use &lt;code&gt; &amp; &quot;quotes&quot;');
+      // LLM is instructed to produce HTML-formatted output, so tags should be preserved
+      // The LLM handles entity escaping in plain text as per the prompt instructions
+      const result = prepareMessageWithDebug('Use <code>command</code> &amp; "quotes"', ctx);
+      expect(result.text).toBe('Use <code>command</code> &amp; "quotes"');
       expect(result.parseMode).toBe('HTML');
     });
 
@@ -243,27 +246,28 @@ describe('debug-footer', () => {
         expect(result.parseMode).toBe('MarkdownV2');
       });
 
-      it('smart escapes text for MarkdownV2 preserving formatting', () => {
+      it('preserves MarkdownV2 formatting (LLM produces formatted output)', () => {
         const ctx = createMockContext({
           isAdmin: false,
           parseMode: 'MarkdownV2',
         });
 
-        // Smart escaping: escapes special chars in plain text but preserves markdown formatting
+        // LLM is instructed to produce MarkdownV2-formatted output
+        // Text is NOT escaped - LLM handles formatting as per prompt instructions
         const patterns = [
-          // Plain text with special chars gets escaped
-          { input: '🔄 Thinking...', expected: '🔄 Thinking\\.\\.\\.' },
-          { input: '🔄 Loading...', expected: '🔄 Loading\\.\\.\\.' },
-          { input: '🤔 Analyzing...', expected: '🤔 Analyzing\\.\\.\\.' },
-          { input: '📊 Processing (50%)', expected: '📊 Processing \\(50%\\)' },
-          { input: '✅ Done!', expected: '✅ Done\\!' },
-          { input: '⚠️ Warning!', expected: '⚠️ Warning\\!' },
-          { input: 'Hello world!', expected: 'Hello world\\!' },
+          // Plain text with loading indicators
+          { input: '🔄 Thinking...', expected: '🔄 Thinking...' },
+          { input: '🔄 Loading...', expected: '🔄 Loading...' },
+          { input: '🤔 Analyzing...', expected: '🤔 Analyzing...' },
+          { input: '📊 Processing (50%)', expected: '📊 Processing (50%)' },
+          { input: '✅ Done!', expected: '✅ Done!' },
+          { input: '⚠️ Warning!', expected: '⚠️ Warning!' },
+          { input: 'Hello world!', expected: 'Hello world!' },
           // MarkdownV2 formatting is preserved
           { input: '*bold* text', expected: '*bold* text' },
           { input: '_italic_ text', expected: '_italic_ text' },
           { input: '~strikethrough~', expected: '~strikethrough~' },
-          // Links are preserved (smart escape recognizes them)
+          // Links are preserved
           {
             input: '[link](https://example.com)',
             expected: '[link](https://example.com)',
@@ -278,17 +282,18 @@ describe('debug-footer', () => {
         }
       });
 
-      it('escapes special chars in plain text for MarkdownV2', () => {
+      it('preserves text as-is for MarkdownV2 (no escaping by transport)', () => {
         const ctx = createMockContext({
           isAdmin: false,
           parseMode: 'MarkdownV2',
         });
 
-        // Plain text with dots and other special chars gets escaped
-        const longResponse =
-          'Here is a detailed explanation. The dots in this sentence ARE escaped.';
-        const result = prepareMessageWithDebug(longResponse, ctx);
-        expect(result.text).toContain('\\.'); // Dots should be escaped
+        // LLM produces properly formatted MarkdownV2, transport does not escape
+        const response =
+          'Here is a detailed explanation\\. The dots in this sentence are escaped by the LLM\\.';
+        const result = prepareMessageWithDebug(response, ctx);
+        // Text is passed through unchanged
+        expect(result.text).toBe(response);
       });
 
       it('includes MarkdownV2 debug footer for admin users', () => {

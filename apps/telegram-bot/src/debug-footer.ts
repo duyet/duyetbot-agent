@@ -46,10 +46,19 @@ export function formatDebugFooter(ctx: TelegramContext): string | null {
  * Prepare message with optional debug footer for sending
  *
  * Returns the message text and parse mode based on context configuration.
- * For HTML mode, escapes HTML entities.
- * For MarkdownV2 mode, uses smart escaping that preserves formatting syntax
- * (links, bold, italic, code blocks) while escaping special chars in plain text.
+ *
+ * IMPORTANT: Text is NOT escaped because the LLM is instructed to produce
+ * properly formatted output (HTML tags for HTML mode, MarkdownV2 syntax for
+ * MarkdownV2 mode). Escaping would break the LLM's intentional formatting.
+ *
+ * The system prompts instruct the LLM to:
+ * - Use <b>, <i>, <code> tags in HTML mode
+ * - Escape special chars (&lt;, &gt;, &amp;) in regular text
+ * - Use *bold*, _italic_, `code` in MarkdownV2 mode
+ *
  * Admin users with debug context get an expandable footer appended.
+ *
+ * @see packages/prompts/src/sections/guidelines.ts for LLM formatting instructions
  */
 export function prepareMessageWithDebug(
   text: string,
@@ -58,19 +67,18 @@ export function prepareMessageWithDebug(
   const debugFooter = formatDebugFooter(ctx);
 
   // Use MarkdownV2 parse mode if configured
-  // Smart escape preserves formatting syntax while escaping special chars
+  // Text is NOT escaped - LLM produces properly formatted MarkdownV2
   if (ctx.parseMode === 'MarkdownV2') {
-    const escapedText = smartEscapeMarkdownV2(text);
     return {
-      text: debugFooter ? escapedText + debugFooter : escapedText,
+      text: debugFooter ? text + debugFooter : text,
       parseMode: 'MarkdownV2',
     };
   }
 
-  // Default to HTML escaping and parse mode
-  const escapedText = escapeHtml(text);
+  // Default to HTML parse mode
+  // Text is NOT escaped - LLM produces properly formatted HTML
   return {
-    text: debugFooter ? escapedText + debugFooter : escapedText,
+    text: debugFooter ? text + debugFooter : text,
     parseMode: 'HTML',
   };
 }
