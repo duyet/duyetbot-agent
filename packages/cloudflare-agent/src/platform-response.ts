@@ -21,7 +21,7 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import type { PlatformConfig } from './agents/base-agent.js';
-import { escapeHtml, formatDebugFooter } from './debug-footer.js';
+import { formatDebugFooter } from './debug-footer.js';
 import type { DebugContext } from './types.js';
 
 /**
@@ -134,7 +134,11 @@ export async function sendPlatformResponse(
     if (isAdminUser(target) && debugContext) {
       const debugFooter = formatDebugFooter(debugContext);
       if (debugFooter) {
-        finalText = escapeHtml(text) + debugFooter;
+        // IMPORTANT: Text is NOT escaped because the LLM is instructed to produce
+        // properly formatted HTML (with <b>, <i>, <code> tags). Escaping would
+        // break the LLM's intentional formatting.
+        // See: packages/prompts/src/sections/guidelines.ts for LLM formatting instructions
+        finalText = text + debugFooter;
         parseMode = 'HTML'; // Debug footer uses HTML formatting
 
         logger.debug('[sendPlatformResponse] Debug footer applied', {
