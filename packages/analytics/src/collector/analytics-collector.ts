@@ -4,6 +4,12 @@
  * Integrates with CloudflareChatAgent to capture all messages and agent steps
  * for persistent analytics and observability.
  *
+ * ARCHITECTURE NOTE (Centralized Data Monitoring):
+ * - WRITE operations go to `chat_messages` table (source of truth)
+ * - READ operations can use `analytics_messages` view (computed from chat_messages + observability_events)
+ * - The `analytics_messages` is a VIEW (created in migration 0009), NOT a table
+ * - Agent steps are now stored in observability_events.agents JSON (migration 0008)
+ *
  * CRITICAL: This collector NEVER deletes data. All messages are append-only.
  */
 
@@ -48,6 +54,7 @@ export class AnalyticsCollector {
   /**
    * Get next sequence number for a session
    * Maintains in-memory cache to avoid repeated database queries
+   * NOTE: Reads from chat_messages (source table) for accuracy
    */
   private async getNextSequence(sessionId: string): Promise<number> {
     // Check cache first
@@ -58,9 +65,9 @@ export class AnalyticsCollector {
       return seq;
     }
 
-    // Query DB for max sequence
+    // Query DB for max sequence (from source table, not view)
     const result = (await this.db
-      .prepare('SELECT MAX(sequence) as max_seq FROM analytics_messages WHERE session_id = ?')
+      .prepare('SELECT MAX(sequence) as max_seq FROM chat_messages WHERE session_id = ?')
       .bind(sessionId)
       .first()) as { max_seq: number | null } | null;
 
@@ -71,23 +78,11 @@ export class AnalyticsCollector {
   }
 
   /**
-   * Hash content for deduplication checking
-   * Returns first 16 chars of SHA-256 hash
-   */
-  private async hashContent(content: string): Promise<string> {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(content);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')
-      .substring(0, 16);
-  }
-
-  /**
    * Capture a user message when received
    * Returns the generated message_id for correlation
+   *
+   * ARCHITECTURE NOTE: Writes to `chat_messages` (source of truth).
+   * The `analytics_messages` view provides enriched read access.
    *
    * @param input User message data
    * @returns Generated message ID (UUID v7)
@@ -106,21 +101,19 @@ export class AnalyticsCollector {
     const sequence = await this.getNextSequence(input.sessionId);
     const now = Date.now();
 
-    // Create content hash for dedup checking
-    const contentHash = await this.hashContent(input.content);
-
     try {
+      // Insert into chat_messages (source of truth)
       await this.db
         .prepare(
           `
-        INSERT INTO analytics_messages (
-          message_id, session_id, sequence, role, content, content_hash,
+        INSERT INTO chat_messages (
+          message_id, session_id, sequence, role, content,
           visibility, is_archived, is_pinned,
-          event_id, platform_message_id,
+          event_id,
           input_tokens, output_tokens, cached_tokens, reasoning_tokens,
           platform, user_id, username, chat_id,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          timestamp, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
         )
         .bind(
@@ -129,12 +122,10 @@ export class AnalyticsCollector {
           sequence,
           'user',
           input.content,
-          contentHash,
           'private',
           0, // is_archived
           0, // is_pinned
           input.eventId ?? null,
-          input.platformMessageId ?? null,
           0,
           0,
           0,
@@ -143,8 +134,9 @@ export class AnalyticsCollector {
           input.userId,
           input.username ?? null,
           input.chatId ?? null,
-          now,
-          now
+          now, // timestamp
+          now, // created_at
+          now // updated_at
         )
         .run();
     } catch (error) {
@@ -157,6 +149,9 @@ export class AnalyticsCollector {
 
   /**
    * Capture an assistant response with token counts
+   *
+   * ARCHITECTURE NOTE: Writes to `chat_messages` (source of truth).
+   * The `analytics_messages` view provides enriched read access.
    *
    * @param input Assistant response data
    * @returns Generated message ID (UUID v7)
@@ -177,20 +172,20 @@ export class AnalyticsCollector {
     const messageId = this.generateMessageId();
     const sequence = await this.getNextSequence(input.sessionId);
     const now = Date.now();
-    const contentHash = await this.hashContent(input.content);
 
     try {
+      // Insert into chat_messages (source of truth)
       await this.db
         .prepare(
           `
-        INSERT INTO analytics_messages (
-          message_id, session_id, sequence, role, content, content_hash,
+        INSERT INTO chat_messages (
+          message_id, session_id, sequence, role, content,
           visibility, is_archived, is_pinned,
-          event_id, trigger_message_id,
+          event_id,
           input_tokens, output_tokens, cached_tokens, reasoning_tokens,
           platform, user_id, model,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          timestamp, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
         )
         .bind(
@@ -199,12 +194,10 @@ export class AnalyticsCollector {
           sequence,
           'assistant',
           input.content,
-          contentHash,
           'private',
           0,
           0,
           input.eventId ?? null,
-          input.triggerMessageId,
           input.inputTokens,
           input.outputTokens,
           input.cachedTokens ?? 0,
@@ -212,8 +205,9 @@ export class AnalyticsCollector {
           input.platform,
           input.userId,
           input.model ?? null,
-          now,
-          now
+          now, // timestamp
+          now, // created_at
+          now // updated_at
         )
         .run();
     } catch (error) {
@@ -226,6 +220,9 @@ export class AnalyticsCollector {
 
   /**
    * Capture a system or tool message
+   *
+   * ARCHITECTURE NOTE: Writes to `chat_messages` (source of truth).
+   * The `analytics_messages` view provides enriched read access.
    *
    * @param input System/tool message data
    * @returns Generated message ID (UUID v7)
@@ -243,20 +240,20 @@ export class AnalyticsCollector {
     const messageId = this.generateMessageId();
     const sequence = await this.getNextSequence(input.sessionId);
     const now = Date.now();
-    const contentHash = await this.hashContent(input.content);
 
     try {
+      // Insert into chat_messages (source of truth)
       await this.db
         .prepare(
           `
-        INSERT INTO analytics_messages (
-          message_id, session_id, sequence, role, content, content_hash,
+        INSERT INTO chat_messages (
+          message_id, session_id, sequence, role, content,
           visibility, is_archived, is_pinned,
-          event_id, parent_message_id,
+          event_id,
           input_tokens, output_tokens, cached_tokens, reasoning_tokens,
           platform, user_id, model,
-          created_at, updated_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          timestamp, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `
         )
         .bind(
@@ -265,12 +262,10 @@ export class AnalyticsCollector {
           sequence,
           input.role,
           input.content,
-          contentHash,
           'private',
           0,
           0,
           input.eventId ?? null,
-          input.parentMessageId ?? null,
           0,
           0,
           0,
@@ -278,8 +273,9 @@ export class AnalyticsCollector {
           input.platform,
           input.userId,
           input.model ?? null,
-          now,
-          now
+          now, // timestamp
+          now, // created_at
+          now // updated_at
         )
         .run();
     } catch (error) {
@@ -319,72 +315,40 @@ export class AnalyticsCollector {
    * Complete an agent step with results
    * Must call startAgentStep first to get stepId
    *
+   * DEPRECATION NOTE: After migration 0009, analytics_agent_steps is a VIEW
+   * computed from observability_events.agents JSON. Direct writes are no longer
+   * supported. Agent step data should be written to observability_events.agents
+   * via the ObservabilityStorage class instead.
+   *
+   * This method now logs a warning and cleans up pending state without writing
+   * to the database. To track agent steps, update observability_events.agents JSON.
+   *
    * @param stepId Step ID from startAgentStep
    * @param completion Step completion data
-   * @throws If stepId is not found in pending steps
    */
-  async completeAgentStep(stepId: string, completion: StepCompletion): Promise<void> {
+  async completeAgentStep(stepId: string, _completion: StepCompletion): Promise<void> {
     const pending = this.pendingSteps.get(stepId);
     if (!pending) {
       console.warn(`No pending step found for stepId: ${stepId}`);
       return;
     }
 
-    const completedAt = Date.now();
-    const durationMs = completedAt - pending.startedAt;
+    // Log deprecation warning - analytics_agent_steps is now a view
+    console.warn(
+      `[DEPRECATED] completeAgentStep: analytics_agent_steps is now a view. ` +
+        `Agent step data should be written to observability_events.agents JSON. ` +
+        `Step ${stepId} for agent "${pending.agentName}" was not persisted.`
+    );
 
-    try {
-      await this.db
-        .prepare(
-          `
-        INSERT INTO analytics_agent_steps (
-          step_id, event_id, message_id, parent_step_id,
-          agent_name, agent_type, sequence,
-          started_at, completed_at, duration_ms, queue_time_ms,
-          status,
-          input_tokens, output_tokens, cached_tokens, reasoning_tokens,
-          error_type, error_message, retry_count,
-          model, tools_used, tool_calls_count,
-          created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `
-        )
-        .bind(
-          pending.stepId,
-          pending.eventId,
-          pending.messageId ?? null,
-          pending.parentStepId ?? null,
-          pending.agentName,
-          pending.agentType,
-          pending.sequence,
-          pending.startedAt,
-          completedAt,
-          durationMs,
-          0, // queue_time_ms (computed later)
-          completion.status,
-          completion.inputTokens,
-          completion.outputTokens,
-          completion.cachedTokens ?? 0,
-          completion.reasoningTokens ?? 0,
-          completion.errorType ?? null,
-          completion.errorMessage ?? null,
-          0, // retry_count
-          completion.model ?? null,
-          completion.toolsUsed ? JSON.stringify(completion.toolsUsed) : null,
-          completion.toolCallsCount ?? 0,
-          Date.now()
-        )
-        .run();
-    } catch (error) {
-      console.error(`Failed to complete agent step ${stepId}:`, error);
-      throw error;
-    }
-
+    // Clean up pending state
     this.pendingSteps.delete(stepId);
   }
 
   /**
    * Batch capture multiple messages for efficiency
+   *
+   * ARCHITECTURE NOTE: Writes to `chat_messages` (source of truth).
+   * The `analytics_messages` view provides enriched read access.
    *
    * @param messages Array of message create inputs
    * @returns Array of generated message IDs
@@ -397,16 +361,17 @@ export class AnalyticsCollector {
     }
 
     try {
+      // Insert into chat_messages (source of truth)
       const stmt = this.db.prepare(
         `
-      INSERT INTO analytics_messages (
-        message_id, session_id, sequence, role, content, content_hash,
+      INSERT INTO chat_messages (
+        message_id, session_id, sequence, role, content,
         visibility, is_archived, is_pinned,
-        event_id, trigger_message_id, parent_message_id, platform_message_id,
+        event_id,
         input_tokens, output_tokens, cached_tokens, reasoning_tokens,
         platform, user_id, username, chat_id, model,
-        created_at, updated_at, metadata
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        timestamp, created_at, updated_at, metadata
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `
       );
 
@@ -416,7 +381,6 @@ export class AnalyticsCollector {
       for (const msg of messages) {
         const messageId = this.generateMessageId();
         const sequence = await this.getNextSequence(msg.sessionId);
-        const contentHash = await this.hashContent(msg.content);
 
         batch.push(
           stmt.bind(
@@ -425,14 +389,10 @@ export class AnalyticsCollector {
             sequence,
             msg.role,
             msg.content,
-            contentHash,
             msg.visibility ?? 'private',
             0, // is_archived
             0, // is_pinned
             msg.eventId ?? null,
-            msg.triggerMessageId ?? null,
-            msg.parentMessageId ?? null,
-            msg.platformMessageId ?? null,
             msg.inputTokens ?? 0,
             msg.outputTokens ?? 0,
             msg.cachedTokens ?? 0,
@@ -442,8 +402,9 @@ export class AnalyticsCollector {
             msg.username ?? null,
             msg.chatId ?? null,
             msg.model ?? null,
-            now,
-            now,
+            now, // timestamp
+            now, // created_at
+            now, // updated_at
             msg.metadata ? JSON.stringify(msg.metadata) : null
           )
         );
@@ -487,6 +448,7 @@ export class AnalyticsCollector {
   /**
    * Archive a message
    * Sets is_archived flag without deleting data
+   * NOTE: Updates go to chat_messages (source table)
    *
    * @param messageId Message ID to archive
    */
@@ -495,7 +457,7 @@ export class AnalyticsCollector {
       await this.db
         .prepare(
           `
-        UPDATE analytics_messages
+        UPDATE chat_messages
         SET is_archived = 1, updated_at = ?
         WHERE message_id = ?
       `
@@ -510,6 +472,7 @@ export class AnalyticsCollector {
 
   /**
    * Pin a message
+   * NOTE: Updates go to chat_messages (source table)
    *
    * @param messageId Message ID to pin
    */
@@ -518,7 +481,7 @@ export class AnalyticsCollector {
       await this.db
         .prepare(
           `
-        UPDATE analytics_messages
+        UPDATE chat_messages
         SET is_pinned = 1, updated_at = ?
         WHERE message_id = ?
       `
@@ -533,6 +496,7 @@ export class AnalyticsCollector {
 
   /**
    * Update message visibility
+   * NOTE: Updates go to chat_messages (source table)
    *
    * @param messageId Message ID to update
    * @param visibility New visibility level
@@ -545,7 +509,7 @@ export class AnalyticsCollector {
       await this.db
         .prepare(
           `
-        UPDATE analytics_messages
+        UPDATE chat_messages
         SET visibility = ?, updated_at = ?
         WHERE message_id = ?
       `
