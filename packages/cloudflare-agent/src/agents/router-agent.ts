@@ -466,7 +466,20 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           });
         }
 
-        return result;
+        // Step 9: Enhance result with routing metadata for debug footer
+        return {
+          ...result,
+          data: {
+            ...(result.data && typeof result.data === 'object' ? result.data : {}),
+            routedTo: target,
+            classification: {
+              type: classification.type,
+              category: classification.category,
+              complexity: classification.complexity,
+            },
+            routerDurationMs: classificationMs,
+          },
+        };
       } catch (error) {
         const durationMs = Date.now() - startTime;
 

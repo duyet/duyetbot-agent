@@ -1772,22 +1772,37 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 userId: agentContext.userId,
               });
 
+              // Start router tracking for debug footer
+              stepTracker?.startRouter();
+
               // Try routing through RouterAgent
               const routeResult = await this.routeQuery(chatMessage, agentContext);
 
               if (routeResult?.success && routeResult.content) {
+                // Extract routing metadata for debug footer
+                const routeData = routeResult.data as Record<string, unknown> | undefined;
+                const routedTo = (routeData?.routedTo as string) ?? 'unknown';
+                const classification = routeData?.classification as
+                  | { type: string; category: string; complexity: string }
+                  | undefined;
+
+                // Complete router tracking with target agent and classification
+                stepTracker?.completeRouter(routedTo, classification);
+
                 // Emit routing step to show which agent handled the query
-                const routedTo =
-                  (routeResult.data as Record<string, unknown>)?.routedTo ?? 'unknown';
                 await stepTracker?.addStep({
                   type: 'routing',
                   agentName: String(routedTo),
                 });
 
+                // Complete target agent tracking
+                stepTracker?.completeTargetAgent(routeResult.durationMs);
+
                 // Routing succeeded - use the routed response
                 response = routeResult.content;
                 logger.info('[CloudflareAgent][HANDLE] RouterAgent returned response', {
                   routedTo,
+                  classification,
                   durationMs: routeResult.durationMs,
                 });
               } else {
