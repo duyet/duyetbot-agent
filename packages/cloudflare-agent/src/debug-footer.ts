@@ -16,6 +16,7 @@
  */
 
 import type {
+  Citation,
   DebugContext,
   DebugMetadata,
   ExecutionStatus,
@@ -496,6 +497,68 @@ function formatToolChain(toolChain?: string[]): string {
 }
 
 /**
+ * Truncate URL to domain + short path for compact display
+ * Example: "https://www.example.com/very/long/path" -> "example.com/..."
+ */
+function truncateUrl(url: string): string {
+  try {
+    const parsed = new URL(url);
+    // Remove www. prefix and get domain
+    const domain = parsed.hostname.replace(/^www\./, '');
+    // If path is longer than just /, show truncated indicator
+    if (parsed.pathname && parsed.pathname !== '/') {
+      return `${domain}/...`;
+    }
+    return domain;
+  } catch {
+    // Fallback for malformed URLs
+    return url.length > 20 ? `${url.slice(0, 17)}...` : url;
+  }
+}
+
+/**
+ * Truncate title for compact display
+ */
+function truncateTitle(title: string, maxLength: number): string {
+  if (title.length <= maxLength) {
+    return title;
+  }
+  return `${title.slice(0, maxLength - 3)}...`;
+}
+
+/**
+ * Format web search citations for display
+ * Shows up to 3 URLs with truncated titles, with "+N more" indicator
+ *
+ * Example output:
+ * - [web: Breaking News... (bbc.com), Latest Update... (cnn.com) +2]
+ * - [web: enabled, no results]
+ */
+function formatWebSearch(
+  metadata?: DebugMetadata,
+  escapeFn: (text: string) => string = escapeHtml
+): string {
+  if (!metadata?.webSearchEnabled) {
+    return '';
+  }
+
+  const citations: Citation[] = (metadata.citations as Citation[]) || [];
+  if (citations.length === 0) {
+    return '\n   [web: enabled, no results]';
+  }
+
+  // Show up to 3 URLs with truncated titles
+  const maxDisplay = 3;
+  const urlList = citations
+    .slice(0, maxDisplay)
+    .map((c) => `${escapeFn(truncateTitle(c.title, 20))} (${escapeFn(truncateUrl(c.url))})`)
+    .join(', ');
+
+  const moreCount = citations.length > maxDisplay ? ` +${citations.length - maxDisplay}` : '';
+  return `\n   [web: ${urlList}${moreCount}]`;
+}
+
+/**
  * Format routing flow in new format:
  * router-agent (0.4s, 500↓/100↑) → [classification] → target-agent (3.77s, 1.2k↓/0.5k↑)
  *   [tools: search, calculator]
@@ -719,9 +782,10 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
 
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkers(debugContext.workers);
+  const webSearch = formatWebSearch(debugContext.metadata);
   const metadata = formatMetadata(debugContext.metadata);
 
-  return `\n\n<blockquote expandable>[debug] ${flow}${workers}${metadata}</blockquote>`;
+  return `\n\n<blockquote expandable>[debug] ${flow}${workers}${webSearch}${metadata}</blockquote>`;
 }
 
 /**
@@ -815,13 +879,14 @@ export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string
 
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkersMarkdownV2(debugContext.workers);
+  const webSearch = formatWebSearch(debugContext.metadata, escapeMarkdownV2);
   const metadata = formatMetadata(debugContext.metadata, escapeMarkdownV2);
 
   // Escape the flow for MarkdownV2
   const escapedFlow = escapeMarkdownV2(flow);
 
   // MarkdownV2 expandable blockquote: **>content||
-  return `\n\n**>[debug] ${escapedFlow}${workers}${metadata}||`;
+  return `\n\n**>[debug] ${escapedFlow}${workers}${webSearch}${metadata}||`;
 }
 
 /**
@@ -941,10 +1006,11 @@ export function formatDebugFooterMarkdown(debugContext?: DebugContext): string |
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkers(debugContext.workers);
   // No escaping needed for Markdown code blocks
+  const webSearch = formatWebSearch(debugContext.metadata, (s) => s);
   const metadata = formatMetadata(debugContext.metadata, (s) => s);
 
   // Build content lines
-  const contentLines = [`[debug] ${flow}${workers}`];
+  const contentLines = [`[debug] ${flow}${workers}${webSearch}`];
   if (metadata) {
     contentLines.push(metadata);
   }

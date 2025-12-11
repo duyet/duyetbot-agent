@@ -6,6 +6,10 @@ compatibility_flags = ["nodejs_compat"]
 [ai]
 binding = "AI"
 
+[vars]
+MODEL = "@preset/duyetbot"
+AI_GATEWAY_NAME = "duyetbot"
+
 [observability]
 enabled = true
 

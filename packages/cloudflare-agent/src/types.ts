@@ -76,6 +76,19 @@ export interface TokenUsage {
 }
 
 /**
+ * Web search citation from LLM provider (OpenRouter annotations)
+ * @see https://openrouter.ai/docs/guides/features/web-search.md
+ */
+export interface Citation {
+  /** Source URL */
+  url: string;
+  /** Page title */
+  title: string;
+  /** Snippet/excerpt from the page (optional) */
+  content?: string;
+}
+
+/**
  * Response from LLM provider
  */
 export interface LLMResponse {
@@ -85,6 +98,8 @@ export interface LLMResponse {
   usage?: TokenUsage;
   /** Model identifier used for the response */
   model?: string;
+  /** Web search citations (from OpenRouter annotations) */
+  citations?: Citation[];
 }
 
 /**
@@ -193,6 +208,10 @@ export interface DebugMetadata {
   traceId?: string;
   /** Request ID from platform */
   requestId?: string;
+  /** Whether web search was enabled for this request */
+  webSearchEnabled?: boolean;
+  /** Web search citations from the response */
+  citations?: Citation[];
   /** Index signature for extensibility */
   [key: string]: unknown;
 }

@@ -20,8 +20,8 @@ import {
   createSuccessResult,
 } from '../base/index.js';
 import { enterAgent, exitAgent, type GlobalContext, setTiming } from '../context/index.js';
-import type { AgentProvider, ExecutionContext } from '../execution/index.js';
-import { createDebugAccumulator } from '../execution/index.js';
+import type { AgentProvider, ExecutionContext, OutputFormat } from '../execution/index.js';
+import { createDebugAccumulator, parseModeToOutputFormat } from '../execution/index.js';
 import { type ResponseTarget, sendPlatformResponse } from '../platform-response.js';
 import {
   type ClassificationContext,
@@ -624,9 +624,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             this.setProviderIfSupported(agent);
             return (
               agent as unknown as {
-                route: (c: ExecutionContext) => Promise<AgentResult>;
+                execute: (c: ExecutionContext) => Promise<AgentResult>;
               }
-            ).route(ctx);
+            ).execute(ctx);
           }
 
           case 'orchestrator-agent': {
@@ -641,9 +641,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             this.setProviderIfSupported(agent);
             return (
               agent as unknown as {
-                route: (c: ExecutionContext) => Promise<AgentResult>;
+                orchestrate: (c: ExecutionContext) => Promise<AgentResult>;
               }
-            ).route(ctx);
+            ).orchestrate(ctx);
           }
 
           case 'hitl-agent': {
@@ -658,9 +658,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             this.setProviderIfSupported(agent);
             return (
               agent as unknown as {
-                route: (c: ExecutionContext) => Promise<AgentResult>;
+                handle: (c: ExecutionContext) => Promise<AgentResult>;
               }
-            ).route(ctx);
+            ).handle(ctx);
           }
 
           case 'lead-researcher-agent': {
@@ -672,9 +672,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             this.setProviderIfSupported(agent);
             return (
               agent as unknown as {
-                route: (c: ExecutionContext) => Promise<AgentResult>;
+                research: (c: ExecutionContext) => Promise<AgentResult>;
               }
-            ).route(ctx);
+            ).research(ctx);
           }
 
           case 'duyet-info-agent': {
@@ -685,9 +685,9 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
             this.setProviderIfSupported(agent);
             return (
               agent as unknown as {
-                route: (c: ExecutionContext) => Promise<AgentResult>;
+                execute: (c: ExecutionContext) => Promise<AgentResult>;
               }
-            ).route(ctx);
+            ).execute(ctx);
           }
 
           default: {
@@ -1007,6 +1007,20 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       const traceId = ctx.traceId || crypto.randomUUID();
       const executionId = `exec_${traceId.slice(0, 8)}`;
 
+      // Extract outputFormat from platformConfig (for Telegram parseMode)
+      let outputFormat: OutputFormat | undefined;
+      if (ctx.platformConfig?.platform === 'telegram') {
+        const telegramConfig = ctx.platformConfig as { parseMode?: 'HTML' | 'MarkdownV2' };
+        outputFormat = parseModeToOutputFormat(telegramConfig.parseMode, 'telegram');
+      } else if (ctx.platformConfig?.platform === 'github') {
+        outputFormat = 'github-markdown';
+      } else if (ctx.platform === 'telegram') {
+        // Fallback: use platform from ctx if platformConfig not set
+        outputFormat = 'telegram-html'; // Default for Telegram
+      } else if (ctx.platform === 'github') {
+        outputFormat = 'github-markdown';
+      }
+
       // Convert AgentContext to ExecutionContext for internal routing
       const executionContext: ExecutionContext = {
         traceId,
@@ -1016,6 +1030,8 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
         userId: ctx.userId || 'unknown',
         chatId: ctx.chatId || 'unknown',
         ...(ctx.username && { username: ctx.username }),
+        // Propagate outputFormat for LLM response formatting
+        ...(outputFormat && { outputFormat }),
         userMessageId: responseTarget.chatId || 'unknown',
         provider: 'claude',
         model: 'claude-opus-4.5',

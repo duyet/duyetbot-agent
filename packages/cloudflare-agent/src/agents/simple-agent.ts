@@ -277,13 +277,28 @@ export function createSimpleAgent<TEnv extends SimpleAgentEnv>(
           spanId,
           durationMs,
           contentLength: response.content.length,
+          citationCount: response.citations?.length ?? 0,
         });
 
         exitAgent(gCtx, 'success');
+
+        // Build debug info with web search data if available
+        const webSearchEnabled = !!chatOptions?.webSearch;
+        const debugInfo =
+          webSearchEnabled || response.citations?.length
+            ? {
+                metadata: {
+                  webSearchEnabled,
+                  ...(response.citations?.length && { citations: response.citations }),
+                },
+              }
+            : undefined;
+
         return createSuccessResult(response.content, durationMs, {
           ...(response.usage?.totalTokens !== undefined && {
             tokensUsed: response.usage.totalTokens,
           }),
+          ...(debugInfo && { debug: debugInfo }),
         });
       } catch (error) {
         const durationMs = Date.now() - startTime;

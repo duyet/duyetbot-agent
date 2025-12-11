@@ -580,6 +580,23 @@ export const telegramTransport: Transport<TelegramContext> = {
 };
 
 /**
+ * Send a pre-formatted message without applying additional escaping
+ *
+ * Use this for messages that are already formatted for the target parseMode,
+ * such as slash command responses from handleBuiltinCommand().
+ * Skips escapeHtml/smartEscapeMarkdownV2 to preserve pre-formatted content.
+ *
+ * @param ctx - Telegram context
+ * @param text - Pre-formatted message text (already escaped for parseMode)
+ * @returns Message ID of the sent message
+ */
+export async function sendRaw(ctx: TelegramContext, text: string): Promise<number> {
+  // Send directly without prepareMessageWithDebug() escaping
+  // The text is already formatted for ctx.parseMode
+  return sendTelegramMessage(ctx.token, ctx.chatId, text, ctx.parseMode, ctx.messageId);
+}
+
+/**
  * Send message with options (keyboard support)
  *
  * This is a Telegram-specific helper that extends the base transport

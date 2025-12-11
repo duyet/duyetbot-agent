@@ -16,10 +16,11 @@
 
 import { randomUUID } from 'node:crypto';
 import { logger } from '@duyetbot/hono-middleware';
+import { guidelinesSection } from '@duyetbot/prompts';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { BaseAgent } from '../../base/base-agent.js';
 import type { BaseEnv } from '../../base/base-types.js';
-import type { ExecutionContext } from '../../execution/context.js';
+import type { ExecutionContext, OutputFormat } from '../../execution/context.js';
 import { agentRegistry } from '../registry.js';
 
 // =============================================================================
@@ -308,7 +309,8 @@ export function createLeadResearcherAgent<TEnv extends LeadResearcherEnv>(
           subagentResults,
           provider,
           startTime,
-          traceId
+          traceId,
+          ctx.outputFormat // Pass output format for proper response formatting
         );
 
         const durationMs = Date.now() - startTime;
@@ -965,13 +967,21 @@ Respond with a JSON object following the specified format.`;
 
     /**
      * Synthesize results from all subagents
+     *
+     * @param plan - Research plan containing synthesis instructions
+     * @param subagentResults - Results from all executed subagents
+     * @param provider - LLM provider for synthesis
+     * @param startTime - Execution start time for metrics
+     * @param _traceId - Trace ID for logging
+     * @param outputFormat - Output format for response formatting (HTML, Markdown, etc.)
      */
     private async synthesizeResults(
       plan: ResearchPlan,
       subagentResults: SubagentResult[],
       provider: LLMProvider,
       startTime: number,
-      _traceId: string
+      _traceId: string,
+      outputFormat?: OutputFormat
     ): Promise<ResearchResult> {
       // Calculate statistics
       const successCount = subagentResults.filter((r) => r.success).length;
@@ -992,12 +1002,18 @@ Respond with a JSON object following the specified format.`;
       // Synthesize response using LLM
       const synthesisPrompt = this.buildSynthesisPrompt(plan, subagentResults, citations);
 
+      // Generate format-specific guidelines based on outputFormat
+      // This ensures the LLM produces properly formatted responses for the target platform
+      const formatGuidelines = outputFormat ? guidelinesSection(outputFormat) : '';
+
       const response = await provider.chat([
         {
           role: 'system',
           content: `You are synthesizing research results from multiple subagents.
 Combine their findings into a comprehensive, well-structured response.
 ${plan.synthesisInstructions}
+
+${formatGuidelines}
 
 Guidelines:
 - Include all relevant information from subagents
