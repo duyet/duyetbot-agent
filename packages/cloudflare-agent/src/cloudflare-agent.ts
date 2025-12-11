@@ -2966,10 +2966,36 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             githubToken?: string;
           };
 
+          // Validate messageRef before wrapping in responseTarget
+          // MessageRef type is string | number, but we need a valid number for messageId
+          if (messageRef === undefined || messageRef === null) {
+            logger.error('[CloudflareAgent] transport.send() returned invalid messageRef', {
+              messageRef,
+              messageRefType: typeof messageRef,
+              batchId: batch.batchId,
+            });
+            // Fall through to direct chat instead of fire-and-forget
+            throw new Error('Invalid messageRef from transport.send()');
+          }
+
+          // Convert messageRef to number (Telegram returns number, GitHub may return string)
+          const messageId =
+            typeof messageRef === 'number' ? messageRef : parseInt(String(messageRef), 10);
+
+          if (isNaN(messageId)) {
+            logger.error('[CloudflareAgent] messageRef cannot be converted to number', {
+              messageRef,
+              messageRefType: typeof messageRef,
+              batchId: batch.batchId,
+            });
+            // Fall through to direct chat instead of fire-and-forget
+            throw new Error('messageRef is not a valid number');
+          }
+
           // Build responseTarget with platform-specific fields
           const responseTarget: ScheduleRoutingTarget = {
             chatId: firstMessage?.chatId?.toString() || '',
-            messageRef: { messageId: messageRef as number },
+            messageRef: { messageId },
             platform: routerConfig?.platform || 'telegram',
             // Pass admin context for debug footer (Phase 5)
             adminUsername: ctxWithAdmin.adminUsername || envWithToken.ADMIN_USERNAME,

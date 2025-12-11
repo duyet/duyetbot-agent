@@ -981,6 +981,29 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       ctx: AgentContext,
       responseTarget: ResponseTarget
     ): Promise<{ scheduled: boolean; executionId: string }> {
+      // Validate required fields before storing execution (fail fast)
+      // This prevents corrupted state from being persisted to DO storage
+      if (!ctx.query || ctx.query.trim() === '') {
+        logger.error('[RouterAgent] Cannot schedule execution: empty query', {
+          hasQuery: !!ctx.query,
+          queryLength: ctx.query?.length ?? 0,
+          userId: ctx.userId,
+          chatId: ctx.chatId,
+        });
+        return { scheduled: false, executionId: '' };
+      }
+
+      if (!responseTarget.messageRef?.messageId) {
+        logger.error('[RouterAgent] Cannot schedule execution: missing messageRef', {
+          hasResponseTarget: !!responseTarget,
+          hasMessageRef: !!responseTarget?.messageRef,
+          hasMessageId: !!responseTarget?.messageRef?.messageId,
+          chatId: responseTarget.chatId,
+          platform: responseTarget.platform,
+        });
+        return { scheduled: false, executionId: '' };
+      }
+
       const traceId = ctx.traceId || crypto.randomUUID();
       const executionId = `exec_${traceId.slice(0, 8)}`;
 
@@ -1057,19 +1080,28 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
       // Guard against corrupted state from persisted storage migration
       // Durable Object state may have undefined fields if schema changed
       // This handles: missing context, query, responseTarget, or messageRef
+      // NOTE: With validation in scheduleExecution(), this should rarely happen
+      // If it does, it indicates a storage migration issue or race condition
       if (
         !execution.context ||
         !execution.query ||
         !execution.responseTarget?.messageRef?.messageId
       ) {
-        logger.error('[RouterAgent] Corrupted execution state', {
-          executionId: data.executionId,
-          hasContext: !!execution.context,
-          hasQuery: !!execution.query,
-          hasResponseTarget: !!execution.responseTarget,
-          hasMessageRef: !!execution.responseTarget?.messageRef,
-          hasMessageId: !!execution.responseTarget?.messageRef?.messageId,
-        });
+        logger.error(
+          '[RouterAgent] Corrupted execution state (should not happen after validation)',
+          {
+            executionId: data.executionId,
+            hasContext: !!execution.context,
+            hasQuery: !!execution.query,
+            queryValue: execution.query ?? '<undefined>',
+            hasResponseTarget: !!execution.responseTarget,
+            hasMessageRef: !!execution.responseTarget?.messageRef,
+            hasMessageId: !!execution.responseTarget?.messageRef?.messageId,
+            messageRefValue: JSON.stringify(execution.responseTarget?.messageRef),
+            scheduledAt: execution.scheduledAt,
+            timeSinceScheduled: Date.now() - (execution.scheduledAt || 0),
+          }
+        );
         // Clean up corrupted execution
         const remainingExecutions = this.state.pendingExecutions?.filter(
           (e) => e.executionId !== data.executionId
