@@ -36,6 +36,8 @@ export interface AgentDefinition {
     patterns?: RegExp[];
     /** Query categories this agent handles */
     categories?: string[];
+    /** Patterns that should NOT match this agent (exclusions take precedence) */
+    excludePatterns?: RegExp[];
   };
 
   /** Agent capabilities */
@@ -84,6 +86,7 @@ class AgentRegistryImpl {
       priority: definition.priority ?? 0,
       hasPatterns: !!definition.triggers?.patterns?.length,
       hasKeywords: !!definition.triggers?.keywords?.length,
+      hasExcludePatterns: !!definition.triggers?.excludePatterns?.length,
     });
   }
 
@@ -141,6 +144,15 @@ class AgentRegistryImpl {
 
     for (const agent of this.getAll()) {
       if (!agent.triggers) {
+        continue;
+      }
+
+      // Check exclusions first - if any exclude pattern matches, skip this agent
+      if (agent.triggers.excludePatterns?.some((p) => p.test(lower))) {
+        logger.debug('[AgentRegistry] Excluded via pattern', {
+          agent: agent.name,
+          query: query.slice(0, 50),
+        });
         continue;
       }
 

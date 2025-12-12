@@ -63,8 +63,18 @@ agentRegistry.register({
       /\b(research|find|look\s+up|search\s+for)\s+(information|docs?|documentation)\b/i,
       /\bcompare\s+.+\s+(vs|versus|with|to|and)\s+/i,
     ],
-    keywords: ['news', 'current events', 'latest', 'today', 'research', 'compare', 'versus'],
+    // More specific keywords - removed generic 'news', 'latest', 'today', 'research'
+    keywords: [
+      'current events',
+      'breaking news',
+      'latest news',
+      'today news',
+      'compare vs',
+      'versus',
+    ],
     categories: ['research'],
+    // Don't match if message contains a URL (URL summaries go to simple-agent)
+    excludePatterns: [/https?:\/\/[^\s]+/i],
   },
   capabilities: {
     tools: ['web_search', 'docs_lookup', 'fetch_url'],
