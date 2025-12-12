@@ -27,9 +27,9 @@ import {
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { formatAgenticLoopResponse, runAgenticLoop } from './agentic-loop/index.js';
 import type { AgentContext, AgentResult, PlatformConfig } from './agents/base-agent.js';
 import type { RouterAgentEnv } from './agents/router-agent.js';
-import { formatAgenticLoopResponse, runAgenticLoop } from './agentic-loop/index.js';
 import {
   type BatchConfig,
   type BatchState,
@@ -3143,7 +3143,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               if (msg.role === 'user' || msg.role === 'assistant') {
                 conversationHistory.push({
                   role: msg.role,
-                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                  content:
+                    typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
                 });
               }
             }
@@ -3184,10 +3185,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               // Extract parseMode from platformConfig for proper formatting
               const parseMode =
                 platformConfig && 'parseMode' in platformConfig
-                  ? (platformConfig as { parseMode?: string }).parseMode as
+                  ? ((platformConfig as { parseMode?: string }).parseMode as
                       | 'HTML'
                       | 'MarkdownV2'
-                      | undefined
+                      | undefined)
                   : undefined;
 
               response = formatAgenticLoopResponse(loopResult, isAdmin, parseMode);
