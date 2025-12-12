@@ -271,13 +271,25 @@ export interface WorkflowLLMResponse {
 /**
  * Environment bindings required by AgenticLoopWorkflow
  *
- * Note: Uses 'unknown' for Cloudflare-specific types to avoid
- * requiring @cloudflare/workers-types in consuming packages.
+ * These bindings mirror what's expected by @duyetbot/providers.
+ * The AI binding provides the gateway() method for constructing AI Gateway URLs.
+ *
+ * @see https://developers.cloudflare.com/ai-gateway/
  */
 export interface AgenticLoopWorkflowEnv {
-  /** AI Gateway for LLM calls (Cloudflare Ai type) */
+  /**
+   * Cloudflare AI binding with gateway support
+   *
+   * The gateway() method is used to construct AI Gateway URLs for
+   * routing requests through Cloudflare's AI Gateway to providers like OpenRouter.
+   */
   AI: {
+    /** Workers AI run method (not used - we use AI Gateway instead) */
     run: (model: string, options: unknown) => Promise<unknown>;
+    /** Get AI Gateway instance for URL construction */
+    gateway: (gatewayId: string) => {
+      getUrl: (provider: string) => Promise<string>;
+    };
   };
 
   /** CloudflareAgent DO binding for progress callbacks */
@@ -286,17 +298,14 @@ export interface AgenticLoopWorkflowEnv {
     get: (id: unknown) => { fetch: (req: Request) => Promise<Response> };
   };
 
-  /** Model to use for LLM calls */
+  /** Model to use for LLM calls (e.g., '@preset/duyetbot', 'anthropic/claude-sonnet-4') */
   MODEL?: string;
 
-  /** AI Gateway name */
-  AI_GATEWAY_NAME?: string;
+  /** AI Gateway name configured in Cloudflare dashboard (required) */
+  AI_GATEWAY_NAME: string;
 
-  /** OpenRouter API key (if using OpenRouter) */
-  OPENROUTER_API_KEY?: string;
-
-  /** Anthropic API key (if using direct Claude) */
-  ANTHROPIC_API_KEY?: string;
+  /** AI Gateway API key for BYOK authentication (required) */
+  AI_GATEWAY_API_KEY: string;
 
   /** GitHub token for GitHub tools */
   GITHUB_TOKEN?: string;
