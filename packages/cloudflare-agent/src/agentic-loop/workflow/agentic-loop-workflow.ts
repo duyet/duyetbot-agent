@@ -651,9 +651,7 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
    * The workflow uses cross-script bindings to call back to the originating
    * app's CloudflareAgent (TelegramAgent or GitHubAgent).
    */
-  private getAgentBinding(
-    namespace: string
-  ): {
+  private getAgentBinding(namespace: string): {
     idFromName: (name: string) => unknown;
     get: (id: unknown) => { fetch: (req: Request) => Promise<Response> };
   } | null {
