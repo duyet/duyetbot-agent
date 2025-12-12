@@ -153,6 +153,22 @@ export const GitHubMCPAgent: GitHubMCPAgentClass<SharedEnv> = createGitHubMCPAge
 export const StateDO = StateDOClass;
 
 /**
+ * AgenticLoopWorkflow - Durable workflow for timeout-resistant agent execution
+ *
+ * Runs the agentic loop (think → act → observe → repeat) as Cloudflare Workflow
+ * steps, eliminating the 30-second DO timeout constraint.
+ *
+ * Benefits:
+ * - Unlimited wall-clock execution time
+ * - Automatic state persistence per step
+ * - Built-in exponential backoff retries
+ * - Real-time progress reporting via DO callbacks
+ *
+ * Used by CloudflareAgent to process complex queries that may require
+ * many iterations or long-running tool calls.
+ */
+export { AgenticLoopWorkflow } from '@duyetbot/cloudflare-agent';
+/**
  * SchedulerObject for agentic task scheduling
  *
  * Implements the "Wake Up" pattern from Software 2.0 design:
