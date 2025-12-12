@@ -108,6 +108,26 @@ binding = "HEARTBEAT_KV"
 id = "f86303f7fa3a45dd986c0c6bf835c8e1"
 
 # =============================================================================
+# Cross-Script DO Bindings for Workflow Callbacks
+# =============================================================================
+# The workflow needs to call back to the originating app's CloudflareAgent
+# to deliver progress updates and final responses.
+
+# TelegramAgent from duyetbot-telegram
+# Used by workflow to deliver responses to Telegram messages
+[[durable_objects.bindings]]
+name = "TelegramAgent"
+class_name = "TelegramAgent"
+script_name = "duyetbot-telegram"
+
+# GitHubAgent from duyetbot-github (when implemented)
+# Used by workflow to deliver responses to GitHub comments
+[[durable_objects.bindings]]
+name = "GitHubAgent"
+class_name = "GitHubAgent"
+script_name = "duyetbot-github"
+
+# =============================================================================
 # Workflows (Durable Execution)
 # =============================================================================
 

@@ -292,8 +292,21 @@ export interface AgenticLoopWorkflowEnv {
     };
   };
 
-  /** CloudflareAgent DO binding for progress callbacks */
-  CloudflareAgent?: {
+  /**
+   * Platform-specific DO bindings for progress callbacks
+   *
+   * The workflow uses cross-script bindings to call back to the originating
+   * app's CloudflareAgent (TelegramAgent or GitHubAgent) for message updates.
+   */
+
+  /** TelegramAgent DO binding (from duyetbot-telegram) */
+  TelegramAgent?: {
+    idFromName: (name: string) => unknown;
+    get: (id: unknown) => { fetch: (req: Request) => Promise<Response> };
+  };
+
+  /** GitHubAgent DO binding (from duyetbot-github) */
+  GitHubAgent?: {
     idFromName: (name: string) => unknown;
     get: (id: unknown) => { fetch: (req: Request) => Promise<Response> };
   };

@@ -3197,6 +3197,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // This is used by workflow to call back to the correct DO instance
             const doId = `${firstMessage?.chatId || 'unknown'}:${firstMessage?.userId || 'unknown'}`;
 
+            // Determine DO namespace for callback based on platform
+            // This maps to the cross-script DO binding configured in shared-agents
+            const platform = (routerConfig?.platform as 'telegram' | 'github') || 'telegram';
+            const doNamespace = platform === 'telegram' ? 'TelegramAgent' : 'GitHubAgent';
+
             // Build workflow params
             const workflowParams: AgenticLoopWorkflowParams = {
               executionId,
@@ -3206,11 +3211,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               maxIterations: 100, // Increased from 50 - no timeout constraint!
               tools: serializedTools,
               progressCallback: {
-                doNamespace: 'CloudflareAgent', // Used for logging only
+                doNamespace, // Platform-specific agent for callback
                 doId,
                 executionId,
               },
-              platform: (routerConfig?.platform as 'telegram' | 'github') || 'telegram',
+              platform,
               chatId: firstMessage?.chatId?.toString() || '',
               messageId,
               // Only include traceId if present (exactOptionalPropertyTypes)
@@ -3230,7 +3235,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 executionId,
                 startedAt: Date.now(),
                 messageId,
-                platform: (routerConfig?.platform as 'telegram' | 'github') || 'telegram',
+                platform, // Already determined above
                 chatId: firstMessage?.chatId?.toString() || '',
               };
 
