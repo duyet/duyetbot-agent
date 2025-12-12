@@ -11,6 +11,15 @@
  * - **Progress reporting**: Real-time updates via DO callback
  * - **Unlimited iterations**: Can run for hours if needed
  *
+ * ## Provider Architecture
+ *
+ * Uses Cloudflare AI Gateway to route to OpenRouter.
+ * The implementation mirrors `@duyetbot/providers` but is inlined to avoid
+ * circular dependency (providers imports types from cloudflare-agent).
+ *
+ * @see https://developers.cloudflare.com/ai-gateway/
+ * @see https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/
+ *
  * @module agentic-loop-workflow
  */
 
@@ -343,7 +352,18 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
   // ============================================================================
 
   /**
-   * Call LLM with the current conversation
+   * Call LLM with the current conversation via Cloudflare AI Gateway
+   *
+   * This implementation mirrors `@duyetbot/providers` (createOpenRouterProvider)
+   * but is inlined here to avoid circular dependency:
+   * - providers imports types from cloudflare-agent
+   * - cloudflare-agent cannot import from providers
+   *
+   * The AI Gateway URL is constructed via env.AI.gateway().getUrl() and
+   * uses BYOK authentication with cf-aig-authorization header.
+   *
+   * @see https://developers.cloudflare.com/ai-gateway/
+   * @see https://developers.cloudflare.com/ai-gateway/configuration/bring-your-own-keys/
    */
   private async callLLM(
     env: AgenticLoopWorkflowEnv,
@@ -352,7 +372,17 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
     tools: LoopTool[],
     _traceId: string
   ): Promise<WorkflowLLMResponse> {
-    // Format messages for LLM
+    // Validate required configuration
+    if (!env.AI_GATEWAY_NAME) {
+      throw new NonRetryableError('AI_GATEWAY_NAME is required for workflow execution');
+    }
+    if (!env.AI_GATEWAY_API_KEY) {
+      throw new NonRetryableError('AI_GATEWAY_API_KEY is required for workflow execution');
+    }
+
+    const model = env.MODEL || 'anthropic/claude-sonnet-4';
+
+    // Format messages for OpenAI-compatible API
     const llmMessages = [
       ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
       ...messages.map((m) => {
@@ -377,7 +407,7 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
             })),
           };
         }
-        return { role: m.role, content: m.content };
+        return { role: m.role as 'user' | 'assistant', content: m.content };
       }),
     ];
 
@@ -391,79 +421,91 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
       },
     }));
 
-    // Try OpenRouter first if API key available
-    if (env.OPENROUTER_API_KEY) {
-      try {
-        return await this.callOpenRouter(env, llmMessages, openAITools);
-      } catch (error) {
-        console.error('[AgenticLoopWorkflow] OpenRouter failed, trying AI Gateway', error);
-      }
-    }
+    // Get AI Gateway URL for OpenRouter (same pattern as @duyetbot/providers)
+    const gatewayUrl = await env.AI.gateway(env.AI_GATEWAY_NAME).getUrl('openrouter');
+    const url = `${gatewayUrl}/chat/completions`;
 
-    // Fall back to Cloudflare AI Gateway
-    return await this.callAIGateway(env, llmMessages, openAITools);
-  }
+    console.log('[AgenticLoopWorkflow] Calling AI Gateway', {
+      gateway: env.AI_GATEWAY_NAME,
+      model,
+      messageCount: llmMessages.length,
+      hasTools: openAITools.length > 0,
+    });
 
-  /**
-   * Call OpenRouter API
-   */
-  private async callOpenRouter(
-    env: AgenticLoopWorkflowEnv,
-    messages: Array<{ role: string; content: string; tool_call_id?: string; tool_calls?: unknown }>,
-    tools: Array<{
-      type: 'function';
-      function: { name: string; description: string; parameters: unknown };
-    }>
-  ): Promise<WorkflowLLMResponse> {
-    const model = env.MODEL || 'anthropic/claude-sonnet-4';
+    // Build request body
+    const body = {
+      model,
+      messages: llmMessages,
+      max_tokens: 4096,
+      ...(openAITools.length > 0 && {
+        tools: openAITools,
+        tool_choice: 'auto',
+      }),
+    };
 
-    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+    // Call OpenRouter via AI Gateway with BYOK authentication
+    // Uses cf-aig-authorization header (same pattern as @duyetbot/providers)
+    const response = await fetch(url, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
-        'HTTP-Referer': 'https://duyetbot.duyet.net',
-        'X-Title': 'DuyetBot',
+        'cf-aig-authorization': `Bearer ${env.AI_GATEWAY_API_KEY}`,
       },
-      body: JSON.stringify({
-        model,
-        messages,
-        tools: tools.length > 0 ? tools : undefined,
-        tool_choice: tools.length > 0 ? 'auto' : undefined,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
+      let errorMessage = `AI Gateway error: ${response.status} ${response.statusText}`;
+      try {
+        const errorJson = JSON.parse(errorText) as { error?: { message?: string } };
+        if (errorJson.error?.message) {
+          errorMessage = errorJson.error.message;
+        }
+      } catch {
+        if (errorText) {
+          errorMessage = errorText;
+        }
+      }
+      throw new Error(errorMessage);
     }
 
     const data = (await response.json()) as {
-      choices: Array<{
-        message: {
-          content: string | null;
+      choices?: Array<{
+        message?: {
+          content?: string | null;
           tool_calls?: Array<{
-            id: string;
+            id?: string;
+            type: string;
             function: { name: string; arguments: string };
           }>;
         };
       }>;
       usage?: { prompt_tokens: number; completion_tokens: number };
+      error?: { message: string };
     };
 
-    const choice = data.choices[0];
-    if (!choice) {
-      throw new Error('No response from OpenRouter');
+    // Check for API-level error in response body
+    if (data.error) {
+      throw new Error(data.error.message || 'Unknown AI Gateway error');
     }
 
-    const toolCalls: WorkflowToolCall[] | undefined = choice.message.tool_calls?.map((tc) => ({
-      id: tc.id,
-      name: tc.function.name,
-      arguments: this.safeParseJSON(tc.function.arguments),
-    }));
+    const choice = data.choices?.[0]?.message;
+    if (!choice) {
+      throw new Error('No response from AI Gateway');
+    }
+
+    // Extract tool calls (filter to function type, generate fallback ID if missing)
+    const toolCalls: WorkflowToolCall[] | undefined = choice.tool_calls
+      ?.filter((tc) => tc.type === 'function')
+      .map((tc, index) => ({
+        id: tc.id || `tool_call_${Date.now()}_${index}`,
+        name: tc.function.name,
+        arguments: this.safeParseJSON(tc.function.arguments),
+      }));
 
     return {
-      content: choice.message.content || '',
+      content: choice.content || '',
       ...(toolCalls && toolCalls.length > 0 && { toolCalls }),
       ...(data.usage && {
         usage: {
@@ -471,46 +513,6 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
           outputTokens: data.usage.completion_tokens,
         },
       }),
-    };
-  }
-
-  /**
-   * Call Cloudflare AI Gateway
-   */
-  private async callAIGateway(
-    env: AgenticLoopWorkflowEnv,
-    messages: Array<{ role: string; content: string; tool_call_id?: string; tool_calls?: unknown }>,
-    tools: Array<{
-      type: 'function';
-      function: { name: string; description: string; parameters: unknown };
-    }>
-  ): Promise<WorkflowLLMResponse> {
-    // Use AI binding for Workers AI / AI Gateway
-    const model = env.MODEL || '@cf/meta/llama-3.1-70b-instruct';
-
-    // Workers AI has different format - simplified for now
-    const result = (await env.AI.run(model as Parameters<Ai['run']>[0], {
-      messages: messages.map((m) => ({
-        role: m.role as 'system' | 'user' | 'assistant',
-        content: m.content,
-      })),
-      tools: tools.length > 0 ? tools : undefined,
-    })) as {
-      response?: string;
-      tool_calls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
-    };
-
-    // Cast arguments to JsonRecord - Workers AI returns Record<string, unknown>
-    // but the data is JSON, so this is a safe type assertion
-    const toolCalls: WorkflowToolCall[] | undefined = result.tool_calls?.map((tc) => ({
-      id: tc.id,
-      name: tc.name,
-      arguments: tc.arguments as JsonRecord,
-    }));
-
-    return {
-      content: result.response || '',
-      ...(toolCalls && toolCalls.length > 0 && { toolCalls }),
     };
   }
 
