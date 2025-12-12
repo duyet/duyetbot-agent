@@ -50,6 +50,18 @@ export function buildWebhookContext(
   const pr = payload.pull_request;
   const isPullRequest = !!pr || payload.issue?.pull_request !== undefined;
 
+  // For pull_request events (like review_requested), use PR data as issue context
+  // since there's no issue in the payload
+  const issueFromPr =
+    eventType === 'pull_request' && pr
+      ? {
+          number: pr.number,
+          title: pr.title,
+          body: pr.body ?? '',
+          state: pr.state,
+        }
+      : undefined;
+
   const ctx: WebhookContext = {
     owner: payload.repository.owner.login,
     repo: payload.repository.name,
@@ -65,7 +77,7 @@ export function buildWebhookContext(
           body: payload.issue.body ?? '',
           state: payload.issue.state,
         }
-      : undefined,
+      : issueFromPr,
     comment: payload.comment
       ? {
           id: payload.comment.id,
@@ -97,6 +109,14 @@ export function buildWebhookContext(
     }
   }
 
+  // Handle review request events
+  if (eventType === 'pull_request' && payload.action === 'review_requested') {
+    ctx.isReviewRequest = true;
+    if (payload.requested_reviewer?.login) {
+      ctx.requestedReviewer = payload.requested_reviewer.login;
+    }
+  }
+
   return ctx;
 }
 
@@ -115,6 +135,8 @@ function isProcessableEvent(eventType: string, action?: string): boolean {
       return action === 'created';
     case 'issues':
       return action === 'opened' || action === 'edited';
+    case 'pull_request':
+      return action === 'review_requested';
     default:
       return false;
   }
