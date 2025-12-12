@@ -29,6 +29,7 @@ import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'age
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import type { AgentContext, AgentResult, PlatformConfig } from './agents/base-agent.js';
 import type { RouterAgentEnv } from './agents/router-agent.js';
+import { formatAgenticLoopResponse, runAgenticLoop } from './agentic-loop/index.js';
 import {
   type BatchConfig,
   type BatchState,
@@ -3102,6 +3103,137 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             throw new Error('messageRef is not a valid number');
           }
 
+          // === AgenticLoop Path (Claude Code-style single-agent architecture) ===
+          // Check feature flag: USE_AGENTIC_LOOP=true enables new architecture
+          const envWithAgenticLoop = env as unknown as { USE_AGENTIC_LOOP?: string };
+          const useAgenticLoop = envWithAgenticLoop.USE_AGENTIC_LOOP === 'true';
+
+          if (useAgenticLoop) {
+            logger.info('[CloudflareAgent][BATCH] Using AgenticLoop path', {
+              batchId: batch.batchId,
+              queryLength: combinedText.length,
+            });
+
+            // Create heartbeat function for keeping DO alive during long loops
+            const reportHeartbeat = async () => {
+              const currentBatch = this.state.activeBatch;
+              if (currentBatch) {
+                this.setState({
+                  ...this.state,
+                  activeBatch: { ...currentBatch, lastHeartbeat: Date.now() },
+                  updatedAt: Date.now(),
+                });
+              }
+            };
+
+            // Create typing indicator function if transport supports it
+            const sendTypingFn = async () => {
+              if ((transport as { typing?: (ctx: TContext) => Promise<void> }).typing) {
+                try {
+                  await (transport as { typing: (ctx: TContext) => Promise<void> }).typing(ctx);
+                } catch {
+                  // Ignore typing errors
+                }
+              }
+            };
+
+            // Build conversation history from batch messages
+            const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
+            for (const msg of this.state.messages || []) {
+              if (msg.role === 'user' || msg.role === 'assistant') {
+                conversationHistory.push({
+                  role: msg.role,
+                  content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+                });
+              }
+            }
+
+            // Resolve system prompt (supports both string and function forms)
+            const resolvedSystemPrompt =
+              typeof config.systemPrompt === 'function'
+                ? config.systemPrompt(env as TEnv)
+                : config.systemPrompt;
+
+            // Create LLM provider for agentic loop
+            const agenticLoopProvider = config.createProvider(env as TEnv);
+
+            try {
+              const loopResult = await runAgenticLoop({
+                query: combinedText,
+                transport,
+                ctx,
+                messageRef,
+                provider: agenticLoopProvider,
+                ...(resolvedSystemPrompt && { systemPrompt: resolvedSystemPrompt }),
+                reportHeartbeat,
+                sendTyping: sendTypingFn,
+                maxIterations: 50,
+                conversationHistory,
+                platform: routerConfig?.platform || 'api',
+                ...(batch.batchId && { traceId: batch.batchId }),
+              });
+
+              // Determine if debug footer should be shown (admin users only)
+              const isAdmin = Boolean(
+                ctxWithAdmin.adminUsername &&
+                  ctxWithAdmin.username &&
+                  ctxWithAdmin.adminUsername.toLowerCase().replace('@', '') ===
+                    ctxWithAdmin.username.toLowerCase().replace('@', '')
+              );
+
+              // Extract parseMode from platformConfig for proper formatting
+              const parseMode =
+                platformConfig && 'parseMode' in platformConfig
+                  ? (platformConfig as { parseMode?: string }).parseMode as
+                      | 'HTML'
+                      | 'MarkdownV2'
+                      | undefined
+                  : undefined;
+
+              response = formatAgenticLoopResponse(loopResult, isAdmin, parseMode);
+
+              // Stop rotator and wait for pending
+              rotator.stop();
+              await rotator.waitForPending();
+
+              // Edit thinking message with final response
+              if (transport.edit) {
+                try {
+                  await transport.edit(ctx, messageRef, response);
+                } catch {
+                  await transport.send(ctx, response);
+                }
+              } else {
+                await transport.send(ctx, response);
+              }
+
+              // Call afterHandle hook if available
+              if (hooks?.afterHandle) {
+                await hooks.afterHandle(ctx, response);
+              }
+
+              // Capture response for observability
+              this._lastResponse = response;
+
+              logger.info('[CloudflareAgent][BATCH] AgenticLoop completed', {
+                batchId: batch.batchId,
+                success: loopResult.success,
+                iterations: loopResult.metrics.iterations,
+                toolsUsed: loopResult.metrics.toolsUsed,
+                durationMs: loopResult.metrics.durationMs,
+              });
+
+              return; // Exit - AgenticLoop handled the request
+            } catch (agenticError) {
+              logger.error('[CloudflareAgent][BATCH] AgenticLoop failed, falling back to routing', {
+                batchId: batch.batchId,
+                error: agenticError instanceof Error ? agenticError.message : String(agenticError),
+              });
+              // Fall through to legacy routing path
+            }
+          }
+
+          // === Legacy Multi-Agent Routing Path ===
           // Build responseTarget with platform-specific fields
           const responseTarget: ScheduleRoutingTarget = {
             chatId: firstMessage?.chatId?.toString() || '',
