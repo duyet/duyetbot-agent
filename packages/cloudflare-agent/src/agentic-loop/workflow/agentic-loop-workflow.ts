@@ -653,7 +653,10 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
    */
   private getAgentBinding(
     namespace: string
-  ): { idFromName: (name: string) => unknown; get: (id: unknown) => { fetch: (req: Request) => Promise<Response> } } | null {
+  ): {
+    idFromName: (name: string) => unknown;
+    get: (id: unknown) => { fetch: (req: Request) => Promise<Response> };
+  } | null {
     // Map namespace to binding name
     switch (namespace) {
       case 'TelegramAgent':
@@ -740,7 +743,9 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
       // Get platform-specific DO binding
       const doBinding = this.getAgentBinding(callback.doNamespace);
       if (!doBinding) {
-        console.error(`[AgenticLoopWorkflow] ${callback.doNamespace} DO binding not available - cannot deliver response`);
+        console.error(
+          `[AgenticLoopWorkflow] ${callback.doNamespace} DO binding not available - cannot deliver response`
+        );
         return;
       }
 
@@ -760,11 +765,15 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
         })
       );
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('[AgenticLoopWorkflow] Completion delivery failed:', response.status, errorText);
-      } else {
+      if (response.ok) {
         console.log('[AgenticLoopWorkflow] Response delivered successfully');
+      } else {
+        const errorText = await response.text();
+        console.error(
+          '[AgenticLoopWorkflow] Completion delivery failed:',
+          response.status,
+          errorText
+        );
       }
     } catch (error) {
       console.error('[AgenticLoopWorkflow] Failed to report completion:', error);
