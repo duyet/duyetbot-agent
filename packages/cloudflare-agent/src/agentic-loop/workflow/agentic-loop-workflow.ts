@@ -646,29 +646,71 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
   // ============================================================================
 
   /**
+   * Get the platform-specific DO binding based on namespace
+   *
+   * The workflow uses cross-script bindings to call back to the originating
+   * app's CloudflareAgent (TelegramAgent or GitHubAgent).
+   */
+  private getAgentBinding(
+    namespace: string
+  ): { idFromName: (name: string) => unknown; get: (id: unknown) => { fetch: (req: Request) => Promise<Response> } } | null {
+    // Map namespace to binding name
+    switch (namespace) {
+      case 'TelegramAgent':
+        return this.env.TelegramAgent || null;
+      case 'GitHubAgent':
+        return this.env.GitHubAgent || null;
+      default:
+        console.warn(`[AgenticLoopWorkflow] Unknown agent namespace: ${namespace}`);
+        return null;
+    }
+  }
+
+  /**
    * Report progress to CloudflareAgent DO
+   *
+   * Calls the DO's /workflow-progress endpoint to update the thinking message.
+   * Progress reporting is best-effort - failures won't stop the workflow.
    */
   private async reportProgress(
     callback: ProgressCallbackConfig,
     update: WorkflowProgressUpdate
   ): Promise<void> {
     try {
-      // For now, we'll construct the URL to the DO
-      // In production, this would use proper DO binding
-      // The DO is in the same account so we can call it directly
-
-      // Build the URL - the DO handles /workflow-progress
-      // Note: In Cloudflare Workers, we'd use the binding directly
-      // For now, log progress (the DO will poll for updates)
       console.log('[AgenticLoopWorkflow] Progress:', {
         executionId: callback.executionId,
+        namespace: callback.doNamespace,
         type: update.type,
         iteration: update.iteration,
         message: update.message,
       });
 
-      // TODO: Implement actual DO callback when bindings are available
-      // This requires the CloudflareAgent DO to be bound to the workflow
+      // Get platform-specific DO binding
+      const doBinding = this.getAgentBinding(callback.doNamespace);
+      if (!doBinding) {
+        console.warn(`[AgenticLoopWorkflow] ${callback.doNamespace} DO binding not available`);
+        return;
+      }
+
+      // Get DO stub using the stored ID
+      const doId = doBinding.idFromName(callback.doId);
+      const doStub = doBinding.get(doId);
+
+      // Call DO's progress endpoint
+      const response = await doStub.fetch(
+        new Request('https://internal/workflow-progress', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            executionId: callback.executionId,
+            update,
+          }),
+        })
+      );
+
+      if (!response.ok) {
+        console.warn('[AgenticLoopWorkflow] Progress update failed:', response.status);
+      }
     } catch (error) {
       // Progress reporting is best-effort, don't fail the workflow
       console.error('[AgenticLoopWorkflow] Failed to report progress:', error);
@@ -677,6 +719,9 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
 
   /**
    * Report completion to CloudflareAgent DO
+   *
+   * Calls the DO's /workflow-complete endpoint to deliver the final response.
+   * The DO will edit the thinking message with the final response text.
    */
   private async reportCompletion(
     callback: ProgressCallbackConfig,
@@ -685,13 +730,42 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
     try {
       console.log('[AgenticLoopWorkflow] Completion:', {
         executionId: callback.executionId,
+        namespace: callback.doNamespace,
         success: result.success,
         iterations: result.iterations,
         toolsUsed: result.toolsUsed,
         durationMs: result.totalDurationMs,
       });
 
-      // TODO: Implement actual DO callback when bindings are available
+      // Get platform-specific DO binding
+      const doBinding = this.getAgentBinding(callback.doNamespace);
+      if (!doBinding) {
+        console.error(`[AgenticLoopWorkflow] ${callback.doNamespace} DO binding not available - cannot deliver response`);
+        return;
+      }
+
+      // Get DO stub using the stored ID
+      const doId = doBinding.idFromName(callback.doId);
+      const doStub = doBinding.get(doId);
+
+      // Call DO's completion endpoint
+      const response = await doStub.fetch(
+        new Request('https://internal/workflow-complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            executionId: callback.executionId,
+            result,
+          }),
+        })
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[AgenticLoopWorkflow] Completion delivery failed:', response.status, errorText);
+      } else {
+        console.log('[AgenticLoopWorkflow] Response delivered successfully');
+      }
     } catch (error) {
       console.error('[AgenticLoopWorkflow] Failed to report completion:', error);
     }
