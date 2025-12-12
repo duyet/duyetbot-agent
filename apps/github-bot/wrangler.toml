@@ -15,6 +15,7 @@ MODEL = "@preset/duyetbot"
 AI_GATEWAY_NAME = "duyetbot"
 BOT_USERNAME = "duyetbot"
 GITHUB_ADMIN = "duyet"
+USE_AGENTIC_LOOP = "true" # Claude Code-style single agent loop (default enabled)
 
 [observability]
 enabled = true

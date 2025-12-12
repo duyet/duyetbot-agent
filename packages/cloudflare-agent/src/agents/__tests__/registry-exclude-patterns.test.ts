@@ -19,7 +19,6 @@ vi.mock('agents', () => ({
 import '../research/lead-researcher-agent.js';
 
 describe('AgentRegistry - excludePatterns', () => {
-
   describe('excludePatterns structure', () => {
     it('should have excludePatterns in AgentDefinition triggers', () => {
       const leadResearcher = agentRegistry.get('lead-researcher-agent');
