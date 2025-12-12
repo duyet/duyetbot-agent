@@ -4,8 +4,8 @@
  * Tests for mention detection middleware, including the review_requested bypass.
  */
 
-import { describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
+import { describe, expect, it, vi } from 'vitest';
 import { createGitHubMentionMiddleware } from '../middlewares/mention.js';
 import type { Env, MentionVariables, WebhookContext } from '../middlewares/types.js';
 
