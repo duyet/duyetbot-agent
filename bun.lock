@@ -216,6 +216,7 @@
         "@duyetbot/hono-middleware": "workspace:*",
         "@duyetbot/observability": "workspace:*",
         "@duyetbot/prompts": "workspace:*",
+        "@duyetbot/providers": "workspace:*",
         "@duyetbot/types": "workspace:*",
         "zod": "catalog:",
         "zod-to-json-schema": "catalog:",
