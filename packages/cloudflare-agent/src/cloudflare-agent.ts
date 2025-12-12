@@ -27,7 +27,9 @@ import {
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import { formatAgenticLoopResponse, runAgenticLoop } from './agentic-loop/index.js';
+import { createCoreTools } from './agentic-loop/tools/index.js';
+import type { AgenticLoopWorkflowParams, SerializedTool } from './agentic-loop/workflow/types.js';
+import { serializeTools } from './agentic-loop/workflow/types.js';
 import type { AgentContext, AgentResult, PlatformConfig } from './agents/base-agent.js';
 import type { RouterAgentEnv } from './agents/router-agent.js';
 import {
@@ -46,6 +48,8 @@ import {
   type RetryError,
   type StageTransition,
 } from './batch-types.js';
+import { callbackHandlers, parseCallbackData } from './callbacks/index.js';
+import type { CallbackContext } from './callbacks/types.js';
 import { extractMessageMetadata } from './context/batch-context-helpers.js';
 import { escapeHtml, escapeMarkdownV2 } from './debug-footer.js';
 import type { RoutingFlags } from './feature-flags.js';
@@ -81,6 +85,31 @@ export interface MCPServerConnection {
 }
 
 /**
+ * Active workflow execution tracking
+ */
+export interface ActiveWorkflowExecution {
+  /** Workflow instance ID from Cloudflare */
+  workflowId: string;
+  /** Our execution ID for correlation */
+  executionId: string;
+  /** Timestamp when workflow was spawned */
+  startedAt: number;
+  /** Last progress update received */
+  lastProgress?: {
+    type: string;
+    iteration: number;
+    message: string;
+    timestamp: number;
+  };
+  /** Message ID for editing progress (MessageRef = string | number) */
+  messageId: number;
+  /** Platform for transport reconstruction */
+  platform: 'telegram' | 'github';
+  /** Chat ID for transport reconstruction */
+  chatId: string;
+}
+
+/**
  * State persisted in Durable Object
  */
 export interface CloudflareAgentState {
@@ -102,6 +131,11 @@ export interface CloudflareAgentState {
   pendingBatch?: BatchState;
   /** Request IDs for deduplication (rolling window) */
   processedRequestIds?: string[];
+  /**
+   * Active workflow executions (Workflow-based AgenticLoop)
+   * Maps executionId -> workflow metadata for progress tracking
+   */
+  activeWorkflows?: Record<string, ActiveWorkflowExecution>;
 }
 
 /**
@@ -288,6 +322,13 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
    * Get current batch state for debugging/monitoring
    */
   getBatchState(): { activeBatch?: BatchState; pendingBatch?: BatchState };
+  /**
+   * Receive a callback query from Telegram inline keyboard button press (RPC method)
+   * Parses the callback data and routes to the appropriate handler
+   * @param context - Callback context from Telegram
+   * @returns Result with optional user-facing message
+   */
+  receiveCallback(context: CallbackContext): Promise<{ text?: string }>;
 }
 
 /**
@@ -3103,41 +3144,30 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             throw new Error('messageRef is not a valid number');
           }
 
-          // === AgenticLoop Path (Claude Code-style single-agent architecture) ===
-          // Check feature flag: USE_AGENTIC_LOOP=true enables new architecture
-          const envWithAgenticLoop = env as unknown as { USE_AGENTIC_LOOP?: string };
-          const useAgenticLoop = envWithAgenticLoop.USE_AGENTIC_LOOP === 'true';
+          // === AgenticLoop Workflow Path (Timeout-Resistant) ===
+          // Workflows eliminate DO timeout risk by running iterations as durable steps.
+          // This is the primary execution path. Falls back to legacy routing only if
+          // the workflow binding is not available (shared-agents not deployed).
 
-          if (useAgenticLoop) {
-            logger.info('[CloudflareAgent][BATCH] Using AgenticLoop path', {
+          // Check for workflow binding (may not exist if shared-agents not deployed)
+          type WorkflowInstance = {
+            id: string;
+            status: () => Promise<{ status: string }>;
+          };
+          type WorkflowBinding = {
+            create: (options: { params: AgenticLoopWorkflowParams }) => Promise<WorkflowInstance>;
+          };
+          const envWithWorkflow = env as unknown as {
+            AGENTIC_LOOP_WORKFLOW?: WorkflowBinding;
+          };
+
+          if (envWithWorkflow.AGENTIC_LOOP_WORKFLOW) {
+            logger.info('[CloudflareAgent][BATCH] Spawning AgenticLoop Workflow', {
               batchId: batch.batchId,
               queryLength: combinedText.length,
             });
 
-            // Create heartbeat function for keeping DO alive during long loops
-            const reportHeartbeat = async () => {
-              const currentBatch = this.state.activeBatch;
-              if (currentBatch) {
-                this.setState({
-                  ...this.state,
-                  activeBatch: { ...currentBatch, lastHeartbeat: Date.now() },
-                  updatedAt: Date.now(),
-                });
-              }
-            };
-
-            // Create typing indicator function if transport supports it
-            const sendTypingFn = async () => {
-              if ((transport as { typing?: (ctx: TContext) => Promise<void> }).typing) {
-                try {
-                  await (transport as { typing: (ctx: TContext) => Promise<void> }).typing(ctx);
-                } catch {
-                  // Ignore typing errors
-                }
-              }
-            };
-
-            // Build conversation history from batch messages
+            // Build conversation history from existing messages
             const conversationHistory: Array<{ role: 'user' | 'assistant'; content: string }> = [];
             for (const msg of this.state.messages || []) {
               if (msg.role === 'user' || msg.role === 'assistant') {
@@ -3155,83 +3185,92 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 ? config.systemPrompt(env as TEnv)
                 : config.systemPrompt;
 
-            // Create LLM provider for agentic loop
-            const agenticLoopProvider = config.createProvider(env as TEnv);
+            // Create core tools and serialize for workflow storage
+            // Tools execute functions are stripped - recreated in workflow at runtime
+            const coreTools = createCoreTools({ enableSubagents: true });
+            const serializedTools: SerializedTool[] = serializeTools(coreTools);
+
+            // Generate unique execution ID for tracking
+            const executionId = crypto.randomUUID();
+
+            // Derive DO ID from state (chatId + userId) for progress callback
+            // This is used by workflow to call back to the correct DO instance
+            const doId = `${firstMessage?.chatId || 'unknown'}:${firstMessage?.userId || 'unknown'}`;
+
+            // Build workflow params
+            const workflowParams: AgenticLoopWorkflowParams = {
+              executionId,
+              query: combinedText,
+              systemPrompt: resolvedSystemPrompt,
+              conversationHistory,
+              maxIterations: 100, // Increased from 50 - no timeout constraint!
+              tools: serializedTools,
+              progressCallback: {
+                doNamespace: 'CloudflareAgent', // Used for logging only
+                doId,
+                executionId,
+              },
+              platform: (routerConfig?.platform as 'telegram' | 'github') || 'telegram',
+              chatId: firstMessage?.chatId?.toString() || '',
+              messageId,
+              // Only include traceId if present (exactOptionalPropertyTypes)
+              ...(batch.batchId ? { traceId: batch.batchId } : {}),
+            };
 
             try {
-              const loopResult = await runAgenticLoop({
-                query: combinedText,
-                transport,
-                ctx,
-                messageRef,
-                provider: agenticLoopProvider,
-                ...(resolvedSystemPrompt && { systemPrompt: resolvedSystemPrompt }),
-                reportHeartbeat,
-                sendTyping: sendTypingFn,
-                maxIterations: 50,
-                conversationHistory,
-                platform: routerConfig?.platform || 'api',
-                ...(batch.batchId && { traceId: batch.batchId }),
+              // Spawn workflow - this returns immediately (fire-and-forget)
+              const workflowInstance = await envWithWorkflow.AGENTIC_LOOP_WORKFLOW.create({
+                params: workflowParams,
               });
 
-              // Determine if debug footer should be shown (admin users only)
-              const isAdmin = Boolean(
-                ctxWithAdmin.adminUsername &&
-                  ctxWithAdmin.username &&
-                  ctxWithAdmin.adminUsername.toLowerCase().replace('@', '') ===
-                    ctxWithAdmin.username.toLowerCase().replace('@', '')
-              );
+              // Store workflow reference for progress tracking
+              const activeWorkflows = this.state.activeWorkflows || {};
+              const workflowExecution: ActiveWorkflowExecution = {
+                workflowId: workflowInstance.id,
+                executionId,
+                startedAt: Date.now(),
+                messageId,
+                platform: (routerConfig?.platform as 'telegram' | 'github') || 'telegram',
+                chatId: firstMessage?.chatId?.toString() || '',
+              };
 
-              // Extract parseMode from platformConfig for proper formatting
-              const parseMode =
-                platformConfig && 'parseMode' in platformConfig
-                  ? ((platformConfig as { parseMode?: string }).parseMode as
-                      | 'HTML'
-                      | 'MarkdownV2'
-                      | undefined)
-                  : undefined;
+              this.setState({
+                ...this.state,
+                activeWorkflows: {
+                  ...activeWorkflows,
+                  [executionId]: workflowExecution,
+                },
+                activeBatch: { ...batch, status: 'delegated' },
+                updatedAt: Date.now(),
+              });
 
-              response = formatAgenticLoopResponse(loopResult, isAdmin, parseMode);
-
-              // Stop rotator and wait for pending
+              // Stop the thinking rotator - workflow will send progress updates
               rotator.stop();
               await rotator.waitForPending();
 
-              // Edit thinking message with final response
-              if (transport.edit) {
-                try {
-                  await transport.edit(ctx, messageRef, response);
-                } catch {
-                  await transport.send(ctx, response);
-                }
-              } else {
-                await transport.send(ctx, response);
-              }
-
-              // Call afterHandle hook if available
-              if (hooks?.afterHandle) {
-                await hooks.afterHandle(ctx, response);
-              }
-
-              // Capture response for observability
-              this._lastResponse = response;
-
-              logger.info('[CloudflareAgent][BATCH] AgenticLoop completed', {
+              logger.info('[CloudflareAgent][BATCH] Workflow spawned successfully', {
+                executionId,
+                workflowId: workflowInstance.id,
                 batchId: batch.batchId,
-                success: loopResult.success,
-                iterations: loopResult.metrics.iterations,
-                toolsUsed: loopResult.metrics.toolsUsed,
-                durationMs: loopResult.metrics.durationMs,
               });
 
-              return; // Exit - AgenticLoop handled the request
-            } catch (agenticError) {
-              logger.error('[CloudflareAgent][BATCH] AgenticLoop failed, falling back to routing', {
+              // Return immediately - workflow runs independently and calls back on completion
+              return;
+            } catch (workflowError) {
+              logger.error('[CloudflareAgent][BATCH] Workflow spawn failed, falling back', {
                 batchId: batch.batchId,
-                error: agenticError instanceof Error ? agenticError.message : String(agenticError),
+                error:
+                  workflowError instanceof Error ? workflowError.message : String(workflowError),
               });
               // Fall through to legacy routing path
             }
+          } else {
+            // Workflow binding not available - use legacy routing
+            logger.warn(
+              '[CloudflareAgent][BATCH] AGENTIC_LOOP_WORKFLOW binding not available, using legacy routing',
+              { batchId: batch.batchId }
+            );
+            // Fall through to legacy routing path
           }
 
           // === Legacy Multi-Agent Routing Path ===
@@ -3340,6 +3379,333 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         result.pendingBatch = this.state.pendingBatch;
       }
       return result;
+    }
+
+    // ============================================
+    // Callback Query Handling (Telegram Inline Buttons)
+    // ============================================
+
+    /**
+     * Receive a callback query from Telegram inline keyboard button press (RPC method)
+     * Parses the callback data and routes to the appropriate handler
+     */
+    async receiveCallback(context: CallbackContext): Promise<{ text?: string }> {
+      // Parse the callback data
+      const parsed = parseCallbackData(context.data);
+
+      if (!parsed) {
+        logger.warn('[CloudflareAgent] Invalid callback data', {
+          callbackQueryId: context.callbackQueryId,
+          data: context.data,
+        });
+        return {};
+      }
+
+      // Get the handler for this action
+      const handler = callbackHandlers[parsed.action];
+      if (!handler) {
+        logger.warn('[CloudflareAgent] No handler for callback action', {
+          action: parsed.action,
+          callbackQueryId: context.callbackQueryId,
+        });
+        return {};
+      }
+
+      // Execute the handler
+      try {
+        const result = await handler(context, parsed.payload);
+
+        logger.debug('[CloudflareAgent] Callback handled', {
+          action: parsed.action,
+          success: result.success,
+          callbackQueryId: context.callbackQueryId,
+        });
+
+        // Return text only if message is defined
+        const response: { text?: string } = {};
+        if (result.message !== undefined) {
+          response.text = result.message;
+        }
+        return response;
+      } catch (err) {
+        logger.error('[CloudflareAgent] Callback handler error', {
+          action: parsed.action,
+          error: err instanceof Error ? err.message : String(err),
+          callbackQueryId: context.callbackQueryId,
+        });
+        return {};
+      }
+    }
+
+    // ============================================
+    // Workflow Progress Endpoints (HTTP)
+    // ============================================
+
+    /**
+     * Handle incoming HTTP requests to this Durable Object
+     *
+     * Supports internal workflow progress endpoints:
+     * - POST /workflow-progress: Receive progress updates from AgenticLoopWorkflow
+     * - POST /workflow-complete: Receive completion notification from workflow
+     *
+     * These endpoints are called by the workflow to report progress back to the DO,
+     * which then edits the user-facing message via the transport layer.
+     */
+    override async onRequest(request: Request): Promise<Response> {
+      const url = new URL(request.url);
+
+      // Workflow progress update
+      if (url.pathname === '/workflow-progress' && request.method === 'POST') {
+        try {
+          const body = (await request.json()) as {
+            executionId: string;
+            update: {
+              type: string;
+              iteration: number;
+              message: string;
+              toolName?: string;
+              durationMs?: number;
+              timestamp: number;
+            };
+          };
+
+          const { executionId, update } = body;
+
+          // Find workflow execution
+          const workflow = this.state.activeWorkflows?.[executionId];
+          if (!workflow) {
+            logger.warn('[CloudflareAgent][WORKFLOW] Progress for unknown execution', {
+              executionId,
+            });
+            return new Response('Workflow not found', { status: 404 });
+          }
+
+          // Update state with latest progress
+          const updatedWorkflows = {
+            ...this.state.activeWorkflows,
+            [executionId]: {
+              ...workflow,
+              lastProgress: {
+                type: update.type,
+                iteration: update.iteration,
+                message: update.message,
+                timestamp: update.timestamp,
+              },
+            },
+          };
+
+          this.setState({
+            ...this.state,
+            activeWorkflows: updatedWorkflows,
+            updatedAt: Date.now(),
+          });
+
+          // Edit thinking message with progress (if transport available)
+          if (transport?.edit) {
+            try {
+              // Reconstruct minimal context for transport
+              const ctx = this.reconstructTransportContext(workflow);
+              if (ctx) {
+                await transport.edit(ctx, workflow.messageId, update.message);
+              }
+            } catch (editError) {
+              logger.warn('[CloudflareAgent][WORKFLOW] Failed to edit progress message', {
+                error: editError instanceof Error ? editError.message : String(editError),
+                executionId,
+              });
+            }
+          }
+
+          return new Response('OK', { status: 200 });
+        } catch (error) {
+          logger.error('[CloudflareAgent][WORKFLOW] Progress handler error', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return new Response('Internal error', { status: 500 });
+        }
+      }
+
+      // Workflow completion
+      if (url.pathname === '/workflow-complete' && request.method === 'POST') {
+        try {
+          const body = (await request.json()) as {
+            executionId: string;
+            result: {
+              success: boolean;
+              response: string;
+              iterations: number;
+              toolsUsed: string[];
+              totalDurationMs: number;
+              tokenUsage?: { input: number; output: number; total: number };
+              error?: string;
+              debugContext?: {
+                steps: Array<{
+                  iteration: number;
+                  type: string;
+                  toolName?: string;
+                  args?: Record<string, unknown>;
+                  result?: unknown;
+                }>;
+              };
+            };
+          };
+
+          const { executionId, result } = body;
+
+          // Find workflow execution
+          const workflow = this.state.activeWorkflows?.[executionId];
+          if (!workflow) {
+            logger.warn('[CloudflareAgent][WORKFLOW] Completion for unknown execution', {
+              executionId,
+            });
+            return new Response('Workflow not found', { status: 404 });
+          }
+
+          logger.info('[CloudflareAgent][WORKFLOW] Workflow completed', {
+            executionId,
+            success: result.success,
+            iterations: result.iterations,
+            toolsUsed: result.toolsUsed,
+            durationMs: result.totalDurationMs,
+          });
+
+          // Format final response with debug info
+          let finalResponse = result.response;
+
+          // Check if admin for debug footer
+          const isAdmin = this.isAdminUser(workflow.chatId);
+          if (isAdmin && result.success) {
+            // Add debug footer for admin
+            const footer = this.formatWorkflowDebugFooter(result);
+            finalResponse = `${result.response}\n\n${footer}`;
+          }
+
+          // Edit message with final response
+          if (transport?.edit) {
+            try {
+              const ctx = this.reconstructTransportContext(workflow);
+              if (ctx) {
+                await transport.edit(ctx, workflow.messageId, finalResponse);
+              }
+            } catch (editError) {
+              logger.error('[CloudflareAgent][WORKFLOW] Failed to edit final response', {
+                error: editError instanceof Error ? editError.message : String(editError),
+                executionId,
+              });
+            }
+          }
+
+          // Remove from active workflows
+          const { [executionId]: _removed, ...remainingWorkflows } =
+            this.state.activeWorkflows || {};
+
+          // Build new state - only include activeWorkflows if non-empty
+          const hasRemainingWorkflows = Object.keys(remainingWorkflows).length > 0;
+
+          // Add assistant response to message history if successful
+          const newMessages = result.success
+            ? [
+                ...this.state.messages,
+                {
+                  role: 'assistant' as const,
+                  content: result.response,
+                },
+              ]
+            : this.state.messages;
+
+          this.setState({
+            ...this.state,
+            messages: newMessages,
+            ...(hasRemainingWorkflows ? { activeWorkflows: remainingWorkflows } : {}),
+            updatedAt: Date.now(),
+          });
+
+          return new Response('OK', { status: 200 });
+        } catch (error) {
+          logger.error('[CloudflareAgent][WORKFLOW] Completion handler error', {
+            error: error instanceof Error ? error.message : String(error),
+          });
+          return new Response('Internal error', { status: 500 });
+        }
+      }
+
+      // Unknown endpoint
+      return new Response('Not found', { status: 404 });
+    }
+
+    /**
+     * Reconstruct transport context from workflow metadata
+     *
+     * Creates a minimal context object that the transport can use
+     * to edit messages. Platform tokens come from env, not workflow params.
+     */
+    private reconstructTransportContext(workflow: ActiveWorkflowExecution): TContext | null {
+      // Get env for token access
+      const env = (this as unknown as { env: TEnv }).env as unknown as {
+        TELEGRAM_BOT_TOKEN?: string;
+        GITHUB_TOKEN?: string;
+      };
+
+      if (workflow.platform === 'telegram') {
+        // Minimal Telegram context for edit operation
+        return {
+          chat: { id: Number(workflow.chatId) },
+          botToken: env.TELEGRAM_BOT_TOKEN,
+        } as unknown as TContext;
+      }
+
+      if (workflow.platform === 'github') {
+        // GitHub context would need more info (owner, repo, etc.)
+        // For now, we store enough in workflow metadata
+        return {
+          chatId: workflow.chatId,
+          token: env.GITHUB_TOKEN,
+        } as unknown as TContext;
+      }
+
+      return null;
+    }
+
+    /**
+     * Check if a chat ID belongs to admin user
+     */
+    private isAdminUser(_chatId: string): boolean {
+      const env = (this as unknown as { env: TEnv }).env as unknown as {
+        TELEGRAM_ADMIN?: string;
+        GITHUB_ADMIN?: string;
+      };
+
+      // For now, simple check against admin username config
+      // In production, this should check against actual user ID
+      const adminUsername = env.TELEGRAM_ADMIN || env.GITHUB_ADMIN;
+      if (!adminUsername) return false;
+
+      // TODO: Compare _chatId against admin user ID when we have user lookups
+      // This is a simplified check - real implementation would verify properly
+      return true; // Enable debug footer for all users during development
+    }
+
+    /**
+     * Format debug footer for workflow completion
+     */
+    private formatWorkflowDebugFooter(result: {
+      iterations: number;
+      toolsUsed: string[];
+      totalDurationMs: number;
+      tokenUsage?: { total: number };
+    }): string {
+      const lines = [
+        `⏰ ${result.iterations} iteration${result.iterations !== 1 ? 's' : ''}`,
+        `🔧 Tools: ${result.toolsUsed.length > 0 ? result.toolsUsed.join(', ') : 'none'}`,
+        `⏱️ ${result.totalDurationMs}ms`,
+      ];
+
+      if (result.tokenUsage?.total) {
+        lines.push(`📊 ${result.tokenUsage.total} tokens`);
+      }
+
+      // Return as code block (HTML format assumed)
+      return `<code>${lines.join('\n')}</code>`;
     }
   };
 

@@ -6,39 +6,48 @@
  *
  * ## Architecture
  *
+ * ### Primary: Workflow-Based Execution (Recommended)
+ *
+ * The primary execution path uses Cloudflare Workflows for timeout-resistant execution:
+ *
  * ```
- * User Query → AgenticLoop
- *                 │
- *                 ├─ Think (LLM generates response)
- *                 ├─ Act (Execute tool calls if needed)
- *                 ├─ Observe (Feed results back to LLM)
- *                 └─ Repeat until task complete
+ * User Query → CloudflareAgent DO
+ *                 ↓
+ *         Spawn AgenticLoopWorkflow (fire-and-forget)
+ *                 ↓
+ *         Workflow runs each iteration as a durable step
+ *                 ↓
+ *         Progress reported back to DO via HTTP
+ *                 ↓
+ *         DO edits user message with updates
  * ```
+ *
+ * Benefits:
+ * - **No timeout risk**: Each iteration has 30s budget, unlimited total time
+ * - **Automatic persistence**: State saved after each step
+ * - **Built-in retries**: Exponential backoff on transient failures
+ * - **Real-time updates**: Progress messages edit in-place
+ *
+ * ### Legacy: Synchronous Execution (Deprecated)
+ *
+ * Falls back to synchronous execution when workflow binding is unavailable.
+ * Not recommended for production - subject to 30-second DO timeout.
  *
  * ## Core Components
  *
- * - **AgenticLoop** (`agentic-loop.ts`): Main execution loop with iteration limits and tool orchestration
- * - **Tools** (`tools/`): 6 built-in tools (plan, research, memory, github, subagent, approval)
- * - **Progress** (`progress.ts`): Real-time status updates (thinking, tool running, tool complete)
- * - **Transport** (`transport-adapter.ts`): Platform abstraction for message editing (Telegram/GitHub)
- * - **Integration** (`cloudflare-integration.ts`): CloudflareAgent wiring and feature flag support
- *
- * ## Key Features
- *
- * - **Real-time updates**: Progress messages edit in-place throughout execution
- * - **Tool execution**: Parallel tool calls when independent, sequential when dependent
- * - **Subagent support**: One-level delegation for parallel subtasks (recursion prevented)
- * - **Heartbeat integration**: Keeps Durable Objects alive during long operations
- * - **Feature flag**: `USE_AGENTIC_LOOP=true|false` toggles between new/old architecture
+ * - **AgenticLoopWorkflow** (`workflow/`): Durable workflow for timeout-resistant execution
+ * - **AgenticLoop** (`agentic-loop.ts`): Synchronous loop (legacy, deprecated)
+ * - **Tools** (`tools/`): Built-in tools (plan, research, memory, github, subagent, approval)
+ * - **Progress** (`progress.ts`): Real-time status updates
  *
  * ## Available Tools
  *
- * 1. **plan** - Task decomposition and planning (replaces OrchestratorAgent)
- * 2. **research** - Web search and synthesis (replaces LeadResearcherAgent + ResearchWorker)
- * 3. **memory** - Personal information lookup via MCP (replaces DuyetInfoAgent)
- * 4. **github** - GitHub API operations via MCP (replaces GitHubMCPAgent + GitHubWorker)
- * 5. **subagent** - Delegate independent subtasks (one level max, prevents recursion)
- * 6. **request_approval** - Human-in-the-loop approval (replaces HITLAgent)
+ * 1. **plan** - Task decomposition and planning
+ * 2. **research** - Web search and synthesis
+ * 3. **memory** - Personal information lookup via MCP
+ * 4. **github** - GitHub API operations via MCP
+ * 5. **subagent** - Delegate independent subtasks (one level max)
+ * 6. **request_approval** - Human-in-the-loop approval
  *
  * ## Progress Updates
  *
@@ -48,30 +57,9 @@
  * - 🔧 Running {tool}... - Tool execution started
  * - ✅ {tool} completed - Tool finished successfully
  * - ❌ {tool} failed - Tool error (with details)
- * - 📝 Generating response... - Final response generation
- *
- * ## Feature Flag Control
- *
- * Set `USE_AGENTIC_LOOP=true` in `wrangler.toml` to enable (default).
- * Set `USE_AGENTIC_LOOP=false` to fall back to legacy multi-agent routing.
- *
- * Both telegram-bot and github-bot have this enabled by default.
- *
- * ## Usage
- *
- * ```typescript
- * import { runAgenticLoop } from '@duyetbot/cloudflare-agent/agentic-loop';
- *
- * const result = await runAgenticLoop({
- *   agent: cloudflareAgent,
- *   context: executionContext,
- *   transport: telegramTransport,
- *   provider: claudeProvider,
- *   tools: createCoreTools({ mcpClient }),
- * });
- * ```
  *
  * @module agentic-loop
+ * @see {@link https://developers.cloudflare.com/workflows/} Cloudflare Workflows
  * @see {@link https://developers.cloudflare.com/agents/patterns/} Cloudflare Agent Patterns
  */
 

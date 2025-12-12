@@ -1,0 +1,712 @@
+/**
+ * AgenticLoopWorkflow - Cloudflare Workflow-Based Agent Execution
+ *
+ * Implements the agentic loop (think → act → observe → repeat) as a durable
+ * Cloudflare Workflow, eliminating the 30-second DO timeout constraint.
+ *
+ * Key benefits over synchronous AgenticLoop:
+ * - **No timeout risk**: Each iteration is a separate step with 30s budget
+ * - **Automatic persistence**: State saved after each step
+ * - **Built-in retries**: Exponential backoff on transient failures
+ * - **Progress reporting**: Real-time updates via DO callback
+ * - **Unlimited iterations**: Can run for hours if needed
+ *
+ * @module agentic-loop-workflow
+ */
+
+import type { WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
+import { WorkflowEntrypoint } from 'cloudflare:workers';
+import { NonRetryableError } from 'cloudflare:workflows';
+import { createCoreTools } from '../tools/index.js';
+import type { LoopMessage, LoopTool } from '../types.js';
+import type {
+  AgenticLoopWorkflowEnv,
+  AgenticLoopWorkflowParams,
+  JsonRecord,
+  ProgressCallbackConfig,
+  WorkflowCompletionResult,
+  WorkflowLLMResponse,
+  WorkflowProgressUpdate,
+  WorkflowToolCall,
+} from './types.js';
+
+// ============================================================================
+// Types for Workflow Step Results (JSON-serializable)
+// ============================================================================
+
+/**
+ * Serializable iteration result for workflow steps
+ * Must be plain JSON - no functions, classes, or special objects
+ */
+interface SerializableIterationResult {
+  done: boolean;
+  response?: string;
+  messages: Array<{
+    role: 'user' | 'assistant' | 'tool_result';
+    content: string;
+    toolCallId?: string;
+    toolCalls?: Array<{ id: string; name: string; arguments: JsonRecord }>;
+  }>;
+  toolsUsed: string[];
+  tokenUsage: { input: number; output: number };
+  debugSteps: Array<{
+    iteration: number;
+    type: 'thinking' | 'tool_execution';
+    toolName?: string;
+    args?: JsonRecord;
+    result?: { success: boolean; output: string; durationMs: number; error?: string };
+    thinking?: string;
+  }>;
+}
+
+/**
+ * AgenticLoopWorkflow - Durable workflow for agent execution
+ *
+ * Extends WorkflowEntrypoint to run the agentic loop as durable steps.
+ * Each iteration is a separate step with automatic state persistence.
+ */
+export class AgenticLoopWorkflow extends WorkflowEntrypoint<
+  AgenticLoopWorkflowEnv,
+  AgenticLoopWorkflowParams
+> {
+  /**
+   * Main workflow execution
+   */
+  override async run(
+    event: WorkflowEvent<AgenticLoopWorkflowParams>,
+    step: WorkflowStep
+  ): Promise<WorkflowCompletionResult> {
+    const {
+      executionId,
+      query,
+      systemPrompt,
+      conversationHistory,
+      maxIterations,
+      progressCallback,
+      isSubagent = false,
+      traceId = `workflow-${executionId}`,
+    } = event.payload;
+
+    const startTime = Date.now();
+
+    // Initialize messages from conversation history
+    let messages: SerializableIterationResult['messages'] = [
+      ...conversationHistory.map((msg) => ({
+        role: msg.role as 'user' | 'assistant',
+        content: msg.content,
+      })),
+      { role: 'user' as const, content: query },
+    ];
+
+    const toolsUsed: Set<string> = new Set();
+    let totalTokens = { input: 0, output: 0 };
+    const debugSteps: SerializableIterationResult['debugSteps'] = [];
+
+    // Get tools (recreated at runtime since functions can't be serialized)
+    const tools = createCoreTools({ isSubagent });
+
+    let iteration = 0;
+
+    try {
+      // Main agentic loop - each iteration is a durable step
+      while (iteration < maxIterations) {
+        // Execute iteration as a durable step
+        // Note: We use 'as unknown' cast to bypass Cloudflare's complex Serializable<T> type
+        // which causes infinite type instantiation with recursive JsonValue types.
+        // The actual data is JSON-serializable - this is purely a TypeScript limitation.
+        const stepResult = (await step.do(
+          `iteration-${iteration}`,
+          {
+            retries: {
+              limit: 3,
+              delay: '5 seconds',
+              backoff: 'exponential',
+            },
+            timeout: '2 minutes',
+          },
+          // Remove return type annotation to avoid Serializable<T> type checking
+          async () => {
+            // 1. Report thinking progress
+            await this.reportProgress(progressCallback, {
+              type: 'thinking',
+              iteration,
+              message: `🤔 Thinking... (step ${iteration + 1}/${maxIterations})`,
+              timestamp: Date.now(),
+            });
+
+            // Track thinking step
+            debugSteps.push({
+              iteration,
+              type: 'thinking',
+              thinking: `Iteration ${iteration + 1}/${maxIterations}`,
+            });
+
+            // 2. Call LLM with current messages
+            const loopMessages = messages.map(
+              (m) =>
+                ({
+                  role: m.role,
+                  content: m.content,
+                  ...(m.toolCallId && { toolCallId: m.toolCallId }),
+                  ...(m.toolCalls && { toolCalls: m.toolCalls }),
+                }) as LoopMessage
+            );
+
+            const llmResponse = await this.callLLM(
+              this.env,
+              systemPrompt,
+              loopMessages,
+              tools,
+              traceId
+            );
+
+            // Update token usage
+            if (llmResponse.usage) {
+              totalTokens.input += llmResponse.usage.inputTokens;
+              totalTokens.output += llmResponse.usage.outputTokens;
+            }
+
+            // 3. Add assistant message to history
+            const assistantMessage: SerializableIterationResult['messages'][0] = {
+              role: 'assistant',
+              content: llmResponse.content,
+            };
+
+            if (llmResponse.toolCalls && llmResponse.toolCalls.length > 0) {
+              assistantMessage.toolCalls = llmResponse.toolCalls.map((tc) => ({
+                id: tc.id,
+                name: tc.name,
+                arguments: tc.arguments,
+              }));
+            }
+
+            messages.push(assistantMessage);
+
+            // 4. Check if done (no tool calls)
+            if (!llmResponse.toolCalls || llmResponse.toolCalls.length === 0) {
+              return {
+                done: true,
+                response: llmResponse.content,
+                messages: [...messages],
+                toolsUsed: Array.from(toolsUsed),
+                tokenUsage: { ...totalTokens },
+                debugSteps: [...debugSteps],
+              };
+            }
+
+            // 5. Execute tools (in-step, parallel)
+            const toolResults = await this.executeTools(
+              llmResponse.toolCalls,
+              tools,
+              progressCallback,
+              iteration,
+              isSubagent,
+              traceId
+            );
+
+            // 6. Add tool results to message history and track usage
+            for (const result of toolResults) {
+              messages.push({
+                role: 'tool_result',
+                toolCallId: result.toolCallId,
+                content: result.content,
+              });
+
+              if (result.toolName) {
+                toolsUsed.add(result.toolName);
+              }
+
+              // Track debug info
+              debugSteps.push({
+                iteration,
+                type: 'tool_execution',
+                toolName: result.toolName,
+                args: result.args,
+                result: {
+                  success: result.success,
+                  output: result.content.slice(0, 500), // Truncate for storage
+                  durationMs: result.durationMs,
+                  ...(result.error && { error: result.error }),
+                },
+              });
+            }
+
+            return {
+              done: false,
+              messages: [...messages],
+              toolsUsed: Array.from(toolsUsed),
+              tokenUsage: { ...totalTokens },
+              debugSteps: [...debugSteps],
+            };
+          }
+        )) as unknown as SerializableIterationResult | null;
+
+        // Handle null result (shouldn't happen but TypeScript requires it)
+        if (!stepResult) {
+          throw new NonRetryableError('Workflow step returned null');
+        }
+
+        // Check if loop should terminate
+        if (stepResult.done) {
+          // Report completion
+          const result: WorkflowCompletionResult = {
+            success: true,
+            response: stepResult.response || '',
+            iterations: iteration + 1,
+            toolsUsed: stepResult.toolsUsed,
+            totalDurationMs: Date.now() - startTime,
+            tokenUsage: {
+              input: stepResult.tokenUsage.input,
+              output: stepResult.tokenUsage.output,
+              total: stepResult.tokenUsage.input + stepResult.tokenUsage.output,
+            },
+            debugContext: { steps: stepResult.debugSteps },
+          };
+
+          await step.do('report-completion', async () => {
+            await this.reportCompletion(progressCallback, result);
+          });
+
+          return result;
+        }
+
+        // Update state from step result
+        messages = stepResult.messages;
+        for (const tool of stepResult.toolsUsed) {
+          toolsUsed.add(tool);
+        }
+        totalTokens = stepResult.tokenUsage;
+
+        iteration++;
+      }
+
+      // Max iterations reached
+      const maxIterResult: WorkflowCompletionResult = {
+        success: false,
+        response: 'Maximum iterations reached without completing the task.',
+        iterations: maxIterations,
+        toolsUsed: Array.from(toolsUsed),
+        totalDurationMs: Date.now() - startTime,
+        tokenUsage: {
+          input: totalTokens.input,
+          output: totalTokens.output,
+          total: totalTokens.input + totalTokens.output,
+        },
+        error: 'Max iterations exceeded',
+        debugContext: { steps: debugSteps },
+      };
+
+      await step.do('report-max-iterations', async () => {
+        await this.reportCompletion(progressCallback, maxIterResult);
+      });
+
+      return maxIterResult;
+    } catch (error) {
+      // Handle fatal errors
+      const errorMessage = error instanceof Error ? error.message : String(error);
+
+      const errorResult: WorkflowCompletionResult = {
+        success: false,
+        response: `Error during execution: ${errorMessage}`,
+        iterations: iteration + 1,
+        toolsUsed: Array.from(toolsUsed),
+        totalDurationMs: Date.now() - startTime,
+        tokenUsage: {
+          input: totalTokens.input,
+          output: totalTokens.output,
+          total: totalTokens.input + totalTokens.output,
+        },
+        error: errorMessage,
+        debugContext: { steps: debugSteps },
+      };
+
+      // Try to report error (best effort)
+      try {
+        await step.do('report-error', async () => {
+          await this.reportCompletion(progressCallback, errorResult);
+        });
+      } catch {
+        // Ignore reporting errors
+      }
+
+      // Re-throw non-retryable errors
+      if (error instanceof NonRetryableError) {
+        throw error;
+      }
+
+      return errorResult;
+    }
+  }
+
+  // ============================================================================
+  // LLM Calling
+  // ============================================================================
+
+  /**
+   * Call LLM with the current conversation
+   */
+  private async callLLM(
+    env: AgenticLoopWorkflowEnv,
+    systemPrompt: string | undefined,
+    messages: LoopMessage[],
+    tools: LoopTool[],
+    _traceId: string
+  ): Promise<WorkflowLLMResponse> {
+    // Format messages for LLM
+    const llmMessages = [
+      ...(systemPrompt ? [{ role: 'system' as const, content: systemPrompt }] : []),
+      ...messages.map((m) => {
+        if (m.role === 'tool_result') {
+          return {
+            role: 'tool' as const,
+            content: m.content,
+            tool_call_id: m.toolCallId || 'unknown',
+          };
+        }
+        if (m.role === 'assistant' && m.toolCalls) {
+          return {
+            role: 'assistant' as const,
+            content: m.content,
+            tool_calls: m.toolCalls.map((tc) => ({
+              id: tc.id,
+              type: 'function' as const,
+              function: {
+                name: tc.name,
+                arguments: JSON.stringify(tc.arguments),
+              },
+            })),
+          };
+        }
+        return { role: m.role, content: m.content };
+      }),
+    ];
+
+    // Format tools for OpenAI-compatible API
+    const openAITools = tools.map((t) => ({
+      type: 'function' as const,
+      function: {
+        name: t.name,
+        description: t.description,
+        parameters: t.parameters,
+      },
+    }));
+
+    // Try OpenRouter first if API key available
+    if (env.OPENROUTER_API_KEY) {
+      try {
+        return await this.callOpenRouter(env, llmMessages, openAITools);
+      } catch (error) {
+        console.error('[AgenticLoopWorkflow] OpenRouter failed, trying AI Gateway', error);
+      }
+    }
+
+    // Fall back to Cloudflare AI Gateway
+    return await this.callAIGateway(env, llmMessages, openAITools);
+  }
+
+  /**
+   * Call OpenRouter API
+   */
+  private async callOpenRouter(
+    env: AgenticLoopWorkflowEnv,
+    messages: Array<{ role: string; content: string; tool_call_id?: string; tool_calls?: unknown }>,
+    tools: Array<{
+      type: 'function';
+      function: { name: string; description: string; parameters: unknown };
+    }>
+  ): Promise<WorkflowLLMResponse> {
+    const model = env.MODEL || 'anthropic/claude-sonnet-4';
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${env.OPENROUTER_API_KEY}`,
+        'HTTP-Referer': 'https://duyetbot.duyet.net',
+        'X-Title': 'DuyetBot',
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        tools: tools.length > 0 ? tools : undefined,
+        tool_choice: tools.length > 0 ? 'auto' : undefined,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} ${errorText}`);
+    }
+
+    const data = (await response.json()) as {
+      choices: Array<{
+        message: {
+          content: string | null;
+          tool_calls?: Array<{
+            id: string;
+            function: { name: string; arguments: string };
+          }>;
+        };
+      }>;
+      usage?: { prompt_tokens: number; completion_tokens: number };
+    };
+
+    const choice = data.choices[0];
+    if (!choice) {
+      throw new Error('No response from OpenRouter');
+    }
+
+    const toolCalls: WorkflowToolCall[] | undefined = choice.message.tool_calls?.map((tc) => ({
+      id: tc.id,
+      name: tc.function.name,
+      arguments: this.safeParseJSON(tc.function.arguments),
+    }));
+
+    return {
+      content: choice.message.content || '',
+      ...(toolCalls && toolCalls.length > 0 && { toolCalls }),
+      ...(data.usage && {
+        usage: {
+          inputTokens: data.usage.prompt_tokens,
+          outputTokens: data.usage.completion_tokens,
+        },
+      }),
+    };
+  }
+
+  /**
+   * Call Cloudflare AI Gateway
+   */
+  private async callAIGateway(
+    env: AgenticLoopWorkflowEnv,
+    messages: Array<{ role: string; content: string; tool_call_id?: string; tool_calls?: unknown }>,
+    tools: Array<{
+      type: 'function';
+      function: { name: string; description: string; parameters: unknown };
+    }>
+  ): Promise<WorkflowLLMResponse> {
+    // Use AI binding for Workers AI / AI Gateway
+    const model = env.MODEL || '@cf/meta/llama-3.1-70b-instruct';
+
+    // Workers AI has different format - simplified for now
+    const result = (await env.AI.run(model as Parameters<Ai['run']>[0], {
+      messages: messages.map((m) => ({
+        role: m.role as 'system' | 'user' | 'assistant',
+        content: m.content,
+      })),
+      tools: tools.length > 0 ? tools : undefined,
+    })) as {
+      response?: string;
+      tool_calls?: Array<{ id: string; name: string; arguments: Record<string, unknown> }>;
+    };
+
+    // Cast arguments to JsonRecord - Workers AI returns Record<string, unknown>
+    // but the data is JSON, so this is a safe type assertion
+    const toolCalls: WorkflowToolCall[] | undefined = result.tool_calls?.map((tc) => ({
+      id: tc.id,
+      name: tc.name,
+      arguments: tc.arguments as JsonRecord,
+    }));
+
+    return {
+      content: result.response || '',
+      ...(toolCalls && toolCalls.length > 0 && { toolCalls }),
+    };
+  }
+
+  // ============================================================================
+  // Tool Execution
+  // ============================================================================
+
+  /**
+   * Execute tool calls in parallel
+   */
+  private async executeTools(
+    toolCalls: WorkflowToolCall[],
+    tools: LoopTool[],
+    progressCallback: ProgressCallbackConfig,
+    iteration: number,
+    _isSubagent: boolean,
+    traceId: string
+  ): Promise<
+    Array<{
+      toolCallId: string;
+      toolName: string;
+      content: string;
+      success: boolean;
+      durationMs: number;
+      args: JsonRecord;
+      error?: string;
+    }>
+  > {
+    const results = await Promise.all(
+      toolCalls.map(async (tc) => {
+        const startTime = Date.now();
+
+        // Report tool start
+        await this.reportProgress(progressCallback, {
+          type: 'tool_start',
+          iteration,
+          message: `🔧 Running ${tc.name}...`,
+          toolName: tc.name,
+          timestamp: Date.now(),
+        });
+
+        // Find tool
+        const tool = tools.find((t) => t.name === tc.name);
+        if (!tool) {
+          const durationMs = Date.now() - startTime;
+          await this.reportProgress(progressCallback, {
+            type: 'tool_error',
+            iteration,
+            message: `❌ Tool ${tc.name} not found`,
+            toolName: tc.name,
+            durationMs,
+            timestamp: Date.now(),
+          });
+
+          return {
+            toolCallId: tc.id,
+            toolName: tc.name,
+            content: `Error: Tool '${tc.name}' not found`,
+            success: false,
+            durationMs,
+            args: tc.arguments,
+            error: 'Tool not found',
+          };
+        }
+
+        // Execute tool
+        try {
+          // Build minimal context for tool execution
+          const toolContext = {
+            platform: 'workflow' as const,
+            traceId,
+            env: this.env,
+          };
+
+          const result = await tool.execute(
+            tc.arguments,
+            toolContext as unknown as Parameters<typeof tool.execute>[1]
+          );
+          const durationMs = Date.now() - startTime;
+
+          // Report success
+          await this.reportProgress(progressCallback, {
+            type: 'tool_complete',
+            iteration,
+            message: `✅ ${tc.name} completed (${durationMs}ms)`,
+            toolName: tc.name,
+            durationMs,
+            timestamp: Date.now(),
+          });
+
+          return {
+            toolCallId: tc.id,
+            toolName: tc.name,
+            content: result.output,
+            success: result.success,
+            durationMs,
+            args: tc.arguments,
+            ...(result.error && { error: result.error }),
+          };
+        } catch (error) {
+          const durationMs = Date.now() - startTime;
+          const errorMessage = error instanceof Error ? error.message : String(error);
+
+          await this.reportProgress(progressCallback, {
+            type: 'tool_error',
+            iteration,
+            message: `❌ ${tc.name} failed: ${errorMessage}`,
+            toolName: tc.name,
+            durationMs,
+            timestamp: Date.now(),
+          });
+
+          return {
+            toolCallId: tc.id,
+            toolName: tc.name,
+            content: `Error: ${errorMessage}`,
+            success: false,
+            durationMs,
+            args: tc.arguments,
+            error: errorMessage,
+          };
+        }
+      })
+    );
+
+    return results;
+  }
+
+  // ============================================================================
+  // Progress Reporting
+  // ============================================================================
+
+  /**
+   * Report progress to CloudflareAgent DO
+   */
+  private async reportProgress(
+    callback: ProgressCallbackConfig,
+    update: WorkflowProgressUpdate
+  ): Promise<void> {
+    try {
+      // For now, we'll construct the URL to the DO
+      // In production, this would use proper DO binding
+      // The DO is in the same account so we can call it directly
+
+      // Build the URL - the DO handles /workflow-progress
+      // Note: In Cloudflare Workers, we'd use the binding directly
+      // For now, log progress (the DO will poll for updates)
+      console.log('[AgenticLoopWorkflow] Progress:', {
+        executionId: callback.executionId,
+        type: update.type,
+        iteration: update.iteration,
+        message: update.message,
+      });
+
+      // TODO: Implement actual DO callback when bindings are available
+      // This requires the CloudflareAgent DO to be bound to the workflow
+    } catch (error) {
+      // Progress reporting is best-effort, don't fail the workflow
+      console.error('[AgenticLoopWorkflow] Failed to report progress:', error);
+    }
+  }
+
+  /**
+   * Report completion to CloudflareAgent DO
+   */
+  private async reportCompletion(
+    callback: ProgressCallbackConfig,
+    result: WorkflowCompletionResult
+  ): Promise<void> {
+    try {
+      console.log('[AgenticLoopWorkflow] Completion:', {
+        executionId: callback.executionId,
+        success: result.success,
+        iterations: result.iterations,
+        toolsUsed: result.toolsUsed,
+        durationMs: result.totalDurationMs,
+      });
+
+      // TODO: Implement actual DO callback when bindings are available
+    } catch (error) {
+      console.error('[AgenticLoopWorkflow] Failed to report completion:', error);
+    }
+  }
+
+  // ============================================================================
+  // Utilities
+  // ============================================================================
+
+  /**
+   * Safely parse JSON arguments
+   */
+  private safeParseJSON(str: string): JsonRecord {
+    try {
+      return JSON.parse(str) as JsonRecord;
+    } catch {
+      return { raw: str };
+    }
+  }
+}

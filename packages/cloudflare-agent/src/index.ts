@@ -33,6 +33,7 @@ export {
 // Use createChatAgent() from './agents/chat-agent.js' for new implementations.
 // MCPServerConnection is still exported for use by mcp-worker but will be refactored separately.
 export {
+  type ActiveWorkflowExecution,
   type CloudflareAgentConfig,
   type CloudflareAgentState,
   type CloudflareChatAgentClass,
@@ -592,3 +593,24 @@ export {
   formatStuckBatchMessage,
   type StuckBatchDetails,
 } from './notifications/index.js';
+
+// =============================================================================
+// Workflow-Based AgenticLoop (Timeout-Resistant)
+// =============================================================================
+
+// Workflow types
+export type {
+  AgenticLoopWorkflowEnv,
+  AgenticLoopWorkflowParams,
+  IterationStepResult,
+  ProgressCallbackConfig,
+  SerializedTool,
+  WorkflowCompletionResult,
+  WorkflowDebugContext,
+  WorkflowLLMResponse,
+  WorkflowProgressUpdate,
+  WorkflowToolCall,
+} from './agentic-loop/workflow/index.js';
+// Workflow class for durable agent execution
+// Workflow helpers
+export { AgenticLoopWorkflow, serializeTools } from './agentic-loop/workflow/index.js';

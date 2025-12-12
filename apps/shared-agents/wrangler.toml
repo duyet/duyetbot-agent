@@ -106,3 +106,14 @@ migrations_dir = "migrations"
 [[kv_namespaces]]
 binding = "HEARTBEAT_KV"
 id = "f86303f7fa3a45dd986c0c6bf835c8e1"
+
+# =============================================================================
+# Workflows (Durable Execution)
+# =============================================================================
+
+# AgenticLoopWorkflow - Timeout-resistant agent execution
+# Runs the agentic loop as durable workflow steps, eliminating 30s DO timeout
+[[workflows]]
+name = "agentic-loop-workflow"
+binding = "AGENTIC_LOOP_WORKFLOW"
+class_name = "AgenticLoopWorkflow"

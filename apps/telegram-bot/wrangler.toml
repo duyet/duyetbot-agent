@@ -14,7 +14,6 @@ TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
 TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
 TELEGRAM_PARSE_MODE = "HTML" # Response format: 'HTML' (recommended) or 'MarkdownV2'
 BOT_USERNAME = "duyetbot" # Bot username for @mention detection in groups
-USE_AGENTIC_LOOP = "true" # Claude Code-style single agent loop (default enabled)
 
 [observability]
 enabled = true
@@ -117,3 +116,15 @@ database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
 [[kv_namespaces]]
 binding = "HEARTBEAT_KV"
 id = "f86303f7fa3a45dd986c0c6bf835c8e1"
+
+# =============================================================================
+# Workflows (Cross-Script Binding)
+# =============================================================================
+
+# AgenticLoopWorkflow - Timeout-resistant agent execution
+# Defined in duyetbot-shared-agents, bound here for CloudflareAgent to spawn
+[[workflows]]
+name = "agentic-loop-workflow"
+binding = "AGENTIC_LOOP_WORKFLOW"
+class_name = "AgenticLoopWorkflow"
+script_name = "duyetbot-shared-agents"
