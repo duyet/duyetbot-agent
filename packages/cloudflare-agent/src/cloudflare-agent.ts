@@ -3447,194 +3447,235 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     // ============================================
 
     /**
-     * Handle incoming HTTP requests to this Durable Object
+     * Override fetch to handle internal workflow endpoints BEFORE the partyserver SDK's
+     * fetch handler runs. The SDK expects x-partykit-room headers, but our internal
+     * workflow callbacks don't set these headers.
      *
-     * Supports internal workflow progress endpoints:
+     * Internal endpoints:
      * - POST /workflow-progress: Receive progress updates from AgenticLoopWorkflow
      * - POST /workflow-complete: Receive completion notification from workflow
-     *
-     * These endpoints are called by the workflow to report progress back to the DO,
-     * which then edits the user-facing message via the transport layer.
      */
-    override async onRequest(request: Request): Promise<Response> {
+    override async fetch(request: Request): Promise<Response> {
       const url = new URL(request.url);
 
-      // Workflow progress update
-      if (url.pathname === '/workflow-progress' && request.method === 'POST') {
-        try {
-          const body = (await request.json()) as {
-            executionId: string;
-            update: {
-              type: string;
-              iteration: number;
-              message: string;
-              toolName?: string;
-              durationMs?: number;
-              timestamp: number;
-            };
-          };
-
-          const { executionId, update } = body;
-
-          // Find workflow execution
-          const workflow = this.state.activeWorkflows?.[executionId];
-          if (!workflow) {
-            logger.warn('[CloudflareAgent][WORKFLOW] Progress for unknown execution', {
-              executionId,
-            });
-            return new Response('Workflow not found', { status: 404 });
-          }
-
-          // Update state with latest progress
-          const updatedWorkflows = {
-            ...this.state.activeWorkflows,
-            [executionId]: {
-              ...workflow,
-              lastProgress: {
-                type: update.type,
-                iteration: update.iteration,
-                message: update.message,
-                timestamp: update.timestamp,
-              },
-            },
-          };
-
-          this.setState({
-            ...this.state,
-            activeWorkflows: updatedWorkflows,
-            updatedAt: Date.now(),
-          });
-
-          // Edit thinking message with progress (if transport available)
-          if (transport?.edit) {
-            try {
-              // Reconstruct minimal context for transport
-              const ctx = this.reconstructTransportContext(workflow);
-              if (ctx) {
-                await transport.edit(ctx, workflow.messageId, update.message);
-              }
-            } catch (editError) {
-              logger.warn('[CloudflareAgent][WORKFLOW] Failed to edit progress message', {
-                error: editError instanceof Error ? editError.message : String(editError),
-                executionId,
-              });
-            }
-          }
-
-          return new Response('OK', { status: 200 });
-        } catch (error) {
-          logger.error('[CloudflareAgent][WORKFLOW] Progress handler error', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-          return new Response('Internal error', { status: 500 });
-        }
+      // Handle internal workflow endpoints before partyserver SDK
+      if (
+        (url.pathname === '/workflow-progress' || url.pathname === '/workflow-complete') &&
+        request.method === 'POST'
+      ) {
+        // Process internally without partyserver headers
+        return this.handleWorkflowCallback(request);
       }
 
-      // Workflow completion
-      if (url.pathname === '/workflow-complete' && request.method === 'POST') {
-        try {
-          const body = (await request.json()) as {
-            executionId: string;
-            result: {
-              success: boolean;
-              response: string;
-              iterations: number;
-              toolsUsed: string[];
-              totalDurationMs: number;
-              tokenUsage?: { input: number; output: number; total: number };
-              error?: string;
-              debugContext?: {
-                steps: Array<{
-                  iteration: number;
-                  type: string;
-                  toolName?: string;
-                  args?: Record<string, unknown>;
-                  result?: unknown;
-                }>;
-              };
-            };
+      // Pass to parent's fetch for normal websocket/request handling
+      return super.fetch(request);
+    }
+
+    /**
+     * Handle workflow callback requests (progress and completion)
+     */
+    private async handleWorkflowCallback(request: Request): Promise<Response> {
+      const url = new URL(request.url);
+
+      if (url.pathname === '/workflow-progress') {
+        return this.handleWorkflowProgress(request);
+      }
+
+      if (url.pathname === '/workflow-complete') {
+        return this.handleWorkflowComplete(request);
+      }
+
+      return new Response('Not found', { status: 404 });
+    }
+
+    /**
+     * Handle workflow progress updates
+     */
+    private async handleWorkflowProgress(request: Request): Promise<Response> {
+      try {
+        const body = (await request.json()) as {
+          executionId: string;
+          update: {
+            type: string;
+            iteration: number;
+            message: string;
+            toolName?: string;
+            durationMs?: number;
+            timestamp: number;
           };
+        };
 
-          const { executionId, result } = body;
+        const { executionId, update } = body;
 
-          // Find workflow execution
-          const workflow = this.state.activeWorkflows?.[executionId];
-          if (!workflow) {
-            logger.warn('[CloudflareAgent][WORKFLOW] Completion for unknown execution', {
-              executionId,
-            });
-            return new Response('Workflow not found', { status: 404 });
-          }
-
-          logger.info('[CloudflareAgent][WORKFLOW] Workflow completed', {
+        // Find workflow execution
+        const workflow = this.state.activeWorkflows?.[executionId];
+        if (!workflow) {
+          logger.warn('[CloudflareAgent][WORKFLOW] Progress for unknown execution', {
             executionId,
-            success: result.success,
-            iterations: result.iterations,
-            toolsUsed: result.toolsUsed,
-            durationMs: result.totalDurationMs,
           });
-
-          // Format final response with debug info
-          let finalResponse = result.response;
-
-          // Check if admin for debug footer
-          const isAdmin = this.isAdminUser(workflow.chatId);
-          if (isAdmin && result.success) {
-            // Add debug footer for admin
-            const footer = this.formatWorkflowDebugFooter(result);
-            finalResponse = `${result.response}\n\n${footer}`;
-          }
-
-          // Edit message with final response
-          if (transport?.edit) {
-            try {
-              const ctx = this.reconstructTransportContext(workflow);
-              if (ctx) {
-                await transport.edit(ctx, workflow.messageId, finalResponse);
-              }
-            } catch (editError) {
-              logger.error('[CloudflareAgent][WORKFLOW] Failed to edit final response', {
-                error: editError instanceof Error ? editError.message : String(editError),
-                executionId,
-              });
-            }
-          }
-
-          // Remove from active workflows
-          const { [executionId]: _removed, ...remainingWorkflows } =
-            this.state.activeWorkflows || {};
-
-          // Build new state - only include activeWorkflows if non-empty
-          const hasRemainingWorkflows = Object.keys(remainingWorkflows).length > 0;
-
-          // Add assistant response to message history if successful
-          const newMessages = result.success
-            ? [
-                ...this.state.messages,
-                {
-                  role: 'assistant' as const,
-                  content: result.response,
-                },
-              ]
-            : this.state.messages;
-
-          this.setState({
-            ...this.state,
-            messages: newMessages,
-            ...(hasRemainingWorkflows ? { activeWorkflows: remainingWorkflows } : {}),
-            updatedAt: Date.now(),
-          });
-
-          return new Response('OK', { status: 200 });
-        } catch (error) {
-          logger.error('[CloudflareAgent][WORKFLOW] Completion handler error', {
-            error: error instanceof Error ? error.message : String(error),
-          });
-          return new Response('Internal error', { status: 500 });
+          return new Response('Workflow not found', { status: 404 });
         }
-      }
 
-      // Unknown endpoint
+        // Update state with latest progress
+        const updatedWorkflows = {
+          ...this.state.activeWorkflows,
+          [executionId]: {
+            ...workflow,
+            lastProgress: {
+              type: update.type,
+              iteration: update.iteration,
+              message: update.message,
+              timestamp: update.timestamp,
+            },
+          },
+        };
+
+        this.setState({
+          ...this.state,
+          activeWorkflows: updatedWorkflows,
+          updatedAt: Date.now(),
+        });
+
+        // Edit thinking message with progress (if transport available)
+        if (transport?.edit) {
+          try {
+            // Reconstruct minimal context for transport
+            const ctx = this.reconstructTransportContext(workflow);
+            if (ctx) {
+              await transport.edit(ctx, workflow.messageId, update.message);
+            }
+          } catch (editError) {
+            logger.warn('[CloudflareAgent][WORKFLOW] Failed to edit progress message', {
+              error: editError instanceof Error ? editError.message : String(editError),
+              executionId,
+            });
+          }
+        }
+
+        return new Response('OK', { status: 200 });
+      } catch (error) {
+        logger.error('[CloudflareAgent][WORKFLOW] Progress handler error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return new Response('Internal error', { status: 500 });
+      }
+    }
+
+    /**
+     * Handle workflow completion notification
+     */
+    private async handleWorkflowComplete(request: Request): Promise<Response> {
+      try {
+        const body = (await request.json()) as {
+          executionId: string;
+          result: {
+            success: boolean;
+            response: string;
+            iterations: number;
+            toolsUsed: string[];
+            totalDurationMs: number;
+            tokenUsage?: { input: number; output: number; total: number };
+            error?: string;
+            debugContext?: {
+              steps: Array<{
+                iteration: number;
+                type: string;
+                toolName?: string;
+                args?: Record<string, unknown>;
+                result?: unknown;
+              }>;
+            };
+          };
+        };
+
+        const { executionId, result } = body;
+
+        // Find workflow execution
+        const workflow = this.state.activeWorkflows?.[executionId];
+        if (!workflow) {
+          logger.warn('[CloudflareAgent][WORKFLOW] Completion for unknown execution', {
+            executionId,
+          });
+          return new Response('Workflow not found', { status: 404 });
+        }
+
+        logger.info('[CloudflareAgent][WORKFLOW] Workflow completed', {
+          executionId,
+          success: result.success,
+          iterations: result.iterations,
+          toolsUsed: result.toolsUsed,
+          durationMs: result.totalDurationMs,
+        });
+
+        // Format final response with debug info
+        let finalResponse = result.response;
+
+        // Check if admin for debug footer
+        const isAdmin = this.isAdminUser(workflow.chatId);
+        if (isAdmin && result.success) {
+          // Add debug footer for admin
+          const footer = this.formatWorkflowDebugFooter(result);
+          finalResponse = `${result.response}\n\n${footer}`;
+        }
+
+        // Edit message with final response
+        if (transport?.edit) {
+          try {
+            const ctx = this.reconstructTransportContext(workflow);
+            if (ctx) {
+              await transport.edit(ctx, workflow.messageId, finalResponse);
+            }
+          } catch (editError) {
+            logger.error('[CloudflareAgent][WORKFLOW] Failed to edit final response', {
+              error: editError instanceof Error ? editError.message : String(editError),
+              executionId,
+            });
+          }
+        }
+
+        // Remove from active workflows
+        const { [executionId]: _removed, ...remainingWorkflows } = this.state.activeWorkflows || {};
+
+        // Build new state - only include activeWorkflows if non-empty
+        const hasRemainingWorkflows = Object.keys(remainingWorkflows).length > 0;
+
+        // Add assistant response to message history if successful
+        const newMessages = result.success
+          ? [
+              ...this.state.messages,
+              {
+                role: 'assistant' as const,
+                content: result.response,
+              },
+            ]
+          : this.state.messages;
+
+        this.setState({
+          ...this.state,
+          messages: newMessages,
+          ...(hasRemainingWorkflows ? { activeWorkflows: remainingWorkflows } : {}),
+          updatedAt: Date.now(),
+        });
+
+        return new Response('OK', { status: 200 });
+      } catch (error) {
+        logger.error('[CloudflareAgent][WORKFLOW] Completion handler error', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+        return new Response('Internal error', { status: 500 });
+      }
+    }
+
+    /**
+     * Handle incoming HTTP requests to this Durable Object
+     *
+     * NOTE: Workflow endpoints (/workflow-progress, /workflow-complete) are
+     * handled in the fetch() override above to bypass partyserver SDK header checks.
+     * This method handles any other HTTP endpoints that may be added in the future.
+     */
+    override async onRequest(_request: Request): Promise<Response> {
+      // Currently no additional endpoints - workflow endpoints handled in fetch()
+      // Return 404 for unrecognized paths
       return new Response('Not found', { status: 404 });
     }
 
