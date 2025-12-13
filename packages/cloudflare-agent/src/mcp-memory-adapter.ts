@@ -5,11 +5,15 @@
  */
 
 import type {
+  LongTermMemoryEntry,
   MemoryAdapter,
   MemoryData,
   MemorySearchResult,
+  SaveLongTermMemoryResult,
   SaveMemoryResult,
+  SaveShortTermMemoryResult,
   SessionInfo,
+  ShortTermMemoryEntry,
 } from './memory-adapter.js';
 import { fromMemoryMessage, toMemoryMessage } from './memory-adapter.js';
 import type { Message } from './types.js';
@@ -211,6 +215,238 @@ export class MCPMemoryAdapter implements MemoryAdapter {
   }
 
   /**
+   * Save a short-term memory item (session-scoped, with TTL)
+   */
+  async saveShortTermMemory(
+    sessionId: string,
+    key: string,
+    value: string,
+    ttlSeconds?: number
+  ): Promise<SaveShortTermMemoryResult> {
+    const response = (await this.request('/api/memory/short-term/set', {
+      method: 'POST',
+      body: {
+        session_id: sessionId,
+        key,
+        value,
+        ttl_seconds: ttlSeconds,
+      },
+    })) as {
+      key: string;
+      expires_at: number;
+      success: boolean;
+    };
+
+    return {
+      key: response.key,
+      expiresAt: response.expires_at,
+      success: response.success,
+    };
+  }
+
+  /**
+   * Get a short-term memory item by key
+   */
+  async getShortTermMemory(sessionId: string, key: string): Promise<ShortTermMemoryEntry | null> {
+    const response = (await this.request('/api/memory/short-term/get', {
+      method: 'POST',
+      body: {
+        session_id: sessionId,
+        key,
+      },
+    })) as {
+      value?: string;
+      expires_at?: number;
+    } | null;
+
+    if (!response) {
+      return null;
+    }
+
+    return {
+      key,
+      value: response.value || '',
+      expiresAt: response.expires_at || 0,
+    };
+  }
+
+  /**
+   * List all short-term memory items for a session
+   */
+  async listShortTermMemory(sessionId: string): Promise<ShortTermMemoryEntry[]> {
+    const response = (await this.request('/api/memory/short-term/list', {
+      method: 'POST',
+      body: {
+        session_id: sessionId,
+      },
+    })) as {
+      items: Array<{
+        key: string;
+        value: string;
+        expires_at: number;
+      }>;
+    };
+
+    return response.items.map((item) => ({
+      key: item.key,
+      value: item.value,
+      expiresAt: item.expires_at,
+    }));
+  }
+
+  /**
+   * Delete a short-term memory item
+   */
+  async deleteShortTermMemory(sessionId: string, key: string): Promise<boolean> {
+    const response = (await this.request('/api/memory/short-term/delete', {
+      method: 'POST',
+      body: {
+        session_id: sessionId,
+        key,
+      },
+    })) as {
+      success: boolean;
+    };
+
+    return response.success;
+  }
+
+  /**
+   * Save a long-term memory item (persistent)
+   */
+  async saveLongTermMemory(
+    category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note',
+    key: string,
+    value: string,
+    importance?: number,
+    metadata?: Record<string, unknown>
+  ): Promise<SaveLongTermMemoryResult> {
+    const response = (await this.request('/api/memory/long-term/save', {
+      method: 'POST',
+      body: {
+        category,
+        key,
+        value,
+        importance,
+        metadata,
+      },
+    })) as {
+      id: string;
+      created: boolean;
+      success: boolean;
+    };
+
+    return {
+      id: response.id,
+      created: response.created,
+      success: response.success,
+    };
+  }
+
+  /**
+   * Get long-term memory items by category and/or key
+   */
+  async getLongTermMemory(filters?: {
+    category?: 'fact' | 'preference' | 'pattern' | 'decision' | 'note';
+    key?: string;
+    limit?: number;
+  }): Promise<LongTermMemoryEntry[]> {
+    const response = (await this.request('/api/memory/long-term/get', {
+      method: 'POST',
+      body: filters || {},
+    })) as {
+      items: Array<{
+        id: string;
+        category: string;
+        key: string;
+        value: string;
+        importance: number;
+        created_at: number;
+        updated_at: number;
+      }>;
+    };
+
+    return response.items.map((item) => ({
+      id: item.id,
+      category: item.category as 'fact' | 'preference' | 'pattern' | 'decision' | 'note',
+      key: item.key,
+      value: item.value,
+      importance: item.importance,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at,
+    }));
+  }
+
+  /**
+   * Update a long-term memory item
+   */
+  async updateLongTermMemory(
+    id: string,
+    updates: {
+      value?: string;
+      importance?: number;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<boolean> {
+    const response = (await this.request('/api/memory/long-term/update', {
+      method: 'POST',
+      body: {
+        id,
+        ...updates,
+      },
+    })) as {
+      success: boolean;
+    };
+
+    return response.success;
+  }
+
+  /**
+   * Delete a long-term memory item
+   */
+  async deleteLongTermMemory(id: string): Promise<boolean> {
+    const response = (await this.request('/api/memory/long-term/delete', {
+      method: 'POST',
+      body: {
+        id,
+      },
+    })) as {
+      success: boolean;
+    };
+
+    return response.success;
+  }
+
+  /**
+   * Search memory using natural language query
+   */
+  async searchMemoryByQuery(
+    query: string,
+    filters?: {
+      categories?: string[];
+      limit?: number;
+    }
+  ): Promise<Array<{ id: string; content: string; category: string; score: number }>> {
+    const response = (await this.request('/api/memory/search', {
+      method: 'POST',
+      body: {
+        query,
+        categories: filters?.categories,
+        limit: filters?.limit,
+      },
+    })) as {
+      results: Array<{
+        id: string;
+        content: string;
+        category: string;
+        score: number;
+      }>;
+    };
+
+    return response.results;
+  }
+
+  /**
    * Make a request to the MCP server
    */
   private async request(
@@ -402,6 +638,167 @@ export class ResilientMCPMemoryAdapter implements MemoryAdapter {
     } catch (err) {
       console.warn('Memory listSessions failed:', err);
       return { sessions: [], total: 0 };
+    }
+  }
+
+  async saveShortTermMemory(
+    sessionId: string,
+    key: string,
+    value: string,
+    ttlSeconds?: number
+  ): Promise<SaveShortTermMemoryResult> {
+    if (!(await this.checkAvailability())) {
+      return {
+        key,
+        expiresAt: Date.now() + (ttlSeconds || 86400) * 1000,
+        success: false,
+      };
+    }
+
+    try {
+      return await this.adapter.saveShortTermMemory(sessionId, key, value, ttlSeconds);
+    } catch (err) {
+      console.warn('Memory saveShortTermMemory failed:', err);
+      return {
+        key,
+        expiresAt: Date.now() + (ttlSeconds || 86400) * 1000,
+        success: false,
+      };
+    }
+  }
+
+  async getShortTermMemory(sessionId: string, key: string): Promise<ShortTermMemoryEntry | null> {
+    if (!(await this.checkAvailability())) {
+      return null;
+    }
+
+    try {
+      return await this.adapter.getShortTermMemory(sessionId, key);
+    } catch (err) {
+      console.warn('Memory getShortTermMemory failed:', err);
+      return null;
+    }
+  }
+
+  async listShortTermMemory(sessionId: string): Promise<ShortTermMemoryEntry[]> {
+    if (!(await this.checkAvailability())) {
+      return [];
+    }
+
+    try {
+      return await this.adapter.listShortTermMemory(sessionId);
+    } catch (err) {
+      console.warn('Memory listShortTermMemory failed:', err);
+      return [];
+    }
+  }
+
+  async deleteShortTermMemory(sessionId: string, key: string): Promise<boolean> {
+    if (!(await this.checkAvailability())) {
+      return false;
+    }
+
+    try {
+      return await this.adapter.deleteShortTermMemory(sessionId, key);
+    } catch (err) {
+      console.warn('Memory deleteShortTermMemory failed:', err);
+      return false;
+    }
+  }
+
+  async saveLongTermMemory(
+    category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note',
+    key: string,
+    value: string,
+    importance?: number,
+    metadata?: Record<string, unknown>
+  ): Promise<SaveLongTermMemoryResult> {
+    if (!(await this.checkAvailability())) {
+      return {
+        id: `local-${Date.now()}`,
+        created: false,
+        success: false,
+      };
+    }
+
+    try {
+      return await this.adapter.saveLongTermMemory(category, key, value, importance, metadata);
+    } catch (err) {
+      console.warn('Memory saveLongTermMemory failed:', err);
+      return {
+        id: `local-${Date.now()}`,
+        created: false,
+        success: false,
+      };
+    }
+  }
+
+  async getLongTermMemory(filters?: {
+    category?: 'fact' | 'preference' | 'pattern' | 'decision' | 'note';
+    key?: string;
+    limit?: number;
+  }): Promise<LongTermMemoryEntry[]> {
+    if (!(await this.checkAvailability())) {
+      return [];
+    }
+
+    try {
+      return await this.adapter.getLongTermMemory(filters);
+    } catch (err) {
+      console.warn('Memory getLongTermMemory failed:', err);
+      return [];
+    }
+  }
+
+  async updateLongTermMemory(
+    id: string,
+    updates: {
+      value?: string;
+      importance?: number;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<boolean> {
+    if (!(await this.checkAvailability())) {
+      return false;
+    }
+
+    try {
+      return await this.adapter.updateLongTermMemory(id, updates);
+    } catch (err) {
+      console.warn('Memory updateLongTermMemory failed:', err);
+      return false;
+    }
+  }
+
+  async deleteLongTermMemory(id: string): Promise<boolean> {
+    if (!(await this.checkAvailability())) {
+      return false;
+    }
+
+    try {
+      return await this.adapter.deleteLongTermMemory(id);
+    } catch (err) {
+      console.warn('Memory deleteLongTermMemory failed:', err);
+      return false;
+    }
+  }
+
+  async searchMemoryByQuery(
+    query: string,
+    filters?: {
+      categories?: string[];
+      limit?: number;
+    }
+  ): Promise<Array<{ id: string; content: string; category: string; score: number }>> {
+    if (!(await this.checkAvailability())) {
+      return [];
+    }
+
+    try {
+      return await this.adapter.searchMemoryByQuery(query, filters);
+    } catch (err) {
+      console.warn('Memory searchMemoryByQuery failed:', err);
+      return [];
     }
   }
 }

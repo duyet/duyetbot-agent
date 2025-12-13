@@ -13,33 +13,87 @@
  * );
  *
  * await tracker.thinking(1);
- * // Shows: "🤔 Thinking... (step 1)"
+ * // Shows: "⏺ Pondering..."
+ *
+ * await tracker.thinkingWithText('Let me search for information...');
+ * // Shows: "⏺ Let me search for information..."
  *
  * await tracker.toolStart('search', 1);
  * // Shows:
- * // 🤔 Thinking... (step 1)
- * // 🔧 Running search...
- *
- * await tracker.toolComplete('search', {
- *   success: true,
- *   durationMs: 234,
- * }, 1);
- * // Shows:
- * // 🤔 Thinking... (step 1)
- * // ✅ search completed (234ms)
+ * // ⏺ Let me search for information...
+ * // ⏺ search(query: "...")
+ * //   ⎿ Running...
  * ```
  */
 
 import type { ProgressUpdate, ToolResult } from './types.js';
 
 /**
+ * Thinking rotator messages for variety during processing
+ * These show when the LLM is processing but hasn't returned actual text yet
+ */
+export const THINKING_ROTATOR_MESSAGES = [
+  'Pondering...',
+  'Thinking...',
+  'Processing...',
+  'Cogitating...',
+  'Ruminating...',
+  'Contemplating...',
+  'Analyzing...',
+  'Deliberating...',
+  'Musing...',
+  'Reasoning...',
+] as const;
+
+/**
+ * Get a random thinking message for variety
+ */
+export function getRandomThinkingMessage(): string {
+  const idx = Math.floor(Math.random() * THINKING_ROTATOR_MESSAGES.length);
+  return THINKING_ROTATOR_MESSAGES[idx] ?? 'Thinking...';
+}
+
+/**
+ * Format a thinking message with the standard prefix
+ *
+ * @param text - Optional actual reasoning text from LLM
+ * @returns Formatted thinking message with ⏺ prefix
+ */
+export function formatThinkingMessage(text?: string): string {
+  if (text && text.trim()) {
+    // Clean up common patterns from raw LLM output
+    let cleaned = text.trim();
+    // Remove leading "I" phrasing that's too personal
+    cleaned = cleaned.replace(/^I['']ll\s+/i, 'Let me ');
+    cleaned = cleaned.replace(/^I\s+will\s+/i, 'Will ');
+    cleaned = cleaned.replace(/^I\s+need\s+to\s+/i, 'Need to ');
+    // Truncate if too long (max 100 chars for display)
+    if (cleaned.length > 100) {
+      cleaned = cleaned.slice(0, 97) + '...';
+    }
+    return `⏺ ${cleaned}`;
+  }
+  // Use random rotator message
+  return `⏺ ${getRandomThinkingMessage()}`;
+}
+
+/**
  * Progress message templates for user-facing updates
+ *
+ * Note: thinking() no longer takes iteration number - use thinkingWithText() for actual content
  */
 export const PROGRESS_MESSAGES = {
-  thinking: (iteration: number) => `🤔 Thinking... (step ${iteration})`,
+  /** Generic thinking message (uses rotator) */
+  thinking: () => formatThinkingMessage(),
+  /** Thinking with actual LLM text */
+  thinkingWithText: (text: string) => formatThinkingMessage(text),
+  /** Tool starting execution */
   tool_start: (tool: string) => `🔧 Running ${tool}...`,
+  /** Tool completed successfully */
   tool_complete: (tool: string, durationMs: number) => `✅ ${tool} completed (${durationMs}ms)`,
+  /** Tool failed with error */
   tool_error: (tool: string, error: string) => `❌ ${tool} failed: ${error.slice(0, 50)}`,
+  /** Final response generation */
   responding: () => `📝 Generating response...`,
 };
 
@@ -75,14 +129,29 @@ export class ProgressTracker {
   }
 
   /**
-   * Record a thinking step
+   * Record a thinking step with rotator message
    *
-   * @param iteration - Step iteration number (1-indexed)
+   * @param iteration - Step iteration number (for tracking, not displayed)
    */
   async thinking(iteration: number): Promise<void> {
     await this.addUpdate({
       type: 'thinking',
-      message: PROGRESS_MESSAGES.thinking(iteration),
+      message: PROGRESS_MESSAGES.thinking(),
+      iteration,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Record a thinking step with actual LLM reasoning text
+   *
+   * @param text - The actual reasoning text from the LLM
+   * @param iteration - Step iteration number (for tracking)
+   */
+  async thinkingWithText(text: string, iteration: number): Promise<void> {
+    await this.addUpdate({
+      type: 'thinking',
+      message: PROGRESS_MESSAGES.thinkingWithText(text),
       iteration,
       timestamp: Date.now(),
     });

@@ -46,7 +46,8 @@ describe('createTransportAdapter', () => {
         timestamp: Date.now(),
       });
 
-      expect(editMessage).toHaveBeenCalledWith('🤔 Thinking... (step 1)');
+      // Verify behavior: thinking updates use ⏺ prefix with rotator messages (no step number)
+      expect(editMessage).toHaveBeenCalledWith(expect.stringMatching(/^⏺ \w+\.\.\.$/));
     });
 
     it('should handle tool_start updates', async () => {
@@ -305,7 +306,8 @@ describe('formatProgressUpdate', () => {
       timestamp: Date.now(),
     };
 
-    expect(formatProgressUpdate(update)).toBe('🤔 Thinking... (step 1)');
+    // Verify behavior: empty message triggers random rotator message with ⏺ prefix
+    expect(formatProgressUpdate(update)).toMatch(/^⏺ \w+\.\.\.$/);
   });
 
   it('should format tool_start updates', () => {

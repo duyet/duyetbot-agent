@@ -11,9 +11,13 @@ import type { ToolResult } from '../types.js';
 
 describe('PROGRESS_MESSAGES', () => {
   describe('thinking', () => {
-    it('should format thinking message with iteration', () => {
-      expect(PROGRESS_MESSAGES.thinking(1)).toBe('🤔 Thinking... (step 1)');
-      expect(PROGRESS_MESSAGES.thinking(5)).toBe('🤔 Thinking... (step 5)');
+    it('should return thinking message with random rotator', () => {
+      // Verify behavior: thinking() returns ⏺ prefix with one of the rotator messages
+      expect(PROGRESS_MESSAGES.thinking()).toMatch(/^⏺ \w+\.\.\.$/);
+      // Call multiple times - should always match the pattern (random variety)
+      for (let i = 0; i < 5; i++) {
+        expect(PROGRESS_MESSAGES.thinking()).toMatch(/^⏺ \w+\.\.\.$/);
+      }
     });
   });
 
@@ -90,7 +94,8 @@ describe('ProgressTracker', () => {
       const updates = tracker.getAll();
       expect(updates.length).toBe(1);
       expect(updates[0].type).toBe('thinking');
-      expect(updates[0].message).toBe('🤔 Thinking... (step 1)');
+      // Verify behavior: message uses ⏺ prefix with rotator text (no step number)
+      expect(updates[0].message).toMatch(/^⏺ \w+\.\.\.$/);
       expect(updates[0].iteration).toBe(1);
       expect(updates[0].timestamp).toBeGreaterThan(0);
     });
@@ -184,7 +189,12 @@ describe('ProgressTracker', () => {
       await tracker.toolStart('search', 1);
 
       const formatted = tracker.format();
-      expect(formatted).toBe('🤔 Thinking... (step 1)\n🔧 Running search...');
+      const lines = formatted.split('\n');
+      expect(lines.length).toBe(2);
+      // First line should be thinking message with ⏺ prefix
+      expect(lines[0]).toMatch(/^⏺ \w+\.\.\.$/);
+      // Second line should be tool start message
+      expect(lines[1]).toBe('🔧 Running search...');
     });
 
     it('should respect maxDisplayedUpdates limit', async () => {
@@ -200,7 +210,8 @@ describe('ProgressTracker', () => {
       expect(lines.length).toBe(2);
       // Should show last 2 updates
       expect(lines[0]).toBe('✅ search completed (100ms)');
-      expect(lines[1]).toBe('🤔 Thinking... (step 2)');
+      // Second line should be thinking message with ⏺ prefix
+      expect(lines[1]).toMatch(/^⏺ \w+\.\.\.$/);
     });
 
     it('should return empty string when no updates', () => {
@@ -268,7 +279,8 @@ describe('ProgressTracker', () => {
       await tracker.thinking(1);
 
       expect(onUpdate).toHaveBeenCalledTimes(1);
-      expect(onUpdate).toHaveBeenCalledWith('🤔 Thinking... (step 1)');
+      // Verify behavior: onUpdate receives formatted thinking message with ⏺ prefix
+      expect(onUpdate).toHaveBeenCalledWith(expect.stringMatching(/^⏺ \w+\.\.\.$/));
     });
 
     it('should call onUpdate with accumulated updates', async () => {
@@ -279,7 +291,9 @@ describe('ProgressTracker', () => {
       await tracker.toolStart('search', 1);
 
       expect(onUpdate).toHaveBeenCalledTimes(2);
-      expect(onUpdate).toHaveBeenLastCalledWith('🤔 Thinking... (step 1)\n🔧 Running search...');
+      // Verify behavior: last call includes thinking message + tool start
+      const lastCall = onUpdate.mock.calls[onUpdate.mock.calls.length - 1][0];
+      expect(lastCall).toMatch(/^⏺ \w+\.\.\.\n🔧 Running search\.\.\.$/);
     });
 
     it('should handle async onUpdate callback', async () => {
@@ -306,7 +320,8 @@ describe('createProgressTracker', () => {
     const tracker = createProgressTracker(editMessage);
     await tracker.thinking(1);
 
-    expect(editMessage).toHaveBeenCalledWith('🤔 Thinking... (step 1)');
+    // Verify behavior: tracker calls editMessage with ⏺ prefix and one of the rotator messages
+    expect(editMessage).toHaveBeenCalledWith(expect.stringMatching(/^⏺ \w+\.\.\.$/));
   });
 
   it('should pass through options', async () => {

@@ -9,8 +9,32 @@ import { D1Storage } from './storage/d1.js';
 import { authenticate, authenticateSchema } from './tools/authenticate.js';
 import { getMemory, getMemorySchema } from './tools/get-memory.js';
 import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
+import {
+  deleteLongTermMemory,
+  deleteLongTermMemorySchema,
+  getLongTermMemory,
+  getLongTermMemorySchema,
+  saveLongTermMemory,
+  saveLongTermMemorySchema,
+  updateLongTermMemory,
+  updateLongTermMemorySchema,
+} from './tools/long-term-memory.js';
+import {
+  searchMemory as searchMemoryTool,
+  searchMemorySchema as searchMemoryToolSchema,
+} from './tools/memory-search.js';
 import { saveMemory, saveMemorySchema } from './tools/save-memory.js';
 import { searchMemory, searchMemorySchema } from './tools/search-memory.js';
+import {
+  deleteShortTermMemory,
+  deleteShortTermMemorySchema,
+  getShortTermMemory,
+  getShortTermMemorySchema,
+  listShortTermMemory,
+  listShortTermMemorySchema,
+  setShortTermMemory,
+  setShortTermMemorySchema,
+} from './tools/short-term-memory.js';
 import type { Env } from './types.js';
 
 // Export MCP agent for Durable Object binding
@@ -118,6 +142,130 @@ app.post('/api/sessions/list', async (c: any) => {
     const d1Storage = new D1Storage(c.env.DB);
     const user = c.get('user') as { userId: string };
     const result = await listSessions(input, d1Storage, user.userId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// Short-term memory endpoints
+app.post('/api/memory/short-term/set', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = setShortTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const user = c.get('user') as { userId: string };
+    const result = await setShortTermMemory(input, d1Storage, user.userId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.post('/api/memory/short-term/get', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = getShortTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await getShortTermMemory(input, d1Storage);
+    return c.json(result || { error: 'Not found' });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.post('/api/memory/short-term/list', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = listShortTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await listShortTermMemory(input, d1Storage);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.post('/api/memory/short-term/delete', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = deleteShortTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await deleteShortTermMemory(input, d1Storage);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// Long-term memory endpoints
+app.post('/api/memory/long-term/save', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = saveLongTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const user = c.get('user') as { userId: string };
+    const result = await saveLongTermMemory(input, d1Storage, user.userId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.post('/api/memory/long-term/get', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = getLongTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const user = c.get('user') as { userId: string };
+    const result = await getLongTermMemory(input, d1Storage, user.userId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.post('/api/memory/long-term/update', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = updateLongTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await updateLongTermMemory(input, d1Storage);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+app.post('/api/memory/long-term/delete', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = deleteLongTermMemorySchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await deleteLongTermMemory(input, d1Storage);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// Memory search endpoint
+app.post('/api/memory/search', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = searchMemoryToolSchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const user = c.get('user') as { userId: string };
+    const result = await searchMemoryTool(input, d1Storage, user.userId);
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

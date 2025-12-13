@@ -28,9 +28,13 @@ export {
   type DebugAccumulator,
   type DebugToolCall,
   type ExecutionContext,
+  type LongTermMemoryItem,
+  type MemorySearchResultItem,
   type OutputFormat,
   type Platform,
+  type PreloadedMemoryContext,
   parseModeToOutputFormat,
   recordAgentSpan,
   recordToolCall,
+  type ShortTermMemoryItem,
 } from './context.js';

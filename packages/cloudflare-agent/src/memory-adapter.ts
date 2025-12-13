@@ -57,6 +57,46 @@ export interface SessionInfo {
 }
 
 /**
+ * Short-term memory entry
+ */
+export interface ShortTermMemoryEntry {
+  key: string;
+  value: string;
+  expiresAt: number;
+}
+
+/**
+ * Long-term memory entry
+ */
+export interface LongTermMemoryEntry {
+  id: string;
+  category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note';
+  key: string;
+  value: string;
+  importance: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+/**
+ * Result from short-term memory save
+ */
+export interface SaveShortTermMemoryResult {
+  key: string;
+  expiresAt: number;
+  success: boolean;
+}
+
+/**
+ * Result from long-term memory save
+ */
+export interface SaveLongTermMemoryResult {
+  id: string;
+  created: boolean;
+  success: boolean;
+}
+
+/**
  * Memory adapter interface for ChatAgent persistence
  */
 export interface MemoryAdapter {
@@ -93,6 +133,79 @@ export interface MemoryAdapter {
     offset?: number;
     state?: 'active' | 'paused' | 'completed';
   }): Promise<{ sessions: SessionInfo[]; total: number }>;
+
+  /**
+   * Save a short-term memory item (session-scoped, with TTL)
+   */
+  saveShortTermMemory?(
+    sessionId: string,
+    key: string,
+    value: string,
+    ttlSeconds?: number
+  ): Promise<SaveShortTermMemoryResult>;
+
+  /**
+   * Get a short-term memory item by key
+   */
+  getShortTermMemory?(sessionId: string, key: string): Promise<ShortTermMemoryEntry | null>;
+
+  /**
+   * List all short-term memory items for a session
+   */
+  listShortTermMemory?(sessionId: string): Promise<ShortTermMemoryEntry[]>;
+
+  /**
+   * Delete a short-term memory item
+   */
+  deleteShortTermMemory?(sessionId: string, key: string): Promise<boolean>;
+
+  /**
+   * Save a long-term memory item (persistent)
+   */
+  saveLongTermMemory?(
+    category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note',
+    key: string,
+    value: string,
+    importance?: number,
+    metadata?: Record<string, unknown>
+  ): Promise<SaveLongTermMemoryResult>;
+
+  /**
+   * Get long-term memory items by category and/or key
+   */
+  getLongTermMemory?(filters?: {
+    category?: 'fact' | 'preference' | 'pattern' | 'decision' | 'note';
+    key?: string;
+    limit?: number;
+  }): Promise<LongTermMemoryEntry[]>;
+
+  /**
+   * Update a long-term memory item
+   */
+  updateLongTermMemory?(
+    id: string,
+    updates: {
+      value?: string;
+      importance?: number;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<boolean>;
+
+  /**
+   * Delete a long-term memory item
+   */
+  deleteLongTermMemory?(id: string): Promise<boolean>;
+
+  /**
+   * Search memory using natural language query
+   */
+  searchMemoryByQuery?(
+    query: string,
+    filters?: {
+      categories?: string[];
+      limit?: number;
+    }
+  ): Promise<Array<{ id: string; content: string; category: string; score: number }>>;
 }
 
 /**

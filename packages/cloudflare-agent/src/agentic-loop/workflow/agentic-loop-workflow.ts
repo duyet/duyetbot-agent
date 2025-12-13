@@ -135,15 +135,15 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
           },
           // Remove return type annotation to avoid Serializable<T> type checking
           async () => {
-            // 1. Report thinking progress
+            // 1. Report initial thinking progress (random rotator message)
             await this.reportProgress(progressCallback, {
               type: 'thinking',
               iteration,
-              message: `🤔 Thinking... (step ${iteration + 1}/${maxIterations})`,
+              message: '', // Empty message triggers rotator in formatWorkflowProgress
               timestamp: Date.now(),
             });
 
-            // 2. Call LLM with current messages (thinking step tracked after LLM call with actual content)
+            // 2. Call LLM with current messages
             const loopMessages = messages.map(
               (m) =>
                 ({
@@ -168,11 +168,21 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
               totalTokens.output += llmResponse.usage.outputTokens;
             }
 
-            // Track thinking step with actual LLM content (text before tool calls)
+            // 2b. Update with actual LLM reasoning text (if available and different from tool calls)
+            if (llmResponse.content && llmResponse.content.trim()) {
+              await this.reportProgress(progressCallback, {
+                type: 'thinking',
+                iteration,
+                message: llmResponse.content, // Actual LLM reasoning
+                timestamp: Date.now(),
+              });
+            }
+
+            // Track thinking step with actual LLM content
             debugSteps.push({
               iteration,
               type: 'thinking',
-              thinking: llmResponse.content || `Step ${iteration + 1}`,
+              thinking: llmResponse.content || 'Processing',
             });
 
             // 3. Add assistant message to history
@@ -541,31 +551,96 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
       error?: string;
     }>
   > {
+    // Track parallel tools and their states
+    const parallelToolsMap = new Map<
+      string,
+      {
+        id: string;
+        name: string;
+        argsStr: string;
+        result?: {
+          status: 'completed' | 'error';
+          summary: string;
+          durationMs?: number;
+        };
+      }
+    >();
+
+    // Initialize map with all tools
+    for (const tc of toolCalls) {
+      parallelToolsMap.set(tc.id, {
+        id: tc.id,
+        name: tc.name,
+        argsStr: this.formatToolArgs(tc.arguments),
+      });
+    }
+
+    // Report parallel tools start (only if multiple tools)
+    if (toolCalls.length > 1) {
+      await this.reportProgress(progressCallback, {
+        type: 'parallel_tools_start',
+        iteration,
+        message: `⏺ Running ${toolCalls.length} tools in parallel...`,
+        parallelTools: Array.from(parallelToolsMap.values()),
+        timestamp: Date.now(),
+      });
+    }
+
     const results = await Promise.all(
       toolCalls.map(async (tc) => {
         const startTime = Date.now();
 
-        // Report tool start
-        await this.reportProgress(progressCallback, {
-          type: 'tool_start',
-          iteration,
-          message: `🔧 Running ${tc.name}...`,
-          toolName: tc.name,
-          timestamp: Date.now(),
-        });
+        // Report tool start (only for single tools, parallel is reported above)
+        if (toolCalls.length === 1) {
+          await this.reportProgress(progressCallback, {
+            type: 'tool_start',
+            iteration,
+            message: `🔧 Running ${tc.name}...`,
+            toolName: tc.name,
+            toolArgs: tc.arguments,
+            timestamp: Date.now(),
+          });
+        }
 
         // Find tool
         const tool = tools.find((t) => t.name === tc.name);
         if (!tool) {
           const durationMs = Date.now() - startTime;
-          await this.reportProgress(progressCallback, {
-            type: 'tool_error',
-            iteration,
-            message: `❌ Tool ${tc.name} not found`,
-            toolName: tc.name,
-            durationMs,
-            timestamp: Date.now(),
+
+          // Update parallel tools map
+          parallelToolsMap.set(tc.id, {
+            ...parallelToolsMap.get(tc.id)!,
+            result: {
+              status: 'error',
+              summary: 'Tool not found',
+              durationMs,
+            },
           });
+
+          // Report error
+          if (toolCalls.length === 1) {
+            await this.reportProgress(progressCallback, {
+              type: 'tool_error',
+              iteration,
+              message: `❌ Tool ${tc.name} not found`,
+              toolName: tc.name,
+              toolArgs: tc.arguments,
+              toolResult: 'Tool not found',
+              durationMs,
+              timestamp: Date.now(),
+            });
+          } else {
+            await this.reportProgress(progressCallback, {
+              type: 'parallel_tool_complete',
+              iteration,
+              message: `Tool ${tc.name} error`,
+              toolCallId: tc.id,
+              toolName: tc.name,
+              durationMs,
+              parallelTools: Array.from(parallelToolsMap.values()),
+              timestamp: Date.now(),
+            });
+          }
 
           return {
             toolCallId: tc.id,
@@ -593,15 +668,41 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
           );
           const durationMs = Date.now() - startTime;
 
-          // Report success
-          await this.reportProgress(progressCallback, {
-            type: 'tool_complete',
-            iteration,
-            message: `✅ ${tc.name} completed (${durationMs}ms)`,
-            toolName: tc.name,
-            durationMs,
-            timestamp: Date.now(),
+          // Update parallel tools map
+          const summary = this.summarizeToolResult(result.output);
+          parallelToolsMap.set(tc.id, {
+            ...parallelToolsMap.get(tc.id)!,
+            result: {
+              status: 'completed',
+              summary,
+              durationMs,
+            },
           });
+
+          // Report success
+          if (toolCalls.length === 1) {
+            await this.reportProgress(progressCallback, {
+              type: 'tool_complete',
+              iteration,
+              message: `✅ ${tc.name} completed (${durationMs}ms)`,
+              toolName: tc.name,
+              toolArgs: tc.arguments,
+              toolResult: result.output,
+              durationMs,
+              timestamp: Date.now(),
+            });
+          } else {
+            await this.reportProgress(progressCallback, {
+              type: 'parallel_tool_complete',
+              iteration,
+              message: `Tool ${tc.name} completed`,
+              toolCallId: tc.id,
+              toolName: tc.name,
+              durationMs,
+              parallelTools: Array.from(parallelToolsMap.values()),
+              timestamp: Date.now(),
+            });
+          }
 
           return {
             toolCallId: tc.id,
@@ -616,14 +717,40 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
           const durationMs = Date.now() - startTime;
           const errorMessage = error instanceof Error ? error.message : String(error);
 
-          await this.reportProgress(progressCallback, {
-            type: 'tool_error',
-            iteration,
-            message: `❌ ${tc.name} failed: ${errorMessage}`,
-            toolName: tc.name,
-            durationMs,
-            timestamp: Date.now(),
+          // Update parallel tools map
+          parallelToolsMap.set(tc.id, {
+            ...parallelToolsMap.get(tc.id)!,
+            result: {
+              status: 'error',
+              summary: errorMessage,
+              durationMs,
+            },
           });
+
+          // Report error
+          if (toolCalls.length === 1) {
+            await this.reportProgress(progressCallback, {
+              type: 'tool_error',
+              iteration,
+              message: `❌ ${tc.name} failed: ${errorMessage}`,
+              toolName: tc.name,
+              toolArgs: tc.arguments,
+              toolResult: errorMessage,
+              durationMs,
+              timestamp: Date.now(),
+            });
+          } else {
+            await this.reportProgress(progressCallback, {
+              type: 'parallel_tool_complete',
+              iteration,
+              message: `Tool ${tc.name} error`,
+              toolCallId: tc.id,
+              toolName: tc.name,
+              durationMs,
+              parallelTools: Array.from(parallelToolsMap.values()),
+              timestamp: Date.now(),
+            });
+          }
 
           return {
             toolCallId: tc.id,
@@ -791,5 +918,47 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
     } catch {
       return { raw: str };
     }
+  }
+
+  /**
+   * Format tool arguments for display in parallel tools view
+   */
+  private formatToolArgs(args: JsonRecord): string {
+    if (Object.keys(args).length === 0) {
+      return '';
+    }
+
+    const pairs = Object.entries(args)
+      .map(([key, value]) => {
+        if (typeof value === 'string') {
+          const truncated = value.length > 50 ? `${value.slice(0, 47)}...` : value;
+          return `${key}: "${truncated}"`;
+        }
+        return `${key}: ${JSON.stringify(value)}`;
+      })
+      .slice(0, 2); // Show max 2 args
+
+    if (Object.keys(args).length > 2) {
+      pairs.push(`...`);
+    }
+
+    return pairs.join(', ');
+  }
+
+  /**
+   * Summarize tool result for display in parallel tools view
+   */
+  private summarizeToolResult(output: string): string {
+    if (!output) {
+      return 'No output';
+    }
+
+    // Truncate to first 60 chars or first sentence
+    const firstSentence = output.split('\n')[0] || output;
+    if (firstSentence.length > 60) {
+      return `${firstSentence.slice(0, 60)}...`;
+    }
+
+    return firstSentence;
   }
 }

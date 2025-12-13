@@ -37,128 +37,47 @@ const TELEGRAM_BASE_GUIDELINES = [
 /**
  * Telegram HTML formatting reference for LLM responses
  *
- * CRITICAL: This mode requires PURE HTML. NO markdown allowed under any circumstances.
- * Models trained on markdown (Claude, Ministral) must force HTML output.
+ * The system automatically converts markdown and HTML to safe Telegram HTML format.
+ * LLMs should use simple markdown or plain text - the converter handles the rest.
  *
- * Primary issue: Models default to markdown when they see backticks or asterisks.
- * Solution: Use HTML tags ONLY. Never use markdown patterns.
+ * This approach is more reliable than forcing HTML output because:
+ * 1. LLMs naturally produce markdown (their training data)
+ * 2. The converter properly escapes special characters
+ * 3. Links are preserved and converted safely
  */
 const TELEGRAM_HTML_FORMAT = `
-<format_reasoning>
-BEFORE generating any response, verify your format choice:
-1. Am I in HTML mode? YES - use ONLY HTML tags
-2. For code: use <code> for inline, <pre> for blocks - NEVER backticks
-3. For emphasis: use <b> for bold, <i> for italic - NEVER asterisks
-4. For lists: use hyphen (-) for bullets, numbers (1. 2. 3.) for numbered - NO indentation or nesting
-</format_reasoning>
+<response_format>
+FORMAT: Use simple markdown or plain text. The system converts it automatically.
 
-<html_format_priority>
-GOAL: Respond using ONLY HTML tags. Never use Markdown syntax.
+SUPPORTED FORMATTING (use these naturally):
+- **bold** or __bold__ for emphasis
+- *italic* or _italic_ for terms
+- \`inline code\` for commands or code snippets
+- \`\`\`
+code blocks
+\`\`\` for multi-line code
+- [link text](URL) for hyperlinks
 
-CONSTRAINT: HTML mode means PURE HTML. This is not a suggestion - it is MANDATORY.
-Markdown syntax (**, **, \`\`\`, __, ~~) will BREAK the format and fail validation.
+LISTS (flat only, no nesting):
+- Use hyphen (-) for bullet lists
+- Use numbers (1. 2. 3.) for numbered lists
+- NEVER nest bullets - keep lists flat
 
-DELIVERABLE: Every response must pass these checks:
-- Zero markdown asterisks (**bold** or *italic*) → use <b></b> and <i></i>
-- Zero markdown backticks (\`inline\` or \`\`\`) → use <code></code> and <pre></pre>
-- Zero markdown underscores (__text__) → use <u></u>
-- All special HTML characters properly escaped (&lt;, &gt;, &amp;)
-</html_format_priority>
+EXAMPLE (correct flat list):
+- **Imperative** (C, Pascal): Focuses on how to perform tasks
+- **Declarative** (Haskell, SQL): Focuses on what to achieve
 
-<html_tags_reference>
-CORRECT HTML TAGS (use these):
-- <b>bold</b> for emphasis
-- <i>italic</i> for titles or terms
-- <u>underlined</u> for underlined text
-- <code>inline code</code> for commands, variables, or short code
-- <pre>multi-line code block</pre> for code
-- <pre><code class="language-python">def hello(): pass</code></pre> for syntax-highlighted code blocks
-- <a href="https://example.com">link text</a> for hyperlinks
-- <blockquote>quoted text</blockquote> for quotes
-</html_tags_reference>
-
-<list_formatting>
-LIST RULES (critical for mobile readability):
-
-For bullet lists, use hyphen (-):
-- First item
-- Second item
-- Third item
-
-For numbered lists, use plain numbers:
-1. First item
-2. Second item
-3. Third item
-
-CRITICAL: NEVER nest bullets or create sub-items with indentation.
-Telegram mobile renders nested items poorly.
-
-✗ WRONG (nested bullets):
-- Main category
-  - Sub item 1
-  - Sub item 2
-
-✓ CORRECT (flat with inline detail):
-- <b>Main category</b>: Sub item 1, Sub item 2
-- <b>Another category</b>: Detail here
-
-✗ WRONG (indented examples):
-- Imperative
-  - Example: C, Pascal
-
-✓ CORRECT (flat structure):
-- <b>Imperative</b> (C, Pascal): Focuses on how to perform tasks
-- <b>Declarative</b> (Haskell, SQL): Focuses on what to achieve
-</list_formatting>
-
-<forbidden_markdown_patterns>
-FORBIDDEN (these will break formatting):
-✗ **bold** or **bold text** → use <b>bold text</b> instead
-✗ *italic* or *italic text* → use <i>italic text</i> instead
-✗ __underline__ or __text__ → use <u>text</u> instead
-✗ ~~strikethrough~~ → use <s>strikethrough</s> instead
-✗ \`inline code\` → use <code>inline code</code> instead
-✗ \`\`\`python
-    code block
-\`\`\` → use <pre><code class="language-python">code block</code></pre> instead
-✗ [link](url) → use <a href="url">link</a> instead
-
-COMMON MISTAKES TO AVOID:
-✗ "Use **bold** for emphasis" → WRONG: contains markdown
-✓ "Use <b>bold</b> for emphasis" → CORRECT: HTML only
-
-✗ "Here's a \`command\`:" → WRONG: backticks trigger markdown parsing
-✓ "Here's a <code>command</code>:" → CORRECT: HTML tag
-
-✗ "Reverse a string: \`s[::-1]\`" → WRONG: backticks
-✓ "Reverse a string: <code>s[::-1]</code>" → CORRECT: HTML code tag
-
-✗ "\`\`\`python
-def hello():
-    pass
-\`\`\`" → WRONG: markdown code fence
-✓ "<pre><code class="language-python">def hello():
-    pass</code></pre>" → CORRECT: HTML pre/code tags
-</forbidden_markdown_patterns>
-
-<character_escaping>
-Escape these characters in regular text (but NOT inside HTML tags):
-- < becomes &lt;
-- > becomes &gt;
-- & becomes &amp;
-
-EXAMPLES:
-✓ "Array<T> &lt;T&gt; means generic" → Correctly escaped angle brackets outside tags
-✓ "<code>Array&lt;T&gt;</code>" → Inside <code> tag, special chars are also escaped
-✓ "Cost: $5 &amp; benefits" → Use &amp; for standalone ampersand
-</character_escaping>
+DO NOT USE:
+- Nested bullets or indented sub-items
+- Complex HTML tags (system handles conversion)
+- Tables (not supported on mobile)
+</response_format>
 
 <mobile_optimization>
-Mobile-specific HTML practices:
-- Prefer <code>single line commands</code> for short snippets
-- Use <pre> for multi-line code (3+ lines)
-- Keep <b> and <i> usage minimal - one emphasis per paragraph
-- Use line breaks naturally, don't fill lines beyond 60 chars when possible
+- Keep responses concise for mobile reading
+- Short paragraphs (2-3 sentences max)
+- Inline code for short snippets, code blocks for 3+ lines
+- Progressive disclosure: answer first, offer to expand
 </mobile_optimization>
 `;
 
