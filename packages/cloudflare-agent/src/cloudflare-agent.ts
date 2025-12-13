@@ -3614,17 +3614,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Group by iteration and format
       for (const entry of history) {
         if (entry.type === 'thinking') {
-          // Extract thinking verb and step info from message like "🤔 Processing... (step 3/100)"
-          const stepMatch = entry.message.match(/step (\d+)\/(\d+)/);
-          const stepInfo = stepMatch
-            ? `step ${stepMatch[1]}/${stepMatch[2]}`
-            : `step ${entry.iteration + 1}`;
+          // Show step number only (not /maxIterations)
+          const stepNum = entry.iteration + 1;
 
           // Extract the thinking verb (Thinking, Processing, Pondering, etc.) from the message
           // Message format: "🤔 Processing... (step 3/100)" or just the verb
           const verbMatch = entry.message.match(/🤔\s*(\w+)/);
           const thinkingVerb = verbMatch?.[1] || 'Thinking';
-          lines.push(`⏺ ${thinkingVerb} (${stepInfo})`);
+          lines.push(`⏺ ${thinkingVerb} (step ${stepNum})`);
         } else if (entry.type === 'tool_start' && entry.toolName) {
           // Tool starting - show as "Running..."
           lines.push(`  ⎿ Running ${entry.toolName}...`);
@@ -3740,14 +3737,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         });
 
         // Format final response with debug info
-        let finalResponse = result.response;
+        // Sanitize LLM response: convert <br> tags to newlines (Telegram HTML doesn't support <br>)
+        let finalResponse = result.response.replace(/<br\s*\/?>/gi, '\n');
 
         // Check if admin for debug footer
         const isAdmin = this.isAdminUser(workflow.chatId);
         if (isAdmin && result.success) {
           // Add debug footer for admin with workflow ID for debugging
           const footer = this.formatWorkflowDebugFooter(result, workflow.workflowId);
-          finalResponse = `${result.response}\n\n${footer}`;
+          finalResponse = `${finalResponse}\n\n${footer}`;
         }
 
         // Edit message with final response
@@ -3943,8 +3941,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 : '';
               lines.push(`  ⎿ ${step.toolName}${durationStr}`);
             } else if (step.type === 'thinking') {
-              // Optionally show thinking steps
-              lines.push(`  ⎿ 🤔 thinking`);
+              // Show actual thinking text if available, truncated for readability
+              const thinkingText = (step as { thinking?: string }).thinking;
+              if (thinkingText) {
+                // Truncate to first ~50 chars, remove newlines
+                const truncated = thinkingText.replace(/\n/g, ' ').slice(0, 50);
+                const ellipsis = thinkingText.length > 50 ? '...' : '';
+                lines.push(`  ⎿ 🤔 ${truncated}${ellipsis}`);
+              } else {
+                lines.push(`  ⎿ 🤔 thinking`);
+              }
             }
           }
         }
