@@ -4039,76 +4039,33 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Sanitize LLM response for Telegram HTML mode
      *
-     * Telegram's HTML parser is strict - any malformed tag causes the entire message
-     * to render as plain text. LLMs often produce HTML that doesn't conform to
-     * Telegram's supported subset.
+     * Telegram's HTML parser is EXTREMELY strict - any malformed tag, unclosed tag,
+     * or invalid nesting causes the ENTIRE message to render as plain text.
+     * LLMs produce inconsistent HTML that frequently breaks Telegram's parser.
      *
-     * Telegram supported tags:
-     * - <b>, <strong> - bold
-     * - <i>, <em> - italic
-     * - <u>, <ins> - underline
-     * - <s>, <strike>, <del> - strikethrough
-     * - <code> - inline code
-     * - <pre> - code block (with optional language attribute)
-     * - <a href="..."> - links
-     * - <blockquote> - quotes (with optional expandable attribute)
-     * - <tg-spoiler> - spoiler text
+     * Strategy: Strip ALL HTML from LLM response and escape special characters.
+     * Only our controlled debug footer (which we know is valid) uses HTML.
      *
-     * Strategy:
-     * 1. Convert <br> to newlines
-     * 2. Keep supported Telegram tags intact
-     * 3. Strip unsupported tags (remove tag but keep content)
-     * 4. Escape < and > that aren't part of valid tags
+     * This is safer than trying to preserve "supported" tags because:
+     * 1. LLMs produce malformed HTML (unclosed tags, invalid nesting)
+     * 2. Content inside tags may contain unescaped < > & characters
+     * 3. One bad tag breaks the entire message
      */
     private sanitizeLLMResponseForTelegram(response: string): string {
-      // 1. Convert <br> tags to newlines
+      // 1. Convert <br> tags to newlines before stripping
       let sanitized = response.replace(/<br\s*\/?>/gi, '\n');
 
-      // 2. Define supported Telegram HTML tags (case-insensitive)
-      // These tags will be preserved, all others stripped
-      const supportedTags = [
-        'b',
-        'strong',
-        'i',
-        'em',
-        'u',
-        'ins',
-        's',
-        'strike',
-        'del',
-        'code',
-        'pre',
-        'a',
-        'blockquote',
-        'tg-spoiler',
-      ];
+      // 2. Strip ALL HTML tags (keep content between tags)
+      sanitized = sanitized.replace(/<[^>]*>/g, '');
 
-      // 3. Build regex to match HTML tags
-      // This captures: tag name, whether it's a closing tag, and attributes
-      const tagRegex = /<\/?([a-zA-Z][a-zA-Z0-9-]*)\b[^>]*\/?>/gi;
+      // 3. Escape HTML special characters to prevent parsing issues
+      // These MUST be escaped for Telegram HTML mode
+      sanitized = sanitized
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
 
-      sanitized = sanitized.replace(tagRegex, (match, tagName) => {
-        const lowerTag = tagName.toLowerCase();
-        if (supportedTags.includes(lowerTag)) {
-          // Keep supported tags, but normalize some edge cases
-          // For <a> tags, ensure href is properly formatted
-          if (lowerTag === 'a') {
-            // Validate <a> tag has href attribute
-            if (!match.includes('href=')) {
-              return ''; // Strip <a> without href
-            }
-          }
-          return match;
-        }
-        // Strip unsupported tags (keep inner content by returning empty string)
-        return '';
-      });
-
-      // 4. Clean up any remaining problematic patterns
-      // - Remove empty tags that might have resulted from stripping
-      sanitized = sanitized.replace(/<([a-z]+)[^>]*>\s*<\/\1>/gi, '');
-
-      // 5. Clean up excessive whitespace
+      // 4. Clean up excessive whitespace from tag removal
       sanitized = sanitized.replace(/\n{3,}/g, '\n\n').trim();
 
       return sanitized;
