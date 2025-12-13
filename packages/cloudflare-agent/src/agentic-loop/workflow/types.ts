@@ -130,11 +130,42 @@ export interface ProgressCallbackConfig {
 // ============================================================================
 
 /**
+ * Information about a tool in parallel execution
+ */
+export interface ParallelToolInfo {
+  /** Unique tool call ID */
+  id: string;
+
+  /** Tool name */
+  name: string;
+
+  /** Stringified tool arguments for display */
+  argsStr: string;
+
+  /** Tool execution result (when completed) */
+  result?: {
+    /** Result status */
+    status: 'completed' | 'error';
+    /** Result summary */
+    summary: string;
+    /** Duration in ms */
+    durationMs?: number;
+  };
+}
+
+/**
  * Progress update sent to CloudflareAgent DO during execution
  */
 export interface WorkflowProgressUpdate {
   /** Type of progress event */
-  type: 'thinking' | 'tool_start' | 'tool_complete' | 'tool_error' | 'responding';
+  type:
+    | 'thinking'
+    | 'tool_start'
+    | 'tool_complete'
+    | 'tool_error'
+    | 'parallel_tools_start'
+    | 'parallel_tool_complete'
+    | 'responding';
 
   /** Current iteration (0-indexed) */
   iteration: number;
@@ -145,11 +176,23 @@ export interface WorkflowProgressUpdate {
   /** Tool name (for tool_* events) */
   toolName?: string;
 
+  /** Tool arguments for display (for tool_* events) */
+  toolArgs?: Record<string, unknown>;
+
+  /** Tool result for display (for tool_complete events) */
+  toolResult?: string;
+
   /** Duration in ms (for tool_complete/tool_error) */
   durationMs?: number;
 
   /** Timestamp of this update */
   timestamp: number;
+
+  /** Parallel tools info (for parallel_tools_start and parallel_tool_complete) */
+  parallelTools?: ParallelToolInfo[];
+
+  /** Tool call ID (for parallel_tool_complete) */
+  toolCallId?: string;
 }
 
 /**

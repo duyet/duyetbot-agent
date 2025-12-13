@@ -76,3 +76,76 @@ export interface SessionListItem {
   updated_at: number;
   message_count: number;
 }
+
+// Short-term memory types
+export interface ShortTermMemoryItem {
+  id: string;
+  session_id: string;
+  user_id: string;
+  key: string;
+  value: string;
+  expires_at: number;
+  created_at: number;
+  updated_at: number;
+}
+
+export interface ShortTermMemorySetResult {
+  id: string;
+  session_id: string;
+  key: string;
+  expires_at: number;
+}
+
+export interface ShortTermMemoryGetResult {
+  value: string;
+  expires_at: number;
+}
+
+export interface ShortTermMemoryListItem {
+  key: string;
+  value: string;
+  expires_at: number;
+  created_at: number;
+}
+
+// Long-term memory types
+export interface LongTermMemoryItem {
+  id: string;
+  user_id: string;
+  category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note';
+  key: string;
+  value: string;
+  importance: number;
+  source_session_id: string | null;
+  metadata: Record<string, unknown> | null;
+  created_at: number;
+  updated_at: number;
+  accessed_at: number;
+  access_count: number;
+}
+
+export interface LongTermMemorySaveResult {
+  id: string;
+  category: string;
+  key: string;
+  created: boolean;
+}
+
+export interface LongTermMemoryUpdateResult {
+  success: boolean;
+  updated_at: number;
+}
+
+// Memory search types
+export interface MemorySearchResultItem {
+  id: string;
+  content: string;
+  category: string;
+  score?: number;
+  type: 'short_term' | 'long_term';
+}
+
+export interface MemorySearchResult {
+  results: MemorySearchResultItem[];
+  total: number;
+}

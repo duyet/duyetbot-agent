@@ -4,13 +4,18 @@
  * Central export for all built-in tools available in the agentic loop.
  * Provides tool exports, factory functions, and helper utilities for tool management.
  *
- * Available tools:
+ * Available tools (built-in):
  * - plan: Task decomposition and planning
  * - research: Web search and information retrieval
- * - duyet_info: Personal information lookup via MCP (blog, CV, skills, contact)
  * - github: GitHub API operations
  * - subagent: Delegate independent subtasks
  * - request_approval: Request human approval
+ *
+ * Available MCP-sourced tools:
+ * - duyet__info: Personal information lookup via Duyet MCP (blog, CV, skills, contact)
+ * - memory__save: Save information to memory via Memory MCP
+ * - memory__recall: Retrieve information from memory via Memory MCP
+ * - memory__search: Search memory using natural language via Memory MCP
  */
 
 // ============================================================================
@@ -39,11 +44,42 @@ export { duyetMcpTool, duyetToolFilter, getFallbackResponse, inferMcpToolFromQue
 // TODO: Remove after verifying no code references memoryTool
 export { duyetMcpTool as memoryTool };
 
+import { memoryRecallTool, memorySaveTool, memorySearchTool } from './memory.js';
+export { memorySaveTool, memoryRecallTool, memorySearchTool };
+
 import { createGitHubTool, githubTool } from './github.js';
 export { createGitHubTool, githubTool };
 
 import { subagentTool } from './subagent.js';
 export { subagentTool };
+
+// ============================================================================
+// MCP Names Constants
+// ============================================================================
+
+/**
+ * MCP server names and tool names using <mcp>__<tool> format
+ */
+export const MCP_NAMES = {
+  MEMORY: 'memory',
+  DUYET: 'duyet',
+} as const;
+
+export const MCP_TOOL_NAMES = {
+  // Memory MCP tools
+  MEMORY_SAVE: 'memory__save',
+  MEMORY_RECALL: 'memory__recall',
+  MEMORY_SEARCH: 'memory__search',
+  // Duyet MCP tools
+  DUYET_INFO: 'duyet__info',
+} as const;
+
+/**
+ * Get all MCP tool names
+ */
+export function getMcpToolNames(): string[] {
+  return Object.values(MCP_TOOL_NAMES);
+}
 
 // ============================================================================
 // Type Definitions
@@ -101,6 +137,11 @@ export function createCoreTools(config?: CoreToolsConfig): LoopTool[] {
   tools.push(researchTool);
   tools.push(duyetMcpTool); // Duyet personal info via MCP
   tools.push(githubTool);
+
+  // Memory tools for session and persistent memory
+  tools.push(memorySaveTool);
+  tools.push(memoryRecallTool);
+  tools.push(memorySearchTool);
 
   if (config?.enableSubagents !== false && !config?.isSubagent) {
     tools.push(subagentTool);

@@ -43,7 +43,7 @@ describe('duyetMcpTool', () => {
 
   describe('tool metadata', () => {
     it('should have correct name', () => {
-      expect(duyetMcpTool.name).toBe('duyet_info');
+      expect(duyetMcpTool.name).toBe('duyet__info');
     });
 
     it('should have description mentioning Duyet', () => {

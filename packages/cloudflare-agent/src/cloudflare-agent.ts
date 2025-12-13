@@ -27,6 +27,7 @@ import {
 import type { Tool, ToolInput } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection, getAgentByName } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
+import { formatThinkingMessage, getRandomThinkingMessage } from './agentic-loop/progress.js';
 import { createCoreTools } from './agentic-loop/tools/index.js';
 import type { AgenticLoopWorkflowParams, SerializedTool } from './agentic-loop/workflow/types.js';
 import { serializeTools } from './agentic-loop/workflow/types.js';
@@ -60,6 +61,7 @@ import {
   type QuotedContext,
 } from './format.js';
 import { trimHistory } from './history.js';
+import { createMCPRegistry, type MCPRegistry } from './mcp-registry/index.js';
 import { AdminNotifier } from './notifications/admin-notifier.js';
 import type {
   CompleteBatchParams,
@@ -93,8 +95,21 @@ export interface WorkflowProgressEntry {
   iteration: number;
   message: string;
   toolName?: string;
+  toolArgs?: Record<string, unknown>;
+  toolResult?: string;
   durationMs?: number;
   timestamp: number;
+  parallelTools?: Array<{
+    id: string;
+    name: string;
+    argsStr: string;
+    result?: {
+      status: 'completed' | 'error';
+      summary: string;
+      durationMs?: number;
+    };
+  }>;
+  toolCallId?: string;
 }
 
 export interface ActiveWorkflowExecution {
@@ -415,6 +430,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _lastDebugContext: DebugContext | undefined; // Capture debug context for observability
     private _analyticsCollector?: AnalyticsCollector; // Analytics collector for persistent message storage
     private _lastUserMessageId?: string; // Track last user message ID for assistant response correlation
+    private _mcpRegistry: MCPRegistry = createMCPRegistry(); // MCP registry for tool discovery
 
     // ============================================
     // State DO Reporting (Fire-and-Forget)
@@ -3520,8 +3536,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             iteration: number;
             message: string;
             toolName?: string;
+            toolArgs?: Record<string, unknown>;
+            toolResult?: string;
             durationMs?: number;
             timestamp: number;
+            parallelTools?: Array<{
+              id: string;
+              name: string;
+              argsStr: string;
+              result?: {
+                status: 'completed' | 'error';
+                summary: string;
+                durationMs?: number;
+              };
+            }>;
+            toolCallId?: string;
           };
         };
 
@@ -3543,7 +3572,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           message: update.message,
           timestamp: update.timestamp,
           ...(update.toolName !== undefined && { toolName: update.toolName }),
+          ...(update.toolArgs !== undefined && { toolArgs: update.toolArgs }),
+          ...(update.toolResult !== undefined && { toolResult: update.toolResult }),
           ...(update.durationMs !== undefined && { durationMs: update.durationMs }),
+          ...(update.parallelTools !== undefined && { parallelTools: update.parallelTools }),
+          ...(update.toolCallId !== undefined && { toolCallId: update.toolCallId }),
         };
 
         // Accumulate progress history
@@ -3618,55 +3651,97 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      */
     private formatWorkflowProgress(history: WorkflowProgressEntry[]): string {
       if (history.length === 0) {
-        return '⏺ Ruminating...';
+        return `⏺ ${getRandomThinkingMessage()}`;
       }
 
       const lines: string[] = [];
 
+      // Track parallel tools for group display
+      let parallelToolsGroup: string | null = null;
+
       // Process history sequentially
       for (const entry of history) {
         if (entry.type === 'thinking') {
+          parallelToolsGroup = null; // Reset parallel group
           // Extract thinking message without emoji prefix
           let thinkingText = entry.message.replace(/^🤔\s*/, '').trim();
 
           // Remove step suffix like "(step 3/100)"
           thinkingText = thinkingText.replace(/\s*\(step\s+\d+\/\d+\)\s*$/i, '').trim();
 
-          // If it's just ellipsis like "Thinking...", use step number
-          if (/^(thinking|processing|pondering)\.{0,3}$/i.test(thinkingText)) {
-            lines.push(`⏺ Thinking (step ${entry.iteration + 1})`);
+          // Use centralized formatThinkingMessage for consistent formatting:
+          // - Empty or generic messages get random rotator (Pondering..., Ruminating..., etc.)
+          // - Actual LLM content is displayed with cleanup (e.g., "Let me search...")
+          if (/^(thinking|processing|pondering)\.{0,3}$/i.test(thinkingText) || !thinkingText) {
+            lines.push(formatThinkingMessage());
           } else {
-            lines.push(`⏺ ${thinkingText}`);
+            lines.push(formatThinkingMessage(thinkingText));
+          }
+        } else if (entry.type === 'parallel_tools_start' && entry.parallelTools) {
+          parallelToolsGroup = this.formatParallelTools(entry.parallelTools);
+          lines.push(parallelToolsGroup);
+        } else if (entry.type === 'parallel_tool_complete' && entry.parallelTools) {
+          // Update the parallel tools group display
+          parallelToolsGroup = this.formatParallelTools(entry.parallelTools);
+          // Find the last parallel tools display and replace it
+          const parallelIdx = this.findLastIndex(
+            lines,
+            (l: string) => l.includes('Running') && l.includes('tools in parallel')
+          );
+          if (parallelIdx >= 0) {
+            // Replace from this line onwards
+            lines.splice(parallelIdx);
+            lines.push(parallelToolsGroup);
+          } else {
+            lines.push(parallelToolsGroup);
           }
         } else if (entry.type === 'tool_start' && entry.toolName) {
-          // Tool starting - show tool name and "Running..."
-          lines.push(`⏺ ${entry.toolName}(...)`);
+          parallelToolsGroup = null; // Reset parallel group
+          // Tool starting - show tool name with truncated arguments
+          const argStr = this.formatToolArgs(entry.toolArgs);
+          lines.push(`⏺ ${entry.toolName}(${argStr})`);
           lines.push('  ⎿ Running...');
         } else if (entry.type === 'tool_complete' && entry.toolName) {
+          parallelToolsGroup = null; // Reset parallel group
           // Tool completed - find and update the "Running..." line
           const runningIdx = this.findLastIndex(lines, (l: string) => l.includes('⎿ Running...'));
           const durationStr = this.formatDuration(entry.durationMs ?? 0);
 
           if (runningIdx >= 0) {
-            // Replace "Running..." with completion
-            lines[runningIdx] = `  ⎿ ✅ (${durationStr})`;
+            // Replace "Running..." with completion + result preview
+            if (entry.toolResult) {
+              const resultPreview = this.formatToolResponse(entry.toolResult, 1);
+              lines[runningIdx] = `  ⎿ 🔍 ${resultPreview}`;
+            } else {
+              lines[runningIdx] = `  ⎿ ✅ (${durationStr})`;
+            }
           } else {
             // Fallback: add completion line
-            lines.push(`⏺ ${entry.toolName}(...)`);
-            lines.push(`  ⎿ ✅ (${durationStr})`);
+            const argStr = this.formatToolArgs(entry.toolArgs);
+            lines.push(`⏺ ${entry.toolName}(${argStr})`);
+            if (entry.toolResult) {
+              const resultPreview = this.formatToolResponse(entry.toolResult, 1);
+              lines.push(`  ⎿ 🔍 ${resultPreview}`);
+            } else {
+              lines.push(`  ⎿ ✅ (${durationStr})`);
+            }
           }
         } else if (entry.type === 'tool_error' && entry.toolName) {
+          parallelToolsGroup = null; // Reset parallel group
           // Tool failed - find and update the "Running..." line
           const runningIdx = this.findLastIndex(lines, (l: string) => l.includes('⎿ Running...'));
           const durationStr = entry.durationMs ? ` (${this.formatDuration(entry.durationMs)})` : '';
+          const errorText = entry.toolResult ? entry.toolResult.slice(0, 60) : 'Error';
 
           if (runningIdx >= 0) {
-            lines[runningIdx] = `  ⎿ ❌ Error${durationStr}`;
+            lines[runningIdx] = `  ⎿ ❌ ${errorText}${durationStr}`;
           } else {
-            lines.push(`⏺ ${entry.toolName}(...)`);
-            lines.push(`  ⎿ ❌ Error${durationStr}`);
+            const argStr = this.formatToolArgs(entry.toolArgs);
+            lines.push(`⏺ ${entry.toolName}(${argStr})`);
+            lines.push(`  ⎿ ❌ ${errorText}${durationStr}`);
           }
         } else if (entry.type === 'responding') {
+          parallelToolsGroup = null; // Reset parallel group
           lines.push('⏺ Generating response...');
         }
       }
@@ -3677,6 +3752,53 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         const truncated = lines.slice(-maxLines);
         return `...\n${truncated.join('\n')}`;
       }
+
+      return lines.join('\n');
+    }
+
+    /**
+     * Format parallel tools display with tree structure
+     * Shows tool names with arguments and results
+     */
+    private formatParallelTools(
+      tools: Array<{
+        id: string;
+        name: string;
+        argsStr: string;
+        result?: { status: string; summary: string; durationMs?: number };
+      }>
+    ): string {
+      if (tools.length === 0) {
+        return '';
+      }
+
+      const lines: string[] = [`⏺ Running ${tools.length} tools in parallel...`];
+
+      // Enumerate tools with proper type safety
+      tools.forEach((tool, i) => {
+        if (!tool) return;
+
+        const isLast = i === tools.length - 1;
+        const prefix = isLast ? '└─' : '├─';
+        const connector = isLast ? '   ' : '│  ';
+
+        // Tool name and args
+        const toolLine = `   ${prefix} ${tool.name}(${tool.argsStr})`;
+        lines.push(toolLine);
+
+        // Tool result or running state
+        if (tool.result) {
+          const statusIcon = tool.result.status === 'completed' ? '✅' : '❌';
+          const durationStr = tool.result.durationMs
+            ? ` (${this.formatDuration(tool.result.durationMs)})`
+            : '';
+          const resultLine = `   ${connector}⎿ ${statusIcon} ${tool.result.summary}${durationStr}`;
+          lines.push(resultLine);
+        } else {
+          const resultLine = `   ${connector}⎿ Running...`;
+          lines.push(resultLine);
+        }
+      });
 
       return lines.join('\n');
     }
@@ -4037,38 +4159,105 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
-     * Sanitize LLM response for Telegram HTML mode
+     * Convert LLM response to safe Telegram HTML
      *
-     * Telegram's HTML parser is EXTREMELY strict - any malformed tag, unclosed tag,
-     * or invalid nesting causes the ENTIRE message to render as plain text.
-     * LLMs produce inconsistent HTML that frequently breaks Telegram's parser.
+     * Telegram's HTML parser is EXTREMELY strict - any malformed tag causes
+     * the ENTIRE message to render as plain text. This function:
      *
-     * Strategy: Strip ALL HTML from LLM response and escape special characters.
-     * Only our controlled debug footer (which we know is valid) uses HTML.
+     * 1. Strips any existing HTML (LLMs produce inconsistent/broken HTML)
+     * 2. Converts common markdown patterns to safe Telegram HTML
+     * 3. Escapes all special characters properly
      *
-     * This is safer than trying to preserve "supported" tags because:
-     * 1. LLMs produce malformed HTML (unclosed tags, invalid nesting)
-     * 2. Content inside tags may contain unescaped < > & characters
-     * 3. One bad tag breaks the entire message
+     * Supported conversions:
+     * - **bold** or __bold__ → <b>bold</b>
+     * - *italic* or _italic_ → <i>italic</i>
+     * - `code` → <code>code</code>
+     * - ```code block``` → <pre>code block</pre>
+     * - [text](url) → <a href="url">text</a>
+     *
+     * Note: Links are extracted before HTML stripping to preserve URLs.
      */
     private sanitizeLLMResponseForTelegram(response: string): string {
-      // 1. Convert <br> tags to newlines before stripping
-      let sanitized = response.replace(/<br\s*\/?>/gi, '\n');
+      // Step 1: Extract and protect markdown links before any processing
+      // Pattern: [text](url) - capture both text and URL
+      // Using LINKPLACEHOLDER format (no underscores) to avoid matching bold/italic regexes
+      const linkPlaceholders: Array<{ placeholder: string; text: string; url: string }> = [];
+      let linkIndex = 0;
+      let processed = response.replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_match, text, url) => {
+        const placeholder = `LINKPLACEHOLDER${linkIndex++}`;
+        linkPlaceholders.push({ placeholder, text: String(text), url: String(url) });
+        return placeholder;
+      });
 
-      // 2. Strip ALL HTML tags (keep content between tags)
-      sanitized = sanitized.replace(/<[^>]*>/g, '');
+      // Step 2: Extract HTML link hrefs before stripping tags
+      // Pattern: <a href="url">text</a>
+      processed = processed.replace(
+        /<a\s+href=["']([^"']+)["'][^>]*>([^<]*)<\/a>/gi,
+        (_match, url, text) => {
+          const placeholder = `LINKPLACEHOLDER${linkIndex++}`;
+          linkPlaceholders.push({ placeholder, text: String(text), url: String(url) });
+          return placeholder;
+        }
+      );
 
-      // 3. Escape HTML special characters to prevent parsing issues
-      // These MUST be escaped for Telegram HTML mode
-      sanitized = sanitized
-        .replace(/&/g, '&amp;')
+      // Step 2b: Handle unclosed anchor tags (LLM sometimes forgets closing tag)
+      // Match: <a href="url">text (without closing </a>)
+      // This catches cases where the tag is left open at end of line or before another tag
+      processed = processed.replace(
+        /<a\s+href=["']([^"']+)["'][^>]*>([^<\n]*?)(?=\n|$|<|&)/gi,
+        (_match, url, text) => {
+          const linkText = text.trim() || url;
+          const placeholder = `LINKPLACEHOLDER${linkIndex++}`;
+          linkPlaceholders.push({ placeholder, text: String(linkText), url: String(url) });
+          return placeholder;
+        }
+      );
+
+      // Step 3: Convert <br> to newlines, strip all other HTML tags
+      processed = processed.replace(/<br\s*\/?>/gi, '\n');
+      processed = processed.replace(/<[^>]*>/g, '');
+
+      // Step 4: Escape HTML special characters FIRST (before adding our own tags)
+      // Must escape & first, then < and >
+      processed = processed
+        .replace(/&(?!amp;|lt;|gt;|quot;|#\d+;)/g, '&amp;') // Don't double-escape existing entities
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;');
 
-      // 4. Clean up excessive whitespace from tag removal
-      sanitized = sanitized.replace(/\n{3,}/g, '\n\n').trim();
+      // Step 5: Convert markdown to HTML tags (order matters!)
 
-      return sanitized;
+      // Code blocks (``` ... ```) - must be before inline code
+      processed = processed.replace(/```(\w*)\n?([\s\S]*?)```/g, (_match, _lang, code) => {
+        // Code inside pre doesn't need additional escaping since we already escaped above
+        return `<pre>${code.trim()}</pre>`;
+      });
+
+      // Inline code (`code`) - be careful not to match inside pre tags
+      processed = processed.replace(/`([^`\n]+)`/g, '<code>$1</code>');
+
+      // Bold (**text** or __text__) - must be before italic
+      processed = processed.replace(/\*\*([^*]+)\*\*/g, '<b>$1</b>');
+      processed = processed.replace(/__([^_]+)__/g, '<b>$1</b>');
+
+      // Italic (*text* or _text_) - be careful with underscores in words
+      // Only match *text* when surrounded by spaces or start/end of line
+      processed = processed.replace(/(?<![*\w])\*([^*\n]+)\*(?![*\w])/g, '<i>$1</i>');
+      // For underscores, only match when surrounded by whitespace to avoid matching words_with_underscores
+      processed = processed.replace(/(?<=\s|^)_([^_\n]+)_(?=\s|$|[.,!?])/g, '<i>$1</i>');
+
+      // Step 6: Restore link placeholders as proper <a> tags
+      for (const { placeholder, text, url } of linkPlaceholders) {
+        // Escape the text but keep URL as-is (URLs don't need escaping in href)
+        const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        // Escape quotes in URL for href attribute
+        const safeUrl = url.replace(/"/g, '&quot;');
+        processed = processed.replace(placeholder, `<a href="${safeUrl}">${safeText}</a>`);
+      }
+
+      // Step 7: Clean up excessive whitespace
+      processed = processed.replace(/\n{3,}/g, '\n\n').trim();
+
+      return processed;
     }
   };
 

@@ -38,7 +38,7 @@ import { agentRegistry } from './registry.js';
 agentRegistry.register({
   name: 'simple-agent',
   description:
-    'Handles simple questions that can be answered directly without tools. Used for greetings, explanations, general knowledge, help requests, and any query that does not require web search, code tools, or external APIs.',
+    'Handles simple questions that can be answered directly without tools. Used for greetings, explanations, general knowledge, help requests, list commands for MCPs and tools, and any query that does not require web search, code tools, or external APIs.',
   examples: [
     'hello',
     'hi there',
@@ -47,13 +47,21 @@ agentRegistry.register({
     'help',
     'what can you do',
     'thank you',
+    'list all mcps',
+    'list all tools',
+    'list tools from duyet',
   ],
   triggers: {
     patterns: [
       /^(hi|hello|hey|good\s+(morning|afternoon|evening))[\s!.]*$/i,
       /^(help|\/help|\?|what can you do)[\s?]*$/i,
       /^(thanks?|thank you|thx)[\s!.]*$/i,
+      // List command patterns
+      /^(list|show|what)\s+(all\s+)?(mcps?|mcp\s+servers?)/i,
+      /^(list|show|what)\s+(all\s+)?tools/i,
+      /^(list|show|what)\s+tools\s+(from|available\s+in)\s+\w+/i,
     ],
+    keywords: ['list', 'show', 'mcps', 'tools', 'available'],
     categories: ['general'],
   },
   capabilities: {

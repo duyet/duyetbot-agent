@@ -27,7 +27,7 @@
  * ```
  */
 
-import { createProgressTracker, type ProgressTracker } from './progress.js';
+import { createProgressTracker, formatThinkingMessage, type ProgressTracker } from './progress.js';
 import type { AgenticLoopConfig, ProgressUpdate, ToolResult } from './types.js';
 
 /**
@@ -211,6 +211,7 @@ export function createSimpleProgressCallback(
  * Format a progress update for display
  *
  * Converts a ProgressUpdate to a human-readable string.
+ * Uses the centralized formatThinkingMessage for thinking updates.
  *
  * @param update - The progress update to format
  * @returns Formatted string
@@ -218,7 +219,14 @@ export function createSimpleProgressCallback(
 export function formatProgressUpdate(update: ProgressUpdate): string {
   switch (update.type) {
     case 'thinking':
-      return `🤔 Thinking... (step ${update.iteration + 1})`;
+      // Use the message if it already contains actual content, otherwise use rotator
+      // Check if message starts with ⏺ (already formatted) or contains actual text
+      if (update.message && !update.message.includes('Thinking...')) {
+        return update.message.startsWith('⏺')
+          ? update.message
+          : formatThinkingMessage(update.message);
+      }
+      return formatThinkingMessage();
     case 'tool_start':
       return `🔧 Running ${update.toolName}...`;
     case 'tool_complete':

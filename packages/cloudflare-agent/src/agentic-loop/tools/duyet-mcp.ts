@@ -1,7 +1,7 @@
 /**
  * Duyet MCP Tool for Agentic Loop
  *
- * Provides access to Duyet's personal information via the MCP server at mcp.duyet.net.
+ * Provides access to Duyet's personal information via Duyet MCP server at mcp.duyet.net.
  * This tool handles queries about blog posts, CV, skills, experience, and contact info.
  *
  * Unlike the DuyetInfoAgent (DO-based), this tool executes within workflow steps
@@ -338,9 +338,9 @@ async function callMcpTool(
  * the query, but also accepts an explicit toolName parameter for precision.
  */
 export const duyetMcpTool: LoopTool = {
-  name: 'duyet_info',
+  name: 'duyet__info',
   description:
-    'Get information about Duyet including blog posts, CV, skills, experience, and contact info. Use for any queries about Duyet, his blog at blog.duyet.net, or personal/professional information.',
+    'Get information about Duyet including blog posts, CV, skills, experience, and contact info via Duyet MCP. Use for any queries about Duyet, his blog at blog.duyet.net, or personal/professional information.',
   parameters: {
     type: 'object',
     properties: {

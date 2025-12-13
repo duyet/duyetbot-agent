@@ -199,3 +199,4 @@ bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
 - [Cloudflare Agents Patterns](https://developers.cloudflare.com/agents/patterns/)
 - [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
+- whenever lint error, bun run check or type check error, launch senior engineer to fix it in background

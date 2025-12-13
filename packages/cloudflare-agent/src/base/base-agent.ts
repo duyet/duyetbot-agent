@@ -31,6 +31,12 @@ import {
   createSpanId as createSpanIdFn,
   recordAgentSpan as recordAgentSpanFn,
 } from '../execution/index.js';
+import {
+  formatMemoryContextForPrompt,
+  loadMemoryContext,
+  saveSessionSummary,
+} from '../memory/index.js';
+import type { MemoryAdapter } from '../memory-adapter.js';
 import type { LLMResponse, Message } from '../types.js';
 import type { BaseEnv, BaseState } from './base-types.js';
 
@@ -393,5 +399,118 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
       durationMs,
       parentSpanId: ctx.parentSpanId,
     });
+  }
+
+  /**
+   * Load memory context for the current user/session
+   *
+   * Fetches short-term and long-term memory relevant to the current execution.
+   * Updates ctx.memoryContext with loaded data. Gracefully degrades if memory
+   * service is unavailable.
+   *
+   * @param ctx - ExecutionContext to populate
+   * @param memoryAdapter - Memory adapter for fetching data
+   * @param sessionId - Session ID for memory lookup
+   * @returns Updated ExecutionContext with memory loaded
+   *
+   * @example
+   * ```typescript
+   * const ctx = await this.loadMemory(ctx, memoryAdapter, sessionId);
+   * // ctx.memoryContext now contains relevant memories
+   * ```
+   */
+  protected async loadMemory(
+    ctx: ExecutionContext,
+    memoryAdapter: MemoryAdapter,
+    sessionId: string
+  ): Promise<ExecutionContext> {
+    try {
+      const startTime = Date.now();
+      const updatedCtx = await loadMemoryContext(ctx, memoryAdapter, sessionId);
+      const durationMs = Date.now() - startTime;
+
+      logger.debug('[BaseAgent] Memory context loaded', {
+        spanId: ctx.spanId,
+        durationMs,
+        shortTermItems: updatedCtx.memoryContext?.shortTermItems.length || 0,
+        longTermItems: updatedCtx.memoryContext?.relevantLongTerm.length || 0,
+      });
+
+      return updatedCtx;
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to load memory context', {
+        spanId: ctx.spanId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      // Return context as-is - graceful degradation
+      return ctx;
+    }
+  }
+
+  /**
+   * Get memory context section for system prompt
+   *
+   * Formats loaded memory context into a string suitable for inclusion in
+   * the LLM system prompt.
+   *
+   * @param ctx - ExecutionContext containing memoryContext
+   * @returns Formatted memory section or empty string if no context
+   *
+   * @example
+   * ```typescript
+   * const memorySection = this.getMemoryPromptSection(ctx);
+   * const systemPrompt = `You are a helpful assistant.\n\n${memorySection}`;
+   * ```
+   */
+  protected getMemoryPromptSection(ctx: ExecutionContext): string {
+    try {
+      return formatMemoryContextForPrompt(ctx.memoryContext);
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to format memory prompt section', {
+        spanId: ctx.spanId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return '';
+    }
+  }
+
+  /**
+   * Save important information from this conversation to long-term memory
+   *
+   * Saves a summary of the conversation outcome or important facts learned
+   * to long-term memory for future reference.
+   *
+   * @param ctx - ExecutionContext containing conversation
+   * @param memoryAdapter - Memory adapter for saving data
+   * @param summary - Summary of conversation or outcome
+   *
+   * @example
+   * ```typescript
+   * await this.saveMemory(ctx, memoryAdapter, 'User prefers async/await over promises');
+   * ```
+   */
+  protected async saveMemory(
+    ctx: ExecutionContext,
+    memoryAdapter: MemoryAdapter,
+    summary: string
+  ): Promise<void> {
+    try {
+      const startTime = Date.now();
+      await saveSessionSummary(ctx, memoryAdapter, summary);
+      const durationMs = Date.now() - startTime;
+
+      logger.debug('[BaseAgent] Memory saved', {
+        spanId: ctx.spanId,
+        durationMs,
+        summaryLength: summary.length,
+      });
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to save memory', {
+        spanId: ctx.spanId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Non-critical operation - don't throw
+    }
   }
 }

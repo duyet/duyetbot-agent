@@ -82,6 +82,64 @@ export interface DebugAccumulator {
 }
 
 /**
+ * Short-term memory item (session-scoped)
+ */
+export interface ShortTermMemoryItem {
+  /** Unique key for this memory item */
+  key: string;
+  /** The memory value */
+  value: string;
+  /** When this memory expires (milliseconds since epoch) */
+  expiresAt: number;
+}
+
+/**
+ * Long-term memory item (persistent)
+ */
+export interface LongTermMemoryItem {
+  /** Unique ID for this memory item */
+  id: string;
+  /** Category of memory: fact, preference, pattern, decision, note */
+  category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note';
+  /** Unique key for this memory item */
+  key: string;
+  /** The memory value */
+  value: string;
+  /** Importance score 1-10 */
+  importance: number;
+  /** When created (milliseconds since epoch) */
+  createdAt: number;
+  /** When last updated (milliseconds since epoch) */
+  updatedAt: number;
+}
+
+/**
+ * Memory search result
+ */
+export interface MemorySearchResultItem {
+  /** ID of the memory item */
+  id: string;
+  /** Content of the memory item */
+  content: string;
+  /** Category of the memory item */
+  category: string;
+  /** Relevance score 0-1 */
+  score: number;
+}
+
+/**
+ * Preloaded memory context for agent execution
+ */
+export interface PreloadedMemoryContext {
+  /** Short-term memory items for this session */
+  shortTermItems: ShortTermMemoryItem[];
+  /** Relevant long-term memory items */
+  relevantLongTerm: LongTermMemoryItem[];
+  /** User preferences extracted from long-term memory */
+  userPreferences: Record<string, string>;
+}
+
+/**
  * Execution context for agent operations
  *
  * Provides complete context for a single user query through the agent system,
@@ -141,6 +199,16 @@ export interface ExecutionContext {
   query: string;
   /** Conversation history up to this message */
   conversationHistory: Message[];
+
+  // Memory Service
+  /** Memory session ID for tracking memory across sessions */
+  memorySessionId?: string;
+  /** Base URL for memory service (e.g., 'https://duyetbot-memory.duyet.workers.dev') */
+  memoryServiceUrl?: string;
+  /** Authentication token for memory service access */
+  memoryAuthToken?: string;
+  /** Preloaded memory context for this session */
+  memoryContext?: PreloadedMemoryContext;
 
   // Debug
   /** Debug information accumulator */

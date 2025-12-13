@@ -197,4 +197,183 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
       total: result.total,
     };
   }
+
+  /**
+   * Set a short-term memory item
+   */
+  async setShortTermMemory(
+    userId: string,
+    sessionId: string,
+    key: string,
+    value: string,
+    ttlSeconds: number = 86400
+  ): Promise<{ id: string; expiresAt: number }> {
+    const storage = this.getStorage();
+    const result = await storage.setShortTermMemory(sessionId, userId, key, value, ttlSeconds);
+    return {
+      id: result.id,
+      expiresAt: result.expires_at,
+    };
+  }
+
+  /**
+   * Get a short-term memory item
+   */
+  async getShortTermMemory(
+    sessionId: string,
+    key: string
+  ): Promise<{ value: string; expiresAt: number } | null> {
+    const storage = this.getStorage();
+    const result = await storage.getShortTermMemory(sessionId, key);
+    if (!result) {
+      return null;
+    }
+    return {
+      value: result.value,
+      expiresAt: result.expires_at,
+    };
+  }
+
+  /**
+   * List short-term memory items for a session
+   */
+  async listShortTermMemory(
+    sessionId: string
+  ): Promise<Array<{ key: string; value: string; expiresAt: number }>> {
+    const storage = this.getStorage();
+    const results = await storage.listShortTermMemory(sessionId);
+    return results.map((item) => ({
+      key: item.key,
+      value: item.value,
+      expiresAt: item.expires_at,
+    }));
+  }
+
+  /**
+   * Delete a short-term memory item
+   */
+  async deleteShortTermMemory(sessionId: string, key: string): Promise<boolean> {
+    const storage = this.getStorage();
+    return storage.deleteShortTermMemory(sessionId, key);
+  }
+
+  /**
+   * Save a long-term memory item
+   */
+  async saveLongTermMemory(
+    userId: string,
+    category: string,
+    key: string,
+    value: string,
+    options?: {
+      importance?: number;
+      sourceSessionId?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<{ id: string; created: boolean }> {
+    const storage = this.getStorage();
+    const result = await storage.saveLongTermMemory(userId, category, key, value, options);
+    await storage.indexMemoryForSearch(result.id, userId, value, category);
+    return {
+      id: result.id,
+      created: result.created_at === result.updated_at,
+    };
+  }
+
+  /**
+   * Get long-term memory items
+   */
+  async getLongTermMemory(
+    userId: string,
+    options?: {
+      category?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{
+    items: Array<{
+      id: string;
+      category: string;
+      key: string;
+      value: string;
+      importance: number;
+      accessCount: number;
+    }>;
+    total: number;
+  }> {
+    const storage = this.getStorage();
+    const { items, total } = await storage.listLongTermMemory(userId, options);
+    return {
+      items: items.map((item) => ({
+        id: item.id,
+        category: item.category,
+        key: item.key,
+        value: item.value,
+        importance: item.importance,
+        accessCount: item.access_count,
+      })),
+      total,
+    };
+  }
+
+  /**
+   * Update a long-term memory item
+   */
+  async updateLongTermMemory(
+    id: string,
+    updates: {
+      value?: string;
+      importance?: number;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<boolean> {
+    const storage = this.getStorage();
+    return storage.updateLongTermMemory(id, updates);
+  }
+
+  /**
+   * Delete a long-term memory item
+   */
+  async deleteLongTermMemory(id: string): Promise<boolean> {
+    const storage = this.getStorage();
+    return storage.deleteLongTermMemory(id);
+  }
+
+  /**
+   * Search long-term memory
+   */
+  async searchLongTermMemory(
+    userId: string,
+    query: string,
+    options?: {
+      categories?: string[];
+      limit?: number;
+    }
+  ): Promise<
+    Array<{
+      id: string;
+      key: string;
+      value: string;
+      category: string;
+      importance: number;
+    }>
+  > {
+    const storage = this.getStorage();
+    const results = await storage.searchLongTermMemory(userId, query, options);
+    return results.map((item) => ({
+      id: item.id,
+      key: item.key,
+      value: item.value,
+      category: item.category,
+      importance: item.importance,
+    }));
+  }
+
+  /**
+   * Clean up expired short-term memory items
+   */
+  async cleanupExpiredMemory(): Promise<number> {
+    const storage = this.getStorage();
+    return storage.cleanupExpiredShortTermMemory();
+  }
 }
