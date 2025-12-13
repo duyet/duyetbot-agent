@@ -3839,7 +3839,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           text: '', // Not needed for edit
           startTime: Date.now(),
           isAdmin: false, // Debug footer handled separately
-          parseMode: env.TELEGRAM_PARSE_MODE || 'MarkdownV2',
+          parseMode: env.TELEGRAM_PARSE_MODE || 'HTML', // Default to HTML for expandable blockquote support
           messageId: 0, // Not needed for edit
         } as unknown as TContext;
       }
@@ -3969,12 +3969,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         lines.push(`🔗 ${workflowId}`);
       }
 
-      // Return as plain text with monospace formatting for the summary
-      // Using `code` formatting compatible with both MarkdownV2 and HTML
-      // Expandable blockquote (<blockquote expandable>) requires HTML parse mode
-      // which may not be available, so we use simple formatting
+      // Return as expandable blockquote (Telegram Bot API 7.0+, HTML mode only)
+      // This creates a collapsible section that users can expand/collapse
       const content = lines.join('\n');
-      return `\n\`\`\`\n${content}\n\`\`\``;
+      return `\n<blockquote expandable>${content}</blockquote>`;
     }
   };
 
