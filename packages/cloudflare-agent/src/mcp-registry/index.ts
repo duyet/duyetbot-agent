@@ -8,15 +8,6 @@
 // Types (export first for re-export compatibility)
 import type { MCPToolDefinition } from './types.js';
 
-export type {
-  DiscoveryResult,
-  DiscoveryStatus,
-  MCPRegistryOptions,
-  MCPServerConfig,
-  MCPToolDefinition,
-} from './types.js';
-export { MCP_SEPARATOR } from './types.js';
-
 // List commands
 export {
   formatListCommandHelp,
@@ -34,11 +25,9 @@ export {
   isValidToolName,
   parseMcpToolName,
 } from './naming.js';
-
 // Registry
 export { createMCPRegistry, MCPRegistry } from './registry.js';
 export type { MCPClient } from './tool-adapter.js';
-
 // Tool adapter
 export {
   createFailingMCPClient,
@@ -46,6 +35,14 @@ export {
   createMcpToolWrappers,
   createMockMCPClient,
 } from './tool-adapter.js';
+export type {
+  DiscoveryResult,
+  DiscoveryStatus,
+  MCPRegistryOptions,
+  MCPServerConfig,
+  MCPToolDefinition,
+} from './types.js';
+export { MCP_SEPARATOR } from './types.js';
 
 // Type alias for backwards compatibility with list-commands expectations
 export type MCPTool = MCPToolDefinition;

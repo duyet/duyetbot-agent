@@ -430,17 +430,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _lastDebugContext: DebugContext | undefined; // Capture debug context for observability
     private _analyticsCollector?: AnalyticsCollector; // Analytics collector for persistent message storage
     private _lastUserMessageId?: string; // Track last user message ID for assistant response correlation
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    // @ts-expect-error - Intentionally unused, will be used in future list command implementations
     private _mcpRegistry: MCPRegistry = createMCPRegistry(); // MCP registry for tool discovery
-
-    /**
-     * Get the MCP registry for tool discovery
-     * Returns the registry instance for accessing registered MCP servers and tools.
-     */
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    private getMCPRegistry(): MCPRegistry {
-      return this._mcpRegistry;
-    }
 
     // ============================================
     // State DO Reporting (Fire-and-Forget)

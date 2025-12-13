@@ -94,14 +94,15 @@ export function formatToolList(registry: MCPRegistry, mcpName?: string): string 
 
   if (tools.length === 0) {
     if (mcpName) {
-      return `No tools found for MCP: ${mcpName}. Check the spelling or run "list all mcps" to see registered servers.`;
+      return `No tools found for MCP: \`${mcpName}\`. Check the spelling or run "list all mcps" to see registered servers.`;
     }
-    return 'No MCP tools available. Built-in tools: plan, research, github. MCP tools: duyet__info, memory__save, memory__recall, memory__search. Other: request_approval.';
+    return 'No MCP tools available. Built-in tools: `plan`, `research`, `github`. MCP tools: `duyet__info`, `memory__save`, `memory__recall`, `memory__search`. Other: `request_approval`.';
   }
 
   const toolDetails = tools
     .map((tool: { prefixedName: string; description?: string }) => {
-      let detail = `**${tool.prefixedName}**`;
+      // Wrap in backticks to prevent __ being interpreted as Markdown bold
+      let detail = `\`${tool.prefixedName}\``;
       if (tool.description) {
         detail += `\n  ${tool.description}`;
       }
@@ -115,7 +116,7 @@ export function formatToolList(registry: MCPRegistry, mcpName?: string): string 
     return `## Tools from ${serverName}\n\n${toolDetails}`;
   }
 
-  return `## All MCP Tools\n\n${toolDetails}\n\n*Built-in tools: plan, research, github. MCP tools: duyet__info, memory__save, memory__recall, memory__search. Other: request_approval*`;
+  return `## All MCP Tools\n\n${toolDetails}\n\n*Built-in tools: \`plan\`, \`research\`, \`github\`. MCP tools: \`duyet__info\`, \`memory__save\`, \`memory__recall\`, \`memory__search\`. Other: \`request_approval\`*`;
 }
 
 /**
@@ -128,9 +129,9 @@ export function formatToolList(registry: MCPRegistry, mcpName?: string): string 
  * @returns Formatted string with detailed information
  */
 export function formatToolDetails(tool: MCPToolDefinition): string {
-  let detail = `## ${tool.prefixedName}\n\n`;
-  detail += `**From**: ${tool.mcpName}\n`;
-  detail += `**Original Name**: ${tool.originalName}\n\n`;
+  let detail = `## \`${tool.prefixedName}\`\n\n`;
+  detail += `**From**: \`${tool.mcpName}\`\n`;
+  detail += `**Original Name**: \`${tool.originalName}\`\n\n`;
   detail += `**Description**: ${tool.description}\n`;
 
   if (tool.parameters) {
@@ -170,14 +171,14 @@ I can help you discover available MCP servers and tools:
 Example: "list tools from duyet-mcp"
 
 **Built-in tools** are always available:
-- **plan** - Decompose complex tasks into steps
-- **research** - Search the web for information
-- **github** - GitHub API operations
-- **request_approval** - Request human approval for actions
+- \`plan\` - Decompose complex tasks into steps
+- \`research\` - Search the web for information
+- \`github\` - GitHub API operations
+- \`request_approval\` - Request human approval for actions
 
 **MCP tools** via external services:
-- **duyet__info** - Duyet's personal information (blog, CV, skills)
-- **memory__save** - Save information to memory
-- **memory__recall** - Retrieve from memory
-- **memory__search** - Search memory`;
+- \`duyet__info\` - Duyet's personal information (blog, CV, skills)
+- \`memory__save\` - Save information to memory
+- \`memory__recall\` - Retrieve from memory
+- \`memory__search\` - Search memory`;
 }
