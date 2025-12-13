@@ -219,6 +219,12 @@ export interface WorkflowCompletionResult {
     input: number;
     output: number;
     total: number;
+    /** Cached input tokens (prompt cache hits) */
+    cached?: number;
+    /** Reasoning tokens (o1/o3 internal reasoning) */
+    reasoning?: number;
+    /** Estimated cost in USD */
+    costUsd?: number;
   };
 
   /** Error message if failed */
@@ -304,6 +310,12 @@ export interface WorkflowLLMResponse {
   usage?: {
     inputTokens: number;
     outputTokens: number;
+    /** Cached input tokens (prompt cache hits) */
+    cachedTokens?: number;
+    /** Reasoning tokens (o1/o3 internal reasoning) */
+    reasoningTokens?: number;
+    /** Estimated cost in USD */
+    estimatedCostUsd?: number;
   };
 }
 

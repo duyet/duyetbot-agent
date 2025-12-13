@@ -20,6 +20,7 @@ import type {
   LLMResponse,
   OpenAITool,
 } from '@duyetbot/cloudflare-agent';
+import { estimateCost } from './pricing.js';
 
 /**
  * Cloudflare AI binding interface for AI Gateway URL generation
@@ -354,6 +355,17 @@ export function createOpenRouterProvider(
               : undefined,
           });
 
+          // Calculate estimated cost if usage data is available
+          const responseModel = data.model || model;
+          const cachedTokens = data.usage?.prompt_tokens_details?.cached_tokens;
+          const costEstimate = data.usage
+            ? estimateCost(responseModel, {
+                inputTokens: data.usage.prompt_tokens,
+                outputTokens: data.usage.completion_tokens,
+                ...(cachedTokens !== undefined && { cachedTokens }),
+              })
+            : undefined;
+
           return {
             content: choice?.content || '',
             ...(toolCalls?.length && { toolCalls }),
@@ -374,6 +386,8 @@ export function createOpenRouterProvider(
                 ...(data.usage.completion_tokens_details?.reasoning_tokens && {
                   reasoningTokens: data.usage.completion_tokens_details.reasoning_tokens,
                 }),
+                // Estimated cost in USD
+                ...(costEstimate !== undefined && { estimatedCostUsd: costEstimate }),
               },
             }),
             // Include web search citations if present

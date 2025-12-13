@@ -3833,6 +3833,81 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
+     * Format number in compact notation with k suffix
+     * Examples: 500 → "500", 1200 → "1.2k", 15000 → "15k"
+     */
+    private formatCompactNumber(n: number): string {
+      if (n >= 1000) {
+        const k = n / 1000;
+        // Use 1 decimal for values < 10k, no decimal for larger
+        return k >= 10 ? `${Math.round(k)}k` : `${k.toFixed(1)}k`;
+      }
+      return String(n);
+    }
+
+    /**
+     * Format cost in USD for display
+     * Examples: 0.00048 → "$0.0005", 0.0123 → "$0.012"
+     */
+    private formatCostUsd(cost: number): string {
+      if (cost === 0) {
+        return '$0';
+      }
+      if (cost < 0.0001) {
+        return '<$0.0001';
+      }
+      if (cost < 0.01) {
+        return `$${cost.toFixed(4)}`;
+      }
+      return `$${cost.toFixed(3)}`;
+    }
+
+    /**
+     * Shorten model name for display
+     * Examples:
+     * - 'x-ai/grok-4.1-fast' → 'grok-4.1'
+     * - 'anthropic/claude-3-5-sonnet-20241022' → 'sonnet-3.5'
+     * - '@preset/duyetbot' → 'duyetbot'
+     */
+    private shortenModelName(model: string): string {
+      // Remove @preset/ prefix
+      if (model.startsWith('@preset/')) {
+        return model.replace('@preset/', '');
+      }
+
+      // Remove provider prefix (x-ai/, anthropic/, openai/, etc.)
+      const parts = model.split('/');
+      const name = parts[parts.length - 1] || model;
+
+      // Claude models: extract variant name
+      if (name.includes('claude')) {
+        if (name.includes('opus')) {
+          return name.includes('3-5') ? 'opus-3.5' : name.includes('4') ? 'opus-4' : 'opus';
+        }
+        if (name.includes('sonnet')) {
+          return name.includes('3-5') ? 'sonnet-3.5' : name.includes('4') ? 'sonnet-4' : 'sonnet';
+        }
+        if (name.includes('haiku')) {
+          return name.includes('3-5') ? 'haiku-3.5' : 'haiku';
+        }
+      }
+
+      // GPT models: remove date suffix
+      if (name.startsWith('gpt-')) {
+        return name.replace(/-\d{4}-\d{2}-\d{2}$/, '');
+      }
+
+      // Grok models: remove -fast suffix, keep version
+      if (name.startsWith('grok-')) {
+        return name.replace(/-fast$/, '');
+      }
+
+      // Default: remove date suffix and truncate if too long
+      const cleaned = name.replace(/-\d{8}$/, '');
+      return cleaned.length > 15 ? `${cleaned.slice(0, 12)}...` : cleaned;
+    }
+
+    /**
      * Handle workflow completion notification
      */
     private async handleWorkflowComplete(request: Request): Promise<Response> {
@@ -3845,7 +3920,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             iterations: number;
             toolsUsed: string[];
             totalDurationMs: number;
-            tokenUsage?: { input: number; output: number; total: number };
+            tokenUsage?: {
+              input: number;
+              output: number;
+              total: number;
+              cached?: number;
+              reasoning?: number;
+              costUsd?: number;
+            };
             error?: string;
             debugContext?: {
               steps: Array<{
@@ -4045,7 +4127,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         iterations: number;
         toolsUsed: string[];
         totalDurationMs: number;
-        tokenUsage?: { input: number; output: number; total: number };
+        tokenUsage?: {
+          input: number;
+          output: number;
+          total: number;
+          cached?: number;
+          reasoning?: number;
+          costUsd?: number;
+        };
         debugContext?: {
           steps: Array<{
             iteration: number;
@@ -4089,15 +4178,30 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         lines.push(`🔧 ${result.toolsUsed.join(' → ')}`);
       }
 
-      // Summary line: duration | tokens | model
+      // Summary line: duration | tokens (in/out/cached) | cost | model
       const summaryParts: string[] = [];
       summaryParts.push(`⏱️ ${this.formatDuration(result.totalDurationMs)}`);
-      if (result.tokenUsage?.total) {
-        summaryParts.push(`📊 ${result.tokenUsage.total.toLocaleString()}`);
+
+      // Format tokens as separated input/output/cached
+      if (result.tokenUsage) {
+        const { input, output, cached } = result.tokenUsage;
+        let tokenStr = `📊 ${this.formatCompactNumber(input)}↓/${this.formatCompactNumber(output)}↑`;
+        if (cached && cached > 0) {
+          tokenStr += `/${this.formatCompactNumber(cached)}$`;
+        }
+        summaryParts.push(tokenStr);
+
+        // Add cost if available
+        if (result.tokenUsage.costUsd !== undefined && result.tokenUsage.costUsd > 0) {
+          const costStr = this.formatCostUsd(result.tokenUsage.costUsd);
+          summaryParts.push(`💵 ${costStr}`);
+        }
       }
+
+      // Model name (shortened for readability)
       const envWithModel = this.env as { MODEL?: string } | undefined;
       const modelName = envWithModel?.MODEL || '@preset/duyetbot';
-      summaryParts.push(`🤖 ${modelName}`);
+      summaryParts.push(`🤖 ${this.shortenModelName(modelName)}`);
       lines.push(summaryParts.join(' | '));
 
       // Workflow ID with clickable link to Cloudflare dashboard
