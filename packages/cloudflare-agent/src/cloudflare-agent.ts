@@ -3711,7 +3711,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 type: string;
                 toolName?: string;
                 args?: Record<string, unknown>;
-                result?: { success?: boolean; output?: string; durationMs?: number; error?: string };
+                result?: {
+                  success?: boolean;
+                  output?: string;
+                  durationMs?: number;
+                  error?: string;
+                };
                 thinking?: string;
               }>;
             };
