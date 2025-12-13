@@ -6,6 +6,8 @@
  */
 
 // Types (export first for re-export compatibility)
+import type { MCPToolDefinition } from './types.js';
+
 export type {
   DiscoveryResult,
   DiscoveryStatus,

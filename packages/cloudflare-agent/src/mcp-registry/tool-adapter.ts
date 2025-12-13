@@ -148,10 +148,11 @@ export function createMcpToolWrappers(
  */
 export function createMockMCPClient(responses: Record<string, string>): MCPClient {
   return {
-    async execute(mcpName: string, toolName: string, _args: Record<string, unknown>) {
+    async execute(mcpName: string, toolName: string, _args: Record<string, unknown>): Promise<string> {
       const key = formatMcpToolName(mcpName, toolName);
-      if (key in responses) {
-        return responses[key];
+      const response = responses[key];
+      if (response !== undefined) {
+        return response;
       }
       throw new Error(`Mock response not defined for ${key}`);
     },
