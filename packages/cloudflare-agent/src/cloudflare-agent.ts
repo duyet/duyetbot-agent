@@ -3614,12 +3614,17 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Group by iteration and format
       for (const entry of history) {
         if (entry.type === 'thinking') {
-          // Extract step info from message like "🤔 Thinking... (step 3/100)"
+          // Extract thinking verb and step info from message like "🤔 Processing... (step 3/100)"
           const stepMatch = entry.message.match(/step (\d+)\/(\d+)/);
           const stepInfo = stepMatch
             ? `step ${stepMatch[1]}/${stepMatch[2]}`
             : `step ${entry.iteration + 1}`;
-          lines.push(`⏺ Thinking (${stepInfo})`);
+
+          // Extract the thinking verb (Thinking, Processing, Pondering, etc.) from the message
+          // Message format: "🤔 Processing... (step 3/100)" or just the verb
+          const verbMatch = entry.message.match(/🤔\s*(\w+)/);
+          const thinkingVerb = verbMatch?.[1] || 'Thinking';
+          lines.push(`⏺ ${thinkingVerb} (${stepInfo})`);
         } else if (entry.type === 'tool_start' && entry.toolName) {
           // Tool starting - show as "Running..."
           lines.push(`  ⎿ Running ${entry.toolName}...`);
@@ -3740,8 +3745,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Check if admin for debug footer
         const isAdmin = this.isAdminUser(workflow.chatId);
         if (isAdmin && result.success) {
-          // Add debug footer for admin
-          const footer = this.formatWorkflowDebugFooter(result);
+          // Add debug footer for admin with workflow ID for debugging
+          const footer = this.formatWorkflowDebugFooter(result, workflow.workflowId);
           finalResponse = `${result.response}\n\n${footer}`;
         }
 
@@ -3871,62 +3876,105 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Format debug footer for workflow completion
+     *
+     * Uses Telegram's expandable blockquote (Bot API 7.0+) for collapsible debug info:
+     * <blockquote expandable>...</blockquote>
+     *
+     * Shows execution chain similar to progress display:
+     * ```
+     * ⏺ Iteration 1
+     *   ⎿ memory (234ms)
+     *   ⎿ research (1.2s)
+     * ⏺ Iteration 2
+     *   ⎿ web_search (500ms)
+     * ⏱️ 29.8s | 📊 14,631 tokens | 🤖 @preset/duyetbot
+     * 🔗 workflow-abc123
+     * ```
      */
-    private formatWorkflowDebugFooter(result: {
-      iterations: number;
-      toolsUsed: string[];
-      totalDurationMs: number;
-      tokenUsage?: { input: number; output: number; total: number };
-      debugContext?: {
-        steps: Array<{
-          iteration: number;
-          type: string;
-          toolName?: string;
-          args?: Record<string, unknown>;
-          result?: unknown;
-        }>;
-      };
-    }): string {
+    private formatWorkflowDebugFooter(
+      result: {
+        iterations: number;
+        toolsUsed: string[];
+        totalDurationMs: number;
+        tokenUsage?: { input: number; output: number; total: number };
+        debugContext?: {
+          steps: Array<{
+            iteration: number;
+            type: string;
+            toolName?: string;
+            args?: Record<string, unknown>;
+            result?: unknown;
+          }>;
+        };
+      },
+      workflowId?: string
+    ): string {
       const lines: string[] = [];
 
-      // Header with iterations
-      lines.push(`⏰ ${result.iterations} iteration${result.iterations !== 1 ? 's' : ''}`);
+      // Render chain of execution steps grouped by iteration
+      if (result.debugContext?.steps && result.debugContext.steps.length > 0) {
+        // Group steps by iteration
+        const stepsByIteration = new Map<
+          number,
+          Array<{ toolName?: string; type: string; durationMs?: number }>
+        >();
 
-      // Chain of tool executions with individual durations
-      if (result.debugContext?.steps) {
-        const toolSteps = result.debugContext.steps.filter(
-          (s) => s.type === 'tool_execution' && s.toolName
-        );
-        if (toolSteps.length > 0) {
-          const toolsWithDurations = toolSteps.map((s) => {
-            // Extract durationMs from result if available
-            const resultObj = s.result as { durationMs?: number } | undefined;
-            const duration = resultObj?.durationMs;
-            return duration ? `${s.toolName}(${this.formatDuration(duration)})` : s.toolName;
-          });
-          lines.push(`🔧 ${toolsWithDurations.join(' → ')}`);
-        } else if (result.toolsUsed.length > 0) {
-          lines.push(`🔧 ${result.toolsUsed.join(', ')}`);
+        for (const step of result.debugContext.steps) {
+          if (!stepsByIteration.has(step.iteration)) {
+            stepsByIteration.set(step.iteration, []);
+          }
+          const resultObj = step.result as { durationMs?: number } | undefined;
+          // Use spread operator to handle exactOptionalPropertyTypes
+          const entry: { toolName?: string; type: string; durationMs?: number } = {
+            type: step.type,
+            ...(step.toolName !== undefined && { toolName: step.toolName }),
+            ...(resultObj?.durationMs !== undefined && { durationMs: resultObj.durationMs }),
+          };
+          stepsByIteration.get(step.iteration)?.push(entry);
+        }
+
+        // Format each iteration
+        for (const [iteration, steps] of stepsByIteration.entries()) {
+          lines.push(`⏺ Iteration ${iteration + 1}`);
+          for (const step of steps) {
+            if (step.type === 'tool_execution' && step.toolName) {
+              const durationStr = step.durationMs
+                ? ` (${this.formatDuration(step.durationMs)})`
+                : '';
+              lines.push(`  ⎿ ${step.toolName}${durationStr}`);
+            } else if (step.type === 'thinking') {
+              // Optionally show thinking steps
+              lines.push(`  ⎿ 🤔 thinking`);
+            }
+          }
         }
       } else if (result.toolsUsed.length > 0) {
-        lines.push(`🔧 ${result.toolsUsed.join(', ')}`);
+        // Fallback: just list tools if no debug context
+        lines.push(`🔧 ${result.toolsUsed.join(' → ')}`);
       }
 
-      // Total duration
-      lines.push(`⏱️ ${this.formatDuration(result.totalDurationMs)}`);
-
-      // Token usage
+      // Summary line: duration | tokens | model
+      const summaryParts: string[] = [];
+      summaryParts.push(`⏱️ ${this.formatDuration(result.totalDurationMs)}`);
       if (result.tokenUsage?.total) {
-        lines.push(`📊 ${result.tokenUsage.total.toLocaleString()} tokens`);
+        summaryParts.push(`📊 ${result.tokenUsage.total.toLocaleString()}`);
       }
-
-      // Model name from env (cast to access MODEL property)
       const envWithModel = this.env as { MODEL?: string } | undefined;
       const modelName = envWithModel?.MODEL || '@preset/duyetbot';
-      lines.push(`🤖 ${modelName}`);
+      summaryParts.push(`🤖 ${modelName}`);
+      lines.push(summaryParts.join(' | '));
 
-      // Return as code block
-      return `<code>${lines.join('\n')}</code>`;
+      // Workflow ID (for debugging in Cloudflare dashboard)
+      if (workflowId) {
+        lines.push(`🔗 ${workflowId}`);
+      }
+
+      // Return as plain text with monospace formatting for the summary
+      // Using `code` formatting compatible with both MarkdownV2 and HTML
+      // Expandable blockquote (<blockquote expandable>) requires HTML parse mode
+      // which may not be available, so we use simple formatting
+      const content = lines.join('\n');
+      return `\n\`\`\`\n${content}\n\`\`\``;
     }
   };
 
