@@ -3711,7 +3711,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 type: string;
                 toolName?: string;
                 args?: Record<string, unknown>;
-                result?: unknown;
+                result?: { success?: boolean; output?: string; durationMs?: number; error?: string };
+                thinking?: string;
               }>;
             };
           };
@@ -3878,15 +3879,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Uses Telegram's expandable blockquote (Bot API 7.0+) for collapsible debug info:
      * <blockquote expandable>...</blockquote>
      *
-     * Shows execution chain similar to progress display:
+     * Shows execution chain with thinking text, tool calls, and tool responses:
      * ```
-     * ⏺ Iteration 1
-     *   ⎿ memory (234ms)
-     *   ⎿ research (1.2s)
-     * ⏺ Iteration 2
-     *   ⎿ web_search (500ms)
-     * ⏱️ 29.8s | 📊 14,631 tokens | 🤖 @preset/duyetbot
-     * 🔗 workflow-abc123
+     * ⏺ I'll summarize the article about OpenAI skills...
+     * ⏺ web_search(query: "OpenAI skills")
+     *   ⎿ 🔍 Found 5 results: OpenAI announces new...
+     * ⏺ Based on my research, here's the summary...
+     * ⏱️ 7.6s | 📊 5,417 | 🤖 @preset/duyetbot
+     * 🔗 logs: 4c4c2c90
      * ```
      */
     private formatWorkflowDebugFooter(
@@ -3901,7 +3901,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             type: string;
             toolName?: string;
             args?: Record<string, unknown>;
-            result?: unknown;
+            result?: { success?: boolean; output?: string; durationMs?: number; error?: string };
+            thinking?: string;
           }>;
         };
       },
@@ -3909,48 +3910,26 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     ): string {
       const lines: string[] = [];
 
-      // Render chain of execution steps grouped by iteration
+      // Render sequential execution steps (no grouping by iteration)
       if (result.debugContext?.steps && result.debugContext.steps.length > 0) {
-        // Group steps by iteration
-        const stepsByIteration = new Map<
-          number,
-          Array<{ toolName?: string; type: string; durationMs?: number }>
-        >();
-
         for (const step of result.debugContext.steps) {
-          if (!stepsByIteration.has(step.iteration)) {
-            stepsByIteration.set(step.iteration, []);
-          }
-          const resultObj = step.result as { durationMs?: number } | undefined;
-          // Use spread operator to handle exactOptionalPropertyTypes
-          const entry: { toolName?: string; type: string; durationMs?: number } = {
-            type: step.type,
-            ...(step.toolName !== undefined && { toolName: step.toolName }),
-            ...(resultObj?.durationMs !== undefined && { durationMs: resultObj.durationMs }),
-          };
-          stepsByIteration.get(step.iteration)?.push(entry);
-        }
+          if (step.type === 'thinking' && step.thinking) {
+            // Show thinking text, truncated to ~80 chars
+            const text = step.thinking.replace(/\n/g, ' ').trim();
+            const truncated = text.slice(0, 80);
+            const ellipsis = text.length > 80 ? '...' : '';
+            lines.push(`⏺ ${truncated}${ellipsis}`);
+          } else if (step.type === 'tool_execution' && step.toolName) {
+            // Format tool call with key argument
+            const argStr = this.formatToolArgs(step.args);
+            lines.push(`⏺ ${step.toolName}(${argStr})`);
 
-        // Format each iteration
-        for (const [iteration, steps] of stepsByIteration.entries()) {
-          lines.push(`⏺ Iteration ${iteration + 1}`);
-          for (const step of steps) {
-            if (step.type === 'tool_execution' && step.toolName) {
-              const durationStr = step.durationMs
-                ? ` (${this.formatDuration(step.durationMs)})`
-                : '';
-              lines.push(`  ⎿ ${step.toolName}${durationStr}`);
-            } else if (step.type === 'thinking') {
-              // Show actual thinking text if available, truncated for readability
-              const thinkingText = (step as { thinking?: string }).thinking;
-              if (thinkingText) {
-                // Truncate to first ~50 chars, remove newlines
-                const truncated = thinkingText.replace(/\n/g, ' ').slice(0, 50);
-                const ellipsis = thinkingText.length > 50 ? '...' : '';
-                lines.push(`  ⎿ 🤔 ${truncated}${ellipsis}`);
-              } else {
-                lines.push(`  ⎿ 🤔 thinking`);
-              }
+            // Show tool response (truncated to 3 lines max)
+            if (step.result?.output) {
+              const responseLines = this.formatToolResponse(step.result.output, 3);
+              lines.push(`  ⎿ 🔍 ${responseLines}`);
+            } else if (step.result?.error) {
+              lines.push(`  ⎿ ❌ ${step.result.error.slice(0, 60)}...`);
             }
           }
         }
@@ -3970,15 +3949,63 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       summaryParts.push(`🤖 ${modelName}`);
       lines.push(summaryParts.join(' | '));
 
-      // Workflow ID (for debugging in Cloudflare dashboard)
+      // Workflow ID with clickable link to Cloudflare dashboard
       if (workflowId) {
-        lines.push(`🔗 ${workflowId}`);
+        // Extract short ID (first segment of UUID) for display
+        const shortId = workflowId.split('-')[0] || workflowId.slice(0, 8);
+        // Link to Cloudflare Workflows dashboard
+        const dashboardUrl = `https://dash.cloudflare.com/23050adb6c92e313643a29e1ba64c88a/workers/workflows/agentic-loop-workflow/instance/${workflowId}`;
+        lines.push(`🔗 logs: <a href="${dashboardUrl}">${shortId}</a>`);
       }
 
       // Return as expandable blockquote (Telegram Bot API 7.0+, HTML mode only)
-      // This creates a collapsible section that users can expand/collapse
       const content = lines.join('\n');
       return `\n<blockquote expandable>${content}</blockquote>`;
+    }
+
+    /**
+     * Format tool arguments for display
+     * Shows the most relevant argument (query, url, prompt, etc.)
+     */
+    private formatToolArgs(args?: Record<string, unknown>): string {
+      if (!args || Object.keys(args).length === 0) return '';
+
+      // Priority order for displaying args
+      const priorityKeys = ['query', 'url', 'prompt', 'search', 'question', 'input', 'text', 'key'];
+      for (const key of priorityKeys) {
+        if (args[key] !== undefined) {
+          const value = String(args[key]).slice(0, 40);
+          const ellipsis = String(args[key]).length > 40 ? '...' : '';
+          return `${key}: "${value}${ellipsis}"`;
+        }
+      }
+
+      // Fallback: show first arg
+      const firstKey = Object.keys(args)[0];
+      if (firstKey) {
+        const value = String(args[firstKey]).slice(0, 40);
+        const ellipsis = String(args[firstKey]).length > 40 ? '...' : '';
+        return `${firstKey}: "${value}${ellipsis}"`;
+      }
+
+      return '';
+    }
+
+    /**
+     * Format tool response for display, truncated to max lines
+     */
+    private formatToolResponse(output: string, maxLines: number): string {
+      // Remove excessive whitespace and split into lines
+      const lines = output
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+        .split('\n')
+        .slice(0, maxLines);
+
+      // Join and truncate total length
+      const joined = lines.join(' | ').slice(0, 150);
+      const ellipsis = output.length > 150 || output.split('\n').length > maxLines ? '...' : '';
+      return `${joined}${ellipsis}`;
     }
   };
 
