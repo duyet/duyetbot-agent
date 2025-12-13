@@ -3193,14 +3193,19 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // Generate unique execution ID for tracking
             const executionId = crypto.randomUUID();
 
-            // Derive DO ID from state (chatId + userId) for progress callback
-            // This is used by workflow to call back to the correct DO instance
-            const doId = `${firstMessage?.chatId || 'unknown'}:${firstMessage?.userId || 'unknown'}`;
-
-            // Determine DO namespace for callback based on platform
+            // Determine platform for callback routing
             // This maps to the cross-script DO binding configured in shared-agents
             const platform = (routerConfig?.platform as 'telegram' | 'github') || 'telegram';
             const doNamespace = platform === 'telegram' ? 'TelegramAgent' : 'GitHubAgent';
+
+            // Derive DO ID using SAME format as platform apps use to create agents
+            // telegram-bot: `telegram:${userId}:${chatId}`
+            // github-bot: `github:${owner}:${repo}:${issueNumber}`
+            // This is CRITICAL - workflow callback must find the correct DO instance
+            const doId =
+              platform === 'telegram'
+                ? `telegram:${firstMessage?.userId || 'unknown'}:${firstMessage?.chatId || 'unknown'}`
+                : `github:${firstMessage?.chatId || 'unknown'}`;
 
             // Build workflow params
             const workflowParams: AgenticLoopWorkflowParams = {
@@ -3684,28 +3689,39 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      *
      * Creates a minimal context object that the transport can use
      * to edit messages. Platform tokens come from env, not workflow params.
+     *
+     * IMPORTANT: The returned object MUST match the platform's context interface:
+     * - Telegram: TelegramContext with {token, chatId, ...}
+     * - GitHub: GitHubContext with {token, chatId, ...}
      */
     private reconstructTransportContext(workflow: ActiveWorkflowExecution): TContext | null {
-      // Get env for token access
+      // Get env for token and config access
       const env = (this as unknown as { env: TEnv }).env as unknown as {
         TELEGRAM_BOT_TOKEN?: string;
+        TELEGRAM_PARSE_MODE?: 'HTML' | 'MarkdownV2';
         GITHUB_TOKEN?: string;
       };
 
       if (workflow.platform === 'telegram') {
-        // Minimal Telegram context for edit operation
+        // Reconstruct TelegramContext for transport.edit()
+        // Must match apps/telegram-bot/src/transport.ts TelegramContext interface
         return {
-          chat: { id: Number(workflow.chatId) },
-          botToken: env.TELEGRAM_BOT_TOKEN,
+          token: env.TELEGRAM_BOT_TOKEN,
+          chatId: Number(workflow.chatId),
+          userId: 0, // Not needed for edit
+          text: '', // Not needed for edit
+          startTime: Date.now(),
+          isAdmin: false, // Debug footer handled separately
+          parseMode: env.TELEGRAM_PARSE_MODE || 'MarkdownV2',
+          messageId: 0, // Not needed for edit
         } as unknown as TContext;
       }
 
       if (workflow.platform === 'github') {
-        // GitHub context would need more info (owner, repo, etc.)
-        // For now, we store enough in workflow metadata
+        // GitHub context for transport.edit()
         return {
-          chatId: workflow.chatId,
           token: env.GITHUB_TOKEN,
+          chatId: workflow.chatId,
         } as unknown as TContext;
       }
 
