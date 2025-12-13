@@ -5,7 +5,7 @@
  * and the transport layer (Telegram, GitHub message editing).
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, mock } from 'bun:test';
 import {
   createSimpleProgressCallback,
   createTransportAdapter,
@@ -14,14 +14,14 @@ import {
 import type { ProgressUpdate } from '../types.js';
 
 describe('createTransportAdapter', () => {
-  let editMessage: ReturnType<typeof vi.fn>;
-  let reportHeartbeat: ReturnType<typeof vi.fn>;
-  let sendTyping: ReturnType<typeof vi.fn>;
+  let editMessage: ReturnType<typeof mock>;
+  let reportHeartbeat: ReturnType<typeof mock>;
+  let sendTyping: ReturnType<typeof mock>;
 
   beforeEach(() => {
-    editMessage = vi.fn().mockResolvedValue(undefined);
-    reportHeartbeat = vi.fn().mockResolvedValue(undefined);
-    sendTyping = vi.fn().mockResolvedValue(undefined);
+    editMessage = mock(async () => undefined);
+    reportHeartbeat = mock(async () => undefined);
+    sendTyping = mock(async () => undefined);
   });
 
   describe('basic setup', () => {
@@ -153,7 +153,9 @@ describe('createTransportAdapter', () => {
     });
 
     it('should ignore heartbeat errors', async () => {
-      reportHeartbeat.mockRejectedValue(new Error('Heartbeat failed'));
+      reportHeartbeat.mockImplementation(async () => {
+        throw new Error('Heartbeat failed');
+      });
 
       const adapter = createTransportAdapter({
         editMessage,
@@ -161,14 +163,12 @@ describe('createTransportAdapter', () => {
       });
 
       // Should not throw
-      await expect(
-        adapter.callbacks.onProgress!({
-          type: 'thinking',
-          message: 'Thinking...',
-          iteration: 0,
-          timestamp: Date.now(),
-        })
-      ).resolves.not.toThrow();
+      await adapter.callbacks.onProgress!({
+        type: 'thinking',
+        message: 'Thinking...',
+        iteration: 0,
+        timestamp: Date.now(),
+      });
     });
   });
 
@@ -190,7 +190,9 @@ describe('createTransportAdapter', () => {
     });
 
     it('should ignore typing errors', async () => {
-      sendTyping.mockRejectedValue(new Error('Typing failed'));
+      sendTyping.mockImplementation(async () => {
+        throw new Error('Typing failed');
+      });
 
       const adapter = createTransportAdapter({
         editMessage,
@@ -198,14 +200,12 @@ describe('createTransportAdapter', () => {
       });
 
       // Should not throw
-      await expect(
-        adapter.callbacks.onProgress!({
-          type: 'thinking',
-          message: 'Thinking...',
-          iteration: 0,
-          timestamp: Date.now(),
-        })
-      ).resolves.not.toThrow();
+      await adapter.callbacks.onProgress!({
+        type: 'thinking',
+        message: 'Thinking...',
+        iteration: 0,
+        timestamp: Date.now(),
+      });
     });
   });
 
@@ -283,7 +283,7 @@ describe('createTransportAdapter', () => {
 
 describe('createSimpleProgressCallback', () => {
   it('should create a simple callback that forwards messages', async () => {
-    const editMessage = vi.fn().mockResolvedValue(undefined);
+    const editMessage = mock(async () => undefined);
     const callback = createSimpleProgressCallback(editMessage);
 
     await callback({

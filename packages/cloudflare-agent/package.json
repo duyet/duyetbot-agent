@@ -19,7 +19,7 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "type-check": "tsc --noEmit",
-    "test": "vitest run --passWithNoTests"
+    "test": "bun test --preload ./src/__tests__/setup.ts src/"
   },
   "dependencies": {
     "@duyetbot/analytics": "workspace:*",

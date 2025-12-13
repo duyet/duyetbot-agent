@@ -12,7 +12,7 @@
  * are not available in unit tests.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, mock, spyOn } from 'bun:test';
 import type { LoopContext } from '../../types.js';
 import {
   duyetMcpTool,
@@ -22,14 +22,14 @@ import {
 } from '../duyet-mcp.js';
 
 // Mock fetch for MCP server calls
-const mockFetch = vi.fn();
-vi.stubGlobal('fetch', mockFetch);
+const mockFetch = mock();
+global.fetch = mockFetch;
 
 describe('duyetMcpTool', () => {
   let mockContext: LoopContext;
 
   beforeEach(() => {
-    vi.clearAllMocks();
+    mockFetch.mockClear();
 
     mockContext = {
       executionContext: {
@@ -238,22 +238,22 @@ describe('duyetMcpTool', () => {
     describe('successful MCP call', () => {
       it('should return MCP response on success', async () => {
         // Mock successful MCP response
-        mockFetch.mockResolvedValueOnce({
+        mockFetch.mockImplementationOnce(async () => ({
           ok: true,
           json: async () => ({
             result: {
               tools: [{ name: 'get_latest_posts', description: 'Get blog posts' }],
             },
           }),
-        });
-        mockFetch.mockResolvedValueOnce({
+        }));
+        mockFetch.mockImplementationOnce(async () => ({
           ok: true,
           json: async () => ({
             result: {
               content: [{ type: 'text', text: 'Latest blog posts: Post 1, Post 2' }],
             },
           }),
-        });
+        }));
 
         const result = await duyetMcpTool.execute({ query: 'latest blog posts' }, mockContext);
 
@@ -265,7 +265,9 @@ describe('duyetMcpTool', () => {
 
     describe('MCP failure handling', () => {
       it('should return fallback on network error', async () => {
-        mockFetch.mockRejectedValueOnce(new Error('Network error'));
+        mockFetch.mockImplementationOnce(async () => {
+          throw new Error('Network error');
+        });
 
         const result = await duyetMcpTool.execute({ query: 'latest blog posts' }, mockContext);
 
@@ -276,11 +278,11 @@ describe('duyetMcpTool', () => {
       });
 
       it('should return fallback on MCP server error', async () => {
-        mockFetch.mockResolvedValueOnce({
+        mockFetch.mockImplementationOnce(async () => ({
           ok: false,
           status: 500,
           statusText: 'Internal Server Error',
-        });
+        }));
 
         const result = await duyetMcpTool.execute({ query: 'your cv' }, mockContext);
 
@@ -290,12 +292,12 @@ describe('duyetMcpTool', () => {
       });
 
       it('should return fallback on MCP JSON error response', async () => {
-        mockFetch.mockResolvedValueOnce({
+        mockFetch.mockImplementationOnce(async () => ({
           ok: true,
           json: async () => ({
             error: { message: 'Tool not found' },
           }),
-        });
+        }));
 
         const result = await duyetMcpTool.execute({ query: 'your skills' }, mockContext);
 
@@ -307,14 +309,14 @@ describe('duyetMcpTool', () => {
     describe('explicit toolName parameter', () => {
       it('should use explicit toolName when provided', async () => {
         // Mock tool call (skip tool listing)
-        mockFetch.mockResolvedValueOnce({
+        mockFetch.mockImplementationOnce(async () => ({
           ok: true,
           json: async () => ({
             result: {
               content: [{ type: 'text', text: 'CV: Data Engineer at XYZ' }],
             },
           }),
-        });
+        }));
 
         const result = await duyetMcpTool.execute(
           {
@@ -336,7 +338,9 @@ describe('duyetMcpTool', () => {
           executionContext: undefined as unknown as LoopContext['executionContext'],
         };
 
-        mockFetch.mockRejectedValueOnce(new Error('Network error'));
+        mockFetch.mockImplementationOnce(async () => {
+          throw new Error('Network error');
+        });
 
         const result = await duyetMcpTool.execute({ query: 'test' }, contextWithoutExec);
 

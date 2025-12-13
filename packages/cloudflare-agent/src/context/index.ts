@@ -6,21 +6,7 @@
  * agent execution patterns.
  */
 
-// Batch context helpers (for message pipeline transformations)
-export type {
-  AdminContext,
-  AdminContextSources,
-  BuildContextOptions,
-  BuildResponseTargetOptions,
-  ExtractedMetadata,
-  ResponseTarget,
-} from './batch-context-helpers.js';
-export {
-  buildContextFromBatch,
-  buildResponseTarget,
-  extractAdminContext,
-  extractMessageMetadata,
-} from './batch-context-helpers.js';
+// Batch context helpers removed
 // Global Context (main interface and factory)
 export type {
   AgentSpan,

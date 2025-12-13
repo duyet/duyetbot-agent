@@ -186,7 +186,8 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
                   (totalTokens.reasoning || 0) + llmResponse.usage.reasoningTokens;
               }
               if (llmResponse.usage.estimatedCostUsd) {
-                totalTokens.costUsd = (totalTokens.costUsd || 0) + llmResponse.usage.estimatedCostUsd;
+                totalTokens.costUsd =
+                  (totalTokens.costUsd || 0) + llmResponse.usage.estimatedCostUsd;
               }
             }
 
@@ -301,7 +302,9 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
               output: stepResult.tokenUsage.output,
               total: stepResult.tokenUsage.input + stepResult.tokenUsage.output,
               ...(stepResult.tokenUsage.cached && { cached: stepResult.tokenUsage.cached }),
-              ...(stepResult.tokenUsage.reasoning && { reasoning: stepResult.tokenUsage.reasoning }),
+              ...(stepResult.tokenUsage.reasoning && {
+                reasoning: stepResult.tokenUsage.reasoning,
+              }),
               ...(stepResult.tokenUsage.costUsd && { costUsd: stepResult.tokenUsage.costUsd }),
             },
             debugContext: { steps: stepResult.debugSteps },
