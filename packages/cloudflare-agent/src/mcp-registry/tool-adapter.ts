@@ -148,7 +148,11 @@ export function createMcpToolWrappers(
  */
 export function createMockMCPClient(responses: Record<string, string>): MCPClient {
   return {
-    async execute(mcpName: string, toolName: string, _args: Record<string, unknown>): Promise<string> {
+    async execute(
+      mcpName: string,
+      toolName: string,
+      _args: Record<string, unknown>
+    ): Promise<string> {
       const key = formatMcpToolName(mcpName, toolName);
       const response = responses[key];
       if (response !== undefined) {
