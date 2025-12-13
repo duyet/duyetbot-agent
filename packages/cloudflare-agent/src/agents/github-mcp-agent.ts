@@ -53,9 +53,9 @@ agentRegistry.register({
     // Patterns for simple GitHub information queries
     // Notably excludes create/modify verbs to let orchestrator handle those
     patterns: [
-      /\b(show|list|get|find)\s+(pr|pull.*request|issue|repo|workflow)/i, // "show PR #123", "list issues"
+      /\b(show|list|get|find)\s+(?:my\s+|open\s+|closed\s+|all\s+)*(pr|pull.*request|issue|repo|workflow)/i, // "show PR #123", "list issues"
       /\b(pr|pull\s*request|issue)\s+#?\d+\b/i, // "PR #123", "issue #456"
-      /\b(my|assigned)\s+(pr|pull.*request|issue|repo)s?\b/i, // "my PRs", "assigned issues"
+      /\b(my|assigned)\s+(?:open\s+|closed\s+|all\s+)*(pr|pull.*request|issue|repo)s?\b/i, // "my PRs", "assigned issues"
       /\bgithub\s+(action|workflow|run|status)/i, // "github workflows", "github action runs"
       /\b(pr|issue|repo)\s+(status|info|details)\b/i, // "PR status", "repo info"
     ],

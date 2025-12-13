@@ -27,43 +27,43 @@ export interface ModelPricing {
  */
 export const MODEL_PRICING: Record<string, ModelPricing> = {
   // xAI Models
-  'x-ai/grok-4.1-fast': { inputPerMillion: 0.20, outputPerMillion: 0.60 },
-  'x-ai/grok-4.1': { inputPerMillion: 3.00, outputPerMillion: 9.00 },
-  'x-ai/grok-3': { inputPerMillion: 3.00, outputPerMillion: 15.00 },
-  'x-ai/grok-3-fast': { inputPerMillion: 0.60, outputPerMillion: 3.00 },
-  'x-ai/grok-2': { inputPerMillion: 2.00, outputPerMillion: 10.00 },
-  'x-ai/grok-beta': { inputPerMillion: 5.00, outputPerMillion: 15.00 },
+  'x-ai/grok-4.1-fast': { inputPerMillion: 0.2, outputPerMillion: 0.6 },
+  'x-ai/grok-4.1': { inputPerMillion: 3.0, outputPerMillion: 9.0 },
+  'x-ai/grok-3': { inputPerMillion: 3.0, outputPerMillion: 15.0 },
+  'x-ai/grok-3-fast': { inputPerMillion: 0.6, outputPerMillion: 3.0 },
+  'x-ai/grok-2': { inputPerMillion: 2.0, outputPerMillion: 10.0 },
+  'x-ai/grok-beta': { inputPerMillion: 5.0, outputPerMillion: 15.0 },
 
   // Anthropic Claude Models
   'anthropic/claude-3.5-sonnet': {
-    inputPerMillion: 3.00,
-    outputPerMillion: 15.00,
-    cachedPerMillion: 0.30,
+    inputPerMillion: 3.0,
+    outputPerMillion: 15.0,
+    cachedPerMillion: 0.3,
   },
   'anthropic/claude-3.5-sonnet-20241022': {
-    inputPerMillion: 3.00,
-    outputPerMillion: 15.00,
-    cachedPerMillion: 0.30,
+    inputPerMillion: 3.0,
+    outputPerMillion: 15.0,
+    cachedPerMillion: 0.3,
   },
   'anthropic/claude-3.5-haiku': {
-    inputPerMillion: 0.80,
-    outputPerMillion: 4.00,
+    inputPerMillion: 0.8,
+    outputPerMillion: 4.0,
     cachedPerMillion: 0.08,
   },
   'anthropic/claude-3.5-haiku-20241022': {
-    inputPerMillion: 0.80,
-    outputPerMillion: 4.00,
+    inputPerMillion: 0.8,
+    outputPerMillion: 4.0,
     cachedPerMillion: 0.08,
   },
   'anthropic/claude-3-opus': {
-    inputPerMillion: 15.00,
-    outputPerMillion: 75.00,
-    cachedPerMillion: 1.50,
+    inputPerMillion: 15.0,
+    outputPerMillion: 75.0,
+    cachedPerMillion: 1.5,
   },
   'anthropic/claude-3-sonnet': {
-    inputPerMillion: 3.00,
-    outputPerMillion: 15.00,
-    cachedPerMillion: 0.30,
+    inputPerMillion: 3.0,
+    outputPerMillion: 15.0,
+    cachedPerMillion: 0.3,
   },
   'anthropic/claude-3-haiku': {
     inputPerMillion: 0.25,
@@ -72,33 +72,33 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   },
 
   // OpenAI Models
-  'openai/gpt-4o': { inputPerMillion: 2.50, outputPerMillion: 10.00 },
-  'openai/gpt-4o-2024-11-20': { inputPerMillion: 2.50, outputPerMillion: 10.00 },
-  'openai/gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.60 },
-  'openai/gpt-4o-mini-2024-07-18': { inputPerMillion: 0.15, outputPerMillion: 0.60 },
-  'openai/gpt-4-turbo': { inputPerMillion: 10.00, outputPerMillion: 30.00 },
-  'openai/gpt-4': { inputPerMillion: 30.00, outputPerMillion: 60.00 },
-  'openai/gpt-3.5-turbo': { inputPerMillion: 0.50, outputPerMillion: 1.50 },
-  'openai/o1': { inputPerMillion: 15.00, outputPerMillion: 60.00 },
-  'openai/o1-mini': { inputPerMillion: 3.00, outputPerMillion: 12.00 },
-  'openai/o1-preview': { inputPerMillion: 15.00, outputPerMillion: 60.00 },
-  'openai/o3-mini': { inputPerMillion: 1.10, outputPerMillion: 4.40 },
+  'openai/gpt-4o': { inputPerMillion: 2.5, outputPerMillion: 10.0 },
+  'openai/gpt-4o-2024-11-20': { inputPerMillion: 2.5, outputPerMillion: 10.0 },
+  'openai/gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+  'openai/gpt-4o-mini-2024-07-18': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+  'openai/gpt-4-turbo': { inputPerMillion: 10.0, outputPerMillion: 30.0 },
+  'openai/gpt-4': { inputPerMillion: 30.0, outputPerMillion: 60.0 },
+  'openai/gpt-3.5-turbo': { inputPerMillion: 0.5, outputPerMillion: 1.5 },
+  'openai/o1': { inputPerMillion: 15.0, outputPerMillion: 60.0 },
+  'openai/o1-mini': { inputPerMillion: 3.0, outputPerMillion: 12.0 },
+  'openai/o1-preview': { inputPerMillion: 15.0, outputPerMillion: 60.0 },
+  'openai/o3-mini': { inputPerMillion: 1.1, outputPerMillion: 4.4 },
 
   // Google Models
-  'google/gemini-pro-1.5': { inputPerMillion: 1.25, outputPerMillion: 5.00 },
-  'google/gemini-flash-1.5': { inputPerMillion: 0.075, outputPerMillion: 0.30 },
+  'google/gemini-pro-1.5': { inputPerMillion: 1.25, outputPerMillion: 5.0 },
+  'google/gemini-flash-1.5': { inputPerMillion: 0.075, outputPerMillion: 0.3 },
   'google/gemini-2.0-flash-exp': { inputPerMillion: 0.0, outputPerMillion: 0.0 },
 
   // Meta Models
-  'meta-llama/llama-3.1-405b-instruct': { inputPerMillion: 2.70, outputPerMillion: 2.70 },
+  'meta-llama/llama-3.1-405b-instruct': { inputPerMillion: 2.7, outputPerMillion: 2.7 },
   'meta-llama/llama-3.1-70b-instruct': { inputPerMillion: 0.52, outputPerMillion: 0.75 },
   'meta-llama/llama-3.1-8b-instruct': { inputPerMillion: 0.055, outputPerMillion: 0.055 },
-  'meta-llama/llama-3.3-70b-instruct': { inputPerMillion: 0.12, outputPerMillion: 0.30 },
+  'meta-llama/llama-3.3-70b-instruct': { inputPerMillion: 0.12, outputPerMillion: 0.3 },
 
   // Mistral Models
-  'mistralai/mistral-large': { inputPerMillion: 2.00, outputPerMillion: 6.00 },
-  'mistralai/mistral-medium': { inputPerMillion: 2.75, outputPerMillion: 8.10 },
-  'mistralai/mistral-small': { inputPerMillion: 0.20, outputPerMillion: 0.60 },
+  'mistralai/mistral-large': { inputPerMillion: 2.0, outputPerMillion: 6.0 },
+  'mistralai/mistral-medium': { inputPerMillion: 2.75, outputPerMillion: 8.1 },
+  'mistralai/mistral-small': { inputPerMillion: 0.2, outputPerMillion: 0.6 },
   'mistralai/mixtral-8x7b-instruct': { inputPerMillion: 0.24, outputPerMillion: 0.24 },
   'mistralai/codestral-mamba': { inputPerMillion: 0.25, outputPerMillion: 0.25 },
 
@@ -108,7 +108,7 @@ export const MODEL_PRICING: Record<string, ModelPricing> = {
   'deepseek/deepseek-r1': { inputPerMillion: 0.55, outputPerMillion: 2.19 },
 
   // Qwen Models
-  'qwen/qwen-2.5-72b-instruct': { inputPerMillion: 0.35, outputPerMillion: 0.40 },
+  'qwen/qwen-2.5-72b-instruct': { inputPerMillion: 0.35, outputPerMillion: 0.4 },
   'qwen/qwen-2.5-coder-32b-instruct': { inputPerMillion: 0.18, outputPerMillion: 0.18 },
   'qwen/qwq-32b-preview': { inputPerMillion: 0.12, outputPerMillion: 0.18 },
 };

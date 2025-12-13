@@ -1,19 +1,17 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { createStepProgressTracker, StepProgressTracker } from '../step-progress.js';
+import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { StepProgressTracker } from '../../workflow/step-tracker.js';
 
 describe('StepProgressTracker', () => {
-  let mockOnUpdate: ReturnType<typeof vi.fn>;
+  let mockOnUpdate: ReturnType<typeof mock>;
   let tracker: StepProgressTracker;
 
   beforeEach(() => {
-    vi.useFakeTimers();
-    mockOnUpdate = vi.fn().mockResolvedValue(undefined);
+    mockOnUpdate = mock(async () => {});
     tracker = new StepProgressTracker(mockOnUpdate);
   });
 
   afterEach(() => {
     tracker.destroy();
-    vi.useRealTimers();
   });
 
   describe('constructor', () => {
@@ -61,7 +59,9 @@ describe('StepProgressTracker', () => {
         result: 'a'.repeat(1000), // 1KB
       });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringContaining('[ok] get_posts returned'));
+      // Use stringContaining or regex match if available, or just check standard string includes
+      const lastCall = mockOnUpdate.mock.calls[0][0] as string;
+      expect(lastCall).toContain('[ok] get_posts returned');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:complete');
     });
 
@@ -72,9 +72,8 @@ describe('StepProgressTracker', () => {
         error: 'Connection failed',
       });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith(
-        expect.stringContaining('[x] get_posts: Connection failed')
-      );
+      const lastCall = mockOnUpdate.mock.calls[0][0] as string;
+      expect(lastCall).toContain('[x] get_posts: Connection failed');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:error');
     });
 
@@ -95,7 +94,9 @@ describe('StepProgressTracker', () => {
         maxIterations: 5,
       });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringContaining('[~] Processing (2/5)'));
+      const lastCalls = mockOnUpdate.mock.calls;
+      const lastMessage = lastCalls[lastCalls.length - 1][0] as string;
+      expect(lastMessage).toContain('[~] Processing (2/5)');
     });
 
     it('should handle preparing step', async () => {
@@ -118,7 +119,7 @@ describe('StepProgressTracker', () => {
       });
 
       // Should show both steps
-      const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
+      const lastCall = mockOnUpdate.mock.calls[0][0] as string;
       expect(lastCall).toContain('[>] Router -> SimpleAgent');
       expect(lastCall).toContain('[ok] get_posts returned');
     });
@@ -130,7 +131,7 @@ describe('StepProgressTracker', () => {
       await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
 
       // Should show completed routing + current tool running
-      const lastCall = mockOnUpdate.mock.calls[0]![0] as string;
+      const lastCall = mockOnUpdate.mock.calls[0][0] as string;
       expect(lastCall).toContain('[>] Router -> SimpleAgent');
       expect(lastCall).toContain('[~] get_posts running. ...');
     });
@@ -138,42 +139,58 @@ describe('StepProgressTracker', () => {
 
   describe('rotation', () => {
     it('should rotate suffix after interval', async () => {
+      // Create tracker with very fast rotation
+      tracker.destroy();
+      tracker = new StepProgressTracker(mockOnUpdate, { rotationInterval: 10 });
+
       await tracker.addStep({ type: 'thinking' });
 
+      const initialCallCount = mockOnUpdate.mock.calls.length;
       expect(mockOnUpdate).toHaveBeenLastCalledWith('[~] Thinking. ...');
 
-      // Advance timer to trigger rotation
-      await vi.advanceTimersByTime(5000);
+      // Wait for rotation (allow some buffer)
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // Should have rotated to a different suffix
-      expect(mockOnUpdate).toHaveBeenLastCalledWith(
-        expect.stringMatching(/\[~\] Thinking\. .+\.\.\./)
-      );
+      expect(mockOnUpdate.mock.calls.length).toBeGreaterThan(initialCallCount);
+
+      // Check that we saw at least one rotation (e.g. "Evaluating")
+      const calls = mockOnUpdate.mock.calls.map((c) => c[0] as string);
+      const hasRotated = calls.some((msg) => msg.includes('Evaluating'));
+      expect(hasRotated).toBe(true);
+      const lastCall = mockOnUpdate.mock.calls[mockOnUpdate.mock.calls.length - 1][0] as string;
+      expect(lastCall).toContain('[~] Thinking');
     });
 
     it('should stop rotation when destroyed', async () => {
+      tracker.destroy();
+      tracker = new StepProgressTracker(mockOnUpdate, { rotationInterval: 10 });
       await tracker.addStep({ type: 'thinking' });
+
       const callCount = mockOnUpdate.mock.calls.length;
 
       tracker.destroy();
 
-      // Advance timer - should not trigger more updates
-      await vi.advanceTimersByTime(10000);
+      // Wait - should not trigger more updates
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(mockOnUpdate.mock.calls.length).toBe(callCount);
     });
 
     it('should stop rotation when step changes', async () => {
+      tracker.destroy();
+      tracker = new StepProgressTracker(mockOnUpdate, { rotationInterval: 10 });
       await tracker.addStep({ type: 'thinking' });
 
       // Add a completed step (stops rotation)
       await tracker.addStep({ type: 'routing', agentName: 'SimpleAgent' });
       const callCount = mockOnUpdate.mock.calls.length;
 
-      // Advance timer - rotation should be stopped
-      await vi.advanceTimersByTime(10000);
+      // Wait - rotation should be stopped
+      await new Promise((resolve) => setTimeout(resolve, 50));
 
-      // No additional calls from rotation
+      // No additional calls from rotation (only the calls from addStep itself)
+      // Note: addStep calls update(), so callCount tracks that.
+      // Rotation would add MORE calls if it was running.
       expect(mockOnUpdate.mock.calls.length).toBe(callCount);
     });
   });
@@ -216,10 +233,19 @@ describe('StepProgressTracker', () => {
 
   describe('error handling', () => {
     it('should not throw when update callback fails', async () => {
-      mockOnUpdate.mockRejectedValueOnce(new Error('Edit failed'));
+      // Create a tracker where onUpdate rejected
+      const failingUpdate = mock(async () => {
+        throw new Error('Edit failed');
+      });
+      const failingTracker = new StepProgressTracker(failingUpdate);
 
       // Should not throw
-      await expect(tracker.addStep({ type: 'thinking' })).resolves.not.toThrow();
+      try {
+        await failingTracker.addStep({ type: 'thinking' });
+      } catch (e) {
+        expect(e).toBeUndefined();
+      }
+      failingTracker.destroy();
     });
 
     it('should not update after destroyed', async () => {
@@ -229,22 +255,6 @@ describe('StepProgressTracker', () => {
       await tracker.addStep({ type: 'thinking' });
 
       expect(mockOnUpdate).not.toHaveBeenCalled();
-    });
-  });
-
-  describe('createStepProgressTracker helper', () => {
-    it('should create a tracker', () => {
-      const helper = createStepProgressTracker(mockOnUpdate);
-      expect(helper).toBeInstanceOf(StepProgressTracker);
-      helper.destroy();
-    });
-
-    it('should accept config', () => {
-      const helper = createStepProgressTracker(mockOnUpdate, {
-        rotationInterval: 3000,
-      });
-      expect(helper).toBeInstanceOf(StepProgressTracker);
-      helper.destroy();
     });
   });
 });

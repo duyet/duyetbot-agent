@@ -322,10 +322,7 @@ describe('GitHubMCPAgent', () => {
   describe('edge cases', () => {
     it('should match queries with multiple GitHub-related keywords', () => {
       const result = agentRegistry.quickClassify('show my open PR and issues');
-      // Should match if it contains patterns/keywords
-      if (result !== null) {
-        expect(result).toBe('github-mcp-agent');
-      }
+      expect(result).toBe('github-mcp-agent');
     });
 
     it('should not match queries with GitHub mentioned but for different agents', () => {

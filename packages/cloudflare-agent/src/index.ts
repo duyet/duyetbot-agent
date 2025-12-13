@@ -6,28 +6,6 @@
 
 // Core agent
 export { ChatAgent } from './agent.js';
-// Batch types (alarm-based processing)
-// DEPRECATED: Legacy module for backward compatibility with cloudflare-agent.ts
-// Use ExecutionContext and AgentProvider from './execution/' for new implementations.
-export {
-  type BatchConfig,
-  type BatchState,
-  type BatchStatus,
-  calculateRetryDelay,
-  combineBatchMessages,
-  createInitialBatchState,
-  createInitialEnhancedBatchState,
-  DEFAULT_BATCH_CONFIG,
-  DEFAULT_RETRY_CONFIG,
-  type EnhancedBatchState,
-  isDuplicateMessage,
-  type MessageStage,
-  type PendingMessage,
-  type RetryConfig,
-  type RetryError,
-  type StageTransition,
-  shouldProcessImmediately,
-} from './batch-types.js';
 // Cloudflare Durable Object wrapper
 // DEPRECATED: Legacy module for backward compatibility during migration to new agent architecture
 // Use createChatAgent() from './agents/chat-agent.js' for new implementations.
@@ -42,7 +20,6 @@ export {
   createCloudflareChatAgent,
   getChatAgent,
   type MCPServerConnection,
-  type RouterConfig,
 } from './cloudflare-agent.js';
 // Debug footer utilities
 export {
@@ -103,11 +80,6 @@ export {
   ServiceBindingMemoryAdapter,
   type ServiceBindingMemoryAdapterConfig,
 } from './service-binding-adapter.js';
-// Step progress tracker
-export {
-  createStepProgressTracker,
-  StepProgressTracker,
-} from './step-progress.js';
 // Transport layer
 export {
   TransportManager,
@@ -140,6 +112,8 @@ export type {
   ToolExecutor,
   WebSearchPlugin,
 } from './types.js';
+// Step progress tracker
+export { StepProgressTracker } from './workflow/step-tracker.js';
 
 // =============================================================================
 // NEW: Routing & Orchestration Architecture
@@ -614,3 +588,9 @@ export type {
 // Workflow class for durable agent execution
 // Workflow helpers
 export { AgenticLoopWorkflow, serializeTools } from './agentic-loop/workflow/index.js';
+// NEW: Modular Components (Phase 1-7 Extraction)
+export * from './auth/index.js';
+export * from './commands/index.js';
+export * from './mcp/index.js';
+export * from './sanitization/index.js';
+export * from './workflow/index.js';
