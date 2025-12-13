@@ -87,6 +87,16 @@ export interface MCPServerConnection {
 /**
  * Active workflow execution tracking
  */
+/** Progress update entry for workflow execution */
+export interface WorkflowProgressEntry {
+  type: string;
+  iteration: number;
+  message: string;
+  toolName?: string;
+  durationMs?: number;
+  timestamp: number;
+}
+
 export interface ActiveWorkflowExecution {
   /** Workflow instance ID from Cloudflare */
   workflowId: string;
@@ -95,12 +105,9 @@ export interface ActiveWorkflowExecution {
   /** Timestamp when workflow was spawned */
   startedAt: number;
   /** Last progress update received */
-  lastProgress?: {
-    type: string;
-    iteration: number;
-    message: string;
-    timestamp: number;
-  };
+  lastProgress?: WorkflowProgressEntry;
+  /** Accumulated progress history for display */
+  progressHistory?: WorkflowProgressEntry[];
   /** Message ID for editing progress (MessageRef = string | number) */
   messageId: number;
   /** Platform for transport reconstruction */
@@ -3495,6 +3502,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Handle workflow progress updates
+     *
+     * Accumulates progress updates and formats them in Claude Code style:
+     * ```
+     * ⏺ Thinking (step 3/10)
+     *   ⎿ memory (234ms)
+     *   ⎿ research (1.2s)
+     *   ⎿ Running web_search...
+     * ```
      */
     private async handleWorkflowProgress(request: Request): Promise<Response> {
       try {
@@ -3521,17 +3536,27 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           return new Response('Workflow not found', { status: 404 });
         }
 
-        // Update state with latest progress
+        // Create progress entry
+        const progressEntry: WorkflowProgressEntry = {
+          type: update.type,
+          iteration: update.iteration,
+          message: update.message,
+          timestamp: update.timestamp,
+          ...(update.toolName !== undefined && { toolName: update.toolName }),
+          ...(update.durationMs !== undefined && { durationMs: update.durationMs }),
+        };
+
+        // Accumulate progress history
+        const existingHistory = workflow.progressHistory ?? [];
+        const updatedHistory = [...existingHistory, progressEntry];
+
+        // Update state with latest progress and history
         const updatedWorkflows = {
           ...this.state.activeWorkflows,
           [executionId]: {
             ...workflow,
-            lastProgress: {
-              type: update.type,
-              iteration: update.iteration,
-              message: update.message,
-              timestamp: update.timestamp,
-            },
+            lastProgress: progressEntry,
+            progressHistory: updatedHistory,
           },
         };
 
@@ -3541,13 +3566,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           updatedAt: Date.now(),
         });
 
-        // Edit thinking message with progress (if transport available)
+        // Format accumulated progress in Claude Code style
+        const formattedProgress = this.formatWorkflowProgress(updatedHistory);
+
+        // Edit thinking message with accumulated progress
         if (transport?.edit) {
           try {
-            // Reconstruct minimal context for transport
             const ctx = this.reconstructTransportContext(workflow);
             if (ctx) {
-              await transport.edit(ctx, workflow.messageId, update.message);
+              await transport.edit(ctx, workflow.messageId, formattedProgress);
             }
           } catch (editError) {
             logger.warn('[CloudflareAgent][WORKFLOW] Failed to edit progress message', {
@@ -3563,6 +3590,101 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           error: error instanceof Error ? error.message : String(error),
         });
         return new Response('Internal error', { status: 500 });
+      }
+    }
+
+    /**
+     * Format workflow progress in Claude Code style
+     *
+     * Example output:
+     * ```
+     * ⏺ Thinking (step 3/10)
+     *   ⎿ memory (234ms)
+     *   ⎿ research (1.2s)
+     *   ⎿ Running web_search...
+     * ```
+     */
+    private formatWorkflowProgress(history: WorkflowProgressEntry[]): string {
+      if (history.length === 0) {
+        return '⏺ Starting...';
+      }
+
+      const lines: string[] = [];
+
+      // Group by iteration and format
+      for (const entry of history) {
+        if (entry.type === 'thinking') {
+          // Extract step info from message like "🤔 Thinking... (step 3/100)"
+          const stepMatch = entry.message.match(/step (\d+)\/(\d+)/);
+          const stepInfo = stepMatch
+            ? `step ${stepMatch[1]}/${stepMatch[2]}`
+            : `step ${entry.iteration + 1}`;
+          lines.push(`⏺ Thinking (${stepInfo})`);
+        } else if (entry.type === 'tool_start' && entry.toolName) {
+          // Tool starting - show as "Running..."
+          lines.push(`  ⎿ Running ${entry.toolName}...`);
+        } else if (entry.type === 'tool_complete' && entry.toolName) {
+          // Tool completed - replace "Running..." line with duration
+          const durationStr = this.formatDuration(entry.durationMs ?? 0);
+          // Find and replace the last "Running toolName..." line
+          const runningIdx = this.findLastIndex(lines, (l: string) =>
+            l.includes(`Running ${entry.toolName}`)
+          );
+          if (runningIdx >= 0) {
+            lines[runningIdx] = `  ⎿ ${entry.toolName} (${durationStr})`;
+          } else {
+            lines.push(`  ⎿ ${entry.toolName} (${durationStr})`);
+          }
+        } else if (entry.type === 'tool_error' && entry.toolName) {
+          // Tool failed
+          const runningIdx = this.findLastIndex(lines, (l: string) =>
+            l.includes(`Running ${entry.toolName}`)
+          );
+          if (runningIdx >= 0) {
+            lines[runningIdx] = `  ⎿ ${entry.toolName} ❌`;
+          } else {
+            lines.push(`  ⎿ ${entry.toolName} ❌`);
+          }
+        } else if (entry.type === 'responding') {
+          lines.push(`  ⎿ Generating response...`);
+        }
+      }
+
+      // Keep last 8 lines to avoid message being too long
+      const maxLines = 8;
+      if (lines.length > maxLines) {
+        const truncated = lines.slice(-maxLines);
+        return `...\n${truncated.join('\n')}`;
+      }
+
+      return lines.join('\n');
+    }
+
+    /**
+     * Find the last index in array matching predicate (ES2023 polyfill)
+     */
+    private findLastIndex(arr: string[], predicate: (item: string) => boolean): number {
+      for (let i = arr.length - 1; i >= 0; i--) {
+        const item = arr[i];
+        if (item !== undefined && predicate(item)) {
+          return i;
+        }
+      }
+      return -1;
+    }
+
+    /**
+     * Format duration in human-readable format
+     */
+    private formatDuration(ms: number): string {
+      if (ms < 1000) {
+        return `${ms}ms`;
+      } else if (ms < 60000) {
+        return `${(ms / 1000).toFixed(1)}s`;
+      } else {
+        const mins = Math.floor(ms / 60000);
+        const secs = Math.round((ms % 60000) / 1000);
+        return `${mins}m ${secs}s`;
       }
     }
 
@@ -3754,19 +3876,56 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       iterations: number;
       toolsUsed: string[];
       totalDurationMs: number;
-      tokenUsage?: { total: number };
+      tokenUsage?: { input: number; output: number; total: number };
+      debugContext?: {
+        steps: Array<{
+          iteration: number;
+          type: string;
+          toolName?: string;
+          args?: Record<string, unknown>;
+          result?: unknown;
+        }>;
+      };
     }): string {
-      const lines = [
-        `⏰ ${result.iterations} iteration${result.iterations !== 1 ? 's' : ''}`,
-        `🔧 Tools: ${result.toolsUsed.length > 0 ? result.toolsUsed.join(', ') : 'none'}`,
-        `⏱️ ${result.totalDurationMs}ms`,
-      ];
+      const lines: string[] = [];
 
-      if (result.tokenUsage?.total) {
-        lines.push(`📊 ${result.tokenUsage.total} tokens`);
+      // Header with iterations
+      lines.push(`⏰ ${result.iterations} iteration${result.iterations !== 1 ? 's' : ''}`);
+
+      // Chain of tool executions with individual durations
+      if (result.debugContext?.steps) {
+        const toolSteps = result.debugContext.steps.filter(
+          (s) => s.type === 'tool_execution' && s.toolName
+        );
+        if (toolSteps.length > 0) {
+          const toolsWithDurations = toolSteps.map((s) => {
+            // Extract durationMs from result if available
+            const resultObj = s.result as { durationMs?: number } | undefined;
+            const duration = resultObj?.durationMs;
+            return duration ? `${s.toolName}(${this.formatDuration(duration)})` : s.toolName;
+          });
+          lines.push(`🔧 ${toolsWithDurations.join(' → ')}`);
+        } else if (result.toolsUsed.length > 0) {
+          lines.push(`🔧 ${result.toolsUsed.join(', ')}`);
+        }
+      } else if (result.toolsUsed.length > 0) {
+        lines.push(`🔧 ${result.toolsUsed.join(', ')}`);
       }
 
-      // Return as code block (HTML format assumed)
+      // Total duration
+      lines.push(`⏱️ ${this.formatDuration(result.totalDurationMs)}`);
+
+      // Token usage
+      if (result.tokenUsage?.total) {
+        lines.push(`📊 ${result.tokenUsage.total.toLocaleString()} tokens`);
+      }
+
+      // Model name from env (cast to access MODEL property)
+      const envWithModel = this.env as { MODEL?: string } | undefined;
+      const modelName = envWithModel?.MODEL || '@preset/duyetbot';
+      lines.push(`🤖 ${modelName}`);
+
+      // Return as code block
       return `<code>${lines.join('\n')}</code>`;
     }
   };
