@@ -3743,13 +3743,17 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         });
 
         // Format final response with debug info
-        // Sanitize LLM response: convert <br> tags to newlines (Telegram HTML doesn't support <br>)
-        let finalResponse = result.response.replace(/<br\s*\/?>/gi, '\n');
+        // Sanitize LLM response for Telegram HTML mode:
+        // 1. Strip ALL HTML tags (LLM produces inconsistent HTML that breaks Telegram's strict parser)
+        // 2. Escape HTML entities to prevent parsing issues
+        // The debug footer (which we control) is added AFTER sanitization
+        let finalResponse = this.sanitizeLLMResponseForTelegram(result.response);
 
         // Check if admin for debug footer
         const isAdmin = this.isAdminUser(workflow.chatId);
         if (isAdmin && result.success) {
           // Add debug footer for admin with workflow ID for debugging
+          // Footer uses valid Telegram HTML tags (blockquote, a) that we control
           const footer = this.formatWorkflowDebugFooter(result, workflow.workflowId);
           finalResponse = `${finalResponse}\n\n${footer}`;
         }
@@ -4011,6 +4015,41 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const joined = lines.join(' | ').slice(0, 150);
       const ellipsis = output.length > 150 || output.split('\n').length > maxLines ? '...' : '';
       return `${joined}${ellipsis}`;
+    }
+
+    /**
+     * Sanitize LLM response for Telegram HTML mode
+     *
+     * Telegram's HTML parser is strict - any malformed tag causes the entire message
+     * to render as plain text. LLMs often produce HTML that doesn't conform to
+     * Telegram's supported subset (only b, i, u, s, code, pre, a, blockquote, tg-spoiler).
+     *
+     * Strategy:
+     * 1. Strip ALL HTML tags from LLM response (can't trust LLM HTML)
+     * 2. Escape HTML entities (<, >, &) to prevent parsing issues
+     * 3. Convert <br> to newlines before stripping
+     *
+     * The debug footer (added separately) uses only valid Telegram HTML.
+     */
+    private sanitizeLLMResponseForTelegram(response: string): string {
+      // 1. Convert <br> tags to newlines (before stripping all tags)
+      let sanitized = response.replace(/<br\s*\/?>/gi, '\n');
+
+      // 2. Strip ALL HTML tags - regex matches any tag including self-closing
+      // This handles: <tag>, </tag>, <tag/>, <tag attr="value">
+      sanitized = sanitized.replace(/<[^>]*>/g, '');
+
+      // 3. Escape remaining HTML entities to prevent parse issues
+      // Order matters: & must be escaped first
+      sanitized = sanitized
+        .replace(/&(?!amp;|lt;|gt;|quot;)/g, '&amp;') // Escape & that aren't already entities
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;');
+
+      // 4. Clean up excessive whitespace that might result from stripped tags
+      sanitized = sanitized.replace(/\n{3,}/g, '\n\n').trim();
+
+      return sanitized;
     }
   };
 
