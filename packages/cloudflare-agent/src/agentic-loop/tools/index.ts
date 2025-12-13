@@ -7,7 +7,7 @@
  * Available tools:
  * - plan: Task decomposition and planning
  * - research: Web search and information retrieval
- * - memory: Personal information lookup
+ * - duyet_info: Personal information lookup via MCP (blog, CV, skills, contact)
  * - github: GitHub API operations
  * - subagent: Delegate independent subtasks
  * - request_approval: Request human approval
@@ -27,8 +27,12 @@ export { createPlanTool, planTool };
 import { researchTool } from './research.js';
 export { researchTool };
 
-import { memoryTool } from './memory.js';
-export { memoryTool };
+import { duyetMcpTool, duyetToolFilter, getFallbackResponse, inferMcpToolFromQuery } from './duyet-mcp.js';
+export { duyetMcpTool, duyetToolFilter, getFallbackResponse, inferMcpToolFromQuery };
+
+// Legacy export for backward compatibility (deprecated)
+// TODO: Remove after verifying no code references memoryTool
+export { duyetMcpTool as memoryTool };
 
 import { createGitHubTool, githubTool } from './github.js';
 export { createGitHubTool, githubTool };
@@ -90,7 +94,7 @@ export function createCoreTools(config?: CoreToolsConfig): LoopTool[] {
 
   tools.push(planTool);
   tools.push(researchTool);
-  tools.push(memoryTool);
+  tools.push(duyetMcpTool); // Duyet personal info via MCP
   tools.push(githubTool);
 
   if (config?.enableSubagents !== false && !config?.isSubagent) {
