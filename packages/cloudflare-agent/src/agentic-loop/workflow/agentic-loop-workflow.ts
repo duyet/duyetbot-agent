@@ -57,7 +57,13 @@ interface SerializableIterationResult {
     toolCalls?: Array<{ id: string; name: string; arguments: JsonRecord }>;
   }>;
   toolsUsed: string[];
-  tokenUsage: { input: number; output: number };
+  tokenUsage: {
+    input: number;
+    output: number;
+    cached?: number;
+    reasoning?: number;
+    costUsd?: number;
+  };
   debugSteps: Array<{
     iteration: number;
     type: 'thinking' | 'tool_execution';
@@ -108,7 +114,13 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
     ];
 
     const toolsUsed: Set<string> = new Set();
-    let totalTokens = { input: 0, output: 0 };
+    let totalTokens: SerializableIterationResult['tokenUsage'] = {
+      input: 0,
+      output: 0,
+      cached: 0,
+      reasoning: 0,
+      costUsd: 0,
+    };
     const debugSteps: SerializableIterationResult['debugSteps'] = [];
 
     // Get tools (recreated at runtime since functions can't be serialized)
@@ -162,10 +174,20 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
               traceId
             );
 
-            // Update token usage
+            // Update token usage (including extended fields)
             if (llmResponse.usage) {
               totalTokens.input += llmResponse.usage.inputTokens;
               totalTokens.output += llmResponse.usage.outputTokens;
+              if (llmResponse.usage.cachedTokens) {
+                totalTokens.cached = (totalTokens.cached || 0) + llmResponse.usage.cachedTokens;
+              }
+              if (llmResponse.usage.reasoningTokens) {
+                totalTokens.reasoning =
+                  (totalTokens.reasoning || 0) + llmResponse.usage.reasoningTokens;
+              }
+              if (llmResponse.usage.estimatedCostUsd) {
+                totalTokens.costUsd = (totalTokens.costUsd || 0) + llmResponse.usage.estimatedCostUsd;
+              }
             }
 
             // 2b. Update with actual LLM reasoning text (if available and different from tool calls)
@@ -278,6 +300,9 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
               input: stepResult.tokenUsage.input,
               output: stepResult.tokenUsage.output,
               total: stepResult.tokenUsage.input + stepResult.tokenUsage.output,
+              ...(stepResult.tokenUsage.cached && { cached: stepResult.tokenUsage.cached }),
+              ...(stepResult.tokenUsage.reasoning && { reasoning: stepResult.tokenUsage.reasoning }),
+              ...(stepResult.tokenUsage.costUsd && { costUsd: stepResult.tokenUsage.costUsd }),
             },
             debugContext: { steps: stepResult.debugSteps },
           };
@@ -310,6 +335,9 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
           input: totalTokens.input,
           output: totalTokens.output,
           total: totalTokens.input + totalTokens.output,
+          ...(totalTokens.cached && { cached: totalTokens.cached }),
+          ...(totalTokens.reasoning && { reasoning: totalTokens.reasoning }),
+          ...(totalTokens.costUsd && { costUsd: totalTokens.costUsd }),
         },
         error: 'Max iterations exceeded',
         debugContext: { steps: debugSteps },
@@ -334,6 +362,9 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
           input: totalTokens.input,
           output: totalTokens.output,
           total: totalTokens.input + totalTokens.output,
+          ...(totalTokens.cached && { cached: totalTokens.cached }),
+          ...(totalTokens.reasoning && { reasoning: totalTokens.reasoning }),
+          ...(totalTokens.costUsd && { costUsd: totalTokens.costUsd }),
         },
         error: errorMessage,
         debugContext: { steps: debugSteps },

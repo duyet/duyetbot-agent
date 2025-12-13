@@ -73,6 +73,8 @@ export interface TokenUsage {
   cachedTokens?: number;
   /** Reasoning tokens (o1/o3 internal reasoning) */
   reasoningTokens?: number;
+  /** Estimated cost in USD (calculated from model pricing) */
+  estimatedCostUsd?: number;
 }
 
 /**
