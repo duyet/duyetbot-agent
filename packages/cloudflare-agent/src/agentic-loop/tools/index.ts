@@ -27,7 +27,12 @@ export { createPlanTool, planTool };
 import { researchTool } from './research.js';
 export { researchTool };
 
-import { duyetMcpTool, duyetToolFilter, getFallbackResponse, inferMcpToolFromQuery } from './duyet-mcp.js';
+import {
+  duyetMcpTool,
+  duyetToolFilter,
+  getFallbackResponse,
+  inferMcpToolFromQuery,
+} from './duyet-mcp.js';
 export { duyetMcpTool, duyetToolFilter, getFallbackResponse, inferMcpToolFromQuery };
 
 // Legacy export for backward compatibility (deprecated)
