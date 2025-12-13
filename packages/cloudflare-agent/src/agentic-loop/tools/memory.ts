@@ -59,7 +59,7 @@ export const memoryTool: LoopTool = {
       logger.debug('[MemoryTool] Executing memory lookup', {
         query,
         action,
-        traceId: ctx.executionContext.traceId,
+        traceId: ctx.executionContext?.traceId ?? 'unknown',
       });
 
       // TODO: Wire up MCP client integration
@@ -97,7 +97,7 @@ export const memoryTool: LoopTool = {
         error: errorMessage,
         query,
         action,
-        traceId: ctx.executionContext.traceId,
+        traceId: ctx.executionContext?.traceId ?? 'unknown',
       });
 
       // Return a graceful error response instead of failing the tool
