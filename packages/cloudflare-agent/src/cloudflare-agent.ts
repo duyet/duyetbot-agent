@@ -3626,7 +3626,6 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Process history sequentially
       for (const entry of history) {
         if (entry.type === 'thinking') {
-
           // Extract thinking message without emoji prefix
           let thinkingText = entry.message.replace(/^🤔\s*/, '').trim();
 
