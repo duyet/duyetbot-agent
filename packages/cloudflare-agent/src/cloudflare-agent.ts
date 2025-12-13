@@ -3596,64 +3596,84 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Format workflow progress in Claude Code style
      *
-     * Example output:
+     * Shows accumulated thinking/tool chain during execution:
      * ```
-     * ⏺ Thinking (step 3/10)
-     *   ⎿ memory (234ms)
-     *   ⎿ research (1.2s)
-     *   ⎿ Running web_search...
+     * ⏺ Ruminating...
+     *
+     * ⏺ I'll search for information about...
+     *
+     * ⏺ research(query: "OpenAI skills")
+     *   ⎿ Running...
+     * ```
+     *
+     * Then when tool completes:
+     * ```
+     * ⏺ I'll search for information about...
+     *
+     * ⏺ research(query: "OpenAI skills")
+     *   ⎿ Found 5 results...
+     *
+     * ⏺ Analyzing the results...
      * ```
      */
     private formatWorkflowProgress(history: WorkflowProgressEntry[]): string {
       if (history.length === 0) {
-        return '⏺ Starting...';
+        return '⏺ Ruminating...';
       }
 
       const lines: string[] = [];
 
-      // Group by iteration and format
+      // Process history sequentially
       for (const entry of history) {
         if (entry.type === 'thinking') {
-          // Show step number only (not /maxIterations)
-          const stepNum = entry.iteration + 1;
 
-          // Extract the thinking verb (Thinking, Processing, Pondering, etc.) from the message
-          // Message format: "🤔 Processing... (step 3/100)" or just the verb
-          const verbMatch = entry.message.match(/🤔\s*(\w+)/);
-          const thinkingVerb = verbMatch?.[1] || 'Thinking';
-          lines.push(`⏺ ${thinkingVerb} (step ${stepNum})`);
-        } else if (entry.type === 'tool_start' && entry.toolName) {
-          // Tool starting - show as "Running..."
-          lines.push(`  ⎿ Running ${entry.toolName}...`);
-        } else if (entry.type === 'tool_complete' && entry.toolName) {
-          // Tool completed - replace "Running..." line with duration
-          const durationStr = this.formatDuration(entry.durationMs ?? 0);
-          // Find and replace the last "Running toolName..." line
-          const runningIdx = this.findLastIndex(lines, (l: string) =>
-            l.includes(`Running ${entry.toolName}`)
-          );
-          if (runningIdx >= 0) {
-            lines[runningIdx] = `  ⎿ ${entry.toolName} (${durationStr})`;
+          // Extract thinking message without emoji prefix
+          let thinkingText = entry.message.replace(/^🤔\s*/, '').trim();
+
+          // Remove step suffix like "(step 3/100)"
+          thinkingText = thinkingText.replace(/\s*\(step\s+\d+\/\d+\)\s*$/i, '').trim();
+
+          // If it's just ellipsis like "Thinking...", use step number
+          if (/^(thinking|processing|pondering)\.{0,3}$/i.test(thinkingText)) {
+            lines.push(`⏺ Thinking (step ${entry.iteration + 1})`);
           } else {
-            lines.push(`  ⎿ ${entry.toolName} (${durationStr})`);
+            lines.push(`⏺ ${thinkingText}`);
+          }
+        } else if (entry.type === 'tool_start' && entry.toolName) {
+          // Tool starting - show tool name and "Running..."
+          lines.push(`⏺ ${entry.toolName}(...)`);
+          lines.push('  ⎿ Running...');
+        } else if (entry.type === 'tool_complete' && entry.toolName) {
+          // Tool completed - find and update the "Running..." line
+          const runningIdx = this.findLastIndex(lines, (l: string) => l.includes('⎿ Running...'));
+          const durationStr = this.formatDuration(entry.durationMs ?? 0);
+
+          if (runningIdx >= 0) {
+            // Replace "Running..." with completion
+            lines[runningIdx] = `  ⎿ ✅ (${durationStr})`;
+          } else {
+            // Fallback: add completion line
+            lines.push(`⏺ ${entry.toolName}(...)`);
+            lines.push(`  ⎿ ✅ (${durationStr})`);
           }
         } else if (entry.type === 'tool_error' && entry.toolName) {
-          // Tool failed
-          const runningIdx = this.findLastIndex(lines, (l: string) =>
-            l.includes(`Running ${entry.toolName}`)
-          );
+          // Tool failed - find and update the "Running..." line
+          const runningIdx = this.findLastIndex(lines, (l: string) => l.includes('⎿ Running...'));
+          const durationStr = entry.durationMs ? ` (${this.formatDuration(entry.durationMs)})` : '';
+
           if (runningIdx >= 0) {
-            lines[runningIdx] = `  ⎿ ${entry.toolName} ❌`;
+            lines[runningIdx] = `  ⎿ ❌ Error${durationStr}`;
           } else {
-            lines.push(`  ⎿ ${entry.toolName} ❌`);
+            lines.push(`⏺ ${entry.toolName}(...)`);
+            lines.push(`  ⎿ ❌ Error${durationStr}`);
           }
         } else if (entry.type === 'responding') {
-          lines.push(`  ⎿ Generating response...`);
+          lines.push('⏺ Generating response...');
         }
       }
 
-      // Keep last 8 lines to avoid message being too long
-      const maxLines = 8;
+      // Keep last 12 lines to show more context
+      const maxLines = 12;
       if (lines.length > maxLines) {
         const truncated = lines.slice(-maxLines);
         return `...\n${truncated.join('\n')}`;
