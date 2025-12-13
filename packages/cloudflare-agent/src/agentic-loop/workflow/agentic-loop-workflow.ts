@@ -143,14 +143,7 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
               timestamp: Date.now(),
             });
 
-            // Track thinking step
-            debugSteps.push({
-              iteration,
-              type: 'thinking',
-              thinking: `Iteration ${iteration + 1}/${maxIterations}`,
-            });
-
-            // 2. Call LLM with current messages
+            // 2. Call LLM with current messages (thinking step tracked after LLM call with actual content)
             const loopMessages = messages.map(
               (m) =>
                 ({
@@ -174,6 +167,13 @@ export class AgenticLoopWorkflow extends WorkflowEntrypoint<
               totalTokens.input += llmResponse.usage.inputTokens;
               totalTokens.output += llmResponse.usage.outputTokens;
             }
+
+            // Track thinking step with actual LLM content (text before tool calls)
+            debugSteps.push({
+              iteration,
+              type: 'thinking',
+              thinking: llmResponse.content || `Step ${iteration + 1}`,
+            });
 
             // 3. Add assistant message to history
             const assistantMessage: SerializableIterationResult['messages'][0] = {
