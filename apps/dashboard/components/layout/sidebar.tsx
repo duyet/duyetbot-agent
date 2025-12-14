@@ -4,179 +4,146 @@ import {
   Activity,
   ChevronLeft,
   ChevronRight,
+  ChevronsUpDown,
   Clock,
-  DollarSign,
-  LayoutDashboard,
+  CreditCard,
+  Database,
+  Home,
   MessageSquare,
-  Radio,
-  Server,
+  Settings,
   Zap,
 } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
+import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 
 /**
- * Navigation items for the sidebar
- * Icons from lucide-react
+ * X.AI Style Sidebar
+ *
+ * Structure:
+ * - Team Selector (Top)
+ * - Main Navigation (Middle)
+ * - Footer Navigation (Bottom: Billing, Users, Settings)
  */
-const navItems = [
-  {
-    label: 'Overview',
-    href: '/',
-    icon: LayoutDashboard,
-    description: 'Dashboard overview',
-  },
-  {
-    label: 'Messages',
-    href: '/messages',
-    icon: MessageSquare,
-    description: 'Message explorer',
-  },
-  {
-    label: 'Sessions',
-    href: '/sessions',
-    icon: Clock,
-    description: 'Session browser',
-  },
-  {
-    label: 'Events',
-    href: '/events',
-    icon: Zap,
-    description: 'Event timeline',
-  },
-  {
-    label: 'MCP Servers',
-    href: '/mcp',
-    icon: Server,
-    description: 'Server status',
-  },
-  {
-    label: 'Tokens',
-    href: '/tokens',
-    icon: Activity,
-    description: 'Token analytics',
-  },
-  {
-    label: 'Cost',
-    href: '/tokens/cost',
-    icon: DollarSign,
-    description: 'Cost analysis',
-  },
-  {
-    label: 'Real-time',
-    href: '/realtime',
-    icon: Radio,
-    description: 'Live monitor',
-    hasLiveIndicator: true,
-  },
+
+interface NavItem {
+  label: string;
+  href: string;
+  icon: React.ElementType;
+  hasLiveIndicator?: boolean;
+}
+
+const mainNavItems: NavItem[] = [
+  { label: 'Overview', href: '/', icon: Home },
+  { label: 'Messages', href: '/messages', icon: MessageSquare },
+  { label: 'Sessions', href: '/sessions', icon: Clock },
+  { label: 'Events', href: '/events', icon: Zap },
+  { label: 'MCP Servers', href: '/mcp', icon: Database },
+  { label: 'Tokens', href: '/tokens', icon: Activity },
+  { label: 'Cost', href: '/tokens/cost', icon: CreditCard },
 ];
+
+const bottomNavItems: NavItem[] = [{ label: 'Settings', href: '/settings', icon: Settings }];
 
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
 
+  // Helper to render nav link
+  const renderNavLink = (item: NavItem) => {
+    const Icon = item.icon;
+    const isActive =
+      pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
+
+    return (
+      <Link
+        key={item.href}
+        href={item.href}
+        title={collapsed ? item.label : undefined}
+        className={cn(
+          'flex items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors',
+          isActive
+            ? 'bg-secondary text-foreground font-medium'
+            : 'text-muted-foreground hover:bg-secondary/50 hover:text-foreground'
+        )}
+      >
+        <Icon
+          className={cn('h-4 w-4 shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground')}
+        />
+
+        {!collapsed && (
+          <>
+            <span className="flex-1">{item.label}</span>
+            {item.hasLiveIndicator && (
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+              </span>
+            )}
+          </>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <aside
       className={cn(
-        'hidden border-r border-border bg-background transition-all duration-300 lg:flex lg:flex-col',
+        'hidden border-r bg-background transition-all duration-300 lg:flex lg:flex-col',
         collapsed ? 'w-16' : 'w-64'
       )}
     >
-      {/* Logo / Brand */}
-      <div className="flex h-16 items-center justify-between border-b border-border px-4">
-        {!collapsed && (
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">D</span>
+      {/* Team Selector / Header */}
+      <div className="flex h-14 items-center px-2 pt-2">
+        <Button
+          variant="ghost"
+          className={cn(
+            'w-full justify-between px-2 font-normal hover:bg-secondary/50',
+            collapsed && 'justify-center px-0'
+          )}
+        >
+          {collapsed ? (
+            <div className="h-8 w-8 rounded-full bg-secondary flex items-center justify-center">
+              <span className="text-xs font-bold">P</span>
             </div>
-            <span className="font-semibold text-foreground">duyetbot</span>
-          </Link>
-        )}
-        {collapsed && (
-          <Link href="/" className="mx-auto">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary">
-              <span className="text-sm font-bold text-primary-foreground">D</span>
-            </div>
-          </Link>
-        )}
+          ) : (
+            <>
+              <div className="flex flex-col items-start text-left">
+                <span className="text-xs font-medium text-muted-foreground">CLUSTER</span>
+                <span className="text-sm font-semibold">Duyetbot Agent</span>
+              </div>
+              <ChevronsUpDown className="h-4 w-4 text-muted-foreground opacity-50" />
+            </>
+          )}
+        </Button>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 space-y-1 p-3">
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          const isActive =
-            pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
-
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={collapsed ? item.label : undefined}
-              className={cn(
-                'group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200',
-                isActive
-                  ? 'bg-primary/10 text-primary'
-                  : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-              )}
-            >
-              {/* Active indicator bar */}
-              {isActive && (
-                <span className="absolute left-0 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-primary" />
-              )}
-
-              <Icon className={cn('h-5 w-5 shrink-0', isActive && 'text-primary')} />
-
-              {!collapsed && (
-                <>
-                  <span className="flex-1">{item.label}</span>
-
-                  {/* Live indicator for Real-time */}
-                  {item.hasLiveIndicator && (
-                    <span className="relative flex h-2 w-2">
-                      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-success opacity-75" />
-                      <span className="relative inline-flex h-2 w-2 rounded-full bg-success" />
-                    </span>
-                  )}
-
-                  {/* Hover arrow */}
-                  <ChevronRight
-                    className={cn(
-                      'h-4 w-4 opacity-0 transition-opacity duration-200',
-                      'group-hover:opacity-100',
-                      isActive && 'opacity-100'
-                    )}
-                  />
-                </>
-              )}
-            </Link>
-          );
-        })}
+      {/* Main Navigation */}
+      <nav className="flex-1 space-y-0.5 px-2 mt-4 overflow-y-auto">
+        {mainNavItems.map(renderNavLink)}
       </nav>
 
-      {/* Footer */}
-      <div className="border-t border-border p-3">
-        {/* Collapse toggle */}
+      {/* Bottom Navigation */}
+      <div className="mt-auto px-2 pb-2 space-y-0.5">
+        {bottomNavItems.map(renderNavLink)}
+
+        {/* Collapse toggle (optional, X doesn't really show one but good for utility) */}
+        {!collapsed && <Separator className="my-2" />}
         <Button
           variant="ghost"
           size="sm"
           onClick={() => setCollapsed(!collapsed)}
-          className="w-full justify-center"
+          className={cn(
+            'w-full justify-start gap-3 px-3 text-muted-foreground hover:text-foreground',
+            collapsed && 'justify-center'
+          )}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          {!collapsed && <span className="ml-2">Collapse</span>}
+          {!collapsed && <span>Collapse</span>}
         </Button>
-
-        {/* Version info */}
-        {!collapsed && (
-          <div className="mt-3 rounded-lg bg-secondary/50 p-3">
-            <p className="text-xs font-medium text-muted-foreground">Version</p>
-            <p className="text-sm font-semibold text-foreground">0.1.0</p>
-          </div>
-        )}
       </div>
     </aside>
   );

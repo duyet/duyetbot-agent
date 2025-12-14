@@ -17,16 +17,17 @@
   },
   "dependencies": {
     "@duyetbot/analytics": "workspace:*",
-    "next": "^15.1.0",
-    "react": "^19.0.0",
-    "react-dom": "^19.0.0",
     "@tanstack/react-query": "^5.60.0",
-    "recharts": "^2.15.0",
-    "date-fns": "^4.1.0",
-    "lucide-react": "^0.460.0",
+    "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "tailwind-merge": "^2.5.0",
-    "class-variance-authority": "^0.7.0"
+    "date-fns": "^4.1.0",
+    "eslint-config-next": "^16.0.10",
+    "lucide-react": "^0.460.0",
+    "next": "^16.0.10",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^2.5.0"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
