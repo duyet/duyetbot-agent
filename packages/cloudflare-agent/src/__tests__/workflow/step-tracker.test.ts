@@ -34,7 +34,8 @@ describe('StepProgressTracker', () => {
     it('should handle thinking step', async () => {
       await tracker.addStep({ type: 'thinking' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('[~] Thinking. ...');
+      // Claude Code style with * prefix and ellipsis character
+      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringMatching(/^\* \w+…$/));
       expect(tracker.getExecutionPath()).toContain('thinking');
     });
 
@@ -48,7 +49,10 @@ describe('StepProgressTracker', () => {
     it('should handle tool_start step', async () => {
       await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('[~] get_posts running. ...');
+      // Tool shows as "⏺ toolname\n  ⎿ Running…"
+      const lastCall = mockOnUpdate.mock.calls[0][0] as string;
+      expect(lastCall).toContain('⏺ get_posts');
+      expect(lastCall).toContain('⎿ Running…');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:start');
     });
 
@@ -59,9 +63,9 @@ describe('StepProgressTracker', () => {
         result: 'a'.repeat(1000), // 1KB
       });
 
-      // Use stringContaining or regex match if available, or just check standard string includes
+      // Tool complete shows as "⏺ toolname" in completed steps
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
-      expect(lastCall).toContain('[ok] get_posts returned');
+      expect(lastCall).toContain('⏺ get_posts');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:complete');
     });
 
@@ -73,7 +77,8 @@ describe('StepProgressTracker', () => {
       });
 
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
-      expect(lastCall).toContain('[x] get_posts: Connection failed');
+      // Tool error shows as "⏺ toolname ❌" in completed steps
+      expect(lastCall).toContain('⏺ get_posts ❌');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:error');
     });
 
@@ -87,7 +92,7 @@ describe('StepProgressTracker', () => {
 
       expect(tracker.getExecutionPath()).toContain('llm:1/5');
 
-      // Second iteration shows progress
+      // Second iteration shows progress with Claude Code style
       await tracker.addStep({
         type: 'llm_iteration',
         iteration: 2,
@@ -96,13 +101,15 @@ describe('StepProgressTracker', () => {
 
       const lastCalls = mockOnUpdate.mock.calls;
       const lastMessage = lastCalls[lastCalls.length - 1][0] as string;
-      expect(lastMessage).toContain('[~] Processing (2/5)');
+      // Should show Claude Code style thinking
+      expect(lastMessage).toMatch(/^\* \w+…$/);
     });
 
     it('should handle preparing step', async () => {
       await tracker.addStep({ type: 'preparing' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('[...] Preparing response. ...');
+      // Preparing shows as Claude Code style with specific verb
+      expect(mockOnUpdate).toHaveBeenCalledWith('* Preparing…');
       expect(tracker.getExecutionPath()).toContain('preparing');
     });
   });
@@ -121,7 +128,7 @@ describe('StepProgressTracker', () => {
       // Should show both steps
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
       expect(lastCall).toContain('[>] Router -> SimpleAgent');
-      expect(lastCall).toContain('[ok] get_posts returned');
+      expect(lastCall).toContain('⏺ get_posts');
     });
 
     it('should show current step with rotating suffix', async () => {
@@ -133,7 +140,8 @@ describe('StepProgressTracker', () => {
       // Should show completed routing + current tool running
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
       expect(lastCall).toContain('[>] Router -> SimpleAgent');
-      expect(lastCall).toContain('[~] get_posts running. ...');
+      expect(lastCall).toContain('⏺ get_posts');
+      expect(lastCall).toContain('⎿ Running…');
     });
   });
 
@@ -146,19 +154,20 @@ describe('StepProgressTracker', () => {
       await tracker.addStep({ type: 'thinking' });
 
       const initialCallCount = mockOnUpdate.mock.calls.length;
-      expect(mockOnUpdate).toHaveBeenLastCalledWith('[~] Thinking. ...');
+      // First call should be Claude Code style
+      const firstCall = mockOnUpdate.mock.calls[0][0] as string;
+      expect(firstCall).toMatch(/^\* \w+…$/);
 
       // Wait for rotation (allow some buffer)
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(mockOnUpdate.mock.calls.length).toBeGreaterThan(initialCallCount);
 
-      // Check that we saw at least one rotation (e.g. "Evaluating")
+      // All calls should be Claude Code style with rotating verbs
       const calls = mockOnUpdate.mock.calls.map((c) => c[0] as string);
-      const hasRotated = calls.some((msg) => msg.includes('Evaluating'));
-      expect(hasRotated).toBe(true);
-      const lastCall = mockOnUpdate.mock.calls[mockOnUpdate.mock.calls.length - 1][0] as string;
-      expect(lastCall).toContain('[~] Thinking');
+      for (const call of calls) {
+        expect(call).toMatch(/^\* \w+…/);
+      }
     });
 
     it('should stop rotation when destroyed', async () => {

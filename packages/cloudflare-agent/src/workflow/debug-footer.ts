@@ -61,6 +61,9 @@ export function formatWorkflowDebugFooter(
 
   // Render sequential execution steps (no grouping by iteration)
   if (result.debugContext?.steps && result.debugContext.steps.length > 0) {
+    // Add step header to show we're tracking the execution chain
+    lines.push(`⏺ Step ${result.iterations || 1}`);
+
     for (const step of result.debugContext.steps) {
       if (step.type === 'thinking' && step.thinking) {
         // Show thinking text, truncated to ~80 chars
@@ -72,7 +75,7 @@ export function formatWorkflowDebugFooter(
         // Format tool call with key argument
         // Wrap tool name in backticks to prevent markdown __ bold conversion
         const argStr = formatToolArgs(step.args);
-        lines.push(`⏺ \`${step.toolName}\`(${argStr})`);
+        lines.push(`⏺ ${step.toolName}(${argStr})`);
 
         // Show tool response (truncated to 3 lines max)
         if (typeof step.result === 'object' && step.result !== null) {

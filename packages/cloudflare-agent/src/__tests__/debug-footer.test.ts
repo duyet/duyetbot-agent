@@ -327,6 +327,99 @@ describe('formatDebugFooter', () => {
     expect(footer).toContain('failing-agent (error)');
   });
 
+  it('formats execution steps in chain format when available', () => {
+    const ctx: DebugContext = {
+      routingFlow: [],
+      totalDurationMs: 7600,
+      metadata: {
+        model: 'claude-3-5-sonnet-20241022',
+        tokenUsage: {
+          inputTokens: 5000,
+          outputTokens: 417,
+          totalTokens: 5417,
+        },
+      },
+      steps: [
+        {
+          iteration: 1,
+          type: 'thinking',
+          thinking: 'Let me search for information about OpenAI skills...',
+        },
+        {
+          iteration: 1,
+          type: 'tool_execution',
+          toolName: 'web_search',
+          args: { query: 'OpenAI skills' },
+          result: {
+            success: true,
+            output: 'Found 5 results: OpenAI announces new feature...',
+            durationMs: 2300,
+          },
+        },
+        {
+          iteration: 2,
+          type: 'thinking',
+          thinking: 'Based on my research, here is the summary...',
+        },
+      ],
+    };
+    const footer = formatDebugFooter(ctx);
+
+    // Should use chain format
+    expect(footer).toContain('⏺ Let me search for information about OpenAI skills...');
+    expect(footer).toContain('⏺ web_search(query: "OpenAI skills")');
+    expect(footer).toContain('⎿ 🔍 Found 5 results: OpenAI announces new');
+    expect(footer).toContain('⏺ Based on my research, here is the summary...');
+
+    // Should include summary line
+    expect(footer).toContain('⏱️ 7.60s');
+    expect(footer).toContain('📊 5.0kin/417out'); // formatNumber adds .0 for values < 10k
+    expect(footer).toContain('🤖 sonnet-3.5');
+
+    // Should be wrapped in blockquote
+    expect(footer).toContain('<blockquote expandable>');
+  });
+
+  it('formats execution steps with tool errors', () => {
+    const ctx: DebugContext = {
+      routingFlow: [],
+      totalDurationMs: 3200,
+      steps: [
+        {
+          iteration: 1,
+          type: 'tool_error',
+          toolName: 'failing_tool',
+          args: { param: 'test' },
+          error: 'Connection timeout after 30 seconds waiting for response',
+        },
+      ],
+    };
+    const footer = formatDebugFooter(ctx);
+
+    expect(footer).toContain('⏺ failing_tool(param: "test")');
+    expect(footer).toContain('⎿ ❌ Connection timeout after 30 seconds waiting for response...'); // Full 60 char truncation
+  });
+
+  it('truncates long thinking text in execution steps', () => {
+    const ctx: DebugContext = {
+      routingFlow: [],
+      totalDurationMs: 1000,
+      steps: [
+        {
+          iteration: 1,
+          type: 'thinking',
+          thinking:
+            'This is a very long thinking text that should be truncated to approximately 80 characters to keep the debug footer compact and readable for users',
+        },
+      ],
+    };
+    const footer = formatDebugFooter(ctx);
+
+    expect(footer).toContain(
+      '⏺ This is a very long thinking text that should be truncated to approximately 80 c...'
+    ); // Exact 80 char truncation
+  });
+
   it('formats nested workers for orchestrator', () => {
     const ctx: DebugContext = {
       routingFlow: [
