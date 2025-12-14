@@ -4,7 +4,7 @@
  * Tests for Telegram inline keyboard callback handling, parsing, and action routing.
  */
 
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   type CallbackAction,
   type CallbackContext,
@@ -379,7 +379,7 @@ describe('Callback Integration', () => {
     });
 
     it('validates all serialized callbacks are parseable', () => {
-      const testCases: Array<[CallbackAction, string | undefined]> = [
+      const testCases: [CallbackAction, string | undefined][] = [
         ['feedback_up', undefined],
         ['feedback_down', undefined],
         ['hitl_approve', 'id_1'],

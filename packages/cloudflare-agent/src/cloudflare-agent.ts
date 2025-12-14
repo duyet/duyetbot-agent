@@ -1,15 +1,21 @@
 /**
  * Cloudflare Durable Object Agent with direct LLM integration
  *
- * DEPRECATED: This module is part of the legacy architecture and should not be used for new implementations.
- * Use the new agent architecture (src/agents/chat-agent.ts) and execution context (src/execution/) instead.
+ * This is the primary agent implementation using a loop-based architecture:
+ * - Direct LLM calls via chat() with optional MCP tool support
+ * - Real-time progress tracking via StepProgressTracker
+ * - State persistence via Durable Object storage
+ * - Platform-agnostic transport layer for Telegram/GitHub
  *
- * Legacy implementation kept for backward compatibility and gradual migration.
- * - Simplified design: No ChatAgent wrapper, calls LLM directly in chat().
- * - State persistence via Durable Object storage.
- *
- * MCPServerConnection is still exported for use by duyet-info-agent and mcp-worker, but will be
- * refactored into a dedicated module in a future phase.
+ * @example
+ * ```typescript
+ * export const TelegramAgent = createCloudflareChatAgent({
+ *   createProvider: (env) => createAIGatewayProvider(env),
+ *   systemPrompt: 'You are a helpful assistant.',
+ *   transport: telegramTransport,
+ *   mcpServers: [{ name: 'memory', url: 'https://memory.example.com' }],
+ * });
+ * ```
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
@@ -278,20 +284,26 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     private _mcpInitialized = false;
     private _processing = false;
 
-    // Adapters
-    private messagePersistence: D1MessagePersistence;
-    private observabilityAdapter: D1ObservabilityAdapter;
+    // Adapters (optional - only initialized if D1 binding exists)
+    private messagePersistence: D1MessagePersistence | null = null;
+    private observabilityAdapter: D1ObservabilityAdapter | null = null;
 
     private mcpInitializer!: MCPInitializer<TEnv>;
 
     constructor(state: DurableObjectState, env: TEnv) {
       super(state, env);
 
-      const envWithDb = this.env as unknown as { DB: D1Database; OBSERVABILITY_DB?: D1Database };
+      // Check for D1 binding (may be named DB or OBSERVABILITY_DB depending on app)
+      const envWithDb = this.env as unknown as { DB?: D1Database; OBSERVABILITY_DB?: D1Database };
+      const db = envWithDb.DB ?? envWithDb.OBSERVABILITY_DB;
 
-      // Initialize adapters with session ID builder
-      this.messagePersistence = new D1MessagePersistence(envWithDb.DB);
-      this.observabilityAdapter = new D1ObservabilityAdapter(envWithDb.DB);
+      // Initialize adapters only if D1 is available
+      if (db) {
+        this.messagePersistence = new D1MessagePersistence(db);
+        this.observabilityAdapter = new D1ObservabilityAdapter(db);
+      } else {
+        logger.debug('[CloudflareAgent] No D1 binding found, persistence disabled');
+      }
 
       // Initialize MCP
       this.mcpInitializer = new MCPInitializer<TEnv>(
@@ -365,18 +377,21 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       // Load history from D1 if state is empty
       if (this.state.messages.length === 0) {
-        const sessionId = {
-          platform: String(this.state.metadata?.platform ?? 'api'),
-          userId: String(this.state.userId ?? 'unknown'),
-          chatId: String(this.state.chatId ?? 'unknown'),
-        };
-        const loadedMessages = await this.messagePersistence.loadMessages(sessionId, maxHistory);
-        if (loadedMessages.length > 0) {
-          this.setState({
-            ...this.state,
-            messages: loadedMessages,
-            updatedAt: Date.now(),
-          });
+        // Load from D1 if persistence is available
+        if (this.messagePersistence) {
+          const sessionId = {
+            platform: String(this.state.metadata?.platform ?? 'api'),
+            userId: String(this.state.userId ?? 'unknown'),
+            chatId: String(this.state.chatId ?? 'unknown'),
+          };
+          const loadedMessages = await this.messagePersistence.loadMessages(sessionId, maxHistory);
+          if (loadedMessages.length > 0) {
+            this.setState({
+              ...this.state,
+              messages: loadedMessages,
+              updatedAt: Date.now(),
+            });
+          }
         }
       }
     }
@@ -624,13 +639,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       });
 
       // Persist messages to D1 (fire-and-forget)
-      // Persist messages to D1 (fire-and-forget)
-      const persistenceSessionId = {
-        platform: String(this.state.metadata?.platform ?? 'api'),
-        userId: String(this.state.userId ?? 'unknown'),
-        chatId: String(this.state.chatId ?? 'unknown'),
-      };
-      this.messagePersistence.persistMessages(persistenceSessionId, newMessages, eventId);
+      if (this.messagePersistence) {
+        const persistenceSessionId = {
+          platform: String(this.state.metadata?.platform ?? 'api'),
+          userId: String(this.state.userId ?? 'unknown'),
+          chatId: String(this.state.chatId ?? 'unknown'),
+        };
+        this.messagePersistence.persistMessages(persistenceSessionId, newMessages, eventId);
+      }
 
       // Capture assistant response to analytics (append-only, never deleted)
       // Fire-and-forget pattern - don't block on analytics capture
@@ -840,24 +856,23 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             await transport.send(ctx, response);
 
             // Persist command to D1 (fire-and-forget)
-            // Use adapter
-            // Persist command to D1 (fire-and-forget)
-            // Use adapter
-            const commandSessionId = {
-              platform: String(this.state.metadata?.platform ?? 'api'),
-              userId: String(this.state.userId ?? 'unknown'),
-              chatId: String(this.state.chatId ?? 'unknown'),
-            };
+            if (this.messagePersistence) {
+              const commandSessionId = {
+                platform: String(this.state.metadata?.platform ?? 'api'),
+                userId: String(this.state.userId ?? 'unknown'),
+                chatId: String(this.state.chatId ?? 'unknown'),
+              };
 
-            this.messagePersistence.persistCommand(
-              commandSessionId,
-              input.text,
-              builtinResponse,
-              eventId
-            );
+              this.messagePersistence.persistCommand(
+                commandSessionId,
+                input.text,
+                builtinResponse,
+                eventId
+              );
+            }
 
             // Update observability for command
-            if (eventId) {
+            if (eventId && this.observabilityAdapter) {
               this.observabilityAdapter.upsertEvent({
                 eventId,
                 status: 'success',
@@ -1005,7 +1020,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             }
           }
 
-          this.observabilityAdapter.upsertEvent({
+          this.observabilityAdapter?.upsertEvent({
             eventId,
             status: 'success',
             completedAt,
@@ -1045,7 +1060,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           throw error;
         }
 
-        if (eventId) {
+        if (eventId && this.observabilityAdapter) {
           this.observabilityAdapter.upsertEvent({
             eventId,
             status: 'error',
@@ -1067,6 +1082,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
     /**
      * Receive a message directly via ParsedInput (RPC-friendly)
+     *
+     * This method processes messages asynchronously and sends responses
+     * via the transport layer (if configured). The caller (webhook) returns
+     * immediately while the DO continues processing.
      */
     async receiveMessage(
       input: ParsedInput
@@ -1094,8 +1113,82 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               }
             : undefined;
 
-          // Call chat directly
-          await this.chat(input.text, undefined, quotedContext, eventId);
+          // Reconstruct transport context from metadata (platform-specific)
+          // This allows sending responses back to the user
+          let messageRef: string | number | undefined;
+          let stepTracker: StepProgressTracker | undefined;
+
+          if (transport && input.metadata?.botToken) {
+            // Reconstruct platform context for transport operations
+            const ctx = {
+              token: input.metadata.botToken as string,
+              chatId: Number(input.chatId),
+              userId: Number(input.userId),
+              username: input.username,
+              text: input.text,
+              startTime: (input.metadata.startTime as number) || Date.now(),
+              adminUsername: input.metadata.adminUsername as string | undefined,
+              isAdmin: (input.metadata.isAdmin as boolean) || false,
+              parseMode: input.metadata.parseMode as 'HTML' | 'MarkdownV2' | undefined,
+              messageId: Number(input.messageRef) || 0,
+              replyToMessageId: input.replyTo ? Number(input.replyTo) : undefined,
+              requestId: input.metadata.requestId as string | undefined,
+            } as TContext;
+
+            // Send typing indicator
+            if (transport.typing) {
+              await transport.typing(ctx);
+            }
+
+            // Send initial thinking message
+            messageRef = await transport.send(ctx, '[~] Thinking...');
+
+            // Create step progress tracker for real-time step visibility
+            if (transport.edit && messageRef !== undefined) {
+              stepTracker = new StepProgressTracker(
+                async (message) => {
+                  try {
+                    await transport.edit!(ctx, messageRef!, message);
+                  } catch (err) {
+                    logger.error(`[CloudflareAgent][RPC] Edit failed: ${err}`);
+                  }
+                },
+                {
+                  rotationInterval: config.thinkingRotationInterval ?? 5000,
+                }
+              );
+            }
+
+            try {
+              // Call chat to get LLM response
+              const response = await this.chat(input.text, stepTracker, quotedContext, eventId);
+
+              // Edit thinking message with actual response
+              if (transport.edit && messageRef !== undefined) {
+                try {
+                  // Update context with final debug info before sending
+                  const ctxWithDebug = ctx as unknown as { debugContext?: unknown };
+                  if (stepTracker) {
+                    ctxWithDebug.debugContext = stepTracker.getDebugContext();
+                  }
+                  await transport.edit(ctx, messageRef, response);
+                } catch (editError) {
+                  // Fallback: send new message if edit fails
+                  logger.error(`[CloudflareAgent][RPC] Edit failed, sending new: ${editError}`);
+                  await transport.send(ctx, response);
+                }
+              } else {
+                // No edit support, send as new message
+                await transport.send(ctx, response);
+              }
+            } finally {
+              stepTracker?.destroy();
+            }
+          } else {
+            // No transport or token - just process (useful for testing or API calls)
+            logger.warn('[CloudflareAgent][RPC] No transport/token - response not sent to user');
+            await this.chat(input.text, undefined, quotedContext, eventId);
+          }
         } catch (err) {
           logger.error(`[CloudflareAgent][RPC] receiveMessage failed: ${err}`);
         }

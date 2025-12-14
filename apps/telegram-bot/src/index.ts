@@ -335,6 +335,8 @@ app.post(
           hasBotMention: webhookCtx.hasBotMention,
           isReply: webhookCtx.isReply,
           isReplyToBot: webhookCtx.isReplyToBot,
+          // Token for transport reconstruction in Durable Object
+          botToken: c.env.TELEGRAM_BOT_TOKEN,
         },
       };
 

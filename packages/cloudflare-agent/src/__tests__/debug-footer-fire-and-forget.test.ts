@@ -9,7 +9,7 @@
  * 4. Classification and timing information flows correctly through RouterAgent
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ResponseTarget } from '../platform-response.js';
 import type { DebugContext } from '../types.js';
 
@@ -107,7 +107,7 @@ describe('Debug Footer Fire-and-Forget Flow', () => {
         // messageRef is missing
       };
 
-      const isValid = !!(responseTarget && responseTarget.messageRef);
+      const isValid = !!responseTarget?.messageRef;
       expect(isValid).toBe(false);
 
       const result = { scheduled: false, executionId: '' };
@@ -122,7 +122,7 @@ describe('Debug Footer Fire-and-Forget Flow', () => {
         platform: 'telegram',
       };
 
-      const isValid = !!(responseTarget && responseTarget.messageRef?.messageId);
+      const isValid = !!responseTarget?.messageRef?.messageId;
       expect(isValid).toBe(false);
 
       const result = { scheduled: false, executionId: '' };
