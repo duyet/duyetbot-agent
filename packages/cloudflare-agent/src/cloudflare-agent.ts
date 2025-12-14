@@ -1101,7 +1101,20 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // We start processing asynchronously
       (async () => {
         try {
+          logger.info('[CloudflareAgent][RPC] receiveMessage started', {
+            hasTransport: !!transport,
+            hasBotToken: !!input.metadata?.botToken,
+            userId: input.userId,
+            chatId: input.chatId,
+            platform: input.metadata?.platform,
+          });
+
           await this.init(input.userId, input.chatId);
+
+          // Store platform in metadata for persistence session ID
+          if (input.metadata?.platform) {
+            this.setMetadata({ platform: input.metadata.platform });
+          }
 
           // Construct quoted context if present
           const quotedContext: QuotedContext | undefined = input.metadata?.quotedText
@@ -1119,6 +1132,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           let stepTracker: StepProgressTracker | undefined;
 
           if (transport && input.metadata?.botToken) {
+            logger.info('[CloudflareAgent][RPC] Transport available, will send response');
             // Reconstruct platform context for transport operations
             const ctx = {
               token: input.metadata.botToken as string,
@@ -1141,7 +1155,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             }
 
             // Send initial thinking message
+            logger.info('[CloudflareAgent][RPC] Sending thinking message');
             messageRef = await transport.send(ctx, '[~] Thinking...');
+            logger.info('[CloudflareAgent][RPC] Thinking message sent', { messageRef });
 
             // Create step progress tracker for real-time step visibility
             if (transport.edit && messageRef !== undefined) {
@@ -1166,7 +1182,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
             try {
               // Call chat to get LLM response
+              logger.info('[CloudflareAgent][RPC] Calling chat()');
               const response = await this.chat(input.text, stepTracker, quotedContext, eventId);
+              logger.info('[CloudflareAgent][RPC] Chat completed', {
+                responseLength: response?.length,
+              });
 
               // Update context with final debug info before sending
               const ctxWithDebug = ctx as unknown as { debugContext?: unknown };
@@ -1177,22 +1197,30 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               // Edit thinking message with actual response
               if (transport.edit && messageRef !== undefined) {
                 try {
+                  logger.info('[CloudflareAgent][RPC] Editing final response', { messageRef });
                   await transport.edit(ctx, messageRef, response);
+                  logger.info('[CloudflareAgent][RPC] Final response sent via edit');
                 } catch (editError) {
                   // Fallback: send new message if edit fails
                   logger.error(`[CloudflareAgent][RPC] Edit failed, sending new: ${editError}`);
                   await transport.send(ctx, response);
+                  logger.info('[CloudflareAgent][RPC] Final response sent via send (fallback)');
                 }
               } else {
                 // No edit support, send as new message
+                logger.info('[CloudflareAgent][RPC] No edit support, sending new message');
                 await transport.send(ctx, response);
+                logger.info('[CloudflareAgent][RPC] Final response sent via send');
               }
             } finally {
               stepTracker?.destroy();
             }
           } else {
             // No transport or token - just process (useful for testing or API calls)
-            logger.warn('[CloudflareAgent][RPC] No transport/token - response not sent to user');
+            logger.warn('[CloudflareAgent][RPC] No transport/token - response not sent to user', {
+              hasTransport: !!transport,
+              hasBotToken: !!input.metadata?.botToken,
+            });
             await this.chat(input.text, undefined, quotedContext, eventId);
           }
         } catch (err) {
