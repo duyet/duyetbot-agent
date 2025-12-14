@@ -504,35 +504,54 @@ export class ProgressAccumulator {
 
   /**
    * Get execution steps for debug footer
+   * Uses discriminated union types for type safety
    */
   getExecutionSteps(): ExecutionStep[] {
-    return this.history.map((entry) => {
-      // Build step with required fields only, add optional fields conditionally
-      // (exactOptionalPropertyTypes requires this approach)
-      const step: ExecutionStep = {
-        iteration: entry.iteration,
-        type: entry.type as ExecutionStep['type'],
-      };
+    return this.history
+      .map((entry): ExecutionStep | null => {
+        const base = {
+          iteration: entry.iteration,
+          ...(entry.durationMs !== undefined && { durationMs: entry.durationMs }),
+        };
 
-      // Add optional fields only if they have values
-      if (entry.toolName) {
-        step.toolName = entry.toolName;
-      }
-      if (entry.toolArgs) {
-        step.args = entry.toolArgs;
-      }
-      if (entry.toolResult) {
-        step.result = entry.toolResult;
-      }
-      if (entry.type === 'thinking' && entry.message) {
-        step.thinking = entry.message;
-      }
-      if (entry.durationMs !== undefined) {
-        step.durationMs = entry.durationMs;
-      }
-
-      return step;
-    });
+        switch (entry.type) {
+          case 'thinking':
+            return {
+              ...base,
+              type: 'thinking',
+              ...(entry.message && { thinking: entry.message }),
+            };
+          case 'tool_start':
+            if (!entry.toolName) return null;
+            return {
+              ...base,
+              type: 'tool_start',
+              toolName: entry.toolName,
+              ...(entry.toolArgs && { args: entry.toolArgs }),
+            };
+          case 'tool_complete':
+            if (!entry.toolName || !entry.toolResult) return null;
+            return {
+              ...base,
+              type: 'tool_complete',
+              toolName: entry.toolName,
+              result: entry.toolResult,
+              ...(entry.toolArgs && { args: entry.toolArgs }),
+            };
+          case 'tool_error':
+            if (!entry.toolName) return null;
+            return {
+              ...base,
+              type: 'tool_error',
+              toolName: entry.toolName,
+              error: entry.message || 'Unknown error',
+              ...(entry.toolArgs && { args: entry.toolArgs }),
+            };
+          default:
+            return null;
+        }
+      })
+      .filter((step): step is ExecutionStep => step !== null);
   }
 
   /**
