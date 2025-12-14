@@ -71,7 +71,7 @@ export function formatThinkingMessage(text?: string): string {
     cleaned = cleaned.replace(/^I\s+need\s+to\s+/i, 'Need to ');
     // Truncate if too long (max 100 chars for display)
     if (cleaned.length > 100) {
-      cleaned = cleaned.slice(0, 97) + '...';
+      cleaned = `${cleaned.slice(0, 97)}...`;
     }
     return `⏺ ${cleaned}`;
   }
