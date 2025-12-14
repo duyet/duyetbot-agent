@@ -752,7 +752,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             await transport.send(ctx, response);
 
             // Persist command to D1 (fire-and-forget)
-            if (this.messagePersistence) {
+            // Skip /clear since it clears history - persisting defeats the purpose
+            const command = (input.text.split(/[\s\n]/)[0] ?? '').toLowerCase();
+            if (this.messagePersistence && command !== '/clear') {
               const commandSessionId = {
                 platform: String(this.state.metadata?.platform ?? 'api'),
                 userId: String(this.state.userId ?? 'unknown'),
@@ -1183,6 +1185,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               messageId: Number(input.messageRef) || 0,
               replyToMessageId: input.replyTo ? Number(input.replyTo) : undefined,
               requestId: input.metadata.requestId as string | undefined,
+              isGroupChat: (input.metadata.isGroupChat as boolean) ?? false,
             } as TContext;
 
             // Send typing indicator
@@ -1192,7 +1195,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
             // Send initial thinking message
             logger.info('[CloudflareAgent][RPC] Sending thinking message');
-            messageRef = await transport.send(ctx, '[~] Thinking...');
+            messageRef = await transport.send(ctx, `* ${getRandomThinkingMessage()}`);
             logger.info('[CloudflareAgent][RPC] Thinking message sent', { messageRef });
 
             // ========================================
