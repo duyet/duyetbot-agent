@@ -36,7 +36,7 @@ import { formatWithEmbeddedHistory } from './format.js';
 import { trimHistory } from './history.js';
 import { MCPInitializer } from './mcp/mcp-initializer.js';
 import type { ParsedInput, Transport, TransportHooks } from './transport.js';
-import type { LLMProvider, Message, OpenAITool } from './types.js';
+import type { DebugContext, LLMProvider, Message, OpenAITool } from './types.js';
 import { debugContextToAgentSteps } from './workflow/debug-footer.js';
 import {
   handleWorkflowComplete as handleWorkflowCompleteLogic,
@@ -1098,6 +1098,36 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // But we wrap in a non-blocking promise to mimic "queued" behavior for RPC caller
       // The caller (webhook) expects to return immediately.
 
+      // Track start time for debug footer duration
+      const processingStartTime = Date.now();
+
+      // Helper to build proper DebugContext for transport footer
+      const buildDebugContext = (tracker: StepProgressTracker | undefined): DebugContext => {
+        const tokenUsage = tracker?.getTokenUsage();
+        const model = tracker?.getModel();
+        const durationMs = Date.now() - processingStartTime;
+
+        return {
+          routingFlow: [], // No routing in direct chat path
+          totalDurationMs: durationMs,
+          metadata: {
+            traceId,
+            // Only include model if defined (exactOptionalPropertyTypes compliance)
+            ...(model && { model }),
+            // Only include tokenUsage if available
+            ...(tokenUsage && {
+              tokenUsage: {
+                inputTokens: tokenUsage.input,
+                outputTokens: tokenUsage.output,
+                totalTokens: tokenUsage.total,
+                // Only include cachedTokens if it's a number (not undefined)
+                ...(typeof tokenUsage.cached === 'number' && { cachedTokens: tokenUsage.cached }),
+              },
+            }),
+          },
+        };
+      };
+
       // We start processing asynchronously
       (async () => {
         try {
@@ -1165,10 +1195,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 async (message) => {
                   try {
                     // Update context with progressive debug info for footer display
-                    const ctxWithDebug = ctx as unknown as { debugContext?: unknown };
-                    if (stepTracker) {
-                      ctxWithDebug.debugContext = stepTracker.getDebugContext();
-                    }
+                    const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
+                    ctxWithDebug.debugContext = buildDebugContext(stepTracker);
                     await transport.edit!(ctx, messageRef!, message);
                   } catch (err) {
                     logger.error(`[CloudflareAgent][RPC] Edit failed: ${err}`);
@@ -1189,10 +1217,8 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               });
 
               // Update context with final debug info before sending
-              const ctxWithDebug = ctx as unknown as { debugContext?: unknown };
-              if (stepTracker) {
-                ctxWithDebug.debugContext = stepTracker.getDebugContext();
-              }
+              const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
+              ctxWithDebug.debugContext = buildDebugContext(stepTracker);
 
               // Edit thinking message with actual response
               if (transport.edit && messageRef !== undefined) {
