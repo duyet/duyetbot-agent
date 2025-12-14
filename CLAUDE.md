@@ -200,3 +200,5 @@ bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
 - [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
 - [Model Context Protocol](https://modelcontextprotocol.io/)
 - whenever lint error, bun run check or type check error, launch senior engineer to fix it in background
+- when to run bun run test or deploy or git push: do it in senior engineer sub-agent (because this is token consumpt)
+- test, deploy and git push can run in parallel. Launching multiple senior engineer to do it in parallel
