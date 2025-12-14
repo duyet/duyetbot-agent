@@ -17,17 +17,11 @@ import {
   ObservabilityStorage,
 } from '@duyetbot/observability';
 import { type Env, TelegramAgent } from './agent.js';
-import { handleAdminCommand } from './commands/admin.js';
 import {
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
 } from './middlewares/index.js';
-import {
-  answerCallbackQuery,
-  createTelegramContext,
-  sendRaw,
-  telegramTransport,
-} from './transport.js';
+import { answerCallbackQuery, createTelegramContext, telegramTransport } from './transport.js';
 
 // Extend Env with agent bindings and observability
 type EnvWithAgent = Env & ObservabilityEnv;
@@ -255,24 +249,6 @@ app.post(
       agentId,
       traceId,
     });
-
-    // Check for slash commands - handle at webhook level before batch queue
-    // This ensures immediate response for /start, /help, /debug, /clear, /status
-    if (ctx.text.startsWith('/')) {
-      const response = await handleAdminCommand(ctx.text, ctx, agent);
-      if (response !== undefined) {
-        logger.info(`[${requestId}] [WEBHOOK] Slash command executed`, {
-          requestId,
-          command: ctx.text.split(/[\s\n]/)[0],
-          isAdmin: ctx.isAdmin,
-          durationMs: Date.now() - startTime,
-        });
-        // Use sendRaw for slash commands - responses are pre-formatted by
-        // handleBuiltinCommand() based on parseMode, no additional escaping needed
-        await sendRaw(ctx, response);
-        return c.text('OK');
-      }
-    }
 
     // Fire-and-forget: dispatch to ChatAgent without waiting for response
     // Uses c.executionCtx.waitUntil() to keep worker alive during processing

@@ -12,8 +12,12 @@ import { logger } from '@duyetbot/hono-middleware';
 import type { LLMProvider, Message, OpenAITool } from '../types.js';
 import type { StepProgressTracker } from '../workflow/step-tracker.js';
 import type { QuotedContext } from '../workflow/types.js';
-import { ContextBuilder, type ContextBuilderConfig } from './context-builder.js';
-import { ResponseHandler } from './response-handler.js';
+import {
+  buildInitialMessages,
+  buildToolIterationMessages,
+  type ContextBuilderConfig,
+} from './context-builder.js';
+import { getToolCalls, hasToolCalls, parse } from './response-handler.js';
 import { ToolExecutor, type ToolExecutorConfig } from './tool-executor.js';
 
 /**
@@ -87,11 +91,7 @@ export class ChatLoop {
     };
 
     // Build initial messages with embedded history
-    const llmMessages = ContextBuilder.buildInitialMessages(
-      contextConfig,
-      userMessage,
-      quotedContext
-    );
+    const llmMessages = buildInitialMessages(contextConfig, userMessage, quotedContext);
 
     // Call LLM with tools if available
     let response = await this.config.llmProvider.chat(
@@ -100,7 +100,7 @@ export class ChatLoop {
     );
 
     // Parse response
-    let parsedResponse = ResponseHandler.parse(response);
+    let parsedResponse = parse(response);
 
     // Track token usage
     const tokenUsage = {
@@ -118,9 +118,9 @@ export class ChatLoop {
       stepTracker?.setModel(parsedResponse.model);
     }
 
-    // Emit thinking text if LLM has content and will make tool calls
-    // This captures the LLM's reasoning before executing tools
-    if (parsedResponse.content && ResponseHandler.hasToolCalls(parsedResponse)) {
+    // Emit thinking with LLM's response content
+    // This shows what the LLM is "thinking" before/during tool execution
+    if (parsedResponse.content) {
       await stepTracker?.addStep({
         type: 'thinking',
         iteration: 0,
@@ -137,10 +137,7 @@ export class ChatLoop {
       content: string;
     }> = [];
 
-    while (
-      ResponseHandler.hasToolCalls(parsedResponse) &&
-      iterations < this.config.maxToolIterations
-    ) {
+    while (hasToolCalls(parsedResponse) && iterations < this.config.maxToolIterations) {
       iterations++;
       logger.info(
         `[ChatLoop] Processing ${parsedResponse.toolCalls?.length} tool calls (iteration ${iterations})`
@@ -153,7 +150,7 @@ export class ChatLoop {
       });
 
       // Execute each tool call
-      const toolCalls = ResponseHandler.getToolCalls(parsedResponse);
+      const toolCalls = getToolCalls(parsedResponse);
       for (const toolCall of toolCalls) {
         // Parse args for step tracking
         let toolArgs: Record<string, unknown> = {};
@@ -208,7 +205,7 @@ export class ChatLoop {
       }
 
       // Rebuild messages with embedded history + tool conversation
-      const toolMessages = ContextBuilder.buildToolIterationMessages(llmMessages, toolConversation);
+      const toolMessages = buildToolIterationMessages(llmMessages, toolConversation);
 
       // Emit LLM iteration step
       await stepTracker?.addStep({
@@ -224,7 +221,7 @@ export class ChatLoop {
       );
 
       // Parse new response
-      parsedResponse = ResponseHandler.parse(response);
+      parsedResponse = parse(response);
 
       // Track token usage from follow-up calls
       if (parsedResponse.usage) {
@@ -241,9 +238,9 @@ export class ChatLoop {
         stepTracker?.setModel(parsedResponse.model);
       }
 
-      // Emit thinking text from follow-up response if there are more tool calls
-      // This captures intermediate reasoning during multi-turn tool execution
-      if (parsedResponse.content && ResponseHandler.hasToolCalls(parsedResponse)) {
+      // Emit thinking text from follow-up response
+      // This shows the LLM's reasoning after receiving tool results
+      if (parsedResponse.content) {
         await stepTracker?.addStep({
           type: 'thinking',
           iteration: iterations,

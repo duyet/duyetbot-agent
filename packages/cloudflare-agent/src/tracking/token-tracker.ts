@@ -1,5 +1,4 @@
 import type { TokenUsage } from '@duyetbot/observability';
-import { estimateCost, formatCost } from '@duyetbot/providers';
 
 /**
  * Token tracker for accumulating usage and calculating costs.
@@ -71,6 +70,9 @@ export class TokenTracker {
   /**
    * Calculate total cost in USD based on model pricing.
    *
+   * Note: This is a simplified estimation. For accurate costs,
+   * use the pricing data from @duyetbot/providers directly.
+   *
    * @returns Estimated cost in USD (returns 0 if model not set)
    */
   getCostUsd(): number {
@@ -78,20 +80,36 @@ export class TokenTracker {
       return 0;
     }
 
-    return estimateCost(this.model, {
-      inputTokens: this.inputTokens,
-      outputTokens: this.outputTokens,
-      cachedTokens: this.cachedTokens,
-    });
+    // Simplified pricing estimation (per 1M tokens)
+    // For accurate costs, import from @duyetbot/providers
+    const pricing = getSimplifiedPricing(this.model);
+
+    // For cached tokens: (input - cached) charged at input rate + cached charged at cached rate
+    const effectiveInputTokens = this.inputTokens - this.cachedTokens;
+    const inputCost = (effectiveInputTokens / 1_000_000) * pricing.inputPerMillion;
+    const outputCost = (this.outputTokens / 1_000_000) * pricing.outputPerMillion;
+    const cachedCost = pricing.cachedPerMillion
+      ? (this.cachedTokens / 1_000_000) * pricing.cachedPerMillion
+      : 0;
+
+    return inputCost + outputCost + cachedCost;
   }
 
   /**
    * Get formatted cost string for display.
    *
-   * @returns Formatted cost (e.g., '$0.0042', '<$0.0001')
+   * @returns Formatted cost (e.g., '$0.0042', '<$0.0001', '$0')
    */
   getFormattedCost(): string {
-    return formatCost(this.getCostUsd());
+    const cost = this.getCostUsd();
+    if (cost === 0) {
+      return '$0';
+    }
+    if (cost < 0.0001) {
+      return '<$0.0001';
+    }
+    // Show 4 decimal places for small costs, 2 for larger
+    return cost < 0.01 ? `$${cost.toFixed(4)}` : `$${cost.toFixed(2)}`;
   }
 
   /**
@@ -122,4 +140,58 @@ export class TokenTracker {
   getModel(): string | undefined {
     return this.model;
   }
+}
+
+/**
+ * Simplified pricing table for common models (USD per 1M tokens)
+ * This is a subset for quick estimation. Full pricing is in @duyetbot/providers.
+ */
+interface SimplifiedPricing {
+  inputPerMillion: number;
+  outputPerMillion: number;
+  cachedPerMillion?: number;
+}
+
+/** Default pricing for unknown models (conservative estimate) */
+const DEFAULT_PRICING: SimplifiedPricing = {
+  inputPerMillion: 1.0,
+  outputPerMillion: 3.0,
+};
+
+function getSimplifiedPricing(model: string): SimplifiedPricing {
+  // Common models for quick estimation
+  const pricingTable: Record<string, SimplifiedPricing> = {
+    // xAI
+    'x-ai/grok-4.1-fast': { inputPerMillion: 0.2, outputPerMillion: 0.6 },
+    'x-ai/grok-4.1': { inputPerMillion: 3.0, outputPerMillion: 9.0 },
+    // Anthropic
+    'anthropic/claude-3.5-sonnet': {
+      inputPerMillion: 3.0,
+      outputPerMillion: 15.0,
+      cachedPerMillion: 0.3,
+    },
+    'anthropic/claude-3.5-haiku': {
+      inputPerMillion: 0.8,
+      outputPerMillion: 4.0,
+      cachedPerMillion: 0.08,
+    },
+    // OpenAI
+    'openai/gpt-4o': { inputPerMillion: 2.5, outputPerMillion: 10.0 },
+    'openai/gpt-4o-mini': { inputPerMillion: 0.15, outputPerMillion: 0.6 },
+  };
+
+  // Try exact match first
+  if (pricingTable[model]) {
+    return pricingTable[model];
+  }
+
+  // Try partial match (e.g., 'grok-4.1-fast' matches 'x-ai/grok-4.1-fast')
+  for (const [key, pricing] of Object.entries(pricingTable)) {
+    if (model.includes(key.split('/')[1] ?? '')) {
+      return pricing;
+    }
+  }
+
+  // Return default pricing for unknown models
+  return DEFAULT_PRICING;
 }

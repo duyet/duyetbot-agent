@@ -9,19 +9,46 @@ import type { Message } from '../types.js';
 import type { QuotedContext } from '../workflow/types.js';
 
 /**
- * Execution step for debug tracking
+ * Execution step for debug tracking (discriminated union for type safety)
  */
-export interface ExecutionStep {
-  type: 'thinking' | 'tool_start' | 'tool_complete' | 'tool_error' | 'llm_call';
-  iteration: number;
-  toolName?: string | undefined;
-  args?: Record<string, unknown> | undefined;
-  result?: string | undefined;
-  error?: string | undefined;
-  thinking?: string | undefined;
-  timestamp: number;
-  durationMs?: number | undefined;
-}
+export type ExecutionStep =
+  | {
+      type: 'thinking';
+      iteration: number;
+      thinking?: string | undefined;
+      timestamp: number;
+      durationMs?: number | undefined;
+    }
+  | {
+      type: 'tool_start';
+      iteration: number;
+      toolName: string;
+      args: Record<string, unknown>;
+      timestamp: number;
+    }
+  | {
+      type: 'tool_complete';
+      iteration: number;
+      toolName: string;
+      result: string;
+      timestamp: number;
+      durationMs?: number | undefined;
+    }
+  | {
+      type: 'tool_error';
+      iteration: number;
+      toolName: string;
+      error: string;
+      timestamp: number;
+      durationMs?: number | undefined;
+    }
+  | {
+      type: 'llm_call';
+      iteration: number;
+      thinking?: string | undefined;
+      timestamp: number;
+      durationMs?: number | undefined;
+    };
 
 /**
  * State for a durable chat loop execution

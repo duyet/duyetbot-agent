@@ -28,55 +28,50 @@ export interface ParsedResponse {
 }
 
 /**
- * ResponseHandler class - Parse LLM responses
+ * Parse LLM response
+ * @param response - Raw LLM response
+ * @returns Parsed response
  */
-export class ResponseHandler {
-  /**
-   * Parse LLM response
-   * @param response - Raw LLM response
-   * @returns Parsed response
-   */
-  static parse(response: LLMResponse): ParsedResponse {
-    const parsed: ParsedResponse = {
-      content: response.content,
+export function parse(response: LLMResponse): ParsedResponse {
+  const parsed: ParsedResponse = {
+    content: response.content,
+  };
+
+  // Only add optional fields if they are defined (exactOptionalPropertyTypes compliance)
+  if (response.toolCalls) {
+    parsed.toolCalls = response.toolCalls;
+  }
+
+  if (response.model) {
+    parsed.model = response.model;
+  }
+
+  // Only add usage if present, and only include cachedTokens if it's a number
+  if (response.usage) {
+    parsed.usage = {
+      inputTokens: response.usage.inputTokens,
+      outputTokens: response.usage.outputTokens,
+      totalTokens: response.usage.totalTokens,
     };
-
-    // Only add optional fields if they are defined (exactOptionalPropertyTypes compliance)
-    if (response.toolCalls) {
-      parsed.toolCalls = response.toolCalls;
+    // Only add cachedTokens if it's a number (exactOptionalPropertyTypes compliance)
+    if (typeof response.usage.cachedTokens === 'number') {
+      parsed.usage.cachedTokens = response.usage.cachedTokens;
     }
-
-    if (response.model) {
-      parsed.model = response.model;
-    }
-
-    // Only add usage if present, and only include cachedTokens if it's a number
-    if (response.usage) {
-      parsed.usage = {
-        inputTokens: response.usage.inputTokens,
-        outputTokens: response.usage.outputTokens,
-        totalTokens: response.usage.totalTokens,
-      };
-      // Only add cachedTokens if it's a number (exactOptionalPropertyTypes compliance)
-      if (typeof response.usage.cachedTokens === 'number') {
-        parsed.usage.cachedTokens = response.usage.cachedTokens;
-      }
-    }
-
-    return parsed;
   }
 
-  /**
-   * Check if response has tool calls
-   */
-  static hasToolCalls(response: ParsedResponse): boolean {
-    return !!(response.toolCalls && response.toolCalls.length > 0);
-  }
+  return parsed;
+}
 
-  /**
-   * Extract tool calls from response
-   */
-  static getToolCalls(response: ParsedResponse): ToolCall[] {
-    return response.toolCalls || [];
-  }
+/**
+ * Check if response has tool calls
+ */
+export function hasToolCalls(response: ParsedResponse): boolean {
+  return !!(response.toolCalls && response.toolCalls.length > 0);
+}
+
+/**
+ * Extract tool calls from response
+ */
+export function getToolCalls(response: ParsedResponse): ToolCall[] {
+  return response.toolCalls || [];
 }

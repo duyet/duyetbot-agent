@@ -4,6 +4,15 @@
  * Reusable chat agent with LLM and MCP tools support
  */
 
+// Re-export thinking messages from @duyetbot/progress
+export {
+  createRotator as createThinkingRotator,
+  EXTENDED_MESSAGES as getExtendedThinkingMessages,
+  getRandomMessage as getRandomThinkingMessage,
+  THINKING_MESSAGES as getDefaultThinkingMessages,
+  type ThinkingRotator,
+  type ThinkingRotatorConfig,
+} from '@duyetbot/progress';
 // Core agent
 export { ChatAgent } from './agent.js';
 // Cloudflare Durable Object wrapper
@@ -37,20 +46,14 @@ export { createAgent } from './factory.js';
 // Format utilities
 export {
   cleanToolName,
-  createThinkingRotator,
   formatCompleteResponse,
   formatErrorMessage,
   formatHistoryAsXML,
   formatThinkingMessage,
   formatToolProgress,
   formatWithEmbeddedHistory,
-  getDefaultThinkingMessages,
-  getExtendedThinkingMessages,
-  getRandomThinkingMessage,
   type ProgressConfig,
   type QuotedContext,
-  type ThinkingRotator,
-  type ThinkingRotatorConfig,
   type ToolExecution,
   type ToolStatus,
 } from './format.js';
@@ -75,6 +78,11 @@ export type {
   SessionInfo,
 } from './memory-adapter.js';
 export { fromMemoryMessage, toMemoryMessage } from './memory-adapter.js';
+// Progress adapter (NEW - replaces StepProgressTracker)
+export {
+  ProgressTracker,
+  type ProgressTrackerConfig,
+} from './progress-adapter.js';
 // Service binding adapter (for Cloudflare Workers)
 export {
   createServiceBindingMemoryAdapter,
@@ -114,7 +122,7 @@ export type {
   ToolExecutor,
   WebSearchPlugin,
 } from './types.js';
-// Step progress tracker
+// Step progress tracker (DEPRECATED - use ProgressTracker instead)
 export { StepProgressTracker } from './workflow/step-tracker.js';
 
 // =============================================================================

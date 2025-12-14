@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import type { Message } from '../../types.js';
-import { ContextBuilder } from '../context-builder.js';
+import { buildInitialMessages, buildToolIterationMessages } from '../context-builder.js';
 
 describe('ContextBuilder', () => {
   it('should build initial messages with empty history', () => {
-    const messages = ContextBuilder.buildInitialMessages(
+    const messages = buildInitialMessages(
       {
         systemPrompt: 'You are helpful',
         messages: [],
@@ -25,7 +25,7 @@ describe('ContextBuilder', () => {
       { role: 'assistant', content: 'Previous answer' },
     ];
 
-    const messages = ContextBuilder.buildInitialMessages(
+    const messages = buildInitialMessages(
       {
         systemPrompt: 'You are helpful',
         messages: history,
@@ -44,7 +44,7 @@ describe('ContextBuilder', () => {
   });
 
   it('should include quoted context in user message', () => {
-    const messages = ContextBuilder.buildInitialMessages(
+    const messages = buildInitialMessages(
       {
         systemPrompt: 'You are helpful',
         messages: [],
@@ -73,7 +73,7 @@ describe('ContextBuilder', () => {
       { role: 'user' as const, content: '[Tool Result]: Data' },
     ];
 
-    const messages = ContextBuilder.buildToolIterationMessages(initialMessages, toolConversation);
+    const messages = buildToolIterationMessages(initialMessages, toolConversation);
 
     expect(messages).toHaveLength(4);
     expect(messages[0]?.content).toBe('You are helpful');

@@ -414,10 +414,11 @@ describe('ChatLoop', () => {
     const chatLoop = new ChatLoop(config);
     await chatLoop.execute('Do multi-step task', [], stepTracker);
 
-    // Verify both thinking texts were captured
+    // Verify all thinking texts were captured (including final response)
     const thinkingSteps = steps.filter((s) => s.type === 'thinking' && s.thinking);
-    expect(thinkingSteps.length).toBe(2);
+    expect(thinkingSteps.length).toBe(3);
     expect(thinkingSteps[0]?.thinking).toBe('Let me search first.');
     expect(thinkingSteps[1]?.thinking).toBe('Found results. Now let me analyze them.');
+    expect(thinkingSteps[2]?.thinking).toBe('Analysis complete.');
   });
 });

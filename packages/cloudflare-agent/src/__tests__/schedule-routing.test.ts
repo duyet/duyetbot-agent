@@ -196,7 +196,7 @@ describe('scheduleRouting function signature', () => {
       };
 
       const context = createMockAgentContext({ query: '' });
-      const responseTarget = createMockScheduleRoutingTarget();
+      const _responseTarget = createMockScheduleRoutingTarget();
 
       // Act & Assert - Implementation would reject empty query
       // This verifies scheduleExecution gets the context so RouterAgent
@@ -363,7 +363,7 @@ describe('scheduleRouting function signature', () => {
     it('scheduleExecution can validate required messageRef field in target', async () => {
       // Arrange
       const mockRouter: MockRouterAgent = {
-        scheduleExecution: vi.fn(async (ctx, responseTarget) => {
+        scheduleExecution: vi.fn(async (_ctx, responseTarget) => {
           // This mimics the validation in RouterAgent.scheduleExecution (line 996-1004)
           if (!responseTarget.messageRef?.messageId) {
             return { scheduled: false, executionId: '' };
@@ -460,8 +460,8 @@ describe('scheduleRouting function signature', () => {
     it('scheduleExecution signature accepts exactly these parameter types', async () => {
       // This test verifies the function signature type compatibility
       const mockScheduleExecution = async (
-        ctx: AgentContext,
-        target: ScheduleRoutingTarget
+        _ctx: AgentContext,
+        _target: ScheduleRoutingTarget
       ): Promise<{ scheduled: boolean; executionId: string }> => {
         return { scheduled: true, executionId: 'exec_type_sig' };
       };

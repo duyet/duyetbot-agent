@@ -248,6 +248,8 @@ export interface WorkerDebugInfo {
 interface BaseStep {
   /** Step iteration number */
   iteration: number;
+  /** Timestamp when step occurred (optional for backwards compat) */
+  timestamp?: number;
   /** Duration in milliseconds */
   durationMs?: number;
 }

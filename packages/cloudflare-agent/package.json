@@ -25,6 +25,7 @@
     "@duyetbot/analytics": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/observability": "workspace:*",
+    "@duyetbot/progress": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/types": "workspace:*",
     "zod": "catalog:",
