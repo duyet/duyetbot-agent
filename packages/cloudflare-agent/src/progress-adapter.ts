@@ -314,10 +314,7 @@ export class ProgressTracker {
         const args = step.args || {};
         const id = (args.id as string) || crypto.randomUUID();
         const description = (args.description as string) || '';
-        const status = ((args.status as string) || 'running') as
-          | 'running'
-          | 'completed'
-          | 'error';
+        const status = ((args.status as string) || 'running') as 'running' | 'completed' | 'error';
 
         const subagentStep = {
           type: 'subagent' as const,
