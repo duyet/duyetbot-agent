@@ -20,8 +20,8 @@ export type {
   CloudflareAgentConfig,
   CloudflareAgentState,
   CloudflareChatAgentClass,
-  CloudflareChatAgentNamespace,
   CloudflareChatAgentMethods,
+  CloudflareChatAgentNamespace,
 } from './core/types.js';
 // Debug footer utilities
 export {
