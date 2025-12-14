@@ -4,11 +4,30 @@ import {
   getRandomThinkingMessage,
   THINKING_ROTATOR_MESSAGES,
 } from '../agentic-loop/progress.js';
-import type { DebugContext } from './debug-footer.js';
 
 type StepCallback = (message: string) => Promise<void>;
 
-export type StepEvent = DebugContext['steps'][0];
+export interface StepEvent {
+  iteration: number;
+  type:
+    | 'thinking'
+    | 'tool_start'
+    | 'tool_complete'
+    | 'tool_error'
+    | 'tool_execution'
+    | 'responding'
+    | 'routing'
+    | 'llm_iteration'
+    | 'preparing';
+  toolName?: string;
+  agentName?: string;
+  args?: Record<string, unknown>;
+  result?: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
+  error?: string;
+  thinking?: string;
+  maxIterations?: number;
+}
+
 export interface StepProgressConfig {
   /** Interval in ms for rotating thinking verbs (default: 3000) */
   rotationInterval?: number;
@@ -16,7 +35,7 @@ export interface StepProgressConfig {
 export type StepType = StepEvent['type'];
 
 export class StepProgressTracker {
-  private steps: DebugContext['steps'] = [];
+  private steps: StepEvent[] = [];
   private tokenUsage?: { input: number; output: number; total: number; cached?: number };
   private model?: string;
   private timer?: ReturnType<typeof setInterval> | undefined;
@@ -35,7 +54,7 @@ export class StepProgressTracker {
     private config: { rotationInterval?: number } = {}
   ) {}
 
-  async addStep(step: DebugContext['steps'][0] & { maxIterations?: number }): Promise<void> {
+  async addStep(step: StepEvent): Promise<void> {
     if (this.destroyed) return;
     this.stopRotation();
 
@@ -120,7 +139,7 @@ export class StepProgressTracker {
     this.model = model;
   }
 
-  getDebugContext(): DebugContext {
+  getDebugContext(): { steps: StepEvent[] } {
     return {
       steps: this.steps,
     };

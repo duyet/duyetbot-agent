@@ -36,7 +36,7 @@ import { formatWithEmbeddedHistory } from './format.js';
 import { trimHistory } from './history.js';
 import { MCPInitializer } from './mcp/mcp-initializer.js';
 import type { ParsedInput, Transport, TransportHooks } from './transport.js';
-import type { DebugContext, LLMProvider, Message, OpenAITool } from './types.js';
+import type { DebugContext, ExecutionStep, LLMProvider, Message, OpenAITool } from './types.js';
 import { debugContextToAgentSteps } from './workflow/debug-footer.js';
 import {
   handleWorkflowComplete as handleWorkflowCompleteLogic,
@@ -511,15 +511,23 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         // Execute each tool call (built-in or MCP)
         for (const toolCall of response.toolCalls) {
-          // Emit tool start step
+          // Parse args early so we can include them in the step
+          let toolArgs: Record<string, unknown> = {};
+          try {
+            toolArgs = JSON.parse(toolCall.arguments);
+          } catch {
+            // Invalid JSON args, continue with empty object
+          }
+
+          // Emit tool start step with args
           await stepTracker?.addStep({
             type: 'tool_start',
             toolName: toolCall.name,
+            args: toolArgs,
             iteration: iterations,
           });
 
           try {
-            const toolArgs = JSON.parse(toolCall.arguments);
             let resultText: string;
 
             // Check if it's a built-in tool first
@@ -561,10 +569,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
                 .join('\n');
             }
 
-            // Emit tool complete step
+            // Emit tool complete step with args for display
             await stepTracker?.addStep({
               type: 'tool_complete',
               toolName: toolCall.name,
+              args: toolArgs,
               result: resultText,
               iteration: iterations,
             });
@@ -577,11 +586,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           } catch (error) {
             logger.error(`[CloudflareAgent][TOOL] Tool call failed: ${error}`);
 
-            // Emit tool error step
+            // Emit tool error step with args for display
             const errorMessage = error instanceof Error ? error.message : String(error);
             await stepTracker?.addStep({
               type: 'tool_error',
               toolName: toolCall.name,
+              args: toolArgs,
               error: errorMessage,
               iteration: iterations,
             });
@@ -1106,8 +1116,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         const tokenUsage = tracker?.getTokenUsage();
         const model = tracker?.getModel();
         const durationMs = Date.now() - processingStartTime;
+        const trackerContext = tracker?.getDebugContext();
 
-        return {
+        const result: DebugContext = {
           routingFlow: [], // No routing in direct chat path
           totalDurationMs: durationMs,
           metadata: {
@@ -1126,6 +1137,25 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             }),
           },
         };
+
+        // Include execution steps if available (for chain display)
+        // Filter to only include valid ExecutionStep types
+        if (trackerContext?.steps?.length) {
+          const validSteps = trackerContext.steps.filter(
+            (step): step is ExecutionStep =>
+              step.type === 'thinking' ||
+              step.type === 'tool_start' ||
+              step.type === 'tool_complete' ||
+              step.type === 'tool_error' ||
+              step.type === 'tool_execution' ||
+              step.type === 'responding'
+          );
+          if (validSteps.length > 0) {
+            result.steps = validSteps;
+          }
+        }
+
+        return result;
       };
 
       // We start processing asynchronously
