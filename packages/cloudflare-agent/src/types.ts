@@ -247,14 +247,17 @@ export interface WorkerDebugInfo {
 export interface ExecutionStep {
   /** Step iteration number */
   iteration: number;
-  /** Step type: thinking, tool_start, tool_complete, tool_error, responding */
+  /** Step type: thinking, tool_start, tool_complete, tool_error, responding, routing, llm_iteration, preparing */
   type:
     | 'thinking'
     | 'tool_start'
     | 'tool_complete'
     | 'tool_error'
     | 'tool_execution'
-    | 'responding';
+    | 'responding'
+    | 'routing'
+    | 'llm_iteration'
+    | 'preparing';
   /** Tool name (for tool_* types) */
   toolName?: string;
   /** Agent name (for routing steps) */

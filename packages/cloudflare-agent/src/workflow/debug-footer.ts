@@ -8,9 +8,18 @@ import {
 } from './formatting.js';
 
 export interface DebugContext {
-  steps: Array<{
+  steps?: Array<{
     iteration: number;
-    type: string;
+    type:
+      | 'thinking'
+      | 'tool_start'
+      | 'tool_complete'
+      | 'tool_error'
+      | 'tool_execution'
+      | 'responding'
+      | 'routing'
+      | 'llm_iteration'
+      | 'preparing';
     toolName?: string;
     agentName?: string;
     args?: Record<string, unknown>;

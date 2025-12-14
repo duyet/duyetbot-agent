@@ -202,3 +202,5 @@ bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
 - whenever lint error, bun run check or type check error, launch senior engineer to fix it in background
 - when to run bun run test or deploy or git push: do it in senior engineer sub-agent (because this is token consumpt)
 - test, deploy and git push can run in parallel. Launching multiple senior engineer to do it in parallel
+- when run tests and deploy in parallel using senior engineers, these agent should report the summary of thier tasks only no need to full because for example depoy and test steps produce a lot of logs then causing overload the main thread context side
+- when run tests and deploy in parallel using senior engineers, these agent should report the summary of thier tasks only no need to full because for example depoy and test steps produce a lot of logs then causing overload the main thread context side
