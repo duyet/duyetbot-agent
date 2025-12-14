@@ -8,4 +8,4 @@
 // Re-export types from adapters for convenience
 export type { IMessagePersistence, SessionId } from '../adapters/message-persistence/types.js';
 export { MessageStore } from './message-store.js';
-export { SessionManager } from './session-manager.js';
+export { createSessionId, formatSessionKey, parseSessionKey } from './session-manager.js';
