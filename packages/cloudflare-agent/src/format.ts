@@ -240,6 +240,22 @@ export function formatThinkingMessage(
 }
 
 /**
+ * Format Claude Code thinking message
+ * Used for workflow progress display
+ * @param tokenCount - Optional token usage to display
+ */
+export function formatClaudeCodeThinking(tokenCount?: number): string {
+  const message = getRandomThinkingMessage();
+  const tokenInfo = tokenCount ? ` (↓ ${tokenCount} tokens)` : '';
+  return `* ${message}${tokenInfo}`;
+}
+
+/**
+ * Export thinking rotator messages for use in other modules
+ */
+export const THINKING_ROTATOR_MESSAGES = THINKING_MESSAGES;
+
+/**
  * Format error message
  */
 export function formatErrorMessage(

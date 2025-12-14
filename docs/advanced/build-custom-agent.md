@@ -1,11 +1,14 @@
 ---
-title: Build Custom Agent
-description: End-to-end tutorial. Extend base agent. Add DO binding. Deploy. Test. Your agent live!
+title: Build Custom Agent (LEGACY)
+description: DEPRECATED - This guide describes building agents for the legacy multi-agent system that was removed in December 2024.
+deprecated: true
 ---
 
-**TL;DR**: Extend `BaseAgent`. Add class/bind in `shared-agents`. `bun run deploy:shared-agents`. Test via Telegram!
+> **DEPRECATION NOTICE**: This document describes building custom agents for the legacy multi-agent routing system which was removed in December 2024. The system now uses a single `CloudflareChatAgent` with built-in tools. To extend functionality, create new tools instead of new agents. See [custom-tools.md](./custom-tools.md) for current approach.
 
-Create "WeatherAgent". Runs in 5 mins.
+## Legacy Documentation
+
+**TL;DR** (Historical): Extend `BaseAgent`. Add class/bind in `shared-agents`. `bun run deploy:shared-agents`. Test via Telegram!
 
 ## 📋 Prerequisites
 

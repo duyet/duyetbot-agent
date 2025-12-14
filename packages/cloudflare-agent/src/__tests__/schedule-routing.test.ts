@@ -10,7 +10,7 @@
  * 3. RouterAgent.scheduleExecution receives correct arguments
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AgentContext, ScheduleRoutingTarget } from '../cloudflare-agent.js';
 import type { PlatformConfig } from '../types.js';
 
@@ -106,7 +106,7 @@ describe('scheduleRouting function signature', () => {
       // Assert
       const calls = mockRouter.scheduleExecution.mock.calls;
       expect(calls).toHaveLength(1);
-      const [passedContext, passedTarget] = calls[0];
+      const [, passedTarget] = calls[0];
 
       expect(passedTarget).toEqual(responseTarget);
       expect(passedTarget.chatId).toBe('specific_chat');
@@ -191,7 +191,7 @@ describe('scheduleRouting function signature', () => {
 
     it('requires non-empty query in context', async () => {
       // Arrange
-      const mockRouter: MockRouterAgent = {
+      const _mockRouter: MockRouterAgent = {
         scheduleExecution: vi.fn(),
       };
 

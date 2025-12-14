@@ -71,6 +71,33 @@ describe('Built-in Commands', () => {
       const newState = setState.mock.calls[0][0];
       expect(newState.messages).toHaveLength(0);
     });
+
+    it('should call clearMessages if provided', async () => {
+      const setState = vi.fn();
+      const clearMessages = vi.fn().mockResolvedValue(5);
+      const ctx = createCtx({
+        setState,
+        clearMessages,
+        state: { ...mockState, messages: [{ role: 'user', content: 'hi' }] },
+      });
+
+      const result = await handleBuiltinCommand('/clear', ctx);
+      expect(result).toContain('cleared');
+      expect(clearMessages).toHaveBeenCalledTimes(1);
+    });
+
+    it('should work without clearMessages callback', async () => {
+      const setState = vi.fn();
+      const ctx = createCtx({
+        setState,
+        clearMessages: undefined,
+        state: { ...mockState, messages: [{ role: 'user', content: 'hi' }] },
+      });
+
+      const result = await handleBuiltinCommand('/clear', ctx);
+      expect(result).toContain('cleared');
+      expect(setState).toHaveBeenCalled();
+    });
   });
 
   it('should return null for unknown commands', async () => {

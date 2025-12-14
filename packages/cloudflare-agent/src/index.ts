@@ -96,7 +96,7 @@ export type {
 // Types
 export type {
   AgentState,
-  ChatAgentConfig,
+  ChatOptions,
   Citation,
   DebugContext,
   LLMMessage,
@@ -121,63 +121,26 @@ export { StepProgressTracker } from './workflow/step-tracker.js';
 // NEW: Routing & Orchestration Architecture
 // =============================================================================
 
-// Agents (Router, Simple, HITL, Orchestrator, DuyetInfo, GitHubMCP)
+// Agents (Base Agent utilities and Chat Agent)
 export {
   type AgentContext,
   AgentMixin,
   type AgentResult,
   type BaseAgentConfig,
   type BaseAgentState,
+  type ChatAgentClass,
+  type ChatAgentConfig,
+  type ChatAgentEnv,
+  type ChatAgentMethods,
+  type ChatAgentState,
   type CommonPlatformConfig,
   createBaseState,
-  createDuyetInfoAgent,
-  createGitHubMCPAgent,
-  createHITLAgent,
-  createOrchestratorAgent,
-  createRouterAgent,
-  createSimpleAgent,
-  type DuyetInfoAgentClass,
-  type DuyetInfoAgentConfig,
-  type DuyetInfoAgentEnv,
-  type DuyetInfoAgentInstance,
-  type DuyetInfoAgentMethods,
-  type DuyetInfoAgentState,
-  duyetToolFilter,
+  createChatAgent,
   type GenericPlatformConfig,
-  type GitHubMCPAgentClass,
-  type GitHubMCPAgentConfig,
-  type GitHubMCPAgentEnv,
-  type GitHubMCPAgentInstance,
-  type GitHubMCPAgentMethods,
-  type GitHubMCPAgentState,
   type GitHubPlatformConfig,
   getTypedAgent,
-  githubToolFilter,
-  type HITLAgentClass,
-  type HITLAgentConfig,
-  type HITLAgentEnv,
-  type HITLAgentInstance,
-  type HITLAgentMethods,
-  type HITLAgentState,
   isAgent,
-  type OrchestratorAgentClass,
-  type OrchestratorAgentInstance,
-  type OrchestratorConfig,
-  type OrchestratorEnv,
-  type OrchestratorMethods,
-  type OrchestratorState,
   type PlatformConfig,
-  type RouterAgentClass,
-  type RouterAgentConfig,
-  type RouterAgentEnv,
-  type RouterAgentInstance,
-  type RouterAgentMethods,
-  type RouterAgentState,
-  type SimpleAgentClass,
-  type SimpleAgentConfig,
-  type SimpleAgentEnv,
-  type SimpleAgentInstance,
-  type SimpleAgentState,
   type TelegramPlatformConfig,
 } from './agents/index.js';
 // Callbacks (Telegram Inline Keyboard Support)
@@ -193,57 +156,6 @@ export {
   parseCallbackData,
   serializeCallbackData,
 } from './callbacks/index.js';
-// Context Module (Unified Pipeline Context)
-export {
-  // Types
-  type AgentSpan,
-  // Span context (parallel execution)
-  addErrorSpan,
-  addWarningSpan,
-  completeSpan,
-  // Global context factory and serialization
-  createGlobalContext,
-  createSpanContext,
-  deserializeContext,
-  type GitHubEnv,
-  type GitHubWebhookContext,
-  type GlobalContext,
-  githubToWebhookInput,
-  type RoutingDecisionRecord,
-  recordTokenUsageSpan,
-  recordToolCallSpan,
-  type SpanContext,
-  serializeContext,
-  setMetadataSpan,
-  type TelegramEnv,
-  type TelegramUpdate,
-  type TokenUsageRecord,
-  type ToolCallRecord,
-  // Webhook adapters
-  telegramToWebhookInput,
-  type WebhookInput,
-} from './context/index.js';
-// Execution Context
-export {
-  type AgentProvider,
-  type AgentSpan as ExecutionAgentSpan,
-  addDebugError,
-  addDebugWarning,
-  type ChatOptions,
-  createDebugAccumulator,
-  createProviderContext,
-  createSpanId,
-  createTraceId,
-  type DebugAccumulator,
-  type DebugToolCall,
-  type ExecutionContext,
-  type ExtendedAgentProvider,
-  type ParsedInputOptions,
-  type Platform,
-  type ProviderExecutionContext,
-  recordAgentSpan,
-  recordToolCall,
-} from './execution/index.js';
 // Feature Flags
 export {
   type FeatureFlagEnv,
@@ -251,178 +163,6 @@ export {
   type RoutingFlags,
   RoutingFlagsSchema,
 } from './feature-flags.js';
-
-// HITL (Human-in-the-Loop)
-export {
-  type BatchExecutionResult,
-  type ConfirmableTool,
-  type ConfirmationParseResult,
-  type ConfirmationWithKeyboard,
-  canTransitionTo,
-  createConfirmationKeyboard,
-  createFeedbackKeyboard,
-  createInitialHITLState,
-  createMockExecutor,
-  createMultiConfirmationKeyboard,
-  createQuickActionsKeyboard,
-  createRegistryExecutor,
-  createToolConfirmation,
-  DEFAULT_CONFIRMATION_EXPIRY_MS,
-  DEFAULT_HIGH_RISK_TOOLS,
-  determineRiskLevel,
-  type ExecutionEntry,
-  type ExecutionOptions,
-  executeApprovedTools,
-  executeTool,
-  executeToolsParallel,
-  filterExpiredConfirmations,
-  formatConfirmationRequest,
-  formatConfirmationWithKeyboard,
-  formatExecutionResults,
-  formatMultipleConfirmations,
-  formatMultipleConfirmationsWithKeyboard,
-  getApprovedConfirmations,
-  getExpiredConfirmationIds,
-  getPendingConfirmations,
-  type HITLEvent,
-  type HITLState,
-  type HITLStatus,
-  hasExpiredConfirmations,
-  hasToolConfirmation,
-  isAwaitingConfirmation,
-  isConfirmationValid,
-  isValidCallbackData,
-  parseConfirmationResponse,
-  type RiskLevel,
-  requiresConfirmation,
-  type ToolExecutor as HITLToolExecutor,
-  transitionHITLState,
-  validateKeyboard,
-} from './hitl/index.js';
-
-// Orchestration (Planner, Executor, Aggregator)
-export {
-  type AggregationResult,
-  type AggregatorConfig,
-  aggregateResults,
-  createMockDispatcher,
-  createPlan,
-  createWorkerDispatcher,
-  type ExecutionProgressCallback,
-  type ExecutionResult,
-  type ExecutorConfig,
-  executePlan,
-  extractKeyFindings,
-  groupStepsByLevel,
-  optimizePlan,
-  type PlannerConfig,
-  type PlanningContext,
-  quickAggregate,
-  validatePlanDependencies,
-  type WorkerDispatcher,
-} from './orchestration/index.js';
-// Routing (Classification, Schemas)
-export {
-  type ClassificationContext,
-  type ClassifierConfig,
-  ComplexityLevel,
-  classifyQuery,
-  createClassifier,
-  determineRouteTarget,
-  type ExecutionPlan,
-  ExecutionPlanSchema,
-  hybridClassify,
-  type PlanStep,
-  PlanStepSchema,
-  QueryCategory,
-  type QueryClassification,
-  QueryClassificationSchema,
-  QueryType,
-  quickClassify,
-  RouteTarget,
-  type RoutingDecision,
-  RoutingDecisionSchema,
-  type ToolConfirmation,
-  ToolConfirmationSchema,
-  type WorkerResult,
-  WorkerResultSchema,
-} from './routing/index.js';
-// Workers (Base, Code, Research, GitHub, SubAgent Protocol)
-export {
-  type BaseWorkerConfig,
-  type BaseWorkerEnv,
-  type BaseWorkerState,
-  type CodeTaskType,
-  type CodeWorkerConfig,
-  type CodeWorkerEnv,
-  createBaseWorker,
-  createCodeWorker,
-  createContextGatheringStep,
-  createGitHubWorker,
-  createResearchWorker,
-  createSubAgentWorkerAdapter,
-  defaultWorkerRegistry,
-  detectCodeTaskType,
-  detectGitHubTaskType,
-  detectResearchTaskType,
-  formatDependencyContext,
-  type GitHubTaskType,
-  type GitHubWorkerConfig,
-  type GitHubWorkerEnv,
-  type HealthCheckResult,
-  isSuccessfulResult,
-  type ResearchTaskType,
-  type ResearchWorkerConfig,
-  type ResearchWorkerEnv,
-  type SubAgentCapability,
-  type SubAgentMetadata,
-  type SubAgentWorker,
-  type SubAgentWorkerResult,
-  summarizeResults,
-  validateReplanningRequest,
-  type WorkerClass,
-  type WorkerInput,
-  type WorkerMethods,
-  WorkerRegistry,
-  type WorkerRegistryEntry,
-  type WorkerType,
-} from './workers/index.js';
-
-// =============================================================================
-// State Management DO (Observability & Watchdog)
-// =============================================================================
-
-// State DO
-// DEPRECATED: Legacy observability module during migration to ExecutionContext-based design
-// Use createDebugAccumulator() and ExecutionContext from './execution/' for new implementations.
-export { StateDO, type StateDOEnv } from './agents/state-do.js';
-
-// State types
-// DEPRECATED: Legacy types for backward compatibility with cloudflare-agent.ts and state-do.ts
-// Use ExecutionContext, DebugAccumulator, and AgentSpan from './execution/' for new implementations.
-export {
-  type AgentMetrics,
-  type AggregatedMetrics,
-  type CompleteBatchParams,
-  createInitialStateDOState,
-  createSessionState,
-  DEFAULT_STUCK_THRESHOLD_MS,
-  type ExecutionTrace,
-  type HeartbeatParams,
-  type LogTraceParams,
-  MAX_TRACES,
-  type MarkDelegatedParams,
-  type Platform as StatePlatform,
-  type RecoveryResult,
-  type RegisterBatchParams,
-  type ResponseTarget,
-  type SessionState,
-  type StateDOMethods,
-  type StateDOState,
-  type TraceStatus,
-  type TrackedBatchStatus,
-  WATCHDOG_INTERVAL_SECONDS,
-} from './state-types.js';
 
 // =============================================================================
 // Safety Kernel Integration
@@ -525,8 +265,6 @@ export {
   D1MessagePersistence,
   D1ObservabilityAdapter,
   type HeartbeatParams as StateHeartbeatParams,
-  // Message Persistence
-  type IMessagePersistence,
   // Observability
   type IObservabilityAdapter,
   // State Reporting
@@ -536,7 +274,6 @@ export {
   NoOpStateReporter,
   type ObservabilityEventData,
   type RegisterBatchParams as StateRegisterBatchParams,
-  type SessionId,
   StateDOReporter,
 } from './adapters/index.js';
 
@@ -558,28 +295,41 @@ export {
 } from './notifications/index.js';
 
 // =============================================================================
-// Workflow-Based AgenticLoop (Timeout-Resistant)
+// NEW: Modular Components (Phase 1-7 Extraction)
 // =============================================================================
 
-// Workflow types
-export type {
-  AgenticLoopWorkflowEnv,
-  AgenticLoopWorkflowParams,
-  IterationStepResult,
-  ProgressCallbackConfig,
-  SerializedTool,
-  WorkflowCompletionResult,
-  WorkflowDebugContext,
-  WorkflowLLMResponse,
-  WorkflowProgressUpdate,
-  WorkflowToolCall,
-} from './agentic-loop/workflow/index.js';
-// Workflow class for durable agent execution
-// Workflow helpers
-export { AgenticLoopWorkflow, serializeTools } from './agentic-loop/workflow/index.js';
-// NEW: Modular Components (Phase 1-7 Extraction)
+// Re-export core modular components
 export * from './auth/index.js';
+// Chat module (LLM loop, tool execution, context building)
+export {
+  ChatLoop,
+  type ChatLoopConfig,
+  type ChatResult,
+  ContextBuilder,
+  type ContextBuilderConfig,
+  type MCPCallResult,
+  type MCPToolCallParams,
+  type ParsedResponse,
+  ResponseHandler,
+  type ToolExecutionResult,
+  ToolExecutor as ChatToolExecutor,
+  type ToolExecutorConfig,
+} from './chat/index.js';
 export * from './commands/index.js';
 export * from './mcp/index.js';
+// Persistence module (message store, session management)
+export {
+  MessageStore,
+  SessionManager,
+} from './persistence/index.js';
 export * from './sanitization/index.js';
+// Tracking module (token tracking, execution logging)
+export {
+  type ExecutionContext,
+  type ExecutionLog,
+  ExecutionLogger,
+  type ExecutionLoggerOptions,
+  type LogLevel,
+  TokenTracker,
+} from './tracking/index.js';
 export * from './workflow/index.js';

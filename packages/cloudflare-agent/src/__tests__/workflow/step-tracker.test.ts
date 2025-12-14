@@ -42,16 +42,17 @@ describe('StepProgressTracker', () => {
     it('should handle routing step', async () => {
       await tracker.addStep({ type: 'routing', agentName: 'SimpleAgent' });
 
-      expect(mockOnUpdate).toHaveBeenCalledWith('[>] Router -> SimpleAgent');
+      // New format: ⏺ Router → AgentName (completed step in chain)
+      expect(mockOnUpdate).toHaveBeenCalledWith('⏺ Router → SimpleAgent');
       expect(tracker.getExecutionPath()).toContain('routing:SimpleAgent');
     });
 
     it('should handle tool_start step', async () => {
       await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
 
-      // Tool shows as "⏺ toolname\n  ⎿ Running…"
+      // New format: * toolname()\n  ⎿ Running… (running step with * prefix)
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
-      expect(lastCall).toContain('⏺ get_posts');
+      expect(lastCall).toContain('* get_posts()');
       expect(lastCall).toContain('⎿ Running…');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:start');
     });
@@ -77,8 +78,9 @@ describe('StepProgressTracker', () => {
       });
 
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
-      // Tool error shows as "⏺ toolname ❌" in completed steps
-      expect(lastCall).toContain('⏺ get_posts ❌');
+      // New format: ⏺ toolname()\n  ⎿ ❌ error message (completed with error)
+      expect(lastCall).toContain('⏺ get_posts()');
+      expect(lastCall).toContain('⎿ ❌ Connection failed');
       expect(tracker.getExecutionPath()).toContain('tool:get_posts:error');
     });
 
@@ -108,8 +110,8 @@ describe('StepProgressTracker', () => {
     it('should handle preparing step', async () => {
       await tracker.addStep({ type: 'preparing' });
 
-      // Preparing shows as Claude Code style with specific verb
-      expect(mockOnUpdate).toHaveBeenCalledWith('* Preparing…');
+      // New format: * Preparing response… (running step with * prefix)
+      expect(mockOnUpdate).toHaveBeenCalledWith('* Preparing response…');
       expect(tracker.getExecutionPath()).toContain('preparing');
     });
   });
@@ -125,10 +127,10 @@ describe('StepProgressTracker', () => {
         result: 'data',
       });
 
-      // Should show both steps
+      // New format: shows completed routing + completed tool with ⏺ prefix
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
-      expect(lastCall).toContain('[>] Router -> SimpleAgent');
-      expect(lastCall).toContain('⏺ get_posts');
+      expect(lastCall).toContain('⏺ Router → SimpleAgent');
+      expect(lastCall).toContain('⏺ get_posts()');
     });
 
     it('should show current step with rotating suffix', async () => {
@@ -137,10 +139,10 @@ describe('StepProgressTracker', () => {
 
       await tracker.addStep({ type: 'tool_start', toolName: 'get_posts' });
 
-      // Should show completed routing + current tool running
+      // New format: completed routing (⏺) + running tool (* prefix)
       const lastCall = mockOnUpdate.mock.calls[0][0] as string;
-      expect(lastCall).toContain('[>] Router -> SimpleAgent');
-      expect(lastCall).toContain('⏺ get_posts');
+      expect(lastCall).toContain('⏺ Router → SimpleAgent');
+      expect(lastCall).toContain('* get_posts()');
       expect(lastCall).toContain('⎿ Running…');
     });
   });

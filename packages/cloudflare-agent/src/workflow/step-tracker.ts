@@ -3,7 +3,7 @@ import {
   formatClaudeCodeThinking,
   getRandomThinkingMessage,
   THINKING_ROTATOR_MESSAGES,
-} from '../agentic-loop/progress.js';
+} from '../format.js';
 
 type StepCallback = (message: string) => Promise<void>;
 
@@ -31,8 +31,73 @@ export interface StepEvent {
 export interface StepProgressConfig {
   /** Interval in ms for rotating thinking verbs (default: 3000) */
   rotationInterval?: number;
+  /** Optional callback for persisting steps (e.g., to D1 database) */
+  persistStep?: (step: StepEvent) => Promise<void>;
 }
 export type StepType = StepEvent['type'];
+
+/**
+ * Completed step for display in progress chain
+ */
+export interface CompletedStep {
+  type: 'thinking' | 'tool';
+  text: string;
+  /** Tool result (truncated) for display */
+  result?: string;
+  /** Tool error message */
+  error?: string;
+}
+
+/**
+ * Format tool arguments for compact display
+ * Shows key=value pairs, truncating long values
+ */
+function formatToolArgsCompact(args?: Record<string, unknown>): string {
+  if (!args || Object.keys(args).length === 0) {
+    return '';
+  }
+
+  const parts: string[] = [];
+  for (const [key, value] of Object.entries(args)) {
+    let valueStr: string;
+    if (typeof value === 'string') {
+      // Truncate long strings
+      valueStr = value.length > 30 ? `"${value.slice(0, 27)}..."` : `"${value}"`;
+    } else if (typeof value === 'object') {
+      valueStr = '{...}';
+    } else {
+      valueStr = String(value);
+    }
+    parts.push(`${key}: ${valueStr}`);
+  }
+
+  return parts.join(', ');
+}
+
+/**
+ * Format tool result for compact display
+ * Truncates to first line or 60 chars
+ */
+function formatToolResultCompact(
+  result?: string | { success?: boolean; output?: string; error?: string }
+): string {
+  if (!result) return '';
+
+  let text: string;
+  if (typeof result === 'string') {
+    text = result;
+  } else if (result.output) {
+    text = result.output;
+  } else if (result.error) {
+    return `❌ ${result.error.slice(0, 50)}`;
+  } else {
+    return '';
+  }
+
+  // Take first line, truncate to 60 chars
+  const firstLine = text.split('\n')[0] ?? '';
+  return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
+}
 
 export class StepProgressTracker {
   private steps: StepEvent[] = [];
@@ -40,10 +105,11 @@ export class StepProgressTracker {
   private model?: string;
   private timer?: ReturnType<typeof setInterval> | undefined;
 
-  // State for UI
-  private completedSteps: string[] = [];
+  // State for UI - progress chain display
+  private completedChain: CompletedStep[] = [];
   private currentThinkingVerb = '';
   private currentToolName = '';
+  private currentToolArgs?: Record<string, unknown>;
   private isThinking = false;
   private executionPath: string[] = [];
   private verbIndex = 0;
@@ -51,7 +117,7 @@ export class StepProgressTracker {
 
   constructor(
     private onUpdate: StepCallback,
-    private config: { rotationInterval?: number } = {}
+    private config: StepProgressConfig = {}
   ) {}
 
   async addStep(step: StepEvent): Promise<void> {
@@ -60,40 +126,89 @@ export class StepProgressTracker {
 
     this.steps.push(step);
 
+    // Persist step if callback provided (fire-and-forget)
+    if (this.config.persistStep) {
+      void this.config.persistStep(step).catch(() => {
+        // Ignore persistence errors
+      });
+    }
+
     switch (step.type) {
       case 'thinking':
+        // Add previous thinking to completed chain if we had one
+        if (this.isThinking && this.currentThinkingVerb) {
+          this.completedChain.push({
+            type: 'thinking',
+            text: this.currentThinkingVerb,
+          });
+        }
         this.executionPath.push('thinking');
         this.isThinking = true;
         this.currentToolName = '';
+        this.currentToolArgs = {};
         this.currentThinkingVerb = getRandomThinkingMessage();
         await this.startRotation();
         break;
 
       case 'routing':
         this.executionPath.push(`routing:${step.agentName}`);
-        this.completedSteps.push(`[>] Router -> ${step.agentName}`);
+        this.completedChain.push({
+          type: 'thinking',
+          text: `Router → ${step.agentName}`,
+        });
         this.isThinking = false;
         await this.update();
         break;
 
       case 'tool_start':
+        // Add current thinking to completed chain before tool
+        if (this.isThinking && this.currentThinkingVerb) {
+          this.completedChain.push({
+            type: 'thinking',
+            text: this.currentThinkingVerb,
+          });
+        }
         this.executionPath.push(`tool:${step.toolName}:start`);
         this.isThinking = false;
         this.currentToolName = step.toolName ?? '';
+        this.currentToolArgs = step.args ?? {};
         await this.startRotation();
         break;
 
       case 'tool_complete':
         this.executionPath.push(`tool:${step.toolName}:complete`);
-        this.completedSteps.push(`⏺ ${step.toolName}`);
+        // Add completed tool to chain with result
+        {
+          const resultStr = formatToolResultCompact(step.result);
+          const completedTool: CompletedStep = {
+            type: 'tool',
+            text: `${step.toolName}(${formatToolArgsCompact(step.args)})`,
+          };
+          if (resultStr) {
+            completedTool.result = resultStr;
+          }
+          this.completedChain.push(completedTool);
+        }
         this.currentToolName = '';
+        this.currentToolArgs = {};
         await this.update();
         break;
 
       case 'tool_error':
         this.executionPath.push(`tool:${step.toolName}:error`);
-        this.completedSteps.push(`⏺ ${step.toolName} ❌`);
+        // Add failed tool to chain with error
+        {
+          const errorTool: CompletedStep = {
+            type: 'tool',
+            text: `${step.toolName}(${formatToolArgsCompact(step.args)})`,
+          };
+          if (step.error) {
+            errorTool.error = step.error;
+          }
+          this.completedChain.push(errorTool);
+        }
         this.currentToolName = '';
+        this.currentToolArgs = {};
         await this.update();
         break;
 
@@ -107,9 +222,16 @@ export class StepProgressTracker {
         break;
 
       case 'preparing':
+        // Add current thinking to completed chain
+        if (this.isThinking && this.currentThinkingVerb) {
+          this.completedChain.push({
+            type: 'thinking',
+            text: this.currentThinkingVerb,
+          });
+        }
         this.executionPath.push('preparing');
         this.isThinking = true;
-        this.currentThinkingVerb = 'Preparing';
+        this.currentThinkingVerb = 'Preparing response';
         await this.update();
         break;
     }
@@ -204,19 +326,42 @@ export class StepProgressTracker {
   private async update(): Promise<void> {
     if (this.destroyed) return;
 
-    const lines = [...this.completedSteps];
+    const lines: string[] = [];
 
-    // Show current state based on what we're doing
+    // Format completed steps with ⏺ prefix
+    for (const step of this.completedChain) {
+      if (step.type === 'thinking') {
+        lines.push(`⏺ ${step.text}`);
+      } else if (step.type === 'tool') {
+        lines.push(`⏺ ${step.text}`);
+        // Show result or error if available
+        if (step.error) {
+          lines.push(`  ⎿ ❌ ${step.error.slice(0, 60)}`);
+        } else if (step.result) {
+          lines.push(`  ⎿ ${step.result}`);
+        }
+      }
+    }
+
+    // Show current running state with * prefix
     if (this.isThinking) {
-      // Claude Code style thinking with token count
+      // Show thinking verb with token count
       const tokenCount = this.tokenUsage?.input;
-      lines.push(formatClaudeCodeThinking(tokenCount, this.currentThinkingVerb));
+      if (tokenCount && tokenCount > 0) {
+        lines.push(
+          `* ${this.currentThinkingVerb}… (↓ ${this.formatTokenCount(tokenCount)} tokens)`
+        );
+      } else {
+        lines.push(`* ${this.currentThinkingVerb}…`);
+      }
     } else if (this.currentToolName) {
-      // Tool running indicator
-      lines.push(`⏺ ${this.currentToolName}`);
+      // Tool currently running with args
+      const argsStr = formatToolArgsCompact(this.currentToolArgs);
+      lines.push(`* ${this.currentToolName}(${argsStr})`);
       lines.push('  ⎿ Running…');
     }
 
+    // Fallback if nothing to show
     const message = lines.length > 0 ? lines.join('\n') : formatClaudeCodeThinking();
 
     try {
@@ -224,5 +369,23 @@ export class StepProgressTracker {
     } catch (e) {
       // Ignore update errors
     }
+  }
+
+  /**
+   * Format token count for compact display
+   */
+  private formatTokenCount(tokens: number): string {
+    if (tokens >= 1000) {
+      const k = tokens / 1000;
+      return k >= 10 ? `${Math.round(k)}k` : `${k.toFixed(1)}k`;
+    }
+    return String(tokens);
+  }
+
+  /**
+   * Get the completed chain for final debug footer
+   */
+  getCompletedChain(): CompletedStep[] {
+    return [...this.completedChain];
   }
 }

@@ -5,12 +5,58 @@
  * within agent execution flows.
  */
 
-import type {
-  ExecutionContext,
-  LongTermMemoryItem,
-  PreloadedMemoryContext,
-} from '../execution/index.js';
 import type { MemoryAdapter } from '../memory-adapter.js';
+import type { ExecutionContext as TrackingExecutionContext } from '../tracking/execution-logger.js';
+
+/**
+ * Extended execution context for memory operations
+ *
+ * Extends the basic ExecutionContext with additional fields needed for memory handling
+ */
+export interface ExecutionContext extends TrackingExecutionContext {
+  /** User query or input */
+  query?: string;
+  /** Username or display name */
+  username?: string;
+  /** User message ID for reference */
+  userMessageId?: string;
+  /** Response message ID (for editing) */
+  responseMessageId?: string;
+  /** Span ID for tracing */
+  spanId?: string;
+  /** Parent span ID for tracing */
+  parentSpanId?: string;
+  /** Trace ID for distributed tracing */
+  traceId?: string;
+  /** Deadline for operation completion */
+  deadline?: number;
+  /** Conversation history */
+  conversationHistory?: Array<{ role: string; content: string }>;
+  /** Loaded memory context */
+  memoryContext?: PreloadedMemoryContext;
+  /** Debug accumulator */
+  debug?: any;
+}
+
+/**
+ * Long-term memory item stored in persistence layer
+ */
+export interface LongTermMemoryItem {
+  key: string;
+  value: string;
+  category: string;
+  createdAt?: number;
+  expiresAt?: number;
+}
+
+/**
+ * Pre-loaded memory context for agent execution
+ */
+export interface PreloadedMemoryContext {
+  shortTermItems: Array<{ key: string; value: string; expiresAt?: number }>;
+  relevantLongTerm: LongTermMemoryItem[];
+  userPreferences: Record<string, string>;
+}
 
 /**
  * Load relevant memory context at agent start
@@ -192,10 +238,13 @@ export async function autoSaveFacts(
     // Look for patterns like "I remember...", "You mentioned...", "Your preference is..."
     const facts: Array<{ category: string; key: string; value: string }> = [];
 
-    for (const message of ctx.conversationHistory) {
+    const conversationHistory = ctx.conversationHistory || [];
+    for (const message of conversationHistory) {
       if (message.role === 'assistant') {
         // Simple heuristic: extract sentences that mention preferences or facts
-        const sentences = message.content.split(/[.!?]+/).filter((s) => s.trim().length > 0);
+        const sentences = message.content
+          .split(/[.!?]+/)
+          .filter((s: string) => s.trim().length > 0);
 
         for (const sentence of sentences) {
           if (

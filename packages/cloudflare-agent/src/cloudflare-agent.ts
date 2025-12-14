@@ -21,27 +21,23 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import { logger } from '@duyetbot/hono-middleware';
 import { type AgentStep, type Classification } from '@duyetbot/observability';
-import type { Tool, ToolInput } from '@duyetbot/types';
+import type { Tool } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { D1MessagePersistence, D1ObservabilityAdapter } from './adapters/index.js';
 import { callbackHandlers, parseCallbackData } from './callbacks/index.js';
 import type { CallbackContext } from './callbacks/types.js';
+import { ChatLoop, type ToolExecutorConfig } from './chat/index.js';
 import {
   type CommandContext,
   handleBuiltinCommand,
   transformSlashCommand,
 } from './commands/index.js';
-import { formatWithEmbeddedHistory } from './format.js';
 import { trimHistory } from './history.js';
 import { MCPInitializer } from './mcp/mcp-initializer.js';
 import type { ParsedInput, Transport, TransportHooks } from './transport.js';
 import type { DebugContext, ExecutionStep, LLMProvider, Message, OpenAITool } from './types.js';
 import { debugContextToAgentSteps } from './workflow/debug-footer.js';
-import {
-  handleWorkflowComplete as handleWorkflowCompleteLogic,
-  handleWorkflowProgress as handleWorkflowProgressLogic,
-} from './workflow/index.js';
 import { StepProgressTracker } from './workflow/step-tracker.js';
 import type { QuotedContext } from './workflow/types.js';
 
@@ -422,9 +418,6 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         });
       }
 
-      // Emit thinking step
-      await stepTracker?.addStep({ type: 'thinking', iteration: 0 });
-
       // Initialize MCP connections if configured
       await this.initMcp();
 
@@ -457,190 +450,41 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       }
 
       const tools = deduplicatedTools;
-      const hasTools = tools.length > 0;
 
       // Resolve systemPrompt (supports both string and function forms)
       const env = (this as unknown as { env: TEnv }).env;
       const resolvedSystemPrompt =
         typeof config.systemPrompt === 'function' ? config.systemPrompt(env) : config.systemPrompt;
 
-      // Build messages with history embedded in user message (XML format)
-      // This embeds conversation history directly in the prompt for AI Gateway compatibility
-      const llmMessages = formatWithEmbeddedHistory(
-        this.state.messages,
-        resolvedSystemPrompt,
+      // Create tool executor config
+      const toolExecutorConfig: ToolExecutorConfig = {
+        builtinToolMap,
+        mcpCallTool: async (params) => {
+          return (await this.mcp.callTool(params)) as {
+            content: Array<{ type: string; text?: string }>;
+          };
+        },
+      };
+
+      // Create chat loop
+      const chatLoop = new ChatLoop({
+        llmProvider,
+        systemPrompt: resolvedSystemPrompt,
+        maxToolIterations,
+        tools,
+        toolExecutor: toolExecutorConfig,
+      });
+
+      // Execute chat loop
+      const result = await chatLoop.execute(
         userMessage,
+        this.state.messages,
+        stepTracker,
         quotedContext
       );
 
-      // Call LLM with tools if available
-      let response = await llmProvider.chat(llmMessages, hasTools ? tools : undefined);
-
-      // Track token usage and model from LLM response
-      if (response.usage) {
-        stepTracker?.addTokenUsage(response.usage);
-      }
-      if (response.model) {
-        stepTracker?.setModel(response.model);
-      }
-
-      // Handle tool calls (up to maxToolIterations)
-      let iterations = 0;
-
-      // Track tool conversation for iterations (separate from embedded history)
-      const toolConversation: Array<{
-        role: 'user' | 'assistant';
-        content: string;
-      }> = [];
-
-      while (
-        response.toolCalls &&
-        response.toolCalls.length > 0 &&
-        iterations < maxToolIterations
-      ) {
-        iterations++;
-        logger.info(
-          `[CloudflareAgent][MCP] Processing ${response.toolCalls.length} tool calls (iteration ${iterations})`
-        );
-
-        // Add assistant message with tool calls to tool conversation
-        toolConversation.push({
-          role: 'assistant' as const,
-          content: response.content || '',
-        });
-
-        // Execute each tool call (built-in or MCP)
-        for (const toolCall of response.toolCalls) {
-          // Parse args early so we can include them in the step
-          let toolArgs: Record<string, unknown> = {};
-          try {
-            toolArgs = JSON.parse(toolCall.arguments);
-          } catch {
-            // Invalid JSON args, continue with empty object
-          }
-
-          // Emit tool start step with args
-          await stepTracker?.addStep({
-            type: 'tool_start',
-            toolName: toolCall.name,
-            args: toolArgs,
-            iteration: iterations,
-          });
-
-          try {
-            let resultText: string;
-
-            // Check if it's a built-in tool first
-            const builtinTool = builtinToolMap.get(toolCall.name);
-            if (builtinTool) {
-              logger.info(`[CloudflareAgent][TOOL] Calling built-in tool: ${toolCall.name}`);
-
-              // Execute built-in tool
-              const toolInput: ToolInput = {
-                content: toolArgs,
-              };
-              const result = await builtinTool.execute(toolInput);
-
-              // Format result
-              resultText =
-                typeof result.content === 'string'
-                  ? result.content
-                  : JSON.stringify(result.content);
-
-              if (result.status === 'error' && result.error) {
-                resultText = `Error: ${result.error.message}`;
-              }
-            } else {
-              // Parse tool name to get server ID (format: serverId__toolName)
-              const [serverId, ...toolNameParts] = toolCall.name.split('__');
-              const toolName = toolNameParts.join('__') || toolCall.name;
-
-              logger.info(`[CloudflareAgent][MCP] Calling tool: ${toolName} on server ${serverId}`);
-
-              const result = (await this.mcp.callTool({
-                serverId: serverId || '',
-                name: toolName,
-                arguments: toolArgs,
-              })) as { content: Array<{ type: string; text?: string }> };
-
-              // Format MCP result
-              resultText = result.content
-                .map((c) => (c.type === 'text' ? c.text : JSON.stringify(c)))
-                .join('\n');
-            }
-
-            // Emit tool complete step with args for display
-            await stepTracker?.addStep({
-              type: 'tool_complete',
-              toolName: toolCall.name,
-              args: toolArgs,
-              result: resultText,
-              iteration: iterations,
-            });
-
-            // Use 'user' role with tool context for compatibility
-            toolConversation.push({
-              role: 'user' as const,
-              content: `[Tool Result for ${toolCall.name}]: ${resultText}`,
-            });
-          } catch (error) {
-            logger.error(`[CloudflareAgent][TOOL] Tool call failed: ${error}`);
-
-            // Emit tool error step with args for display
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            await stepTracker?.addStep({
-              type: 'tool_error',
-              toolName: toolCall.name,
-              args: toolArgs,
-              error: errorMessage,
-              iteration: iterations,
-            });
-
-            // Use 'user' role with error context for compatibility
-            toolConversation.push({
-              role: 'user' as const,
-              content: `[Tool Error for ${toolCall.name}]: ${errorMessage}`,
-            });
-          }
-        }
-
-        // Rebuild messages with embedded history + tool conversation
-        // Combine: system prompt + embedded history with user message + tool turns
-        const toolMessages = [...llmMessages, ...toolConversation];
-
-        // Emit LLM iteration step (show iteration progress for multi-turn conversations)
-        await stepTracker?.addStep({
-          type: 'llm_iteration',
-          iteration: iterations,
-          maxIterations: maxToolIterations,
-        });
-
-        // Continue conversation with tool results
-        response = await llmProvider.chat(toolMessages, hasTools ? tools : undefined);
-
-        // Track token usage and model from follow-up LLM calls
-        if (response.usage) {
-          stepTracker?.addTokenUsage(response.usage);
-        }
-        if (response.model) {
-          stepTracker?.setModel(response.model);
-        }
-      }
-
-      // Emit preparing step before finalizing
-      await stepTracker?.addStep({ type: 'preparing', iteration: 0 });
-
-      const assistantContent = response.content;
-
       // Update state with new messages (trimmed)
-      const newMessages = trimHistory(
-        [
-          ...this.state.messages,
-          { role: 'user' as const, content: userMessage },
-          { role: 'assistant' as const, content: assistantContent },
-        ],
-        maxHistory
-      );
+      const newMessages = trimHistory([...this.state.messages, ...result.newMessages], maxHistory);
 
       this.setState({
         ...this.state,
@@ -661,7 +505,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Capture assistant response to analytics (append-only, never deleted)
       // Fire-and-forget pattern - don't block on analytics capture
 
-      return assistantContent;
+      return result.content;
     }
 
     /**
@@ -1239,7 +1083,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             }
 
             try {
-              // Call chat to get LLM response
+              // Sync chat path
               logger.info('[CloudflareAgent][RPC] Calling chat()');
               const response = await this.chat(input.text, stepTracker, quotedContext, eventId);
               logger.info('[CloudflareAgent][RPC] Chat completed', {
@@ -1344,84 +1188,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     // ============================================
-    // Workflow Progress Endpoints (HTTP)
+    // HTTP Request Handler
     // ============================================
 
     /**
-     * Override fetch to handle internal workflow endpoints BEFORE the partyserver SDK's
-     * fetch handler runs. The SDK expects x-partykit-room headers, but our internal
-     * workflow callbacks don't set these headers.
-     *
-     * Internal endpoints:
-     * - POST /workflow-progress: Receive progress updates from AgenticLoopWorkflow
-     * - POST /workflow-complete: Receive completion notification from workflow
+     * Override fetch to delegate to parent's partyserver handler
      */
     override async fetch(request: Request): Promise<Response> {
-      const url = new URL(request.url);
-
-      // Handle internal workflow endpoints before partyserver SDK
-      if (
-        (url.pathname === '/workflow-progress' || url.pathname === '/workflow-complete') &&
-        request.method === 'POST'
-      ) {
-        // Process internally without partyserver headers
-        return this.handleWorkflowCallback(request);
-      }
-
       // Pass to parent's fetch for normal websocket/request handling
       return super.fetch(request);
-    }
-
-    /**
-     * Handle workflow progress updates
-     *
-     * Accumulates progress updates and formats them in Claude Code style.
-     * Delegates to the shared workflow logic.
-     */
-    private async handleWorkflowProgress(request: Request): Promise<Response> {
-      return handleWorkflowProgressLogic(request, {
-        env: (this as unknown as { env: TEnv }).env as Record<string, unknown>,
-        state: this.state,
-        setState: (s) => this.setState({ ...this.state, ...s }),
-        ...(transport && { transport }),
-      });
-    }
-
-    /**
-     * Handle workflow completion notification
-     * delegates to shared logic
-     */
-    private async handleWorkflowComplete(request: Request): Promise<Response> {
-      const env = (this as unknown as { env: TEnv }).env as Record<string, unknown>;
-      return handleWorkflowCompleteLogic(request, {
-        env,
-        state: this.state,
-        setState: (s) => this.setState({ ...this.state, ...s }),
-        ...(transport && { transport }),
-        adminConfig: {
-          adminUserIds: new Set(), // TODO: Load from env if needed
-          adminUsernames: new Set(
-            [
-              (env as unknown as { TELEGRAM_ADMIN?: string }).TELEGRAM_ADMIN,
-              (env as unknown as { GITHUB_ADMIN?: string }).GITHUB_ADMIN,
-            ].filter(Boolean) as string[]
-          ),
-        },
-      });
-    }
-
-    /**
-     * Handle internal workflow endpoints
-     */
-    private async handleWorkflowCallback(request: Request): Promise<Response> {
-      const url = new URL(request.url);
-      if (url.pathname === '/workflow-progress') {
-        return this.handleWorkflowProgress(request);
-      }
-      if (url.pathname === '/workflow-complete') {
-        return this.handleWorkflowComplete(request);
-      }
-      return new Response('Not found', { status: 404 });
     }
 
     /**
@@ -1442,6 +1217,16 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         resetMcp: () => {
           this._mcpInitialized = false;
         },
+        clearMessages: this.messagePersistence
+          ? async () => {
+              const sessionId = {
+                platform: String(this.state.metadata?.platform ?? 'api'),
+                userId: String(this.state.userId ?? 'unknown'),
+                chatId: String(this.state.chatId ?? 'unknown'),
+              };
+              return this.messagePersistence!.clearMessages(sessionId);
+            }
+          : undefined,
         config: {
           welcomeMessage: this.state.metadata?.platform === 'telegram' ? 'Hello!' : undefined,
           mcpServers,

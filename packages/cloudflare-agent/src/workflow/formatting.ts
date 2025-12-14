@@ -1,5 +1,16 @@
-import { formatClaudeCodeThinking, formatThinkingMessage } from '../agentic-loop/progress.js';
+import { formatClaudeCodeThinking, getRandomThinkingMessage } from '../format.js';
 import type { WorkflowProgressEntry } from './types.js';
+
+/**
+ * Format thinking message for workflow progress
+ * Supports both no arguments and single string argument
+ */
+function formatThinkingMessage(text?: string): string {
+  if (text) {
+    return `* 🤔 ${text}`;
+  }
+  return `* ${getRandomThinkingMessage()}`;
+}
 
 /**
  * Format workflow progress in Claude Code style
