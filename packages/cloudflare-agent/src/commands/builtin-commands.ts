@@ -108,8 +108,8 @@ export const builtinCommands: Record<string, CommandHandler> = {
       messages: [], // Clear conversation history
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      userId: ctx.state.userId,
-      chatId: ctx.state.chatId,
+      ...(ctx.state.userId !== undefined ? { userId: ctx.state.userId } : {}),
+      ...(ctx.state.chatId !== undefined ? { chatId: ctx.state.chatId } : {}),
     };
 
     ctx.setState(freshState);

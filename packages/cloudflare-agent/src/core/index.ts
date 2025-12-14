@@ -25,30 +25,10 @@ export type {
   IObservabilityAdapter,
   ObservabilityEventData,
 } from '../adapters/observability/index.js';
-export type { IStateReporter } from '../adapters/state-reporting/index.js';
 // Re-export batch types for users of batchQueue
-export type {
-  BatchConfig,
-  BatchState,
-  BatchStatus,
-  EnhancedBatchState,
-  MessageStage,
-  PendingMessage,
-  QueueResult,
-  ReceiveMessageResult,
-  RetryConfig,
-} from '../batch/index.js';
-// Re-export batch module classes
-export { BatchQueue, ContextBuilder, StuckDetector } from '../batch/index.js';
+export type { IStateReporter } from '../adapters/state-reporting/index.js';
+
 export { createAdapterFactory, createAdapterFactoryWithOverrides } from './adapter-factory.js';
-export { createCloudflareChatAgent } from './cloudflare-agent.js';
+
 // Re-export types for public API
-export type {
-  AdapterBundle,
-  CloudflareAgentConfig,
-  CloudflareAgentState,
-  CloudflareChatAgentClass,
-  CloudflareChatAgentMethods,
-  MCPServerConnection,
-  RouterConfig,
-} from './types.js';
+export type { AdapterBundle } from './types.js';

@@ -29,7 +29,7 @@ import {
 import { formatWithEmbeddedHistory } from './format.js';
 import { trimHistory } from './history.js';
 import { MCPInitializer } from './mcp/mcp-initializer.js';
-import type { Transport, TransportHooks } from './transport.js';
+import type { ParsedInput, Transport, TransportHooks } from './transport.js';
 import type { LLMProvider, Message, OpenAITool } from './types.js';
 import { debugContextToAgentSteps } from './workflow/debug-footer.js';
 import {
@@ -159,10 +159,6 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   maxToolIterations?: number;
   /** Maximum number of tools to expose to LLM (default: unlimited) */
   maxTools?: number;
-  /**
-   * Maximum number of tools to expose to LLM (default: unlimited)
-   */
-  maxTools?: number;
 }
 
 // Re-export types for backward compatibility
@@ -280,6 +276,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Flag to indicate if MCP has been initialized
      */
     private _mcpInitialized = false;
+    private _processing = false;
 
     // Adapters
     private messagePersistence: D1MessagePersistence;
@@ -297,7 +294,6 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       this.observabilityAdapter = new D1ObservabilityAdapter(envWithDb.DB);
 
       // Initialize MCP
-      // @ts-expect-error - mcpServers is internal
       this.mcpInitializer = new MCPInitializer<TEnv>(
         this,
         config.mcpServers || [],
@@ -349,15 +345,6 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     /**
-     */
-    private _getSessionId(): string {
-      const platform = this.state.metadata?.platform ?? 'api';
-      const userId = this.state.userId?.toString() ?? 'unknown';
-      const chatId = this.state.chatId?.toString() ?? 'unknown';
-      return `${platform}:${userId}:${chatId}`;
-    }
-
-    /**
      * Initialize the agent with user/chat ID
      */
     async init(userId?: string | number, chatId?: string | number): Promise<void> {
@@ -379,7 +366,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Load history from D1 if state is empty
       if (this.state.messages.length === 0) {
         const sessionId = {
-          platform: this.state.metadata?.platform ?? 'api',
+          platform: String(this.state.metadata?.platform ?? 'api'),
           userId: String(this.state.userId ?? 'unknown'),
           chatId: String(this.state.chatId ?? 'unknown'),
         };
@@ -581,6 +568,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               type: 'tool_error',
               toolName: toolCall.name,
               error: errorMessage,
+              iteration: iterations,
             });
 
             // Use 'user' role with error context for compatibility
@@ -638,7 +626,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Persist messages to D1 (fire-and-forget)
       // Persist messages to D1 (fire-and-forget)
       const persistenceSessionId = {
-        platform: this.state.metadata?.platform ?? 'api',
+        platform: String(this.state.metadata?.platform ?? 'api'),
         userId: String(this.state.userId ?? 'unknown'),
         chatId: String(this.state.chatId ?? 'unknown'),
       };
@@ -856,7 +844,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // Persist command to D1 (fire-and-forget)
             // Use adapter
             const commandSessionId = {
-              platform: this.state.metadata?.platform ?? 'api',
+              platform: String(this.state.metadata?.platform ?? 'api'),
               userId: String(this.state.userId ?? 'unknown'),
               chatId: String(this.state.chatId ?? 'unknown'),
             };
@@ -1074,6 +1062,49 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     }
 
     // ============================================
+    // RPC Methods
+    // ============================================
+
+    /**
+     * Receive a message directly via ParsedInput (RPC-friendly)
+     */
+    async receiveMessage(
+      input: ParsedInput
+    ): Promise<{ traceId: string; queued: boolean; batchId?: string }> {
+      const traceId = (input.metadata?.traceId as string) || crypto.randomUUID();
+      const eventIdRaw = input.metadata?.eventId;
+      const eventId = typeof eventIdRaw === 'string' ? eventIdRaw : undefined;
+
+      // Note: In the new architecture, we process immediately (no batch queue)
+      // But we wrap in a non-blocking promise to mimic "queued" behavior for RPC caller
+      // The caller (webhook) expects to return immediately.
+
+      // We start processing asynchronously
+      (async () => {
+        try {
+          await this.init(input.userId, input.chatId);
+
+          // Construct quoted context if present
+          const quotedContext: QuotedContext | undefined = input.metadata?.quotedText
+            ? {
+                text: String(input.metadata.quotedText),
+                ...(input.metadata.quotedUsername
+                  ? { username: String(input.metadata.quotedUsername) }
+                  : {}),
+              }
+            : undefined;
+
+          // Call chat directly
+          await this.chat(input.text, undefined, quotedContext, eventId);
+        } catch (err) {
+          logger.error(`[CloudflareAgent][RPC] receiveMessage failed: ${err}`);
+        }
+      })();
+
+      return { traceId, queued: true };
+    }
+
+    // ============================================
     // Callback Query Handling (Telegram Inline Buttons)
     // ============================================
 
@@ -1213,35 +1244,25 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
     /**
      * Get command context for command handlers
      */
-    private getCommandContext(input: string, eventId?: string): CommandContext {
-      const env = (this as unknown as { env: TEnv }).env;
+    private getCommandContext(
+      _text: string,
+      options?: { isAdmin?: boolean; username?: string; parseMode?: 'HTML' | 'MarkdownV2' }
+    ): CommandContext {
+      // Unused but kept for structure if needed later
+      // const env = (this as unknown as { env: TEnv }).env;
       return {
-        input, // This is not in the type definition but seems implied or needed? Actually CommandContext in types.ts doesn't have 'input' field clearly defined as main text?
-        // checking types.ts: it DOES NOT have 'input'. It has isAdmin, username, parseMode, state, setState, resetMcp, config.
-        // Wait, the handler usage is (text, ctx).
-        // So getCommandContext should return the CTX part.
-        // Let's check handleBuiltinCommand signature again. "export async function handleBuiltinCommand(context: CommandContext): Promise<string | null>"?
-        // Actually, handleBuiltinCommand in my memory took (context).
-        // Let's re-read the file view if needed.
-        // Step 312 shows CommandContext. It DOES NOT have 'input'.
-        // But handleBuiltinCommand in builtin-commands.ts MIGHT expect it?
-
-        // Re-reading builtin-commands.ts from memory/context:
-        // It iterates builtinCommands.
-        // Let's assume for now I need to construct what matches CommandContext.
-
-        isAdmin: false, // Default, override in caller
+        isAdmin: options?.isAdmin ?? false,
+        username: options?.username,
+        parseMode: options?.parseMode,
         state: this.state,
-        setState: (s) => this.setState(s),
+        setState: (s: Partial<CloudflareAgentState>) => this.setState({ ...this.state, ...s }),
         resetMcp: () => {
           this._mcpInitialized = false;
         },
         config: {
-          welcomeMessage: this.state.metadata?.platform === 'telegram' ? 'Hello!' : undefined, // Simplify
-          // Approximate config compatibility
+          welcomeMessage: this.state.metadata?.platform === 'telegram' ? 'Hello!' : undefined,
           mcpServers,
           tools: builtinTools,
-          // platform: this.state.metadata?.platform ?? 'api',
         },
       } as unknown as CommandContext;
     }
@@ -1269,10 +1290,11 @@ export type CloudflareChatAgentNamespace<TEnv, TContext = unknown> = AgentNamesp
  * await agent.handle(ctx); // Fully typed!
  * ```
  */
-export function getChatAgent<TEnv, TContext>(
-  namespace: CloudflareChatAgentNamespace<TEnv, TContext>,
-  name: string
-) {
+// Using any to avoid deep type instantiation recursion errors with intersection types
+// and branding issues. The consumer knows what methods are available.
+// Using any to avoid deep type instantiation recursion errors with intersection types
+// and branding issues. The consumer knows what methods are available.
+export function getChatAgent(namespace: any, name: string): any {
   const id = namespace.idFromName(name);
   return namespace.get(id);
 }
