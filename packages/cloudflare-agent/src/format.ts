@@ -165,63 +165,62 @@ export function formatCompleteResponse(
   return `${progressSection}\n\n${finalContent}`;
 }
 
-/**
- * Fun thinking messages inspired by Claude Code
- * These rotate to show the bot is still working
- */
-const THINKING_MESSAGES = [
-  'Thinking...',
-  'Processing...',
-  'Pondering...',
-  'Cogitating...',
-  'Ruminating...',
-  'Contemplating...',
-  'Analyzing...',
-  'Computing...',
-  'Deliberating...',
-  'Musing...',
-  'Brainstorming...',
-  'Synthesizing...',
-  'Evaluating...',
-  'Reasoning...',
-  'Deducing...',
-  'Flambéing...',
-  'Marinating...',
-  'Percolating...',
-  'Simmering...',
-  'Brewing...',
-];
+// =============================================================================
+// Thinking Messages - Re-exported from @duyetbot/progress
+// =============================================================================
 
-/**
- * Extended thinking messages for longer operations
- */
-const EXTENDED_THINKING_MESSAGES = [
-  'Still thinking...',
-  'Deep in thought...',
-  'Almost there...',
-  'Working on it...',
-  'Bear with me...',
-  'Complex task...',
-  'Crunching numbers...',
-  'Consulting the oracle...',
-  'Channeling wisdom...',
-  'Brewing ideas...',
-  'Summoning insights...',
-  'Weaving thoughts...',
-  'Distilling knowledge...',
-  'Forging connections...',
-  'Unraveling mysteries...',
-];
+import {
+  createRotator,
+  EXTENDED_MESSAGES,
+  getRandomMessage,
+  THINKING_MESSAGES,
+  type ThinkingRotator,
+  type ThinkingRotatorConfig,
+} from '@duyetbot/progress';
+
+// Re-export types and functions for backward compatibility
+export { EXTENDED_MESSAGES, THINKING_MESSAGES };
+export type { ThinkingRotator, ThinkingRotatorConfig };
 
 /**
  * Get a random thinking message
  * @param extended - Use extended messages for longer waits
+ * @deprecated Use getRandomMessage from @duyetbot/progress instead
  */
 export function getRandomThinkingMessage(extended = false): string {
-  const messages = extended ? EXTENDED_THINKING_MESSAGES : THINKING_MESSAGES;
-  const index = Math.floor(Math.random() * messages.length);
-  return messages[index] ?? 'Thinking...';
+  return getRandomMessage(extended);
 }
+
+/**
+ * Create a thinking message rotator
+ * @deprecated Use createRotator from @duyetbot/progress instead
+ */
+export function createThinkingRotator(config: ThinkingRotatorConfig = {}): ThinkingRotator {
+  return createRotator(config);
+}
+
+/**
+ * Get default thinking messages array
+ * @deprecated Use THINKING_MESSAGES from @duyetbot/progress instead
+ */
+export function getDefaultThinkingMessages(): string[] {
+  return [...THINKING_MESSAGES];
+}
+
+/**
+ * Get extended thinking messages array
+ * @deprecated Use EXTENDED_MESSAGES from @duyetbot/progress instead
+ */
+export function getExtendedThinkingMessages(): string[] {
+  return [...EXTENDED_MESSAGES];
+}
+
+/** @deprecated Use THINKING_MESSAGES from @duyetbot/progress instead */
+export const THINKING_ROTATOR_MESSAGES = THINKING_MESSAGES;
+
+// =============================================================================
+// Format Utilities
+// =============================================================================
 
 /**
  * Format initial thinking message
@@ -232,7 +231,7 @@ export function formatThinkingMessage(
   format: 'markdown' | 'plain' = 'markdown',
   extended = false
 ): string {
-  const message = getRandomThinkingMessage(extended);
+  const message = getRandomMessage(extended);
   if (format === 'markdown') {
     return `🔄 *${message}*`;
   }
@@ -245,15 +244,10 @@ export function formatThinkingMessage(
  * @param tokenCount - Optional token usage to display
  */
 export function formatClaudeCodeThinking(tokenCount?: number): string {
-  const message = getRandomThinkingMessage();
+  const message = getRandomMessage();
   const tokenInfo = tokenCount ? ` (↓ ${tokenCount} tokens)` : '';
   return `* ${message}${tokenInfo}`;
 }
-
-/**
- * Export thinking rotator messages for use in other modules
- */
-export const THINKING_ROTATOR_MESSAGES = THINKING_MESSAGES;
 
 /**
  * Format error message
@@ -266,159 +260,6 @@ export function formatErrorMessage(
     return `❌ **Error**: ${error}`;
   }
   return `❌ Error: ${error}`;
-}
-
-/**
- * Configuration for thinking message rotator
- */
-export interface ThinkingRotatorConfig {
-  /** Custom messages to rotate through */
-  messages?: string[];
-  /** Rotation interval in milliseconds (default: 5000) */
-  interval?: number;
-  /** Start from a random message instead of the first (default: true) */
-  random?: boolean;
-}
-
-/**
- * Thinking message rotator interface
- */
-export interface ThinkingRotator {
-  /** Get current message without advancing */
-  getCurrentMessage(): string;
-  /** Start rotation, calling onMessage for each new message. Supports async callbacks. */
-  start(onMessage: (message: string) => void | Promise<void>): void;
-  /** Stop rotation */
-  stop(): void;
-  /**
-   * Wait for any in-flight callback to complete.
-   * Call this after stop() before sending final response to avoid race conditions.
-   */
-  waitForPending(): Promise<void>;
-}
-
-/**
- * Create a thinking message rotator for showing progress during long operations
- *
- * @param config - Rotator configuration
- * @returns ThinkingRotator instance
- *
- * @example
- * ```typescript
- * const rotator = createThinkingRotator({
- *   messages: ['Thinking...', 'Processing...', 'Almost done...'],
- *   interval: 3000
- * });
- *
- * const initial = rotator.getCurrentMessage();
- * rotator.start((msg) => updateUI(msg));
- * // ... do work ...
- * rotator.stop();
- * ```
- */
-export function createThinkingRotator(config: ThinkingRotatorConfig = {}): ThinkingRotator {
-  const messages = config.messages ?? THINKING_MESSAGES;
-  const interval = config.interval ?? 5000;
-  const random = config.random ?? true;
-
-  let messageIndex = random ? Math.floor(Math.random() * messages.length) : 0;
-  let timer: ReturnType<typeof setTimeout> | null = null;
-  let stopped = false;
-
-  // Track in-flight callback promise to allow waiting for completion
-  let pendingCallback: Promise<void> | null = null;
-
-  // Recursive function to schedule next rotation after current one completes
-  const scheduleNext = (onMessage: (message: string) => void | Promise<void>) => {
-    if (stopped) {
-      return;
-    }
-
-    timer = setTimeout(() => {
-      if (stopped) {
-        pendingCallback = null;
-        return;
-      }
-
-      // Pick a random different message each rotation for variety
-      if (random && messages.length > 2) {
-        let newIndex: number;
-        do {
-          newIndex = Math.floor(Math.random() * messages.length);
-        } while (newIndex === messageIndex);
-        messageIndex = newIndex;
-      } else {
-        messageIndex = (messageIndex + 1) % messages.length;
-      }
-
-      // Track the callback as pending so waitForPending() can await it
-      pendingCallback = (async () => {
-        try {
-          // Check stopped again before actually calling onMessage
-          // This prevents sending if stop() was called while timeout was pending
-          if (stopped) {
-            return;
-          }
-          // Await the callback to ensure edit completes before scheduling next
-          await onMessage(messages[messageIndex] ?? 'Processing...');
-        } catch (err) {
-          console.error('[ROTATOR] Callback failed:', err);
-        } finally {
-          pendingCallback = null;
-        }
-
-        // Schedule next rotation only after this one completes
-        scheduleNext(onMessage);
-      })();
-    }, interval);
-  };
-
-  return {
-    getCurrentMessage() {
-      return messages[messageIndex] ?? 'Thinking...';
-    },
-
-    start(onMessage: (message: string) => void | Promise<void>) {
-      if (timer || messages.length <= 1) {
-        return;
-      }
-
-      stopped = false;
-      scheduleNext(onMessage);
-    },
-
-    stop() {
-      stopped = true;
-      if (timer) {
-        clearTimeout(timer);
-        timer = null;
-      }
-    },
-
-    async waitForPending() {
-      // Wait for any in-flight callback to complete
-      // This ensures the rotator edit finishes before caller sends final response
-      if (pendingCallback) {
-        await pendingCallback;
-      }
-    },
-  };
-}
-
-/**
- * Get a copy of the default thinking messages array
- * Useful for extending or customizing the default set
- */
-export function getDefaultThinkingMessages(): string[] {
-  return [...THINKING_MESSAGES];
-}
-
-/**
- * Get a copy of the extended thinking messages array
- * For longer operations that need more variety
- */
-export function getExtendedThinkingMessages(): string[] {
-  return [...EXTENDED_THINKING_MESSAGES];
 }
 
 /**

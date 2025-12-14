@@ -154,7 +154,9 @@ export function validateRequiredConfig<TEnv, TContext>(
 export function validateMCPServers(
   servers: Array<{ name: string; url: string }> | undefined
 ): void {
-  if (!servers) return;
+  if (!servers) {
+    return;
+  }
 
   const names = new Set<string>();
 

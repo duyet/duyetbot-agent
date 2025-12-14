@@ -1,5 +1,32 @@
-import { formatClaudeCodeThinking, getRandomThinkingMessage } from '../format.js';
+/**
+ * Workflow Progress Formatting
+ *
+ * Renders live progress display for tool executions in Claude Code style.
+ * Uses shared utilities from @duyetbot/progress.
+ */
+
+import {
+  formatDuration,
+  formatToolArgs,
+  formatToolResult,
+  getRandomMessage as getRandomThinkingMessage,
+} from '@duyetbot/progress';
+
+import { formatClaudeCodeThinking } from '../format.js';
 import type { WorkflowProgressEntry } from './types.js';
+
+// Re-export from @duyetbot/progress for backward compatibility
+// Legacy alias for backward compatibility
+export {
+  formatCompactNumber,
+  formatCost,
+  formatCost as formatCostUsd,
+  formatDuration,
+  formatToolArgs,
+  formatToolResult,
+  formatToolResult as formatToolResponse,
+  shortenModelName,
+} from '@duyetbot/progress';
 
 /**
  * Format thinking message for workflow progress
@@ -99,7 +126,7 @@ export function formatWorkflowProgress(
       if (runningIdx >= 0) {
         // Replace "Running..." with completion + result preview
         if (entry.toolResult) {
-          const resultPreview = formatToolResponse(entry.toolResult, 1);
+          const resultPreview = formatToolResult(entry.toolResult, 1);
           lines[runningIdx] = `  ⎿ 🔍 ${resultPreview}`;
         } else {
           lines[runningIdx] = `  ⎿ ✅ (${durationStr})`;
@@ -109,7 +136,7 @@ export function formatWorkflowProgress(
         const argStr = formatToolArgs(entry.toolArgs);
         lines.push(`⏺ ${entry.toolName}(${argStr})`);
         if (entry.toolResult) {
-          const resultPreview = formatToolResponse(entry.toolResult, 1);
+          const resultPreview = formatToolResult(entry.toolResult, 1);
           lines.push(`  ⎿ 🔍 ${resultPreview}`);
         } else {
           lines.push(`  ⎿ ✅ (${durationStr})`);
@@ -165,7 +192,9 @@ export function formatParallelTools(
 
   // Enumerate tools with proper type safety
   tools.forEach((tool, i) => {
-    if (!tool) return;
+    if (!tool) {
+      return;
+    }
 
     const isLast = i === tools.length - 1;
     const prefix = isLast ? '└─' : '├─';
@@ -203,152 +232,4 @@ export function findLastIndex<T>(arr: T[], predicate: (item: T) => boolean): num
     }
   }
   return -1;
-}
-
-/**
- * Format duration in human-readable format
- */
-export function formatDuration(ms: number): string {
-  if (ms < 1000) {
-    return `${ms}ms`;
-  } else if (ms < 60000) {
-    return `${(ms / 1000).toFixed(1)}s`;
-  } else {
-    const mins = Math.floor(ms / 60000);
-    const secs = Math.round((ms % 60000) / 1000);
-    return `${mins}m ${secs}s`;
-  }
-}
-
-/**
- * Format number in compact notation with k suffix
- * Examples: 500 → "500", 1200 → "1.2k", 15000 → "15k"
- */
-export function formatCompactNumber(n: number): string {
-  if (n >= 1000) {
-    const k = n / 1000;
-    // Use 1 decimal for values < 10k, no decimal for larger
-    return k >= 10 ? `${Math.round(k)}k` : `${k.toFixed(1)}k`;
-  }
-  return String(n);
-}
-
-/**
- * Format cost in USD for display
- * Examples: 0.00048 → "$0.0005", 0.0123 → "$0.012"
- */
-export function formatCostUsd(cost: number): string {
-  if (cost === 0) {
-    return '$0';
-  }
-  if (cost < 0.0001) {
-    return '<$0.0001';
-  }
-  if (cost < 0.01) {
-    return `$${cost.toFixed(4)}`;
-  }
-  return `$${cost.toFixed(3)}`;
-}
-
-/**
- * Shorten model name for display
- * Examples:
- * - 'x-ai/grok-4.1-fast' → 'grok-4.1'
- * - 'anthropic/claude-3-5-sonnet-20241022' → 'sonnet-3.5'
- * - '@preset/duyetbot' → 'duyetbot'
- */
-export function shortenModelName(model: string): string {
-  // Remove @preset/ prefix
-  if (model.startsWith('@preset/')) {
-    return model.replace('@preset/', '');
-  }
-
-  // Remove provider prefix (x-ai/, anthropic/, openai/, etc.)
-  const parts = model.split('/');
-  const name = parts[parts.length - 1] || model;
-
-  // Claude models: extract variant name
-  if (name.includes('claude')) {
-    const withoutDate = name.replace(/-\d{8}$/, '');
-    if (withoutDate.includes('opus')) {
-      return withoutDate.includes('3-5')
-        ? 'opus-3.5'
-        : withoutDate.includes('3.5')
-          ? 'opus-3.5'
-          : 'opus';
-    }
-    if (withoutDate.includes('sonnet')) {
-      return withoutDate.includes('3-5')
-        ? 'sonnet-3.5'
-        : withoutDate.includes('3.5')
-          ? 'sonnet-3.5'
-          : 'sonnet';
-    }
-    if (withoutDate.includes('haiku')) {
-      return withoutDate.includes('3-5')
-        ? 'haiku-3.5'
-        : withoutDate.includes('3.5')
-          ? 'haiku-3.5'
-          : 'haiku';
-    }
-  }
-
-  // GPT models: remove date suffix
-  if (name.startsWith('gpt-')) {
-    return name.replace(/-\d{4}-\d{2}-\d{2}$/, '');
-  }
-
-  // Grok models: remove -fast suffix, keep version
-  if (name.startsWith('grok-')) {
-    return name.replace(/-fast$/, '');
-  }
-
-  // Default: remove date suffix and truncate if too long
-  const cleaned = name.replace(/-\d{8}$/, '');
-  return cleaned.length > 15 ? `${cleaned.slice(0, 12)}...` : cleaned;
-}
-
-/**
- * Format tool arguments for display
- * Shows the most relevant argument (query, url, prompt, etc.)
- */
-export function formatToolArgs(args?: Record<string, unknown>): string {
-  if (!args || Object.keys(args).length === 0) return '';
-
-  // Priority order for displaying args
-  const priorityKeys = ['query', 'url', 'prompt', 'search', 'question', 'input', 'text', 'key'];
-  for (const key of priorityKeys) {
-    if (args[key] !== undefined) {
-      const value = String(args[key]).slice(0, 40);
-      const ellipsis = String(args[key]).length > 40 ? '...' : '';
-      return `${key}: "${value}${ellipsis}"`;
-    }
-  }
-
-  // Fallback: show first arg
-  const firstKey = Object.keys(args)[0];
-  if (firstKey) {
-    const value = String(args[firstKey]).slice(0, 40);
-    const ellipsis = String(args[firstKey]).length > 40 ? '...' : '';
-    return `${firstKey}: "${value}${ellipsis}"`;
-  }
-
-  return '';
-}
-
-/**
- * Format tool response for display, truncated to max lines
- */
-export function formatToolResponse(output: string, maxLines: number): string {
-  // Remove excessive whitespace and split into lines
-  const lines = output
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-    .split('\n')
-    .slice(0, maxLines);
-
-  // Join and truncate total length
-  const joined = lines.join(' | ').slice(0, 150);
-  const ellipsis = output.length > 150 || output.split('\n').length > maxLines ? '...' : '';
-  return `${joined}${ellipsis}`;
 }

@@ -1,14 +1,15 @@
 import type { TokenUsage } from '@duyetbot/observability';
 import {
-  formatClaudeCodeThinking,
-  getRandomThinkingMessage,
-  THINKING_ROTATOR_MESSAGES,
-} from '../format.js';
+  getRandomMessage as getRandomThinkingMessage,
+  THINKING_MESSAGES as THINKING_ROTATOR_MESSAGES,
+} from '@duyetbot/progress';
+import { formatClaudeCodeThinking } from '../format.js';
 
 type StepCallback = (message: string) => Promise<void>;
 
 export interface StepEvent {
-  iteration: number;
+  /** Step iteration number (optional, defaults to 0) */
+  iteration?: number;
   type:
     | 'thinking'
     | 'tool_start'
@@ -18,7 +19,9 @@ export interface StepEvent {
     | 'responding'
     | 'routing'
     | 'llm_iteration'
-    | 'preparing';
+    | 'preparing'
+    | 'parallel_tools'
+    | 'subagent';
   toolName?: string;
   agentName?: string;
   args?: Record<string, unknown>;
@@ -81,7 +84,9 @@ function formatToolArgsCompact(args?: Record<string, unknown>): string {
 function formatToolResultCompact(
   result?: string | { success?: boolean; output?: string; error?: string }
 ): string {
-  if (!result) return '';
+  if (!result) {
+    return '';
+  }
 
   let text: string;
   if (typeof result === 'string') {
@@ -99,6 +104,12 @@ function formatToolResultCompact(
   return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
 }
 
+/**
+ * Step progress tracker for real-time UI updates
+ * @deprecated Use ProgressTracker from '../progress-adapter.js' instead.
+ * This class will be removed in a future version.
+ * @see ProgressTracker
+ */
 export class StepProgressTracker {
   private steps: StepEvent[] = [];
   private tokenUsage?: { input: number; output: number; total: number; cached?: number };
@@ -121,7 +132,9 @@ export class StepProgressTracker {
   ) {}
 
   async addStep(step: StepEvent): Promise<void> {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      return;
+    }
     this.stopRotation();
 
     this.steps.push(step);
@@ -146,7 +159,16 @@ export class StepProgressTracker {
         this.isThinking = true;
         this.currentToolName = '';
         this.currentToolArgs = {};
-        this.currentThinkingVerb = getRandomThinkingMessage();
+
+        // Use actual thinking content if provided, otherwise use random verb
+        if (step.thinking) {
+          // Truncate long thinking text for display (keep first ~100 chars)
+          const text = step.thinking.replace(/\n/g, ' ').trim();
+          this.currentThinkingVerb = text.length > 100 ? text.slice(0, 97) + '...' : text;
+        } else {
+          this.currentThinkingVerb = getRandomThinkingMessage();
+        }
+
         await this.startRotation();
         break;
 
@@ -231,7 +253,31 @@ export class StepProgressTracker {
         }
         this.executionPath.push('preparing');
         this.isThinking = true;
-        this.currentThinkingVerb = 'Preparing response';
+        this.currentThinkingVerb = 'Preparing response...';
+        await this.update();
+        break;
+
+      case 'parallel_tools':
+        this.executionPath.push('parallel_tools');
+        if (step.args && 'tools' in step.args) {
+          const tools = step.args.tools as Array<{ toolName: string }>;
+          const toolNames = tools.map((t) => t.toolName).join(', ');
+          this.completedChain.push({
+            type: 'thinking',
+            text: `Parallel execution: ${toolNames}`,
+          });
+        }
+        this.isThinking = false;
+        await this.update();
+        break;
+
+      case 'subagent':
+        this.executionPath.push(`subagent:${step.agentName}`);
+        this.completedChain.push({
+          type: 'thinking',
+          text: `Sub-agent: ${step.agentName}`,
+        });
+        this.isThinking = false;
         await this.update();
         break;
     }
@@ -292,13 +338,130 @@ export class StepProgressTracker {
       .join(' → ');
   }
 
+  /**
+   * Start tracking a parallel tools execution group.
+   * @param tools Array of tools to track
+   * @returns Group ID for updating individual tools
+   */
+  async addParallelTools(
+    tools: Array<{
+      id: string;
+      toolName: string;
+      args: Record<string, unknown>;
+    }>
+  ): Promise<string> {
+    const groupId = crypto.randomUUID();
+    const step: StepEvent = {
+      type: 'parallel_tools' as const,
+      iteration: this.steps.length,
+      args: {
+        tools: tools.map((t) => ({
+          id: t.id,
+          toolName: t.toolName,
+          args: t.args,
+          status: 'running' as const,
+        })),
+      },
+    };
+    await this.addStep(step);
+    return groupId;
+  }
+
+  /**
+   * Update a single tool within a parallel tools group.
+   * @param toolId ID of the tool to update
+   * @param update Status update for the tool
+   */
+  async updateParallelTool(
+    toolId: string,
+    update: {
+      status: 'completed' | 'error';
+      result?: string;
+      error?: string;
+      durationMs?: number;
+    }
+  ): Promise<void> {
+    // Find the last parallel_tools step
+    const parallelStep = [...this.steps].reverse().find((s) => s.type === 'parallel_tools');
+    if (
+      parallelStep &&
+      parallelStep.args &&
+      typeof parallelStep.args === 'object' &&
+      'tools' in parallelStep.args
+    ) {
+      const tools = parallelStep.args.tools as Array<{
+        id: string;
+        status: string;
+        result?: string;
+        error?: string;
+        durationMs?: number;
+      }>;
+      const tool = tools.find((t: { id: string }) => t.id === toolId);
+      if (tool) {
+        Object.assign(tool, update);
+        await this.update();
+      }
+    }
+  }
+
+  /**
+   * Start tracking a sub-agent execution.
+   * @param agentName Name of the sub-agent (e.g., "Plan", "Explore")
+   * @param description Task description for the sub-agent
+   * @returns Sub-agent ID for completion updates
+   */
+  async addSubAgent(agentName: string, description: string): Promise<string> {
+    const id = crypto.randomUUID();
+    const step: StepEvent = {
+      type: 'subagent' as const,
+      agentName,
+      iteration: this.steps.length,
+      args: {
+        id,
+        description,
+        status: 'running' as const,
+      },
+    };
+    await this.addStep(step);
+    return id;
+  }
+
+  /**
+   * Complete a sub-agent execution.
+   * @param id Sub-agent ID from addSubAgent
+   * @param result Completion result with stats
+   */
+  async completeSubAgent(
+    id: string,
+    result: {
+      toolUses?: number;
+      tokenCount?: number;
+      durationMs?: number;
+      error?: string;
+      result?: string;
+    }
+  ): Promise<void> {
+    const subagentStep = this.steps.find(
+      (s): s is StepEvent => s.type === 'subagent' && s.args?.id === id
+    );
+    if (subagentStep && subagentStep.args) {
+      Object.assign(subagentStep.args, {
+        status: result.error ? 'error' : 'completed',
+        ...result,
+      });
+      await this.update();
+    }
+  }
+
   destroy(): void {
     this.destroyed = true;
     this.stopRotation();
   }
 
   private async startRotation(): Promise<void> {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      return;
+    }
     this.verbIndex = 0;
     await this.update();
 
@@ -324,7 +487,9 @@ export class StepProgressTracker {
   }
 
   private async update(): Promise<void> {
-    if (this.destroyed) return;
+    if (this.destroyed) {
+      return;
+    }
 
     const lines: string[] = [];
 
@@ -345,14 +510,14 @@ export class StepProgressTracker {
 
     // Show current running state with * prefix
     if (this.isThinking) {
-      // Show thinking verb with token count
+      // Show thinking text or verb with optional token count
       const tokenCount = this.tokenUsage?.input;
+      const thinkingText = this.currentThinkingVerb;
+
       if (tokenCount && tokenCount > 0) {
-        lines.push(
-          `* ${this.currentThinkingVerb}… (↓ ${this.formatTokenCount(tokenCount)} tokens)`
-        );
+        lines.push(`* ${thinkingText} (↓ ${this.formatTokenCount(tokenCount)} tokens)`);
       } else {
-        lines.push(`* ${this.currentThinkingVerb}…`);
+        lines.push(`* ${thinkingText}`);
       }
     } else if (this.currentToolName) {
       // Tool currently running with args
@@ -366,7 +531,7 @@ export class StepProgressTracker {
 
     try {
       await this.onUpdate(message);
-    } catch (e) {
+    } catch (_e) {
       // Ignore update errors
     }
   }

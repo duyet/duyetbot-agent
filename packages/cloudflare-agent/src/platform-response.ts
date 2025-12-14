@@ -522,7 +522,9 @@ export class ProgressAccumulator {
               ...(entry.message && { thinking: entry.message }),
             };
           case 'tool_start':
-            if (!entry.toolName) return null;
+            if (!entry.toolName) {
+              return null;
+            }
             return {
               ...base,
               type: 'tool_start',
@@ -530,7 +532,9 @@ export class ProgressAccumulator {
               ...(entry.toolArgs && { args: entry.toolArgs }),
             };
           case 'tool_complete':
-            if (!entry.toolName || !entry.toolResult) return null;
+            if (!entry.toolName || !entry.toolResult) {
+              return null;
+            }
             return {
               ...base,
               type: 'tool_complete',
@@ -539,7 +543,9 @@ export class ProgressAccumulator {
               ...(entry.toolArgs && { args: entry.toolArgs }),
             };
           case 'tool_error':
-            if (!entry.toolName) return null;
+            if (!entry.toolName) {
+              return null;
+            }
             return {
               ...base,
               type: 'tool_error',
@@ -571,7 +577,9 @@ export class ProgressAccumulator {
     let lastEditTime = 0;
 
     const maybeEdit = async (): Promise<void> => {
-      if (!editFn) return;
+      if (!editFn) {
+        return;
+      }
 
       const now = Date.now();
       if (now - lastEditTime < MIN_EDIT_INTERVAL_MS) {
@@ -643,7 +651,9 @@ export function createTelegramEditFn(
   const token = botToken || env.TELEGRAM_BOT_TOKEN;
   if (!token) {
     // Return no-op if no token
-    return async () => {};
+    return async (): Promise<void> => {
+      // No-op when token is unavailable
+    };
   }
 
   return async (text: string): Promise<void> => {
@@ -652,7 +662,7 @@ export function createTelegramEditFn(
     // Truncate if needed
     const TELEGRAM_LIMIT = 4096;
     const truncatedText =
-      text.length > TELEGRAM_LIMIT ? text.slice(0, TELEGRAM_LIMIT - 20) + '\n\n...' : text;
+      text.length > TELEGRAM_LIMIT ? `${text.slice(0, TELEGRAM_LIMIT - 20)}\n\n...` : text;
 
     const response = await fetch(url, {
       method: 'POST',

@@ -3,7 +3,7 @@ import {
   formatCostUsd,
   formatDuration,
   formatToolArgs,
-  formatToolResponse,
+  formatToolResponse as formatToolResult,
   shortenModelName,
 } from './formatting.js';
 
@@ -89,7 +89,7 @@ export function formatWorkflowDebugFooter(
         // Show tool response (truncated to 3 lines max)
         if (typeof step.result === 'object' && step.result !== null) {
           if (step.result.output) {
-            const responseLines = formatToolResponse(step.result.output, 3);
+            const responseLines = formatToolResult(step.result.output, 3);
             lines.push(`  ⎿ 🔍 ${responseLines}`);
           } else if (step.result.error) {
             lines.push(`  ⎿ ❌ ${step.result.error.slice(0, 60)}...`);
@@ -147,7 +147,9 @@ import type { AgentStep } from '@duyetbot/observability';
 
 // Helper to convert debug context to agent steps for observability
 export function debugContextToAgentSteps(debugContext: DebugContext): AgentStep[] {
-  if (!debugContext.steps) return [];
+  if (!debugContext.steps) {
+    return [];
+  }
 
   // Convert flat steps into AgentSteps
   const agentSteps: AgentStep[] = [];

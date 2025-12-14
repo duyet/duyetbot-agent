@@ -1,12 +1,12 @@
-import { afterEach, beforeEach, describe, expect, it, mock } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { StepProgressTracker } from '../../workflow/step-tracker.js';
 
 describe('StepProgressTracker', () => {
-  let mockOnUpdate: ReturnType<typeof mock>;
+  let mockOnUpdate: ReturnType<typeof vi.fn>;
   let tracker: StepProgressTracker;
 
   beforeEach(() => {
-    mockOnUpdate = mock(async () => {});
+    mockOnUpdate = vi.fn(async () => {});
     tracker = new StepProgressTracker(mockOnUpdate);
   });
 
@@ -31,12 +31,37 @@ describe('StepProgressTracker', () => {
   });
 
   describe('addStep', () => {
-    it('should handle thinking step', async () => {
+    it('should handle thinking step with random verb', async () => {
       await tracker.addStep({ type: 'thinking' });
 
-      // Claude Code style with * prefix and ellipsis character
-      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringMatching(/^\* \w+…$/));
+      // Random thinking verbs already include "..." suffix
+      expect(mockOnUpdate).toHaveBeenCalledWith(expect.stringMatching(/^\* .+\.{3}$/));
       expect(tracker.getExecutionPath()).toContain('thinking');
+    });
+
+    it('should handle thinking step with actual LLM content', async () => {
+      await tracker.addStep({
+        type: 'thinking',
+        thinking: 'I will analyze the codebase first to understand the structure.',
+      });
+
+      // Should show actual thinking text without ellipsis
+      expect(mockOnUpdate).toHaveBeenCalledWith(
+        '* I will analyze the codebase first to understand the structure.'
+      );
+      expect(tracker.getExecutionPath()).toContain('thinking');
+    });
+
+    it('should truncate long thinking text', async () => {
+      const longText = 'A'.repeat(150);
+      await tracker.addStep({
+        type: 'thinking',
+        thinking: longText,
+      });
+
+      // Should truncate to ~100 chars with "..." suffix
+      const call = mockOnUpdate.mock.calls[0][0] as string;
+      expect(call).toMatch(/^\* A{97}\.\.\.$/);
     });
 
     it('should handle routing step', async () => {
@@ -103,15 +128,15 @@ describe('StepProgressTracker', () => {
 
       const lastCalls = mockOnUpdate.mock.calls;
       const lastMessage = lastCalls[lastCalls.length - 1][0] as string;
-      // Should show Claude Code style thinking
-      expect(lastMessage).toMatch(/^\* \w+…$/);
+      // Random thinking verbs already include "..." suffix
+      expect(lastMessage).toMatch(/^\* .+\.{3}$/);
     });
 
     it('should handle preparing step', async () => {
       await tracker.addStep({ type: 'preparing' });
 
-      // New format: * Preparing response… (running step with * prefix)
-      expect(mockOnUpdate).toHaveBeenCalledWith('* Preparing response…');
+      // Preparing message includes "..." suffix
+      expect(mockOnUpdate).toHaveBeenCalledWith('* Preparing response...');
       expect(tracker.getExecutionPath()).toContain('preparing');
     });
   });
@@ -156,19 +181,19 @@ describe('StepProgressTracker', () => {
       await tracker.addStep({ type: 'thinking' });
 
       const initialCallCount = mockOnUpdate.mock.calls.length;
-      // First call should be Claude Code style
+      // First call should be random thinking verb with "..." suffix
       const firstCall = mockOnUpdate.mock.calls[0][0] as string;
-      expect(firstCall).toMatch(/^\* \w+…$/);
+      expect(firstCall).toMatch(/^\* .+\.{3}$/);
 
       // Wait for rotation (allow some buffer)
       await new Promise((resolve) => setTimeout(resolve, 50));
 
       expect(mockOnUpdate.mock.calls.length).toBeGreaterThan(initialCallCount);
 
-      // All calls should be Claude Code style with rotating verbs
+      // All calls should be random thinking verbs with "..." suffix
       const calls = mockOnUpdate.mock.calls.map((c) => c[0] as string);
       for (const call of calls) {
-        expect(call).toMatch(/^\* \w+…/);
+        expect(call).toMatch(/^\* .+\.{3}/);
       }
     });
 
@@ -245,7 +270,7 @@ describe('StepProgressTracker', () => {
   describe('error handling', () => {
     it('should not throw when update callback fails', async () => {
       // Create a tracker where onUpdate rejected
-      const failingUpdate = mock(async () => {
+      const failingUpdate = vi.fn(async () => {
         throw new Error('Edit failed');
       });
       const failingTracker = new StepProgressTracker(failingUpdate);
@@ -266,6 +291,94 @@ describe('StepProgressTracker', () => {
       await tracker.addStep({ type: 'thinking' });
 
       expect(mockOnUpdate).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('parallel tools tracking', () => {
+    it('should track parallel tools execution', async () => {
+      const tools = [
+        { id: 'tool1', toolName: 'get_user', args: { id: '123' } },
+        { id: 'tool2', toolName: 'get_posts', args: { userId: '123' } },
+      ];
+
+      const groupId = await tracker.addParallelTools(tools);
+
+      expect(groupId).toBeTruthy();
+      const lastCall = mockOnUpdate.mock.calls[0][0] as string;
+      expect(lastCall).toContain('Parallel execution');
+      expect(lastCall).toContain('get_user, get_posts');
+      expect(tracker.getExecutionPath()).toContain('parallel_tools');
+    });
+
+    it('should update individual tool in parallel group', async () => {
+      const tools = [
+        { id: 'tool1', toolName: 'get_user', args: { id: '123' } },
+        { id: 'tool2', toolName: 'get_posts', args: { userId: '123' } },
+      ];
+
+      await tracker.addParallelTools(tools);
+      mockOnUpdate.mockClear();
+
+      await tracker.updateParallelTool('tool1', {
+        status: 'completed',
+        result: 'User data',
+        durationMs: 100,
+      });
+
+      // Should trigger update
+      expect(mockOnUpdate).toHaveBeenCalled();
+    });
+
+    it('should handle parallel tool errors', async () => {
+      const tools = [{ id: 'tool1', toolName: 'get_user', args: { id: '123' } }];
+
+      await tracker.addParallelTools(tools);
+      mockOnUpdate.mockClear();
+
+      await tracker.updateParallelTool('tool1', {
+        status: 'error',
+        error: 'Connection timeout',
+        durationMs: 5000,
+      });
+
+      expect(mockOnUpdate).toHaveBeenCalled();
+    });
+  });
+
+  describe('sub-agent tracking', () => {
+    it('should track sub-agent execution', async () => {
+      const subAgentId = await tracker.addSubAgent('Plan', 'Create implementation plan');
+
+      expect(subAgentId).toBeTruthy();
+      const lastCall = mockOnUpdate.mock.calls[0][0] as string;
+      expect(lastCall).toContain('Sub-agent: Plan');
+      expect(tracker.getExecutionPath()).toContain('subagent:Plan');
+    });
+
+    it('should complete sub-agent execution', async () => {
+      const subAgentId = await tracker.addSubAgent('Explore', 'Explore codebase');
+      mockOnUpdate.mockClear();
+
+      await tracker.completeSubAgent(subAgentId, {
+        toolUses: 5,
+        tokenCount: 1000,
+        durationMs: 2000,
+        result: 'Found 3 relevant files',
+      });
+
+      expect(mockOnUpdate).toHaveBeenCalled();
+    });
+
+    it('should handle sub-agent errors', async () => {
+      const subAgentId = await tracker.addSubAgent('Research', 'Research topic');
+      mockOnUpdate.mockClear();
+
+      await tracker.completeSubAgent(subAgentId, {
+        error: 'API rate limit exceeded',
+        durationMs: 1000,
+      });
+
+      expect(mockOnUpdate).toHaveBeenCalled();
     });
   });
 });

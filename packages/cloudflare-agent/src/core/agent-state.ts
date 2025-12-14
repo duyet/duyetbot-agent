@@ -166,9 +166,15 @@ export function isValidState(state: unknown): state is CloudflareAgentState {
   const s = state as Partial<CloudflareAgentState>;
 
   // Check required fields
-  if (!Array.isArray(s.messages)) return false;
-  if (typeof s.createdAt !== 'number') return false;
-  if (typeof s.updatedAt !== 'number') return false;
+  if (!Array.isArray(s.messages)) {
+    return false;
+  }
+  if (typeof s.createdAt !== 'number') {
+    return false;
+  }
+  if (typeof s.updatedAt !== 'number') {
+    return false;
+  }
 
   // Check optional fields if present
   if (s.userId !== undefined && typeof s.userId !== 'string' && typeof s.userId !== 'number') {

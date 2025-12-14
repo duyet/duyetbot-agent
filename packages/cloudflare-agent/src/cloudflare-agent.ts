@@ -18,16 +18,25 @@
  * ```
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
+import type { D1Database, DurableObjectStorage } from '@cloudflare/workers-types';
 import { logger } from '@duyetbot/hono-middleware';
 import { type AgentStep, type Classification } from '@duyetbot/observability';
+import { getRandomMessage as getRandomThinkingMessage } from '@duyetbot/progress';
 import type { Tool } from '@duyetbot/types';
 import { Agent, type AgentNamespace, type Connection } from 'agents';
 import { zodToJsonSchema } from 'zod-to-json-schema';
 import { D1MessagePersistence, D1ObservabilityAdapter } from './adapters/index.js';
 import { callbackHandlers, parseCallbackData } from './callbacks/index.js';
 import type { CallbackContext } from './callbacks/types.js';
-import { ChatLoop, type ToolExecutorConfig } from './chat/index.js';
+import {
+  ChatLoop,
+  createChatExecution,
+  type DurableChatLoopConfig,
+  formatExecutionProgress,
+  runChatIteration,
+  type ToolExecutorConfig,
+} from './chat/index.js';
+import type { AlarmType, ChatLoopExecution } from './chat/types.js';
 import {
   type CommandContext,
   handleBuiltinCommand,
@@ -117,6 +126,25 @@ export interface CloudflareAgentState {
    * Maps executionId -> workflow metadata for progress tracking
    */
   activeWorkflows?: Record<string, ActiveWorkflowExecution>;
+  /**
+   * Current chat loop execution (durable alarm-based pattern)
+   * Persisted between alarm invocations for durability
+   */
+  chatExecution?: ChatLoopExecution | undefined;
+  /**
+   * Type of pending alarm (chatloop vs batch)
+   * Used to route alarm() to the correct handler
+   */
+  pendingAlarmType?: AlarmType | undefined;
+  /**
+   * Execution lock to prevent concurrent alarm/RPC processing
+   * Prevents duplicate processing when both alarm and RPC try to process same execution
+   */
+  chatExecutionLock?: {
+    executionId: string;
+    lockedAt: number;
+    lockedBy: 'alarm' | 'rpc';
+  };
 }
 
 /**
@@ -161,6 +189,13 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
   maxToolIterations?: number;
   /** Maximum number of tools to expose to LLM (default: unlimited) */
   maxTools?: number;
+  /**
+   * Use durable chat loop with DO alarms for unlimited execution time
+   * When true, chat processing uses alarm-based iteration to survive Worker timeouts
+   * When false, uses synchronous ChatLoop (30s limit but simpler debugging)
+   * Default: true (durable pattern recommended for production)
+   */
+  useDurableChatLoop?: boolean;
 }
 
 // Re-export types for backward compatibility
@@ -247,6 +282,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
   const hooks = config.hooks;
   const mcpServers = config.mcpServers ?? [];
   const builtinTools = config.tools ?? [];
+  const useDurableChatLoop = config.useDurableChatLoop ?? true; // Default to durable pattern
   // Batch config for future use (alarm scheduling, etc.)
   // const batchConfig: BatchConfig = {
   //   ...DEFAULT_BATCH_CONFIG,
@@ -279,6 +315,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      */
     private _mcpInitialized = false;
     private _processing = false;
+
+    /**
+     * Lock timeout in milliseconds (30 seconds - matches Worker timeout)
+     * After this time, stale locks are considered abandoned and can be acquired
+     */
+    private readonly LOCK_TIMEOUT_MS = 30000;
 
     // Adapters (optional - only initialized if D1 binding exists)
     private messagePersistence: D1MessagePersistence | null = null;
@@ -756,32 +798,35 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             await transport.typing(ctx);
           }
 
-          // Send initial thinking message
-          messageRef = await transport.send(ctx, '[~] Thinking...');
+          // Send initial thinking message with random verb
+          messageRef = await transport.send(ctx, `* ${getRandomThinkingMessage()}`);
 
-          // Create step progress tracker for real-time step visibility
-          if (transport.edit) {
-            stepTracker = new StepProgressTracker(
-              async (message) => {
-                try {
-                  // Update context with progressive debug info for footer display
-                  // This enables the transport to show debug footer during loading
-                  const ctxWithDebug = ctx as unknown as {
-                    debugContext?: unknown;
-                  };
-                  if (stepTracker) {
-                    ctxWithDebug.debugContext = stepTracker.getDebugContext();
+          // Create step progress tracker for step collection and debug footer
+          // Always create tracker for step collection, even if edit is not available
+          stepTracker = new StepProgressTracker(
+            transport.edit
+              ? async (message) => {
+                  try {
+                    // Update context with progressive debug info for footer display
+                    // This enables the transport to show debug footer during loading
+                    const ctxWithDebug = ctx as unknown as {
+                      debugContext?: unknown;
+                    };
+                    if (stepTracker) {
+                      ctxWithDebug.debugContext = stepTracker.getDebugContext();
+                    }
+                    await transport.edit!(ctx, messageRef!, message);
+                  } catch (err) {
+                    logger.error(`[CloudflareAgent][STEP] Edit failed: ${err}`);
                   }
-                  await transport.edit!(ctx, messageRef!, message);
-                } catch (err) {
-                  logger.error(`[CloudflareAgent][STEP] Edit failed: ${err}`);
                 }
-              },
-              {
-                rotationInterval: config.thinkingRotationInterval ?? 5000,
-              }
-            );
-          }
+              : async () => {
+                  // No-op callback for step collection without live editing
+                },
+            {
+              rotationInterval: config.thinkingRotationInterval ?? 5000,
+            }
+          );
 
           // Process with LLM - must await to keep DO alive
           // Note: Worker may timeout on long LLM calls, but DO continues
@@ -789,6 +834,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             // Direct chat calls only - routing removed
             logger.info('[CloudflareAgent][HANDLE] Processing via chat()');
             response = await this.chat(chatMessage, stepTracker, quotedContext, eventId);
+
+            // Build debug context BEFORE destroying tracker
+            // This ensures the context is available for transport operations
+            const ctxWithDebug = ctx as unknown as {
+              debugContext?: unknown;
+            };
+            if (stepTracker) {
+              ctxWithDebug.debugContext = stepTracker.getDebugContext();
+            }
           } finally {
             // Stop step tracker (stops any rotation timers)
             stepTracker?.destroy();
@@ -797,14 +851,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // Edit thinking message with actual response
           if (transport.edit) {
             try {
-              // Update context with final debug info before sending
-              const ctxWithDebug = ctx as unknown as {
-                debugContext?: unknown;
-              };
-              if (stepTracker) {
-                ctxWithDebug.debugContext = stepTracker.getDebugContext();
-              }
-
+              // Debug context already set above
               logger.info(`[CloudflareAgent][HANDLE] Editing final response: ${response}`);
               await transport.edit(ctx, messageRef, response);
             } catch (editError) {
@@ -812,27 +859,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               logger.error(
                 `[CloudflareAgent][HANDLE] Edit failed, sending new message: ${editError}`
               );
-
-              // Set debug context for fallback send too
-              const ctxWithDebug = ctx as unknown as {
-                debugContext?: unknown;
-              };
-              if (stepTracker) {
-                ctxWithDebug.debugContext = stepTracker.getDebugContext();
-              }
-
+              // Debug context already set above
               await transport.send(ctx, response);
             }
           } else {
             // Transport doesn't support edit, send new message
-            // Set debug context here too
-            const ctxWithDebug = ctx as unknown as {
-              debugContext?: unknown;
-            };
-            if (stepTracker) {
-              ctxWithDebug.debugContext = stepTracker.getDebugContext();
-            }
-
+            // Debug context already set above
             await transport.send(ctx, response);
           }
         }
@@ -843,7 +875,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         }
 
         // Capture debug context for observability
-        const debugContext = stepTracker?.getDebugContext();
+        const trackerContext = stepTracker?.getDebugContext();
 
         // Update observability for this event with full data (fire-and-forget)
         if (eventId) {
@@ -858,7 +890,38 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           const completedAt = Date.now();
           const durationMs = completedAt - handleStartTime;
 
-          if (debugContext) {
+          if (trackerContext?.steps?.length) {
+            // Build proper DebugContext from tracker steps
+            const debugContext: DebugContext = {
+              routingFlow: [],
+              totalDurationMs: durationMs,
+            };
+            // Convert StepEvent[] to ExecutionStep[] for the debug context
+            const validSteps: ExecutionStep[] = [];
+            for (const step of trackerContext.steps) {
+              if ((step.type === 'tool_complete' || step.type === 'tool_error') && step.toolName) {
+                if (step.type === 'tool_complete' && step.result !== undefined) {
+                  validSteps.push({
+                    type: 'tool_complete',
+                    iteration: step.iteration ?? 0,
+                    toolName: step.toolName,
+                    result: step.result,
+                    ...(step.args && { args: step.args }),
+                  });
+                } else if (step.type === 'tool_error' && step.error) {
+                  validSteps.push({
+                    type: 'tool_error',
+                    iteration: step.iteration ?? 0,
+                    toolName: step.toolName,
+                    error: step.error,
+                    ...(step.args && { args: step.args }),
+                  });
+                }
+              }
+            }
+            if (validSteps.length > 0) {
+              debugContext.steps = validSteps;
+            }
             agents = debugContextToAgentSteps(debugContext);
 
             // Extract tokens from stepTracker
@@ -983,17 +1046,86 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         };
 
         // Include execution steps if available (for chain display)
-        // Filter to only include valid ExecutionStep types
+        // Convert StepEvent to proper ExecutionStep with required fields
         if (trackerContext?.steps?.length) {
-          const validSteps = trackerContext.steps.filter(
-            (step): step is ExecutionStep =>
-              step.type === 'thinking' ||
-              step.type === 'tool_start' ||
-              step.type === 'tool_complete' ||
-              step.type === 'tool_error' ||
-              step.type === 'tool_execution' ||
-              step.type === 'responding'
-          );
+          const validSteps: ExecutionStep[] = [];
+          for (const step of trackerContext.steps) {
+            switch (step.type) {
+              case 'thinking':
+                validSteps.push({
+                  type: 'thinking',
+                  iteration: step.iteration ?? 0,
+                  timestamp: Date.now(),
+                  ...(step.thinking && { thinking: step.thinking }),
+                });
+                break;
+              case 'tool_start':
+                if (step.toolName) {
+                  validSteps.push({
+                    type: 'tool_start',
+                    iteration: step.iteration ?? 0,
+                    timestamp: Date.now(),
+                    toolName: step.toolName,
+                    ...(step.args && { args: step.args }),
+                  });
+                }
+                break;
+              case 'tool_complete':
+                if (step.toolName && step.result !== undefined) {
+                  validSteps.push({
+                    type: 'tool_complete',
+                    iteration: step.iteration ?? 0,
+                    timestamp: Date.now(),
+                    toolName: step.toolName,
+                    result: step.result,
+                    ...(step.args && { args: step.args }),
+                  });
+                }
+                break;
+              case 'tool_error':
+                if (step.toolName && step.error) {
+                  validSteps.push({
+                    type: 'tool_error',
+                    iteration: step.iteration ?? 0,
+                    timestamp: Date.now(),
+                    toolName: step.toolName,
+                    error: step.error,
+                    ...(step.args && { args: step.args }),
+                  });
+                }
+                break;
+              case 'tool_execution':
+                if (step.toolName) {
+                  validSteps.push({
+                    type: 'tool_execution',
+                    iteration: step.iteration ?? 0,
+                    timestamp: Date.now(),
+                    toolName: step.toolName,
+                    ...(step.args && { args: step.args }),
+                    ...(step.result !== undefined && { result: step.result }),
+                  });
+                }
+                break;
+              case 'routing':
+                if (step.agentName) {
+                  validSteps.push({
+                    type: 'routing',
+                    iteration: step.iteration ?? 0,
+                    timestamp: Date.now(),
+                    agentName: step.agentName,
+                  });
+                }
+                break;
+              case 'responding':
+                validSteps.push({
+                  type: 'responding',
+                  iteration: step.iteration ?? 0,
+                  timestamp: Date.now(),
+                });
+                break;
+              // Skip llm_iteration and preparing as they're not displayable
+            }
+          }
           if (validSteps.length > 0) {
             result.steps = validSteps;
           }
@@ -1011,6 +1143,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             userId: input.userId,
             chatId: input.chatId,
             platform: input.metadata?.platform,
+            useDurableChatLoop,
           });
 
           await this.init(input.userId, input.chatId);
@@ -1033,7 +1166,6 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           // Reconstruct transport context from metadata (platform-specific)
           // This allows sending responses back to the user
           let messageRef: string | number | undefined;
-          let stepTracker: StepProgressTracker | undefined;
 
           if (transport && input.metadata?.botToken) {
             logger.info('[CloudflareAgent][RPC] Transport available, will send response');
@@ -1063,57 +1195,121 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             messageRef = await transport.send(ctx, '[~] Thinking...');
             logger.info('[CloudflareAgent][RPC] Thinking message sent', { messageRef });
 
-            // Create step progress tracker for real-time step visibility
-            if (transport.edit && messageRef !== undefined) {
-              stepTracker = new StepProgressTracker(
-                async (message) => {
-                  try {
-                    // Update context with progressive debug info for footer display
-                    const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
-                    ctxWithDebug.debugContext = buildDebugContext(stepTracker);
-                    await transport.edit!(ctx, messageRef!, message);
-                  } catch (err) {
-                    logger.error(`[CloudflareAgent][RPC] Edit failed: ${err}`);
-                  }
+            // ========================================
+            // Choose: Durable ChatLoop vs Sync ChatLoop
+            // ========================================
+            if (useDurableChatLoop && typeof messageRef === 'number') {
+              // DURABLE PATH: Schedule alarm for chat loop iterations
+              // This survives Worker timeouts (each alarm gets fresh 30s budget)
+              logger.info('[CloudflareAgent][RPC] Using durable chat loop (alarm-based)');
+
+              // Resolve system prompt
+              const env = (this as unknown as { env: TEnv }).env;
+              const resolvedSystemPrompt =
+                typeof config.systemPrompt === 'function'
+                  ? config.systemPrompt(env)
+                  : config.systemPrompt;
+
+              // Create execution state
+              const platform = (input.metadata?.platform as 'telegram' | 'github') ?? 'telegram';
+              const execution = createChatExecution({
+                userMessage: input.text,
+                systemPrompt: resolvedSystemPrompt,
+                conversationHistory: this.state.messages,
+                maxIterations: maxToolIterations,
+                messageRef,
+                platform,
+                transportMetadata: {
+                  botToken: input.metadata?.botToken,
+                  username: input.username,
+                  adminUsername: input.metadata?.adminUsername,
+                  isAdmin: input.metadata?.isAdmin ?? false,
+                  parseMode: input.metadata?.parseMode,
                 },
+                // Only include optional properties if defined (exactOptionalPropertyTypes)
+                ...(traceId && { traceId }),
+                ...(eventId && { eventId }),
+                ...(quotedContext && { quotedContext }),
+              });
+
+              // Save execution to state and schedule alarm
+              this.setState({
+                ...this.state,
+                chatExecution: execution,
+                pendingAlarmType: 'chatloop',
+                updatedAt: Date.now(),
+              });
+
+              // Schedule immediate alarm to start first iteration
+              const storage = (this as unknown as { ctx: { storage: DurableObjectStorage } }).ctx
+                .storage;
+              await storage.setAlarm(Date.now() + 10);
+
+              logger.info(
+                `[CloudflareAgent][RPC] Chat execution scheduled: ${execution.executionId}`
+              );
+              // Return immediately - alarm will handle the rest
+            } else {
+              // SYNC PATH: Process in single execution (legacy, 30s limit)
+              logger.info('[CloudflareAgent][RPC] Using sync chat loop');
+
+              let stepTracker: StepProgressTracker | undefined;
+
+              // Create step progress tracker for step collection and debug footer
+              // Always create tracker for step collection, even if edit is not available
+              stepTracker = new StepProgressTracker(
+                transport.edit && messageRef !== undefined
+                  ? async (message) => {
+                      try {
+                        // Update context with progressive debug info for footer display
+                        const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
+                        ctxWithDebug.debugContext = buildDebugContext(stepTracker);
+                        await transport.edit!(ctx, messageRef!, message);
+                      } catch (err) {
+                        logger.error(`[CloudflareAgent][RPC] Edit failed: ${err}`);
+                      }
+                    }
+                  : async () => {
+                      // No-op callback for step collection without live editing
+                    },
                 {
                   rotationInterval: config.thinkingRotationInterval ?? 5000,
                 }
               );
-            }
 
-            try {
-              // Sync chat path
-              logger.info('[CloudflareAgent][RPC] Calling chat()');
-              const response = await this.chat(input.text, stepTracker, quotedContext, eventId);
-              logger.info('[CloudflareAgent][RPC] Chat completed', {
-                responseLength: response?.length,
-              });
+              try {
+                // Sync chat path
+                logger.info('[CloudflareAgent][RPC] Calling chat()');
+                const response = await this.chat(input.text, stepTracker, quotedContext, eventId);
+                logger.info('[CloudflareAgent][RPC] Chat completed', {
+                  responseLength: response?.length,
+                });
 
-              // Update context with final debug info before sending
-              const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
-              ctxWithDebug.debugContext = buildDebugContext(stepTracker);
+                // Update context with final debug info before sending
+                const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
+                ctxWithDebug.debugContext = buildDebugContext(stepTracker);
 
-              // Edit thinking message with actual response
-              if (transport.edit && messageRef !== undefined) {
-                try {
-                  logger.info('[CloudflareAgent][RPC] Editing final response', { messageRef });
-                  await transport.edit(ctx, messageRef, response);
-                  logger.info('[CloudflareAgent][RPC] Final response sent via edit');
-                } catch (editError) {
-                  // Fallback: send new message if edit fails
-                  logger.error(`[CloudflareAgent][RPC] Edit failed, sending new: ${editError}`);
+                // Edit thinking message with actual response
+                if (transport.edit && messageRef !== undefined) {
+                  try {
+                    logger.info('[CloudflareAgent][RPC] Editing final response', { messageRef });
+                    await transport.edit(ctx, messageRef, response);
+                    logger.info('[CloudflareAgent][RPC] Final response sent via edit');
+                  } catch (editError) {
+                    // Fallback: send new message if edit fails
+                    logger.error(`[CloudflareAgent][RPC] Edit failed, sending new: ${editError}`);
+                    await transport.send(ctx, response);
+                    logger.info('[CloudflareAgent][RPC] Final response sent via send (fallback)');
+                  }
+                } else {
+                  // No edit support, send as new message
+                  logger.info('[CloudflareAgent][RPC] No edit support, sending new message');
                   await transport.send(ctx, response);
-                  logger.info('[CloudflareAgent][RPC] Final response sent via send (fallback)');
+                  logger.info('[CloudflareAgent][RPC] Final response sent via send');
                 }
-              } else {
-                // No edit support, send as new message
-                logger.info('[CloudflareAgent][RPC] No edit support, sending new message');
-                await transport.send(ctx, response);
-                logger.info('[CloudflareAgent][RPC] Final response sent via send');
+              } finally {
+                stepTracker?.destroy();
               }
-            } finally {
-              stepTracker?.destroy();
             }
           } else {
             // No transport or token - just process (useful for testing or API calls)
@@ -1199,6 +1395,350 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       return super.fetch(request);
     }
 
+    // ============================================
+    // Alarm Handler (Durable ChatLoop)
+    // ============================================
+
+    /**
+     * Override alarm to handle durable chat loop iterations
+     * Each alarm invocation gets a fresh 30s execution budget
+     * Note: Using arrow function property to match parent class signature
+     */
+    override alarm = async (): Promise<void> => {
+      const alarmType = this.state.pendingAlarmType;
+      const execution = this.state.chatExecution;
+
+      logger.info(
+        `[CloudflareAgent][ALARM] Triggered (type: ${alarmType || 'unknown'}, executionId: ${execution?.executionId || 'none'})`
+      );
+
+      // Idempotency check: Verify alarm is still needed
+      if (execution?.done === true) {
+        logger.info(
+          `[CloudflareAgent][ALARM] Execution ${execution.executionId} already done, clearing alarm`
+        );
+        const { pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        this.setState({
+          ...rest,
+        });
+        return;
+      }
+
+      if (alarmType === 'chatloop') {
+        await this.onChatLoopAlarm();
+      } else {
+        // Unknown or legacy alarm type - clear state
+        logger.warn(`[CloudflareAgent][ALARM] Unknown alarm type: ${alarmType}, clearing`);
+        const { pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        this.setState({
+          ...rest,
+        });
+      }
+    };
+
+    /**
+     * Handle chat loop iteration alarm
+     * Continues the durable chat loop, scheduling next alarm if needed
+     */
+    private async onChatLoopAlarm(): Promise<void> {
+      const execution = this.state.chatExecution;
+
+      if (!execution) {
+        logger.warn('[CloudflareAgent][CHATLOOP] No execution in state, clearing alarm type');
+        const { pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        this.setState({
+          ...rest,
+        });
+        return;
+      }
+
+      // Acquire execution lock to prevent concurrent processing
+      if (!this.acquireExecutionLock(execution.executionId, 'alarm')) {
+        logger.warn(
+          `[CloudflareAgent][CHATLOOP] Failed to acquire lock for ${execution.executionId}, skipping alarm`
+        );
+        return;
+      }
+
+      // Idempotency check: Verify execution is still pending
+      if (execution.done === true) {
+        logger.info(`[CloudflareAgent][CHATLOOP] Execution ${execution.executionId} already done`);
+        const { chatExecution, pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        this.setState({
+          ...rest,
+        });
+        return;
+      }
+
+      // Check max iterations
+      if (execution.iteration >= execution.maxIterations) {
+        logger.warn(
+          `[CloudflareAgent][CHATLOOP] Max iterations (${execution.maxIterations}) reached`
+        );
+        execution.done = true;
+        execution.error = `Max iterations (${execution.maxIterations}) reached`;
+        await this.completeChatExecution(execution);
+        return;
+      }
+
+      try {
+        // Get LLM provider and tools
+        const llmProvider = config.createProvider((this as unknown as { env: TEnv }).env);
+
+        // Get available tools from MCP servers and merge with built-in tools
+        await this.initMcp();
+        const mcpTools = this.getMcpTools();
+        let allTools = [...builtinToolsOpenAI, ...mcpTools];
+
+        // Deduplicate tools by name (keep first occurrence)
+        const seenNames = new Set<string>();
+        allTools = allTools.filter((tool) => {
+          const name = tool.function.name;
+          if (seenNames.has(name)) {
+            return false;
+          }
+          seenNames.add(name);
+          return true;
+        });
+
+        // Apply maxTools limit
+        if (maxTools !== undefined && allTools.length > maxTools) {
+          allTools = allTools.slice(0, maxTools);
+        }
+
+        // Create config for iteration
+        const durableConfig: DurableChatLoopConfig = {
+          llmProvider,
+          tools: allTools,
+          toolExecutor: {
+            builtinToolMap,
+            mcpCallTool: async (params) => {
+              return (await this.mcp.callTool(params)) as {
+                content: Array<{ type: string; text?: string }>;
+              };
+            },
+          },
+        };
+
+        // Run one iteration
+        const result = await runChatIteration(execution, durableConfig);
+
+        // Update progress message
+        await this.updateChatProgress(execution);
+
+        // Save updated execution state
+        this.setState({
+          ...this.state,
+          chatExecution: execution,
+          updatedAt: Date.now(),
+        });
+
+        if (result.done) {
+          // Execution complete
+          await this.completeChatExecution(execution);
+        } else {
+          // Schedule next iteration (immediate alarm = 0ms delay)
+          // Using 10ms delay to avoid potential race conditions
+          const storage = (this as unknown as { ctx: { storage: DurableObjectStorage } }).ctx
+            .storage;
+          await storage.setAlarm(Date.now() + 10);
+          logger.info(
+            `[CloudflareAgent][CHATLOOP] Scheduled next iteration for ${execution.executionId}`
+          );
+        }
+      } catch (error) {
+        logger.error(`[CloudflareAgent][CHATLOOP] Error in iteration: ${error}`);
+        execution.done = true;
+        execution.error = error instanceof Error ? error.message : String(error);
+
+        // Try to complete gracefully, but handle failure
+        try {
+          await this.completeChatExecution(execution);
+        } catch (completeError) {
+          logger.error(
+            `[CloudflareAgent][CHATLOOP] Failed to complete execution after error: ${completeError}`
+          );
+
+          // Force clear state to prevent memory leak
+          const { chatExecution, pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+          this.setState({
+            ...rest,
+            updatedAt: Date.now(),
+          });
+
+          // Best-effort error response to user
+          if (transport) {
+            try {
+              const ctx = this.reconstructTransportContext(execution) as TContext;
+              const errorMessage = '[error] An error occurred while processing your message.';
+              if (transport.edit) {
+                await transport.edit(ctx, execution.messageRef, errorMessage);
+              } else {
+                await transport.send(ctx, errorMessage);
+              }
+            } catch (transportError) {
+              logger.error(
+                `[CloudflareAgent][CHATLOOP] Failed to send error message: ${transportError}`
+              );
+            }
+          }
+        }
+      }
+    }
+
+    /**
+     * Update the thinking message with current progress
+     */
+    private async updateChatProgress(execution: ChatLoopExecution): Promise<void> {
+      if (!transport) {
+        return;
+      }
+
+      const progressMessage = formatExecutionProgress(execution);
+
+      // Reconstruct transport context
+      const ctx = this.reconstructTransportContext(execution) as TContext;
+
+      try {
+        if (transport.edit) {
+          await transport.edit(ctx, execution.messageRef, progressMessage);
+        }
+      } catch (err) {
+        logger.error(`[CloudflareAgent][CHATLOOP] Progress update failed: ${err}`);
+      }
+    }
+
+    /**
+     * Complete the chat execution - send final response and update state
+     */
+    private async completeChatExecution(execution: ChatLoopExecution): Promise<void> {
+      logger.info(`[CloudflareAgent][CHATLOOP] Completing execution ${execution.executionId}`);
+
+      // Update conversation history with the new messages
+      const newMessages: Message[] = [
+        { role: 'user', content: execution.userMessage },
+        { role: 'assistant', content: execution.response || execution.error || 'No response' },
+      ];
+
+      const updatedMessages = trimHistory([...this.state.messages, ...newMessages], maxHistory);
+
+      // Clear execution from state AND release lock
+      const { chatExecution, pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+      this.setState({
+        ...rest,
+        messages: updatedMessages,
+        updatedAt: Date.now(),
+      });
+
+      // Send final response via transport
+      if (transport) {
+        const ctx = this.reconstructTransportContext(execution) as TContext;
+        const response = execution.error
+          ? `[error] ${execution.error}`
+          : execution.response || 'No response generated';
+
+        try {
+          if (transport.edit) {
+            await transport.edit(ctx, execution.messageRef, response);
+          } else {
+            await transport.send(ctx, response);
+          }
+        } catch (err) {
+          logger.error(`[CloudflareAgent][CHATLOOP] Failed to send response: ${err}`);
+        }
+      }
+
+      // Persist messages to D1
+      if (this.messagePersistence) {
+        const sessionId = {
+          platform: String(this.state.metadata?.platform ?? execution.platform),
+          userId: String(this.state.userId ?? 'unknown'),
+          chatId: String(this.state.chatId ?? 'unknown'),
+        };
+        this.messagePersistence.persistMessages(sessionId, updatedMessages, execution.eventId);
+      }
+
+      logger.info(
+        `[CloudflareAgent][CHATLOOP] Execution ${execution.executionId} completed (${execution.iteration} iterations, ${execution.tokenUsage.input + execution.tokenUsage.output} tokens)`
+      );
+    }
+
+    /**
+     * Reconstruct transport context from execution metadata
+     */
+    private reconstructTransportContext(execution: ChatLoopExecution): unknown {
+      const meta = execution.transportMetadata;
+      return {
+        token: meta.botToken as string,
+        chatId: Number(this.state.chatId),
+        userId: Number(this.state.userId),
+        username: meta.username as string | undefined,
+        text: execution.userMessage,
+        startTime: execution.startedAt,
+        adminUsername: meta.adminUsername as string | undefined,
+        isAdmin: (meta.isAdmin as boolean) || false,
+        parseMode: meta.parseMode as 'HTML' | 'MarkdownV2' | undefined,
+        messageId: execution.messageRef,
+      };
+    }
+
+    /**
+     * Acquire execution lock to prevent concurrent processing
+     * Returns true if lock was acquired, false if already locked by another process
+     */
+    private acquireExecutionLock(executionId: string, lockedBy: 'alarm' | 'rpc'): boolean {
+      const lock = this.state.chatExecutionLock;
+      const now = Date.now();
+
+      // Check if lock exists and is still valid
+      if (lock) {
+        const lockAge = now - lock.lockedAt;
+        const isSameExecution = lock.executionId === executionId;
+
+        // If lock is for different execution, deny
+        if (!isSameExecution) {
+          logger.warn(
+            `[CloudflareAgent][LOCK] Cannot acquire lock for ${executionId}, locked by different execution: ${lock.executionId}`
+          );
+          return false;
+        }
+
+        // If lock is recent (within timeout), check if it's the same owner
+        if (lockAge < this.LOCK_TIMEOUT_MS) {
+          if (lock.lockedBy === lockedBy) {
+            // Same owner, allow re-entry (idempotent)
+            logger.debug(
+              `[CloudflareAgent][LOCK] Lock already held by ${lockedBy} for ${executionId}`
+            );
+            return true;
+          }
+          // Different owner, deny
+          logger.warn(
+            `[CloudflareAgent][LOCK] Cannot acquire lock for ${executionId}, currently locked by ${lock.lockedBy} (age: ${lockAge}ms)`
+          );
+          return false;
+        }
+
+        // Lock is stale, allow acquisition
+        logger.warn(
+          `[CloudflareAgent][LOCK] Stale lock detected for ${executionId} (age: ${lockAge}ms), acquiring`
+        );
+      }
+
+      // Acquire lock
+      this.setState({
+        ...this.state,
+        chatExecutionLock: {
+          executionId,
+          lockedAt: now,
+          lockedBy,
+        },
+      });
+
+      logger.info(`[CloudflareAgent][LOCK] Lock acquired by ${lockedBy} for ${executionId}`);
+      return true;
+    }
+
     /**
      * Get command context for command handlers
      */
@@ -1213,7 +1753,7 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         username: options?.username,
         parseMode: options?.parseMode,
         state: this.state,
-        setState: (s: Partial<CloudflareAgentState>) => this.setState({ ...this.state, ...s }),
+        setState: (s: CloudflareAgentState) => this.setState(s),
         resetMcp: () => {
           this._mcpInitialized = false;
         },

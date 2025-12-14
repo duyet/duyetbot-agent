@@ -7,10 +7,32 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import type { LLMProvider, Message, OpenAITool } from '../types.js';
-import { ContextBuilder, type ContextBuilderConfig } from './context-builder.js';
-import { ResponseHandler } from './response-handler.js';
+import { buildInitialMessages, type ContextBuilderConfig } from './context-builder.js';
+import { getToolCalls, hasToolCalls, parse } from './response-handler.js';
 import { ToolExecutor, type ToolExecutorConfig } from './tool-executor.js';
 import type { ChatIterationResult, ChatLoopExecution } from './types.js';
+
+// Tool execution timeout: 25 seconds (leaving 5s for overhead in 30s Worker limit)
+const TOOL_TIMEOUT_MS = 25000;
+
+/**
+ * Wraps a promise with a timeout
+ * @throws Error if the operation times out
+ */
+async function withTimeout<T>(
+  promise: Promise<T>,
+  timeoutMs: number,
+  operationName: string
+): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    setTimeout(
+      () => reject(new Error(`${operationName} timed out after ${timeoutMs}ms`)),
+      timeoutMs
+    );
+  });
+
+  return Promise.race([promise, timeoutPromise]);
+}
 
 export interface DurableChatLoopConfig {
   llmProvider: LLMProvider;
@@ -40,7 +62,7 @@ export async function runChatIteration(
   };
 
   // Include iteration messages (tool results from previous iterations)
-  let llmMessages = ContextBuilder.buildInitialMessages(
+  let llmMessages = buildInitialMessages(
     contextConfig,
     execution.userMessage,
     execution.quotedContext
@@ -56,7 +78,7 @@ export async function runChatIteration(
   const response = await config.llmProvider.chat(llmMessages, hasTools ? config.tools : undefined);
 
   // Parse response
-  const parsed = ResponseHandler.parse(response);
+  const parsed = parse(response);
 
   // Track token usage
   if (parsed.usage) {
@@ -77,8 +99,8 @@ export async function runChatIteration(
   });
 
   // Check if we have tool calls
-  if (ResponseHandler.hasToolCalls(parsed)) {
-    const toolCalls = ResponseHandler.getToolCalls(parsed);
+  if (hasToolCalls(parsed)) {
+    const toolCalls = getToolCalls(parsed);
 
     logger.info(
       `[DurableChatLoop] Processing ${toolCalls.length} tool calls (iteration ${execution.iteration})`
@@ -111,40 +133,65 @@ export async function runChatIteration(
       });
 
       const toolStart = Date.now();
-      const result = await toolExecutor.execute(toolCall);
 
-      if (result.error) {
+      try {
+        const result = await withTimeout(
+          toolExecutor.execute(toolCall),
+          TOOL_TIMEOUT_MS,
+          `Tool execution: ${toolCall.name}`
+        );
+
+        if (result.error) {
+          execution.executionSteps.push({
+            type: 'tool_error',
+            iteration: execution.iteration,
+            toolName: toolCall.name,
+            error: result.error,
+            timestamp: Date.now(),
+            durationMs: Date.now() - toolStart,
+          });
+
+          execution.iterationMessages.push({
+            role: 'user',
+            content: `[Tool Error for ${toolCall.name}]: ${result.error}`,
+          });
+        } else {
+          execution.executionSteps.push({
+            type: 'tool_complete',
+            iteration: execution.iteration,
+            toolName: toolCall.name,
+            result: result.result?.substring(0, 200) || '',
+            timestamp: Date.now(),
+            durationMs: Date.now() - toolStart,
+          });
+
+          execution.iterationMessages.push({
+            role: 'user',
+            content: `[Tool Result for ${toolCall.name}]: ${result.result}`,
+          });
+
+          if (!execution.toolsUsed.includes(toolCall.name)) {
+            execution.toolsUsed.push(toolCall.name);
+          }
+        }
+      } catch (timeoutError) {
+        // Handle timeout error
+        const errorMessage =
+          timeoutError instanceof Error ? timeoutError.message : 'Tool execution timed out';
+
         execution.executionSteps.push({
           type: 'tool_error',
           iteration: execution.iteration,
           toolName: toolCall.name,
-          error: result.error,
+          error: errorMessage,
           timestamp: Date.now(),
           durationMs: Date.now() - toolStart,
         });
 
         execution.iterationMessages.push({
           role: 'user',
-          content: `[Tool Error for ${toolCall.name}]: ${result.error}`,
+          content: `[Tool Error for ${toolCall.name}]: ${errorMessage}`,
         });
-      } else {
-        execution.executionSteps.push({
-          type: 'tool_complete',
-          iteration: execution.iteration,
-          toolName: toolCall.name,
-          result: result.result?.substring(0, 200),
-          timestamp: Date.now(),
-          durationMs: Date.now() - toolStart,
-        });
-
-        execution.iterationMessages.push({
-          role: 'user',
-          content: `[Tool Result for ${toolCall.name}]: ${result.result}`,
-        });
-
-        if (!execution.toolsUsed.includes(toolCall.name)) {
-          execution.toolsUsed.push(toolCall.name);
-        }
       }
     }
 

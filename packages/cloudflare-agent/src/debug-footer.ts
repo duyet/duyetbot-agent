@@ -15,6 +15,8 @@
  * Note: Uses text-based labels instead of emojis for Telegram compatibility.
  */
 
+import { formatToolArgs, formatToolResult, shortenModelName } from '@duyetbot/progress';
+
 import type {
   Citation,
   DebugContext,
@@ -23,7 +25,6 @@ import type {
   TokenUsage,
   WorkerDebugInfo,
 } from './types.js';
-import { formatToolArgs, formatToolResponse } from './workflow/formatting.js';
 
 /**
  * Escape HTML entities in text for safe inclusion in HTML messages
@@ -666,34 +667,6 @@ function formatMetadata(
 }
 
 /**
- * Shorten model name for display
- * Examples:
- * - 'claude-3-5-sonnet-20241022' → 'sonnet-3.5'
- * - 'claude-3-5-haiku-20241022' → 'haiku-3.5'
- * - 'gpt-4o-mini' → 'gpt-4o-mini'
- */
-function shortenModelName(model: string): string {
-  // Claude models
-  if (model.includes('claude')) {
-    if (model.includes('opus')) {
-      return model.includes('3-5') ? 'opus-3.5' : model.includes('4') ? 'opus-4' : 'opus';
-    }
-    if (model.includes('sonnet')) {
-      return model.includes('3-5') ? 'sonnet-3.5' : model.includes('4') ? 'sonnet-4' : 'sonnet';
-    }
-    if (model.includes('haiku')) {
-      return model.includes('3-5') ? 'haiku-3.5' : 'haiku';
-    }
-  }
-  // GPT models - keep short
-  if (model.startsWith('gpt-')) {
-    return model.replace(/-\d{4}-\d{2}-\d{2}$/, '');
-  }
-  // Other models - return as-is but truncate if too long
-  return model.length > 20 ? `${model.slice(0, 17)}...` : model;
-}
-
-/**
  * Format execution steps in chain format
  * Shows thinking text, tool calls, and results in order
  *
@@ -732,13 +705,13 @@ function formatExecutionChain(steps: DebugContext['steps']): string {
       if (result) {
         if (typeof result === 'object' && result !== null) {
           if (result.output) {
-            const responseLines = formatToolResponse(result.output, 3);
+            const responseLines = formatToolResult(result.output, 3);
             lines.push(`  ⎿ 🔍 ${responseLines}`);
           } else if (result.error) {
             lines.push(`  ⎿ ❌ ${result.error.slice(0, 60)}...`);
           }
         } else if (typeof result === 'string') {
-          const responseLines = formatToolResponse(result, 3);
+          const responseLines = formatToolResult(result, 3);
           lines.push(`  ⎿ 🔍 ${responseLines}`);
         }
       }

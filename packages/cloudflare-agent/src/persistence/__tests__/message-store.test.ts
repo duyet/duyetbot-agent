@@ -2,7 +2,7 @@
  * Tests for MessageStore
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { MemoryMessagePersistence } from '../../adapters/message-persistence/memory-persistence.js';
 import type { IMessagePersistence, SessionId } from '../../adapters/message-persistence/types.js';
 import type { Message } from '../../types.js';
