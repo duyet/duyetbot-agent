@@ -6,6 +6,7 @@
  */
 
 import { logger } from '@duyetbot/hono-middleware';
+import { getRandomMessage } from '@duyetbot/progress';
 import type { LLMProvider, Message, OpenAITool } from '../types.js';
 import { buildInitialMessages, type ContextBuilderConfig } from './context-builder.js';
 import { getToolCalls, hasToolCalls, parse } from './response-handler.js';
@@ -266,7 +267,7 @@ export function createChatExecution(params: {
 export function formatExecutionProgress(execution: ChatLoopExecution): string {
   const steps = execution.executionSteps;
   if (steps.length === 0) {
-    return '[~] Thinking...';
+    return `* ${getRandomMessage()}`;
   }
 
   const lines: string[] = [];
@@ -287,8 +288,8 @@ export function formatExecutionProgress(execution: ChatLoopExecution): string {
   if (lastStep?.type === 'tool_start') {
     lines.push(`* ${lastStep.toolName}...`);
   } else if (!execution.done) {
-    lines.push('* Thinking...');
+    lines.push(`* ${getRandomMessage()}`);
   }
 
-  return lines.join('\n') || '[~] Processing...';
+  return lines.join('\n') || `* ${getRandomMessage()}`;
 }
