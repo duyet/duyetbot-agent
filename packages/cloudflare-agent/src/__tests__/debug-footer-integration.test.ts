@@ -12,7 +12,7 @@
  * 4. Error handling in each step
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { ResponseTarget } from '../platform-response.js';
 import type { DebugContext, DebugMetadata } from '../types.js';
 
@@ -23,7 +23,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
   describe('flow 1: CloudflareAgent.scheduleRouting succeeds', () => {
     it('delegates to RouterAgent and returns immediately (non-blocking)', async () => {
       // Simulate CloudflareAgent preparing context for scheduling
-      const agentContext = {
+      const _agentContext = {
         query: 'search for typescript performance tips',
         platform: 'telegram' as const,
         userId: 'user123',
@@ -33,7 +33,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
         conversationHistory: [],
       };
 
-      const responseTarget: ResponseTarget = {
+      const _responseTarget: ResponseTarget = {
         chatId: 'chat456',
         messageRef: { messageId: 789 },
         platform: 'telegram',
@@ -84,10 +84,10 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
 
     it('continues processing independently in RouterAgent.onExecutionAlarm', async () => {
       // Simulate RouterAgent.onExecutionAlarm receiving alarm
-      const executionId = 'exec_abc123';
+      const _executionId = 'exec_abc123';
 
       // Router processes the execution with full 30s budget
-      const routingStartTime = Date.now();
+      const _routingStartTime = Date.now();
       const classificationDurationMs = 400;
       const targetAgentDurationMs = 2000;
       const totalDurationMs = classificationDurationMs + targetAgentDurationMs;
@@ -117,7 +117,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
       const agentDurationMs = 2000;
 
       // Simulate building debug context in onExecutionAlarm
-      const debugContext: DebugContext = {
+      const _debugContext: DebugContext = {
         routingFlow: [
           { agent: 'router-agent' },
           {
@@ -134,12 +134,12 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
         },
       };
 
-      expect(debugContext.routingFlow).toHaveLength(2);
-      expect(debugContext.routingFlow[0].agent).toBe('router-agent');
-      expect(debugContext.routingFlow[1].agent).toBe('simple-agent');
-      expect(debugContext.routerDurationMs).toBe(400);
-      expect(debugContext.classification?.type).toBe('simple');
-      expect(debugContext.totalDurationMs).toBe(2400);
+      expect(_debugContext.routingFlow).toHaveLength(2);
+      expect(_debugContext.routingFlow[0].agent).toBe('router-agent');
+      expect(_debugContext.routingFlow[1].agent).toBe('simple-agent');
+      expect(_debugContext.routerDurationMs).toBe(400);
+      expect(_debugContext.classification?.type).toBe('simple');
+      expect(_debugContext.totalDurationMs).toBe(2400);
     });
 
     it('sends response with debug footer for admin user', () => {
