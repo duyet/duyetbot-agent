@@ -718,36 +718,35 @@ function formatExecutionChain(steps: DebugContext['steps']): string {
       const truncated = text.slice(0, 80);
       const ellipsis = text.length > 80 ? '...' : '';
       lines.push(`⏺ ${truncated}${ellipsis}`);
-    } else if (
-      (step.type === 'tool_start' ||
-        step.type === 'tool_complete' ||
-        step.type === 'tool_execution') &&
-      step.toolName
-    ) {
-      // Format tool call with arguments
+    } else if (step.type === 'tool_start') {
+      // Tool starting - show name and args
+      const argStr = formatToolArgs(step.args);
+      lines.push(`⏺ ${step.toolName}(${argStr})`);
+    } else if (step.type === 'tool_complete' || step.type === 'tool_execution') {
+      // Tool completed - show name, args, and result
       const argStr = formatToolArgs(step.args);
       lines.push(`⏺ ${step.toolName}(${argStr})`);
 
       // Show tool response if available
-      if (step.result) {
-        if (typeof step.result === 'object' && step.result !== null) {
-          if (step.result.output) {
-            const responseLines = formatToolResponse(step.result.output, 3);
+      const result = step.result;
+      if (result) {
+        if (typeof result === 'object' && result !== null) {
+          if (result.output) {
+            const responseLines = formatToolResponse(result.output, 3);
             lines.push(`  ⎿ 🔍 ${responseLines}`);
-          } else if (step.result.error) {
-            lines.push(`  ⎿ ❌ ${step.result.error.slice(0, 60)}...`);
+          } else if (result.error) {
+            lines.push(`  ⎿ ❌ ${result.error.slice(0, 60)}...`);
           }
-        } else if (typeof step.result === 'string') {
-          const responseLines = formatToolResponse(step.result, 3);
+        } else if (typeof result === 'string') {
+          const responseLines = formatToolResponse(result, 3);
           lines.push(`  ⎿ 🔍 ${responseLines}`);
         }
       }
-    } else if (step.type === 'tool_error' && step.toolName) {
-      // Show tool error
+    } else if (step.type === 'tool_error') {
+      // Tool error - show name, args, and error
       const argStr = formatToolArgs(step.args);
       lines.push(`⏺ ${step.toolName}(${argStr})`);
-      const errorText = step.error || 'Error';
-      lines.push(`  ⎿ ❌ ${errorText.slice(0, 60)}...`);
+      lines.push(`  ⎿ ❌ ${step.error.slice(0, 60)}...`);
     }
   }
 

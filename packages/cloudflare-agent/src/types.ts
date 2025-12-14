@@ -241,40 +241,122 @@ export interface WorkerDebugInfo {
  * Debug context for routing/orchestration tracing
  * Used by admin users to see agent flow and timing
  */
+
 /**
- * Execution step for chain display (thinking, tool calls, results)
+ * Base step properties shared by all step types
  */
-export interface ExecutionStep {
+interface BaseStep {
   /** Step iteration number */
   iteration: number;
-  /** Step type: thinking, tool_start, tool_complete, tool_error, responding, routing, llm_iteration, preparing */
-  type:
-    | 'thinking'
-    | 'tool_start'
-    | 'tool_complete'
-    | 'tool_error'
-    | 'tool_execution'
-    | 'responding'
-    | 'routing'
-    | 'llm_iteration'
-    | 'preparing';
-  /** Tool name (for tool_* types) */
-  toolName?: string;
-  /** Agent name (for routing steps) */
-  agentName?: string;
-  /** Tool arguments */
-  args?: Record<string, unknown>;
-  /** Tool result (string or structured) */
-  result?: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
-  /** Error message */
-  error?: string;
-  /** Thinking/reasoning text from LLM */
-  thinking?: string;
-  /** Max iterations (for progress display) */
-  maxIterations?: number;
   /** Duration in milliseconds */
   durationMs?: number;
 }
+
+/**
+ * Thinking step - LLM is reasoning
+ */
+interface ThinkingStep extends BaseStep {
+  type: 'thinking';
+  /** Thinking/reasoning text from LLM */
+  thinking?: string;
+}
+
+/**
+ * Tool start step - tool execution beginning
+ */
+interface ToolStartStep extends BaseStep {
+  type: 'tool_start';
+  /** Tool name (required for tool steps) */
+  toolName: string;
+  /** Tool arguments */
+  args?: Record<string, unknown>;
+}
+
+/**
+ * Tool complete step - tool finished successfully
+ */
+interface ToolCompleteStep extends BaseStep {
+  type: 'tool_complete';
+  /** Tool name (required for tool steps) */
+  toolName: string;
+  /** Tool arguments */
+  args?: Record<string, unknown>;
+  /** Tool result */
+  result: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
+}
+
+/**
+ * Tool error step - tool execution failed
+ */
+interface ToolErrorStep extends BaseStep {
+  type: 'tool_error';
+  /** Tool name (required for tool steps) */
+  toolName: string;
+  /** Tool arguments */
+  args?: Record<string, unknown>;
+  /** Error message (required for error steps) */
+  error: string;
+}
+
+/**
+ * Tool execution step - combined start/complete (for display)
+ */
+interface ToolExecutionStep extends BaseStep {
+  type: 'tool_execution';
+  /** Tool name (required for tool steps) */
+  toolName: string;
+  /** Tool arguments */
+  args?: Record<string, unknown>;
+  /** Tool result */
+  result?: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
+}
+
+/**
+ * Routing step - agent handoff
+ */
+interface RoutingStep extends BaseStep {
+  type: 'routing';
+  /** Agent name (required for routing steps) */
+  agentName: string;
+}
+
+/**
+ * LLM iteration step - multi-turn conversation
+ */
+interface LlmIterationStep extends BaseStep {
+  type: 'llm_iteration';
+  /** Max iterations for progress display */
+  maxIterations?: number;
+}
+
+/**
+ * Preparing step - finalizing response
+ */
+interface PreparingStep extends BaseStep {
+  type: 'preparing';
+}
+
+/**
+ * Responding step - sending response
+ */
+interface RespondingStep extends BaseStep {
+  type: 'responding';
+}
+
+/**
+ * Discriminated union of all execution step types
+ * TypeScript will enforce required fields based on the 'type' discriminator
+ */
+export type ExecutionStep =
+  | ThinkingStep
+  | ToolStartStep
+  | ToolCompleteStep
+  | ToolErrorStep
+  | ToolExecutionStep
+  | RoutingStep
+  | LlmIterationStep
+  | PreparingStep
+  | RespondingStep;
 
 export interface DebugContext {
   /** Routing flow showing agent -> agent transitions */
