@@ -340,6 +340,23 @@ app.post(
         },
       };
 
+      // Write observability event FIRST with 'processing' status
+      // This ensures the event_id exists in observability_events before the agent
+      // tries to persist chat_messages with this event_id as a foreign key
+      if (collector && storage) {
+        try {
+          await storage.writeEvent(collector.toEvent());
+          logger.debug(`[${requestId}] [OBSERVABILITY] Event created`, { requestId, eventId });
+        } catch (err) {
+          logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+            requestId,
+            error: err instanceof Error ? err.message : String(err),
+          });
+          // Clear eventId from metadata so agent doesn't try to use invalid FK
+          parsedInput.metadata = { ...parsedInput.metadata, eventId: undefined };
+        }
+      }
+
       // True fire-and-forget: schedule RPC without awaiting
       // waitUntil keeps worker alive for the RPC, but we return immediately
       c.executionCtx.waitUntil(
@@ -353,19 +370,6 @@ app.post(
               batchId: result.batchId,
               durationMs: Date.now() - startTime,
             });
-
-            // Write observability event with 'processing' status (fire-and-forget)
-            // Agent will update this event to 'success' or 'error' when execution completes
-            // This tracks "message received and queued" - actual completion tracked by agent
-            if (collector && storage) {
-              // Keep status as 'processing' - agent will update on completion
-              storage.writeEvent(collector.toEvent()).catch((err) => {
-                logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
-                  requestId,
-                  error: err instanceof Error ? err.message : String(err),
-                });
-              });
-            }
           } catch (error) {
             // RPC failure only (rare) - DO is unreachable
             logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
@@ -375,14 +379,14 @@ app.post(
               durationMs: Date.now() - startTime,
             });
 
-            // Write observability event as error - RPC failed, agent never received message
+            // Update observability event as error - RPC failed, agent never received message
             if (collector && storage) {
               collector.complete({
                 status: 'error',
                 error: error instanceof Error ? error : new Error(String(error)),
               });
               storage.writeEvent(collector.toEvent()).catch((err) => {
-                logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                logger.error(`[${requestId}] [OBSERVABILITY] Failed to update event`, {
                   requestId,
                   error: err instanceof Error ? err.message : String(err),
                 });
