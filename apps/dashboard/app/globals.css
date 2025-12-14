@@ -2,133 +2,68 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
- * Grok/X Style Design System
- * Based on X's "Lights Out" dark mode and Grok's AI-themed interface
- *
- * References:
- * - X Blue: #1D9BF0
- * - Lights Out: #000000 background
- * - Dim: #15202B background (alternative)
- */
-
 @layer base {
   :root {
-    /* === LIGHT THEME (fallback) === */
-    --background: 0 0% 100%;
-    --foreground: 0 0% 4%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 4%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 4%;
-    --primary: 204 88% 53%; /* X Blue #1D9BF0 */
-    --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96%;
-    --muted-foreground: 0 0% 45%;
-    --accent: 204 88% 53%;
-    --accent-foreground: 0 0% 100%;
-    --destructive: 358 82% 54%; /* #F4212E */
-    --destructive-foreground: 0 0% 100%;
-    --border: 0 0% 90%;
-    --input: 0 0% 90%;
-    --ring: 204 88% 53%;
-    --radius: 0.75rem;
+    /* X.AI / Grok Console Theme - Deep Black */
+    --background: 0 0% 0%; /* Pure Black */
+    --foreground: 0 0% 90%; /* Off-white */
 
-    /* Semantic Colors */
-    --success: 160 100% 37%; /* #00BA7C */
-    --success-foreground: 0 0% 100%;
-    --warning: 39 100% 56%; /* #FFAD1F */
-    --warning-foreground: 0 0% 0%;
-    --info: 204 88% 53%; /* #1D9BF0 */
-    --info-foreground: 0 0% 100%;
+    --card: 0 0% 3%; /* Very subtle gray for cards */
+    --card-foreground: 0 0% 90%;
 
-    /* Chart Colors */
-    --chart-1: 204 88% 53%; /* X Blue */
-    --chart-2: 160 100% 37%; /* Green */
-    --chart-3: 258 100% 67%; /* Purple #7856FF */
-    --chart-4: 39 100% 56%; /* Amber */
-    --chart-5: 358 82% 54%; /* Red */
-    --chart-6: 271 50% 53%; /* Violet */
-  }
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 90%;
 
-  /* === DARK THEME - LIGHTS OUT (Primary) === */
-  .dark {
-    --background: 0 0% 0%; /* Pure black #000000 */
-    --foreground: 210 20% 93%; /* #E7E9EA */
-    --card: 0 0% 4%; /* #0A0A0A - slightly lifted */
-    --card-foreground: 210 20% 93%;
-    --popover: 0 0% 7%; /* #121212 - elevated */
-    --popover-foreground: 210 20% 93%;
-    --primary: 204 88% 53%; /* X Blue #1D9BF0 */
+    --primary: 0 0% 100%; /* White accents */
     --primary-foreground: 0 0% 0%;
-    --secondary: 0 0% 10%; /* #1A1A1A */
-    --secondary-foreground: 210 20% 93%;
+
+    --secondary: 0 0% 10%; /* Dark gray for secondary elements */
+    --secondary-foreground: 0 0% 100%;
+
     --muted: 0 0% 10%;
-    --muted-foreground: 210 7% 46%; /* #71767B */
-    --accent: 204 88% 53%;
-    --accent-foreground: 0 0% 0%;
-    --destructive: 358 82% 54%; /* #F4212E */
+    --muted-foreground: 0 0% 40%; /* Subdued text */
+
+    --accent: 0 0% 10%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 100% 50%;
     --destructive-foreground: 0 0% 100%;
-    --border: 200 6% 20%; /* #2F3336 */
-    --input: 200 6% 20%;
-    --ring: 204 88% 53%;
 
-    /* Semantic Colors - Dark */
-    --success: 160 100% 37%;
-    --success-foreground: 0 0% 100%;
-    --warning: 39 100% 56%;
-    --warning-foreground: 0 0% 0%;
-    --info: 204 88% 53%;
-    --info-foreground: 0 0% 100%;
+    --border: 0 0% 10%; /* Subtle borders */
+    --input: 0 0% 10%;
+    --ring: 0 0% 20%;
 
-    /* Chart Colors - Dark optimized */
-    --chart-1: 204 88% 53%;
-    --chart-2: 160 100% 37%;
-    --chart-3: 258 100% 67%;
-    --chart-4: 39 100% 56%;
-    --chart-5: 358 82% 54%;
-    --chart-6: 271 50% 53%;
+    --radius: 0.25rem; /* Sharper corners for console feel */
+    
+    /* Charts - Minimal monochrome or subtle colors */
+    --chart-1: 0 0% 100%;
+    --chart-2: 0 0% 60%;
+    --chart-3: 0 0% 40%;
+    --chart-4: 0 0% 20%;
+    --chart-5: 0 0% 10%;
   }
 
-  /* === DIM THEME (Alternative dark) === */
-  .dim {
-    --background: 213 45% 12%; /* #15202B */
-    --foreground: 210 20% 93%;
-    --card: 213 40% 15%; /* #192734 */
-    --card-foreground: 210 20% 93%;
-    --popover: 213 35% 18%; /* #22303C */
-    --popover-foreground: 210 20% 93%;
-    --primary: 204 88% 53%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 213 35% 18%;
-    --secondary-foreground: 210 20% 93%;
-    --muted: 213 35% 18%;
-    --muted-foreground: 210 7% 46%;
-    --accent: 204 88% 53%;
+  /* Force dark mode variables even without .dark class if we want always-dark console */
+  .dark {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 90%;
+    --card: 0 0% 3%;
+    --card-foreground: 0 0% 90%;
+    --popover: 0 0% 3%;
+    --popover-foreground: 0 0% 90%;
+    --primary: 0 0% 100%;
+    --primary-foreground: 0 0% 0%;
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 40%;
+    --accent: 0 0% 10%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 358 82% 54%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 208 20% 26%; /* #38444D */
-    --input: 208 20% 26%;
-    --ring: 204 88% 53%;
-
-    /* Semantic Colors - Dim */
-    --success: 160 100% 37%;
-    --success-foreground: 0 0% 100%;
-    --warning: 39 100% 56%;
-    --warning-foreground: 0 0% 0%;
-    --info: 204 88% 53%;
-    --info-foreground: 0 0% 100%;
-
-    /* Chart Colors - Same as dark */
-    --chart-1: 204 88% 53%;
-    --chart-2: 160 100% 37%;
-    --chart-3: 258 100% 67%;
-    --chart-4: 39 100% 56%;
-    --chart-5: 358 82% 54%;
-    --chart-6: 271 50% 53%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 10%;
+    --input: 0 0% 10%;
+    --ring: 0 0% 20%;
   }
 }
 
@@ -136,348 +71,15 @@
   * {
     @apply border-border;
   }
-
   body {
-    @apply bg-background text-foreground antialiased;
-    font-feature-settings:
-      "rlig" 1,
-      "calt" 1;
+    @apply bg-background text-foreground;
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
   }
-
-  /* Smooth scrolling */
-  html {
-    scroll-behavior: smooth;
-  }
-
-  /* Custom scrollbar for dark theme */
-  .dark ::-webkit-scrollbar,
-  .dim ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-  }
-
-  .dark ::-webkit-scrollbar-track,
-  .dim ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-
-  .dark ::-webkit-scrollbar-thumb,
-  .dim ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
-    border-radius: 4px;
-  }
-
-  .dark ::-webkit-scrollbar-thumb:hover,
-  .dim ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--muted-foreground));
-  }
-
-  /* Selection color */
-  ::selection {
-    background: hsl(var(--primary) / 0.3);
-    color: hsl(var(--foreground));
-  }
-}
-
-/* === ANIMATION UTILITIES === */
-@layer utilities {
-  /* Transition presets */
-  .transition-fast {
-    transition-duration: 150ms;
-    transition-timing-function: ease;
-  }
-
-  .transition-normal {
-    transition-duration: 200ms;
-    transition-timing-function: ease;
-  }
-
-  .transition-slow {
-    transition-duration: 300ms;
-    transition-timing-function: ease;
-  }
-
-  /* Hover lift effect */
-  .hover-lift {
-    @apply transition-transform duration-150 ease-out;
-  }
-
-  .hover-lift:hover {
-    transform: translateY(-2px);
-  }
-
-  /* Glow effects */
-  .glow-primary {
-    box-shadow: 0 0 20px hsl(var(--primary) / 0.3);
-  }
-
-  .glow-success {
-    box-shadow: 0 0 20px hsl(var(--success) / 0.3);
-  }
-
-  .glow-warning {
-    box-shadow: 0 0 20px hsl(var(--warning) / 0.3);
-  }
-
-  .glow-destructive {
-    box-shadow: 0 0 20px hsl(var(--destructive) / 0.3);
-  }
-
-  /* Glass effect (for cards, modals) */
-  .glass {
-    @apply backdrop-blur-md bg-card/80;
-  }
-
-  /* Gradient text */
-  .gradient-text {
-    @apply bg-clip-text text-transparent bg-gradient-to-r from-primary to-chart-3;
-  }
-
-  /* Status indicators */
-  .status-dot {
-    @apply w-2 h-2 rounded-full;
-  }
-
-  .status-online {
-    @apply bg-[hsl(var(--success))] shadow-[0_0_8px_hsl(var(--success)/0.5)];
-  }
-
-  .status-offline {
-    @apply bg-[hsl(var(--muted-foreground))];
-  }
-
-  .status-warning {
-    @apply bg-[hsl(var(--warning))] shadow-[0_0_8px_hsl(var(--warning)/0.5)];
-  }
-
-  .status-error {
-    @apply bg-[hsl(var(--destructive))] shadow-[0_0_8px_hsl(var(--destructive)/0.5)];
-  }
-}
-
-/* === KEYFRAME ANIMATIONS === */
-@layer utilities {
-  @keyframes fadeIn {
-    from {
-      opacity: 0;
-      transform: translateY(8px);
-    }
-    to {
-      opacity: 1;
-      transform: translateY(0);
-    }
-  }
-
-  @keyframes slideInRight {
-    from {
-      opacity: 0;
-      transform: translateX(10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes slideInLeft {
-    from {
-      opacity: 0;
-      transform: translateX(-10px);
-    }
-    to {
-      opacity: 1;
-      transform: translateX(0);
-    }
-  }
-
-  @keyframes scaleIn {
-    from {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1);
-    }
-  }
-
-  @keyframes pulseGlow {
-    0%,
-    100% {
-      opacity: 0.4;
-    }
-    50% {
-      opacity: 1;
-    }
-  }
-
-  @keyframes shimmer {
-    0% {
-      background-position: -200% 0;
-    }
-    100% {
-      background-position: 200% 0;
-    }
-  }
-
-  @keyframes spin-slow {
-    from {
-      transform: rotate(0deg);
-    }
-    to {
-      transform: rotate(360deg);
-    }
-  }
-
-  .animate-fade-in {
-    animation: fadeIn 200ms ease-out;
-  }
-
-  .animate-slide-in-right {
-    animation: slideInRight 200ms ease-out;
-  }
-
-  .animate-slide-in-left {
-    animation: slideInLeft 200ms ease-out;
-  }
-
-  .animate-scale-in {
-    animation: scaleIn 200ms ease-out;
-  }
-
-  .animate-pulse-glow {
-    animation: pulseGlow 2s ease-in-out infinite;
-  }
-
-  .animate-shimmer {
-    background: linear-gradient(
-      90deg,
-      hsl(var(--muted)) 0%,
-      hsl(var(--border)) 50%,
-      hsl(var(--muted)) 100%
-    );
-    background-size: 200% 100%;
-    animation: shimmer 1.5s infinite;
-  }
-
-  .animate-spin-slow {
-    animation: spin-slow 3s linear infinite;
-  }
-}
-
-/* === COMPONENT OVERRIDES === */
-@layer components {
-  /* X-style rounded-full buttons */
-  .btn-x {
-    @apply rounded-full font-semibold transition-colors;
-  }
-
-  .btn-x-primary {
-    @apply btn-x bg-primary text-primary-foreground hover:bg-primary/90;
-  }
-
-  .btn-x-secondary {
-    @apply btn-x bg-transparent border border-border text-foreground hover:bg-secondary;
-  }
-
-  /* Card hover effect */
-  .card-interactive {
-    @apply transition-all duration-200 hover:bg-secondary/50 cursor-pointer;
-  }
-
-  /* Focus ring style (X-style) */
-  .focus-ring-x {
-    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background;
-  }
-
-  /* Sidebar nav item */
-  .nav-item {
-    @apply flex items-center gap-3 px-4 py-3 rounded-lg text-muted-foreground transition-colors;
-  }
-
-  .nav-item:hover {
-    @apply bg-secondary text-foreground;
-  }
-
-  .nav-item-active {
-    @apply nav-item bg-primary/10 text-primary border-l-2 border-primary;
-  }
-
-  /* Badge variants */
-  .badge-success {
-    @apply bg-[hsl(var(--success)/0.1)] text-[hsl(var(--success))] border-[hsl(var(--success)/0.2)];
-  }
-
-  .badge-warning {
-    @apply bg-[hsl(var(--warning)/0.1)] text-[hsl(var(--warning))] border-[hsl(var(--warning)/0.2)];
-  }
-
-  .badge-error {
-    @apply bg-[hsl(var(--destructive)/0.1)] text-[hsl(var(--destructive))] border-[hsl(var(--destructive)/0.2)];
-  }
-
-  .badge-info {
-    @apply bg-[hsl(var(--info)/0.1)] text-[hsl(var(--info))] border-[hsl(var(--info)/0.2)];
-  }
-}
-
-/* === CHART STYLES === */
-@layer components {
-  /* Recharts overrides for dark mode */
-  .recharts-cartesian-grid-horizontal line,
-  .recharts-cartesian-grid-vertical line {
-    stroke: hsl(var(--border));
-  }
-
-  .recharts-text {
-    fill: hsl(var(--muted-foreground));
-    font-size: 12px;
-  }
-
-  .recharts-tooltip-wrapper {
-    @apply !outline-none;
-  }
-
-  .recharts-default-tooltip {
-    @apply !bg-popover !border-border !rounded-lg !shadow-lg;
-  }
-
-  .recharts-tooltip-label {
-    @apply !text-foreground !font-medium;
-  }
-
-  .recharts-tooltip-item {
-    @apply !text-muted-foreground;
-  }
-
-  .recharts-legend-item-text {
-    @apply !text-muted-foreground;
-  }
-}
-
-/* === ACCESSIBILITY === */
-@layer utilities {
-  /* Screen reader only */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  /* Reduced motion */
-  @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms;
-      animation-iteration-count: 1;
-      transition-duration: 0.01ms;
-    }
+  
+  /* X.AI uses a specific sans-serif for UI, but console is often monospace. 
+     Let's stick to system sans for main UI but ensure it's clean */
+  h1, h2, h3, h4, h5, h6 {
+     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+     letter-spacing: -0.02em;
   }
 }
