@@ -1,4 +1,3 @@
-import type { PlatformConfig } from '../agents/base-agent.js';
 import type { CloudflareAgentState } from '../cloudflare-agent.js';
 
 export interface CommandContext {

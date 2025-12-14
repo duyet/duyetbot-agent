@@ -302,7 +302,9 @@ app.post(
         durationMs: Date.now() - startTime,
       });
 
-      const agent = env.GitHubAgent.get(env.GitHubAgent.idFromName(agentId)) as unknown as {
+      const agent = (env.GitHubAgent as any).get(
+        env.GitHubAgent.idFromName(agentId)
+      ) as unknown as {
         receiveMessage(input: typeof parsedInput): Promise<{ traceId: string }>;
       };
 

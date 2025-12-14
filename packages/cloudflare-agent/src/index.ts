@@ -12,15 +12,17 @@ export { ChatAgent } from './agent.js';
 // MCPServerConnection is still exported for use by mcp-worker but will be refactored separately.
 export {
   type ActiveWorkflowExecution,
-  type CloudflareAgentConfig,
-  type CloudflareAgentState,
-  type CloudflareChatAgentClass,
-  type CloudflareChatAgentMethods,
-  type CloudflareChatAgentNamespace,
   createCloudflareChatAgent,
   getChatAgent,
   type MCPServerConnection,
 } from './cloudflare-agent.js';
+export type {
+  CloudflareAgentConfig,
+  CloudflareAgentState,
+  CloudflareChatAgentClass,
+  CloudflareChatAgentNamespace,
+  CloudflareChatAgentMethods,
+} from './core/types.js';
 // Debug footer utilities
 export {
   escapeHtml,
@@ -537,19 +539,6 @@ export {
   type SessionId,
   StateDOReporter,
 } from './adapters/index.js';
-
-// Batch Processing Module
-export {
-  type BatchProcessingResult,
-  BatchProcessor,
-  type BatchProcessorConfig,
-  type BatchProcessorDeps,
-  BatchQueue,
-  ContextBuilder,
-  createBatchProcessor,
-  type QueueResult,
-  StuckDetector,
-} from './batch/index.js';
 
 // Core Module (Slim Orchestrator) - Re-exports for convenience
 export {

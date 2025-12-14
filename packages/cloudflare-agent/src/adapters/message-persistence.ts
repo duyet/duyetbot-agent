@@ -1,6 +1,6 @@
 import { logger } from '@duyetbot/hono-middleware';
 import { type ChatMessageRole, ChatMessageStorage, type D1Database } from '@duyetbot/observability';
-import type { CloudflareAgentState } from '../cloudflare-agent.js';
+
 import type { Message } from '../types.js'; // Assuming types.ts is in parent dir relative to adapters
 
 /**

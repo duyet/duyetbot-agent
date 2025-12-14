@@ -12,9 +12,12 @@ export interface DebugContext {
     iteration: number;
     type: string;
     toolName?: string;
+    agentName?: string;
     args?: Record<string, unknown>;
-    result?: { success?: boolean; output?: string; durationMs?: number; error?: string };
+    result?: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
+    error?: string;
     thinking?: string;
+    maxIterations?: number;
   }>;
 }
 
@@ -72,11 +75,13 @@ export function formatWorkflowDebugFooter(
         lines.push(`⏺ \`${step.toolName}\`(${argStr})`);
 
         // Show tool response (truncated to 3 lines max)
-        if (step.result?.output) {
-          const responseLines = formatToolResponse(step.result.output, 3);
-          lines.push(`  ⎿ 🔍 ${responseLines}`);
-        } else if (step.result?.error) {
-          lines.push(`  ⎿ ❌ ${step.result.error.slice(0, 60)}...`);
+        if (typeof step.result === 'object' && step.result !== null) {
+          if (step.result.output) {
+            const responseLines = formatToolResponse(step.result.output, 3);
+            lines.push(`  ⎿ 🔍 ${responseLines}`);
+          } else if (step.result.error) {
+            lines.push(`  ⎿ ❌ ${step.result.error.slice(0, 60)}...`);
+          }
         }
       }
     }
@@ -138,11 +143,14 @@ export function debugContextToAgentSteps(debugContext: DebugContext): AgentStep[
   // Example: Map tool completions to agent steps
   for (const step of debugContext.steps) {
     if (step.type === 'tool_complete' || step.type === 'tool_error') {
+      const durationMs = typeof step.result === 'object' ? step.result?.durationMs : undefined;
+      const error = typeof step.result === 'object' ? step.result?.error : step.error;
+
       agentSteps.push({
         // Cast to any to avoid strict type checking against AgentStep for now
         tools: step.toolName ? [step.toolName] : undefined,
-        durationMs: step.result?.durationMs,
-        error: step.result?.error,
+        durationMs,
+        error,
       } as any);
     }
   }

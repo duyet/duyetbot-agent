@@ -58,7 +58,7 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
  */
 export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
   createCloudflareChatAgent<BaseEnv, GitHubContext>({
-    createProvider: (env) => createOpenRouterProvider(env),
+    createProvider: (env: BaseEnv) => createOpenRouterProvider(env),
     systemPrompt: getGitHubBotPrompt(),
     welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
     helpMessage: 'Mention me with @duyetbot followed by your question or request.',
@@ -73,12 +73,8 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
     maxToolIterations: 10,
     // Limit number of tools to reduce token overhead
     maxTools: 5,
-    router: {
-      platform: 'github',
-      debug: false,
-    },
     // Extract platform config for shared DOs (includes AI Gateway credentials)
-    extractPlatformConfig: (env): GitHubPlatformConfig => ({
+    extractPlatformConfig: (env: BaseEnv): GitHubPlatformConfig => ({
       platform: 'github',
       // Common config - only include defined values
       ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
@@ -99,7 +95,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
       maxMessages: 5,
     },
     hooks: {
-      beforeHandle: async (ctx) => {
+      beforeHandle: async (ctx: GitHubContext) => {
         // Add "eyes" reaction to acknowledge we're processing
         if (ctx.commentId) {
           try {
@@ -120,7 +116,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
           }
         }
       },
-      onError: async (ctx, error) => {
+      onError: async (ctx: GitHubContext, error: any) => {
         logger.error('[AGENT] Error in handle()', {
           owner: ctx.owner,
           repo: ctx.repo,
@@ -138,7 +134,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
         });
       },
     },
-  });
+  } as any) as unknown as CloudflareChatAgentClass<BaseEnv, GitHubContext>;
 
 /**
  * Type for agent instance

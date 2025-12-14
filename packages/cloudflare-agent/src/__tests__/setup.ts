@@ -1,4 +1,5 @@
-import { mock } from 'bun:test';
+// @ts-ignore - bun:test types are global in Bun
+import { beforeAll, afterAll, mock } from 'bun:test';
 
 // Mock cloudflare:email module which is used by agents dependency
 mock.module('cloudflare:email', () => {

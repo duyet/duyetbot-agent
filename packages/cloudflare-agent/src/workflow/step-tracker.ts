@@ -5,11 +5,18 @@ type StepCallback = (message: string) => Promise<void>;
 
 const ROTATING_SUFFIXES = ['...', 'Evaluating...', 'Processing...', 'Analyzing...'];
 
+export type StepEvent = DebugContext['steps'][0];
+export interface StepProgressConfig {
+  rotationInterval?: number;
+  rotatingSuffixes?: string[];
+}
+export type StepType = StepEvent['type'];
+
 export class StepProgressTracker {
   private steps: DebugContext['steps'] = [];
   private tokenUsage?: { input: number; output: number; total: number; cached?: number };
   private model?: string;
-  private timer?: ReturnType<typeof setInterval>;
+  private timer?: ReturnType<typeof setInterval> | undefined;
 
   // State for UI
   private completedSteps: string[] = [];

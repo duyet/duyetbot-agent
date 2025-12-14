@@ -287,8 +287,5 @@ export type {
   StepEvent,
   StepProgressConfig,
   StepType,
-} from './step-progress.js';
-export {
-  createStepProgressTracker,
-  StepProgressTracker,
-} from './step-progress.js';
+} from './workflow/step-tracker.js';
+export { StepProgressTracker } from './workflow/step-tracker.js';

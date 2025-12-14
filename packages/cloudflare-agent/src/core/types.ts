@@ -1,14 +1,6 @@
-/**
- * Type definitions for CloudflareAgent core orchestrator
- *
- * Separates configuration and state types from the main orchestrator class
- * for better maintainability and dependency injection.
- */
-
 import type { Tool } from '@duyetbot/types';
-import type { Agent } from 'agents';
+import type { Agent, AgentNamespace } from 'agents';
 import type { AgentContext, AgentResult, PlatformConfig } from '../agents/base-agent.js';
-import type { BatchConfig, BatchState, RetryConfig } from '../batch-types.js';
 import type { CallbackContext } from '../callbacks/types.js';
 import type { RoutingFlags } from '../feature-flags.js';
 import type { ParsedInput, Transport, TransportHooks } from '../transport.js';
@@ -36,16 +28,6 @@ export interface CloudflareAgentState {
   createdAt: number;
   updatedAt: number;
   metadata?: Record<string, unknown>;
-  /**
-   * Active batch - currently being processed (IMMUTABLE during processing)
-   * Once a batch starts processing, it cannot be modified
-   */
-  activeBatch?: BatchState;
-  /**
-   * Pending batch - collecting new messages (MUTABLE)
-   * New messages always go here, never to activeBatch
-   */
-  pendingBatch?: BatchState;
   /** Request IDs for deduplication (rolling window) */
   processedRequestIds?: string[];
 }
@@ -100,17 +82,6 @@ export interface CloudflareAgentConfig<TEnv, TContext = unknown> {
    * When enabled, queries are classified and routed to specialized agents
    */
   router?: RouterConfig;
-  /**
-   * Batch configuration for message coalescing
-   * When enabled, rapid messages are combined within a time window
-   */
-  batchConfig?: Partial<BatchConfig>;
-  /**
-   * Retry configuration for batch processing failures
-   * When enabled, failed batches will retry with exponential backoff
-   * Uses DEFAULT_RETRY_CONFIG if not specified
-   */
-  retryConfig?: RetryConfig;
   /**
    * Extract platform-specific configuration from environment.
    * Called when building AgentContext for routing to shared agents.
@@ -200,12 +171,12 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
    */
   getRoutingHistory(limit?: number): Promise<unknown[] | null>;
   /**
-   * Queue a message for batch processing with alarm-based execution
-   * Messages within the batch window are combined into a single LLM call
-   * @param ctx - Platform-specific context
-   * @returns Object with queued status
+   * Receive a callback query from Telegram inline keyboard button press (RPC method)
+   * Parses the callback data and routes to the appropriate handler
+   * @param context - Callback context from Telegram
+   * @returns Result with optional user-facing message
    */
-  queueMessage(ctx: TContext): Promise<{ queued: boolean; batchId?: string }>;
+  receiveCallback(context: CallbackContext): Promise<{ text?: string }>;
   /**
    * Receive a message directly via ParsedInput (RPC-friendly)
    * This is the preferred method for calling from webhooks as it doesn't require transport context.
@@ -215,17 +186,6 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
   receiveMessage(
     input: ParsedInput
   ): Promise<{ traceId: string; queued: boolean; batchId?: string }>;
-  /**
-   * Get current batch state for debugging/monitoring
-   */
-  getBatchState(): { activeBatch?: BatchState; pendingBatch?: BatchState };
-  /**
-   * Receive a callback query from Telegram inline keyboard button press (RPC method)
-   * Parses the callback data and routes to the appropriate handler
-   * @param context - Callback context from Telegram
-   * @returns Result with optional user-facing message
-   */
-  receiveCallback(context: CallbackContext): Promise<{ text?: string }>;
 }
 
 /**
@@ -240,6 +200,13 @@ export type CloudflareChatAgentClass<TEnv, TContext = unknown> = typeof Agent<
     ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
   ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
 };
+
+/**
+ * Namespace type for the agent binding
+ * TContext is kept for backward compatibility but unused
+ */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+export type CloudflareChatAgentNamespace<_TEnv, _TContext = unknown> = AgentNamespace<any>;
 
 /**
  * Adapter factory return type for dependency injection
