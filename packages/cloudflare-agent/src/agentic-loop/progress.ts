@@ -31,18 +31,20 @@ import type { ProgressUpdate, ToolResult } from './types.js';
 /**
  * Thinking rotator messages for variety during processing
  * These show when the LLM is processing but hasn't returned actual text yet
+ *
+ * Claude Code style verbs that suggest organic thought processes
  */
 export const THINKING_ROTATOR_MESSAGES = [
-  'Pondering...',
-  'Thinking...',
-  'Processing...',
-  'Cogitating...',
-  'Ruminating...',
-  'Contemplating...',
-  'Analyzing...',
-  'Deliberating...',
-  'Musing...',
-  'Reasoning...',
+  'Germinating',
+  'Pondering',
+  'Ruminating',
+  'Contemplating',
+  'Synthesizing',
+  'Percolating',
+  'Fermenting',
+  'Cogitating',
+  'Deliberating',
+  'Musing',
 ] as const;
 
 /**
@@ -50,7 +52,7 @@ export const THINKING_ROTATOR_MESSAGES = [
  */
 export function getRandomThinkingMessage(): string {
   const idx = Math.floor(Math.random() * THINKING_ROTATOR_MESSAGES.length);
-  return THINKING_ROTATOR_MESSAGES[idx] ?? 'Thinking...';
+  return THINKING_ROTATOR_MESSAGES[idx] ?? 'Thinking';
 }
 
 /**
@@ -75,6 +77,43 @@ export function formatThinkingMessage(text?: string): string {
   }
   // Use random rotator message
   return `⏺ ${getRandomThinkingMessage()}`;
+}
+
+/**
+ * Format token count for display
+ * Examples: 500 → "500", 1200 → "1.2k", 15000 → "15k"
+ */
+function formatTokenCount(tokens: number): string {
+  if (tokens >= 1000) {
+    const k = tokens / 1000;
+    return k >= 10 ? `${Math.round(k)}k` : `${k.toFixed(1)}k`;
+  }
+  return String(tokens);
+}
+
+/**
+ * Format thinking message in Claude Code style
+ *
+ * Shows the rotating verb with token count being processed:
+ * `* Germinating… (↓ 279 tokens)`
+ *
+ * @param tokenCount - Optional input token count to display
+ * @param verb - Optional specific verb (uses random if not provided)
+ * @returns Formatted Claude Code style thinking message
+ *
+ * @example
+ * formatClaudeCodeThinking(500) // "* Germinating… (↓ 500 tokens)"
+ * formatClaudeCodeThinking(1200, 'Pondering') // "* Pondering… (↓ 1.2k tokens)"
+ * formatClaudeCodeThinking() // "* Ruminating…"
+ */
+export function formatClaudeCodeThinking(tokenCount?: number, verb?: string): string {
+  const thinkingVerb = verb ?? getRandomThinkingMessage();
+
+  if (tokenCount !== undefined && tokenCount > 0) {
+    return `* ${thinkingVerb}… (↓ ${formatTokenCount(tokenCount)} tokens)`;
+  }
+
+  return `* ${thinkingVerb}…`;
 }
 
 /**

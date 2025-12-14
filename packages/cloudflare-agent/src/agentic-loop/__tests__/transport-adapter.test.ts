@@ -47,7 +47,7 @@ describe('createTransportAdapter', () => {
       });
 
       // Verify behavior: thinking updates use ⏺ prefix with rotator messages (no step number)
-      expect(editMessage).toHaveBeenCalledWith(expect.stringMatching(/^⏺ \w+\.\.\.$/));
+      expect(editMessage).toHaveBeenCalledWith(expect.stringMatching(/^⏺ \w+$/));
     });
 
     it('should handle tool_start updates', async () => {
@@ -307,7 +307,7 @@ describe('formatProgressUpdate', () => {
     };
 
     // Verify behavior: empty message triggers random rotator message with ⏺ prefix
-    expect(formatProgressUpdate(update)).toMatch(/^⏺ \w+\.\.\.$/);
+    expect(formatProgressUpdate(update)).toMatch(/^⏺ \w+$/);
   });
 
   it('should format tool_start updates', () => {

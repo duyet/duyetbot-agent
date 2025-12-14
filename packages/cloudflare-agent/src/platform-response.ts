@@ -17,12 +17,23 @@
  * - Tools used: (search, calculator) per agent
  * - Duration: 2.34s total processing time
  * - Classification: type/category/complexity
+ *
+ * Phase 6: Real-Time Progress Display
+ * ====================================
+ * Added progressive message editing during execution:
+ *
+ * 1. ProgressAccumulator tracks execution steps (thinking, tool calls, results)
+ * 2. editProgressMessage() updates Telegram message with chain display
+ * 3. formatWorkflowProgress() from workflow module formats the chain
+ * 4. Debouncing prevents rate limiting from frequent edits
  */
 
 import { logger } from '@duyetbot/hono-middleware';
 import type { PlatformConfig } from './agents/base-agent.js';
 import { formatDebugFooter, formatDebugFooterMarkdownV2 } from './debug-footer.js';
-import type { DebugContext } from './types.js';
+import type { DebugContext, ExecutionStep, ProgressCallback } from './types.js';
+import { formatWorkflowProgress } from './workflow/formatting.js';
+import type { WorkflowProgressEntry } from './workflow/types.js';
 
 /**
  * Target information for response delivery
@@ -377,4 +388,310 @@ function formatGitHubDebugFooter(debugContext: DebugContext): string {
 | **Duration** | ${duration} |
 
 </details>`;
+}
+
+/**
+ * Minimum interval between message edits to avoid rate limiting
+ * Telegram rate limits edits to ~20/minute per chat
+ */
+const MIN_EDIT_INTERVAL_MS = 500;
+
+/**
+ * ProgressAccumulator for tracking execution steps
+ *
+ * Accumulates thinking text, tool calls, and results during agent execution.
+ * Used to:
+ * 1. Format progressive updates during execution
+ * 2. Build ExecutionStep[] for final debug footer
+ *
+ * @example
+ * ```typescript
+ * const accumulator = new ProgressAccumulator();
+ * const callback = accumulator.createProgressCallback(editFn);
+ *
+ * await callback.onThinking('Let me search for information...');
+ * await callback.onToolStart('search', { query: 'OpenAI skills' });
+ * await callback.onToolComplete('search', 'Found 5 results...', 1234);
+ *
+ * const steps = accumulator.getExecutionSteps();
+ * ```
+ */
+export class ProgressAccumulator {
+  private history: WorkflowProgressEntry[] = [];
+  private iteration = 1;
+  private tokenCount = 0;
+
+  /**
+   * Add a thinking entry
+   */
+  addThinking(text: string): void {
+    this.history.push({
+      type: 'thinking',
+      iteration: this.iteration,
+      message: text,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Add a tool start entry
+   */
+  addToolStart(toolName: string, args: Record<string, unknown>): void {
+    this.history.push({
+      type: 'tool_start',
+      iteration: this.iteration,
+      message: `Running ${toolName}...`,
+      toolName,
+      toolArgs: args,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Add a tool complete entry
+   */
+  addToolComplete(toolName: string, result: string, durationMs: number): void {
+    this.history.push({
+      type: 'tool_complete',
+      iteration: this.iteration,
+      message: `${toolName} completed`,
+      toolName,
+      toolResult: result,
+      durationMs,
+      timestamp: Date.now(),
+    });
+  }
+
+  /**
+   * Add a tool error entry
+   */
+  addToolError(toolName: string, error: string, durationMs?: number): void {
+    const entry: WorkflowProgressEntry = {
+      type: 'tool_error',
+      iteration: this.iteration,
+      message: `${toolName} failed: ${error}`,
+      toolName,
+      toolResult: error,
+      timestamp: Date.now(),
+    };
+    // Only add durationMs if defined (exactOptionalPropertyTypes)
+    if (durationMs !== undefined) {
+      entry.durationMs = durationMs;
+    }
+    this.history.push(entry);
+  }
+
+  /**
+   * Increment iteration counter (after LLM response with tools)
+   */
+  nextIteration(): void {
+    this.iteration++;
+  }
+
+  /**
+   * Set token count for display
+   */
+  setTokenCount(count: number): void {
+    this.tokenCount = count;
+  }
+
+  /**
+   * Get formatted progress message for display
+   */
+  getFormattedProgress(): string {
+    return formatWorkflowProgress(this.history, this.tokenCount);
+  }
+
+  /**
+   * Get execution steps for debug footer
+   */
+  getExecutionSteps(): ExecutionStep[] {
+    return this.history.map((entry) => {
+      // Build step with required fields only, add optional fields conditionally
+      // (exactOptionalPropertyTypes requires this approach)
+      const step: ExecutionStep = {
+        iteration: entry.iteration,
+        type: entry.type as ExecutionStep['type'],
+      };
+
+      // Add optional fields only if they have values
+      if (entry.toolName) {
+        step.toolName = entry.toolName;
+      }
+      if (entry.toolArgs) {
+        step.args = entry.toolArgs;
+      }
+      if (entry.toolResult) {
+        step.result = entry.toolResult;
+      }
+      if (entry.type === 'thinking' && entry.message) {
+        step.thinking = entry.message;
+      }
+      if (entry.durationMs !== undefined) {
+        step.durationMs = entry.durationMs;
+      }
+
+      return step;
+    });
+  }
+
+  /**
+   * Get history for workflow display
+   */
+  getHistory(): WorkflowProgressEntry[] {
+    return [...this.history];
+  }
+
+  /**
+   * Create a ProgressCallback that accumulates steps and optionally edits a message
+   *
+   * @param editFn - Optional function to edit the message with progress
+   * @returns ProgressCallback interface for agent execution
+   */
+  createProgressCallback(editFn?: (text: string) => Promise<void>): ProgressCallback {
+    let lastEditTime = 0;
+
+    const maybeEdit = async (): Promise<void> => {
+      if (!editFn) return;
+
+      const now = Date.now();
+      if (now - lastEditTime < MIN_EDIT_INTERVAL_MS) {
+        return; // Skip edit if too soon (debounce)
+      }
+
+      lastEditTime = now;
+      const formatted = this.getFormattedProgress();
+      try {
+        await editFn(formatted);
+      } catch (error) {
+        // Log but don't throw - progress updates are best-effort
+        logger.debug('[ProgressAccumulator] Edit failed (rate limit?)', {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+    };
+
+    return {
+      onThinking: async (text: string): Promise<void> => {
+        this.addThinking(text);
+        await maybeEdit();
+      },
+      onToolStart: async (toolName: string, args: Record<string, unknown>): Promise<void> => {
+        this.addToolStart(toolName, args);
+        await maybeEdit();
+      },
+      onToolComplete: async (
+        toolName: string,
+        result: string,
+        durationMs: number
+      ): Promise<void> => {
+        this.addToolComplete(toolName, result, durationMs);
+        await maybeEdit();
+      },
+      onToolError: async (toolName: string, error: string, durationMs?: number): Promise<void> => {
+        this.addToolError(toolName, error, durationMs);
+        await maybeEdit();
+      },
+    };
+  }
+}
+
+/**
+ * Create a message edit function for Telegram progress updates
+ *
+ * Returns a function that edits a Telegram message by ID.
+ * Used with ProgressAccumulator to show real-time progress.
+ *
+ * @param env - Environment with Telegram token
+ * @param chatId - Chat ID to edit in
+ * @param messageId - Message ID to edit
+ * @param botToken - Optional bot token override
+ * @returns Edit function compatible with ProgressAccumulator
+ *
+ * @example
+ * ```typescript
+ * const editFn = createTelegramEditFn(env, chatId, messageId);
+ * const accumulator = new ProgressAccumulator();
+ * const callback = accumulator.createProgressCallback(editFn);
+ * ```
+ */
+export function createTelegramEditFn(
+  env: PlatformEnv,
+  chatId: string,
+  messageId: number,
+  botToken?: string
+): (text: string) => Promise<void> {
+  const token = botToken || env.TELEGRAM_BOT_TOKEN;
+  if (!token) {
+    // Return no-op if no token
+    return async () => {};
+  }
+
+  return async (text: string): Promise<void> => {
+    const url = `https://api.telegram.org/bot${token}/editMessageText`;
+
+    // Truncate if needed
+    const TELEGRAM_LIMIT = 4096;
+    const truncatedText =
+      text.length > TELEGRAM_LIMIT ? text.slice(0, TELEGRAM_LIMIT - 20) + '\n\n...' : text;
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        message_id: messageId,
+        text: truncatedText,
+        parse_mode: 'HTML',
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      // Only throw if not "message is not modified" (expected during debounce)
+      if (!errorText.includes('message is not modified')) {
+        throw new Error(`Telegram edit failed: ${response.status}`);
+      }
+    }
+  };
+}
+
+/**
+ * Create progress callback for fire-and-forget execution
+ *
+ * Convenience function that creates a ProgressAccumulator with Telegram message editing.
+ * Use this in RouterAgent.onExecutionAlarm() to enable real-time progress display.
+ *
+ * @param env - Environment with platform tokens
+ * @param target - Response target with chat/message info
+ * @returns Object with callback and accumulator for accessing steps
+ *
+ * @example
+ * ```typescript
+ * const { callback, accumulator } = createFireAndForgetProgress(env, target);
+ *
+ * // Pass callback to agent execution
+ * const result = await agent.execute(ctx, { progressCallback: callback });
+ *
+ * // Get steps for debug footer
+ * const steps = accumulator.getExecutionSteps();
+ * ```
+ */
+export function createFireAndForgetProgress(
+  env: PlatformEnv,
+  target: ResponseTarget
+): { callback: ProgressCallback; accumulator: ProgressAccumulator } {
+  const accumulator = new ProgressAccumulator();
+
+  // Create edit function based on platform
+  let editFn: ((text: string) => Promise<void>) | undefined;
+
+  if (target.platform === 'telegram' && target.messageRef?.messageId) {
+    editFn = createTelegramEditFn(env, target.chatId, target.messageRef.messageId, target.botToken);
+  }
+  // GitHub doesn't support rapid edits well, so we skip progress for now
+
+  const callback = accumulator.createProgressCallback(editFn);
+
+  return { callback, accumulator };
 }

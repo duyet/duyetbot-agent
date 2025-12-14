@@ -1,4 +1,4 @@
-import { formatThinkingMessage, getRandomThinkingMessage } from '../agentic-loop/progress.js';
+import { formatClaudeCodeThinking, formatThinkingMessage } from '../agentic-loop/progress.js';
 import type { WorkflowProgressEntry } from './types.js';
 
 /**
@@ -6,12 +6,12 @@ import type { WorkflowProgressEntry } from './types.js';
  *
  * Shows accumulated thinking/tool chain during execution:
  * ```
- * ⏺ Ruminating...
+ * * Germinating… (↓ 500 tokens)
  *
  * ⏺ I'll search for information about...
  *
  * ⏺ research(query: "OpenAI skills")
- *   ⎿ Running...
+ *   ⎿ Running…
  * ```
  *
  * Then when tool completes:
@@ -21,12 +21,15 @@ import type { WorkflowProgressEntry } from './types.js';
  * ⏺ research(query: "OpenAI skills")
  *   ⎿ Found 5 results...
  *
- * ⏺ Analyzing the results...
+ * * Synthesizing…
  * ```
  */
-export function formatWorkflowProgress(history: WorkflowProgressEntry[]): string {
+export function formatWorkflowProgress(
+  history: WorkflowProgressEntry[],
+  tokenCount?: number
+): string {
   if (history.length === 0) {
-    return `⏺ ${getRandomThinkingMessage()}`;
+    return formatClaudeCodeThinking(tokenCount);
   }
 
   const lines: string[] = [];
@@ -75,11 +78,11 @@ export function formatWorkflowProgress(history: WorkflowProgressEntry[]): string
       // Tool starting - show tool name with truncated arguments
       const argStr = formatToolArgs(entry.toolArgs);
       lines.push(`⏺ ${entry.toolName}(${argStr})`);
-      lines.push('  ⎿ Running...');
+      lines.push('  ⎿ Running…');
     } else if (entry.type === 'tool_complete' && entry.toolName) {
       parallelToolsGroup = null; // Reset parallel group
-      // Tool completed - find and update the "Running..." line
-      const runningIdx = findLastIndex(lines, (l: string) => l.includes('⎿ Running...'));
+      // Tool completed - find and update the "Running…" line
+      const runningIdx = findLastIndex(lines, (l: string) => l.includes('⎿ Running'));
       const durationStr = formatDuration(entry.durationMs ?? 0);
 
       if (runningIdx >= 0) {
@@ -103,8 +106,8 @@ export function formatWorkflowProgress(history: WorkflowProgressEntry[]): string
       }
     } else if (entry.type === 'tool_error' && entry.toolName) {
       parallelToolsGroup = null; // Reset parallel group
-      // Tool failed - find and update the "Running..." line
-      const runningIdx = findLastIndex(lines, (l: string) => l.includes('⎿ Running...'));
+      // Tool failed - find and update the "Running…" line
+      const runningIdx = findLastIndex(lines, (l: string) => l.includes('⎿ Running'));
       const durationStr = entry.durationMs ? ` (${formatDuration(entry.durationMs)})` : '';
       const errorText = entry.toolResult ? entry.toolResult.slice(0, 60) : 'Error';
 
@@ -170,7 +173,7 @@ export function formatParallelTools(
       const resultLine = `   ${connector}⎿ ${statusIcon} ${tool.result.summary}${durationStr}`;
       lines.push(resultLine);
     } else {
-      const resultLine = `   ${connector}⎿ Running...`;
+      const resultLine = `   ${connector}⎿ Running…`;
       lines.push(resultLine);
     }
   });

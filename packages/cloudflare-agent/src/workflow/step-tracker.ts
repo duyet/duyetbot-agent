@@ -1,14 +1,17 @@
 import type { TokenUsage } from '@duyetbot/observability';
+import {
+  formatClaudeCodeThinking,
+  getRandomThinkingMessage,
+  THINKING_ROTATOR_MESSAGES,
+} from '../agentic-loop/progress.js';
 import type { DebugContext } from './debug-footer.js';
 
 type StepCallback = (message: string) => Promise<void>;
 
-const ROTATING_SUFFIXES = ['...', 'Evaluating...', 'Processing...', 'Analyzing...'];
-
 export type StepEvent = DebugContext['steps'][0];
 export interface StepProgressConfig {
+  /** Interval in ms for rotating thinking verbs (default: 3000) */
   rotationInterval?: number;
-  rotatingSuffixes?: string[];
 }
 export type StepType = StepEvent['type'];
 
@@ -20,14 +23,16 @@ export class StepProgressTracker {
 
   // State for UI
   private completedSteps: string[] = [];
-  private currentPrefix = '';
+  private currentThinkingVerb = '';
+  private currentToolName = '';
+  private isThinking = false;
   private executionPath: string[] = [];
-  private suffixIndex = 0;
+  private verbIndex = 0;
   private destroyed = false;
 
   constructor(
     private onUpdate: StepCallback,
-    private config: { rotationInterval?: number; rotatingSuffixes?: string[] } = {}
+    private config: { rotationInterval?: number } = {}
   ) {}
 
   async addStep(step: DebugContext['steps'][0] & { maxIterations?: number }): Promise<void> {
@@ -39,48 +44,54 @@ export class StepProgressTracker {
     switch (step.type) {
       case 'thinking':
         this.executionPath.push('thinking');
-        this.currentPrefix = '[~] Thinking';
+        this.isThinking = true;
+        this.currentToolName = '';
+        this.currentThinkingVerb = getRandomThinkingMessage();
         await this.startRotation();
         break;
 
       case 'routing':
         this.executionPath.push(`routing:${step.agentName}`);
         this.completedSteps.push(`[>] Router -> ${step.agentName}`);
+        this.isThinking = false;
         await this.update();
         break;
 
       case 'tool_start':
         this.executionPath.push(`tool:${step.toolName}:start`);
-        this.currentPrefix = `[~] ${step.toolName} running`;
+        this.isThinking = false;
+        this.currentToolName = step.toolName ?? '';
         await this.startRotation();
         break;
 
       case 'tool_complete':
         this.executionPath.push(`tool:${step.toolName}:complete`);
-        this.completedSteps.push(`[ok] ${step.toolName} returned`);
-        this.currentPrefix = '';
+        this.completedSteps.push(`⏺ ${step.toolName}`);
+        this.currentToolName = '';
         await this.update();
         break;
 
       case 'tool_error':
         this.executionPath.push(`tool:${step.toolName}:error`);
-        this.completedSteps.push(`[x] ${step.toolName}: ${step.error}`);
-        this.currentPrefix = '';
+        this.completedSteps.push(`⏺ ${step.toolName} ❌`);
+        this.currentToolName = '';
         await this.update();
         break;
 
       case 'llm_iteration':
         this.executionPath.push(`llm:${step.iteration}/${step.maxIterations}`);
         if (step.iteration && step.maxIterations && step.iteration > 1) {
-          this.currentPrefix = `[~] Processing (${step.iteration}/${step.maxIterations})`;
+          this.isThinking = true;
+          this.currentThinkingVerb = getRandomThinkingMessage();
           await this.startRotation();
         }
         break;
 
       case 'preparing':
         this.executionPath.push('preparing');
-        this.currentPrefix = '[...] Preparing response';
-        await this.startRotation();
+        this.isThinking = true;
+        this.currentThinkingVerb = 'Preparing';
+        await this.update();
         break;
     }
   }
@@ -147,7 +158,7 @@ export class StepProgressTracker {
 
   private async startRotation(): Promise<void> {
     if (this.destroyed) return;
-    this.suffixIndex = 0;
+    this.verbIndex = 0;
     await this.update();
 
     if (this.config.rotationInterval) {
@@ -156,8 +167,9 @@ export class StepProgressTracker {
           this.stopRotation();
           return;
         }
-        this.suffixIndex =
-          (this.suffixIndex + 1) % (this.config.rotatingSuffixes || ROTATING_SUFFIXES).length;
+        // Rotate through thinking verbs for variety
+        this.verbIndex = (this.verbIndex + 1) % THINKING_ROTATOR_MESSAGES.length;
+        this.currentThinkingVerb = THINKING_ROTATOR_MESSAGES[this.verbIndex] ?? 'Thinking';
         await this.update();
       }, this.config.rotationInterval);
     }
@@ -174,13 +186,19 @@ export class StepProgressTracker {
     if (this.destroyed) return;
 
     const lines = [...this.completedSteps];
-    if (this.currentPrefix) {
-      const suffixes = this.config.rotatingSuffixes || ROTATING_SUFFIXES;
-      const suffix = suffixes[this.suffixIndex] || '...';
-      lines.push(`${this.currentPrefix}. ${suffix}`);
+
+    // Show current state based on what we're doing
+    if (this.isThinking) {
+      // Claude Code style thinking with token count
+      const tokenCount = this.tokenUsage?.input;
+      lines.push(formatClaudeCodeThinking(tokenCount, this.currentThinkingVerb));
+    } else if (this.currentToolName) {
+      // Tool running indicator
+      lines.push(`⏺ ${this.currentToolName}`);
+      lines.push('  ⎿ Running…');
     }
 
-    const message = lines.length > 0 ? lines.join('\n') : '[~] Starting...';
+    const message = lines.length > 0 ? lines.join('\n') : formatClaudeCodeThinking();
 
     try {
       await this.onUpdate(message);

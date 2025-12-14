@@ -23,6 +23,7 @@ import type {
   TokenUsage,
   WorkerDebugInfo,
 } from './types.js';
+import { formatToolArgs, formatToolResponse } from './workflow/formatting.js';
 
 /**
  * Escape HTML entities in text for safe inclusion in HTML messages
@@ -693,6 +694,67 @@ function shortenModelName(model: string): string {
 }
 
 /**
+ * Format execution steps in chain format
+ * Shows thinking text, tool calls, and results in order
+ *
+ * @example Output:
+ * ```
+ * ⏺ Let me search for information...
+ * ⏺ web_search(query: "OpenAI skills")
+ *   ⎿ 🔍 Found 5 results: OpenAI announces new...
+ * ```
+ */
+function formatExecutionChain(steps: DebugContext['steps']): string {
+  if (!steps?.length) {
+    return '';
+  }
+
+  const lines: string[] = [];
+
+  for (const step of steps) {
+    if (step.type === 'thinking' && step.thinking) {
+      // Show thinking text, truncated to ~80 chars
+      const text = step.thinking.replace(/\n/g, ' ').trim();
+      const truncated = text.slice(0, 80);
+      const ellipsis = text.length > 80 ? '...' : '';
+      lines.push(`⏺ ${truncated}${ellipsis}`);
+    } else if (
+      (step.type === 'tool_start' ||
+        step.type === 'tool_complete' ||
+        step.type === 'tool_execution') &&
+      step.toolName
+    ) {
+      // Format tool call with arguments
+      const argStr = formatToolArgs(step.args);
+      lines.push(`⏺ ${step.toolName}(${argStr})`);
+
+      // Show tool response if available
+      if (step.result) {
+        if (typeof step.result === 'object' && step.result !== null) {
+          if (step.result.output) {
+            const responseLines = formatToolResponse(step.result.output, 3);
+            lines.push(`  ⎿ 🔍 ${responseLines}`);
+          } else if (step.result.error) {
+            lines.push(`  ⎿ ❌ ${step.result.error.slice(0, 60)}...`);
+          }
+        } else if (typeof step.result === 'string') {
+          const responseLines = formatToolResponse(step.result, 3);
+          lines.push(`  ⎿ 🔍 ${responseLines}`);
+        }
+      }
+    } else if (step.type === 'tool_error' && step.toolName) {
+      // Show tool error
+      const argStr = formatToolArgs(step.args);
+      lines.push(`⏺ ${step.toolName}(${argStr})`);
+      const errorText = step.error || 'Error';
+      lines.push(`  ⎿ ❌ ${errorText.slice(0, 60)}...`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+/**
  * Format minimal debug footer when full routing flow is unavailable
  *
  * Shows basic info like duration, model, and trace ID.
@@ -765,6 +827,14 @@ function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
  *    +- code-worker (1.2s)
  * ```
  *
+ * @example Output (with execution steps):
+ * ```
+ * [debug] ⏺ Let me search for information...
+ * ⏺ web_search(query: "OpenAI skills")
+ *   ⎿ 🔍 Found 5 results: OpenAI announces new...
+ * ⏱️ 7.6s | 📊 5.4k | 🤖 sonnet-3.5
+ * ```
+ *
  * @example Output (minimal fallback):
  * ```
  * [debug] 2.34s | model:sonnet-3.5 | trace:abc12345
@@ -773,6 +843,36 @@ function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
 export function formatDebugFooter(debugContext?: DebugContext): string | null {
   if (!debugContext) {
     return null;
+  }
+
+  // If execution steps are available, use chain format
+  if (debugContext.steps && debugContext.steps.length > 0) {
+    const chain = formatExecutionChain(debugContext.steps);
+    const summaryParts: string[] = [];
+
+    // Duration
+    if (debugContext.totalDurationMs) {
+      summaryParts.push(`⏱️ ${formatDuration(debugContext.totalDurationMs)}`);
+    }
+
+    // Token usage
+    if (debugContext.metadata?.tokenUsage) {
+      const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+      if (tokens) {
+        summaryParts.push(`📊 ${tokens}`);
+      }
+    }
+
+    // Model
+    if (debugContext.metadata?.model) {
+      const shortModel = shortenModelName(debugContext.metadata.model);
+      summaryParts.push(`🤖 ${shortModel}`);
+    }
+
+    const summary = summaryParts.join(' | ');
+    const content = chain + (summary ? `\n${summary}` : '');
+
+    return `\n\n<blockquote expandable>[debug] ${content}</blockquote>`;
   }
 
   // If no routing flow, try minimal fallback

@@ -241,6 +241,38 @@ export interface WorkerDebugInfo {
  * Debug context for routing/orchestration tracing
  * Used by admin users to see agent flow and timing
  */
+/**
+ * Execution step for chain display (thinking, tool calls, results)
+ */
+export interface ExecutionStep {
+  /** Step iteration number */
+  iteration: number;
+  /** Step type: thinking, tool_start, tool_complete, tool_error, responding */
+  type:
+    | 'thinking'
+    | 'tool_start'
+    | 'tool_complete'
+    | 'tool_error'
+    | 'tool_execution'
+    | 'responding';
+  /** Tool name (for tool_* types) */
+  toolName?: string;
+  /** Agent name (for routing steps) */
+  agentName?: string;
+  /** Tool arguments */
+  args?: Record<string, unknown>;
+  /** Tool result (string or structured) */
+  result?: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
+  /** Error message */
+  error?: string;
+  /** Thinking/reasoning text from LLM */
+  thinking?: string;
+  /** Max iterations (for progress display) */
+  maxIterations?: number;
+  /** Duration in milliseconds */
+  durationMs?: number;
+}
+
 export interface DebugContext {
   /** Routing flow showing agent -> agent transitions */
   routingFlow: Array<{
@@ -280,6 +312,42 @@ export interface DebugContext {
   metadata?: DebugMetadata;
   /** Execution path trace for step-by-step debugging */
   executionPath?: string[];
+  /**
+   * Detailed execution steps for chain display
+   * Shows thinking text, tool calls, and results in order
+   */
+  steps?: ExecutionStep[];
+}
+
+/**
+ * Progress callback interface for real-time execution updates
+ *
+ * Used to emit progress events during agent execution for:
+ * - Real-time message editing (showing tool chain as it executes)
+ * - Accumulating steps for debug footer
+ */
+export interface ProgressCallback {
+  /** Emit thinking/reasoning text from LLM */
+  onThinking: (text: string) => Promise<void>;
+  /** Emit tool execution start */
+  onToolStart: (toolName: string, args: Record<string, unknown>) => Promise<void>;
+  /** Emit tool execution completion */
+  onToolComplete: (toolName: string, result: string, durationMs: number) => Promise<void>;
+  /** Emit tool execution error */
+  onToolError: (toolName: string, error: string, durationMs?: number) => Promise<void>;
+}
+
+/**
+ * Progress entry for accumulating execution chain
+ */
+export interface ProgressEntry {
+  type: 'thinking' | 'tool_start' | 'tool_complete' | 'tool_error';
+  message: string;
+  toolName?: string;
+  toolArgs?: Record<string, unknown>;
+  toolResult?: string;
+  durationMs?: number;
+  timestamp: number;
 }
 
 // Re-export step progress types for convenience

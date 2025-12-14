@@ -22,7 +22,11 @@ import {
 import { enterAgent, exitAgent, type GlobalContext, setTiming } from '../context/index.js';
 import type { AgentProvider, ExecutionContext, OutputFormat } from '../execution/index.js';
 import { createDebugAccumulator, parseModeToOutputFormat } from '../execution/index.js';
-import { type ResponseTarget, sendPlatformResponse } from '../platform-response.js';
+import {
+  createFireAndForgetProgress,
+  type ResponseTarget,
+  sendPlatformResponse,
+} from '../platform-response.js';
 import {
   type ClassificationContext,
   type ClassifierConfig,
@@ -1133,6 +1137,18 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
 
       const startTime = Date.now();
 
+      // Get env for progress tracking
+      const envWithTokens = (this as unknown as { env: TEnv }).env as unknown as {
+        TELEGRAM_BOT_TOKEN?: string;
+        GITHUB_TOKEN?: string;
+      };
+
+      // Create progress tracking for real-time message updates
+      const { accumulator: progressAccumulator } = createFireAndForgetProgress(
+        envWithTokens,
+        execution.responseTarget
+      );
+
       try {
         logger.info('[RouterAgent] Processing fire-and-forget execution', {
           executionId: data.executionId,
@@ -1213,12 +1229,11 @@ export function createRouterAgent<TEnv extends RouterAgentEnv>(
           debugContext.metadata = result.debug.metadata;
         }
 
-        // Send response directly to platform
-        // Cast env to PlatformEnv - platform tokens come from responseTarget or env
-        const envWithTokens = (this as unknown as { env: TEnv }).env as unknown as {
-          TELEGRAM_BOT_TOKEN?: string;
-          GITHUB_TOKEN?: string;
-        };
+        // Add execution steps from progress accumulator to debugContext
+        const steps = progressAccumulator.getExecutionSteps();
+        if (steps.length > 0) {
+          debugContext.steps = steps;
+        }
         // Build response text - ensure string even if content is undefined
         const responseText =
           result.success && result.content
