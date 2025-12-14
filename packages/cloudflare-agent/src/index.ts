@@ -302,15 +302,18 @@ export {
 export * from './auth/index.js';
 // Chat module (LLM loop, tool execution, context building)
 export {
+  buildInitialMessages,
+  buildToolIterationMessages,
   ChatLoop,
   type ChatLoopConfig,
   type ChatResult,
-  ContextBuilder,
   type ContextBuilderConfig,
+  getToolCalls,
+  hasToolCalls,
   type MCPCallResult,
   type MCPToolCallParams,
   type ParsedResponse,
-  ResponseHandler,
+  parse,
   type ToolExecutionResult,
   ToolExecutor as ChatToolExecutor,
   type ToolExecutorConfig,
@@ -319,8 +322,11 @@ export * from './commands/index.js';
 export * from './mcp/index.js';
 // Persistence module (message store, session management)
 export {
+  createSessionId,
+  formatSessionKey,
   MessageStore,
-  SessionManager,
+  parseSessionKey,
+  type SessionId,
 } from './persistence/index.js';
 export * from './sanitization/index.js';
 // Tracking module (token tracking, execution logging)

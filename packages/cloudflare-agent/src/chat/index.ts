@@ -10,7 +10,11 @@
  */
 
 export { ChatLoop, type ChatLoopConfig, type ChatResult } from './chat-loop.js';
-export { ContextBuilder, type ContextBuilderConfig } from './context-builder.js';
+export {
+  buildInitialMessages,
+  buildToolIterationMessages,
+  type ContextBuilderConfig,
+} from './context-builder.js';
 // Durable chat loop functions
 export {
   createChatExecution,
@@ -18,7 +22,7 @@ export {
   formatExecutionProgress,
   runChatIteration,
 } from './durable-chat-loop.js';
-export { type ParsedResponse, ResponseHandler } from './response-handler.js';
+export { getToolCalls, hasToolCalls, type ParsedResponse, parse } from './response-handler.js';
 export {
   type MCPCallResult,
   type MCPToolCallParams,
