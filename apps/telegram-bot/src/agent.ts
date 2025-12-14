@@ -9,7 +9,7 @@
  * duyetbot-shared-agents worker via script_name in wrangler.toml.
  */
 
-import type { RouterAgentEnv, TelegramPlatformConfig } from '@duyetbot/cloudflare-agent';
+import type { RouterAgentEnv } from '@duyetbot/cloudflare-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,

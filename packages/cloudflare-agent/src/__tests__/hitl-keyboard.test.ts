@@ -30,7 +30,7 @@ describe('HITL Keyboards - Validation', () => {
     });
 
     it('rejects data over 64 bytes', () => {
-      const longData = 'hitl_' + 'x'.repeat(60);
+      const longData = `hitl_${'x'.repeat(60)}`;
       expect(isValidCallbackData(longData)).toBe(false);
     });
 
@@ -41,11 +41,11 @@ describe('HITL Keyboards - Validation', () => {
 
     it('counts multi-byte UTF-8 characters correctly', () => {
       // Each emoji is 4 bytes
-      const data = 'hitl_' + '🔴'.repeat(15); // 5 + 60 = 65 bytes (should fail)
+      const data = `hitl_${'🔴'.repeat(15)}`; // 5 + 60 = 65 bytes (should fail)
       expect(isValidCallbackData(data)).toBe(false);
 
       // This should be 60 bytes exactly
-      const validData = 'hitl_' + '🔴'.repeat(14); // 5 + 56 = 61 bytes
+      const validData = `hitl_${'🔴'.repeat(14)}`; // 5 + 56 = 61 bytes
       expect(isValidCallbackData(validData)).toBe(true);
     });
   });
