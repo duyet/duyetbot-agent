@@ -90,7 +90,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
       const _routingStartTime = Date.now();
       const classificationDurationMs = 400;
       const targetAgentDurationMs = 2000;
-      const totalDurationMs = classificationDurationMs + targetAgentDurationMs;
+      const _totalDurationMs = classificationDurationMs + targetAgentDurationMs;
 
       // Simulate route() returning with classification and delegation
       const routingResult = {
@@ -183,7 +183,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
         adminUsername: 'alice',
       };
 
-      const debugContext: DebugContext = {
+      const _debugContext: DebugContext = {
         routingFlow: [{ agent: 'router-agent' }, { agent: 'simple-agent', durationMs: 2000 }],
         totalDurationMs: 2400,
       };
@@ -219,7 +219,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
     });
 
     it('returns false when scheduleExecution throws error', () => {
-      const error = new Error('Storage quota exceeded');
+      const _error = new Error('Storage quota exceeded');
 
       const scheduled = false;
       expect(scheduled).toBe(false);
@@ -228,7 +228,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
     });
 
     it('falls back to chat() with conversationHistory preserved', async () => {
-      const combinedText = 'user query';
+      const _combinedText = 'user query';
       const conversationHistory = [
         { role: 'user' as const, content: 'previous message' },
         { role: 'assistant' as const, content: 'previous response' },
@@ -357,7 +357,7 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
     });
 
     it('sends error message to user when execution fails', () => {
-      const responseTarget: ResponseTarget = {
+      const _responseTarget: ResponseTarget = {
         chatId: 'chat456',
         messageRef: { messageId: 789 },
         platform: 'telegram',
