@@ -837,13 +837,88 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
             logger.info('[CloudflareAgent][HANDLE] Processing via chat()');
             response = await this.chat(chatMessage, stepTracker, quotedContext, eventId);
 
-            // Build debug context BEFORE destroying tracker
+            // Build complete debug context BEFORE destroying tracker
             // This ensures the context is available for transport operations
             const ctxWithDebug = ctx as unknown as {
-              debugContext?: unknown;
+              debugContext?: DebugContext;
             };
             if (stepTracker) {
-              ctxWithDebug.debugContext = stepTracker.getDebugContext();
+              const trackerSteps = stepTracker.getDebugContext().steps;
+              const tokenUsage = stepTracker.getTokenUsage();
+              const model = stepTracker.getModel();
+              const durationMs = Date.now() - handleStartTime;
+
+              // Convert StepEvent[] to ExecutionStep[]
+              const executionSteps: ExecutionStep[] = [];
+              for (const step of trackerSteps) {
+                switch (step.type) {
+                  case 'thinking':
+                    if (step.thinking) {
+                      executionSteps.push({
+                        type: 'thinking',
+                        iteration: step.iteration ?? 0,
+                        timestamp: Date.now(),
+                        thinking: step.thinking,
+                      });
+                    }
+                    break;
+                  case 'tool_start':
+                    if (step.toolName) {
+                      executionSteps.push({
+                        type: 'tool_start',
+                        iteration: step.iteration ?? 0,
+                        timestamp: Date.now(),
+                        toolName: step.toolName,
+                        ...(step.args && { args: step.args }),
+                      });
+                    }
+                    break;
+                  case 'tool_complete':
+                    if (step.toolName && step.result !== undefined) {
+                      executionSteps.push({
+                        type: 'tool_complete',
+                        iteration: step.iteration ?? 0,
+                        timestamp: Date.now(),
+                        toolName: step.toolName,
+                        result: step.result,
+                        ...(step.args && { args: step.args }),
+                      });
+                    }
+                    break;
+                  case 'tool_error':
+                    if (step.toolName && step.error) {
+                      executionSteps.push({
+                        type: 'tool_error',
+                        iteration: step.iteration ?? 0,
+                        timestamp: Date.now(),
+                        toolName: step.toolName,
+                        error: step.error,
+                        ...(step.args && { args: step.args }),
+                      });
+                    }
+                    break;
+                }
+              }
+
+              // Build complete DebugContext for transport
+              const debugContext: DebugContext = {
+                routingFlow: [],
+                totalDurationMs: durationMs,
+                ...(executionSteps.length > 0 && { steps: executionSteps }),
+                ...(tokenUsage && {
+                  metadata: {
+                    tokenUsage: {
+                      inputTokens: tokenUsage.input,
+                      outputTokens: tokenUsage.output,
+                      totalTokens: tokenUsage.total,
+                      ...(tokenUsage.cached && { cachedTokens: tokenUsage.cached }),
+                    },
+                    ...(model && { model }),
+                  },
+                }),
+              };
+
+              ctxWithDebug.debugContext = debugContext;
             }
           } finally {
             // Stop step tracker (stops any rotation timers)
