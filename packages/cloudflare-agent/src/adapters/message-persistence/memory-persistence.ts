@@ -86,6 +86,19 @@ export class MemoryMessagePersistence implements IMessagePersistence {
   }
 
   /**
+   * Clear all messages for a session
+   *
+   * @param sessionId - Session identifier
+   * @returns Number of messages deleted
+   */
+  async clearMessages(sessionId: SessionId): Promise<number> {
+    const sessionIdStr = this.buildSessionId(sessionId);
+    const count = this.messagesBySession.get(sessionIdStr)?.length ?? 0;
+    this.messagesBySession.delete(sessionIdStr);
+    return count;
+  }
+
+  /**
    * Build session ID string from components
    *
    * @param sessionId - Session identifier components

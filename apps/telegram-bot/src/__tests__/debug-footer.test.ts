@@ -21,6 +21,7 @@ interface TelegramContext {
   startTime: number;
   isAdmin: boolean;
   messageId: number;
+  isGroupChat: boolean;
   debugContext?: DebugContext;
   parseMode?: 'HTML' | 'MarkdownV2';
 }
@@ -37,6 +38,7 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
     startTime: Date.now(),
     isAdmin: false,
     messageId: 123,
+    isGroupChat: false,
     ...overrides,
   };
 }

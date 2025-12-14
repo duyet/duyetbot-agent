@@ -64,4 +64,15 @@ export interface IMessagePersistence {
    * @returns Array of messages, empty if none found
    */
   loadMessages(sessionId: SessionId, maxHistory: number): Promise<Message[]>;
+
+  /**
+   * Clear all messages for a session
+   *
+   * Deletes all messages from storage for the given session.
+   * This is an async operation that should be awaited.
+   *
+   * @param sessionId - Session identifier
+   * @returns Number of messages deleted
+   */
+  clearMessages(sessionId: SessionId): Promise<number>;
 }

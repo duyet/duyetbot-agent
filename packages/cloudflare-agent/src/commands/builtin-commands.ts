@@ -92,14 +92,24 @@ export const builtinCommands: Record<string, CommandHandler> = {
 
   '/clear': async (_text, ctx) => {
     // Log state BEFORE clear for debugging
+    const doMessageCount = ctx.state.messages?.length ?? 0;
     logger.info('[CloudflareAgent][CLEAR] State BEFORE clear', {
-      messageCount: ctx.state.messages?.length ?? 0,
+      messageCount: doMessageCount,
       workflowCount: Object.keys(ctx.state.activeWorkflows ?? {}).length,
     });
 
     // Reset MCP state if callback provided
     if (ctx.resetMcp) {
       ctx.resetMcp();
+    }
+
+    // Clear persistent D1 messages if callback provided
+    let d1MessagesCleared = 0;
+    if (ctx.clearMessages) {
+      d1MessagesCleared = await ctx.clearMessages();
+      logger.info('[CloudflareAgent][CLEAR] D1 messages cleared', {
+        count: d1MessagesCleared,
+      });
     }
 
     // Build fresh state
@@ -120,6 +130,7 @@ export const builtinCommands: Record<string, CommandHandler> = {
       userId: freshState.userId,
       chatId: freshState.chatId,
       mcpReset: true,
+      d1MessagesCleared,
     });
 
     return '🧹 All conversation data and agent connections cleared. Fresh start!';

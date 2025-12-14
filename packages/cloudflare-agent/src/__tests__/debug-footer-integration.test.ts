@@ -486,8 +486,6 @@ describe('Debug Footer Integration - Complete Fire-and-Forget Flow', () => {
 
   describe('flow 7: State transitions and final cleanup', () => {
     it('marks batch as delegated after successful scheduling', () => {
-      const batchStatus = 'pending' as const;
-
       // After scheduleRouting returns true
       const updatedStatus = 'delegated' as const;
 

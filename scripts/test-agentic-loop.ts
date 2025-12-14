@@ -140,7 +140,9 @@ async function getUpdates(
 ): Promise<{ ok: boolean; updates?: any[]; error?: string }> {
   const url = `https://api.telegram.org/bot${botToken}/getUpdates`;
   const params = new URLSearchParams();
-  if (offset) params.set('offset', String(offset));
+  if (offset) {
+    params.set('offset', String(offset));
+  }
   params.set('timeout', '30');
 
   try {
@@ -164,7 +166,7 @@ async function getUpdates(
   }
 }
 
-async function waitForResponse(
+async function _waitForResponse(
   botToken: string,
   chatId: string,
   afterMessageId: number,

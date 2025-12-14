@@ -1,7 +1,10 @@
 import { logger } from '@duyetbot/hono-middleware';
 import type { Agent, AgentNamespace } from 'agents';
-import type { RouterAgentEnv } from '../agents/router-agent.js';
-import type { CompleteBatchParams, HeartbeatParams, RegisterBatchParams } from '../state-types.js';
+import type {
+  CompleteBatchParams,
+  HeartbeatParams,
+  RegisterBatchParams,
+} from './state-reporting/index.js';
 
 /**
  * Adapter for reporting state to the centralized State Durable Object.
@@ -19,7 +22,8 @@ export class StateDOReporter<TEnv> {
     completeBatch: (p: CompleteBatchParams) => Promise<void>;
   } | null {
     const env = this.getEnv();
-    const envWithState = env as unknown as RouterAgentEnv & {
+    // NOTE: Legacy code using deleted RouterAgentEnv
+    const envWithState = env as unknown as {
       StateDO?: AgentNamespace<Agent<unknown, unknown>>;
     };
 

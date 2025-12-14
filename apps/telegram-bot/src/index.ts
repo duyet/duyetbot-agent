@@ -9,11 +9,7 @@ import type {
   CallbackContext as CloudflareCallbackContext,
   ParsedInput,
 } from '@duyetbot/cloudflare-agent';
-import {
-  createGlobalContext,
-  getChatAgent,
-  telegramToWebhookInput,
-} from '@duyetbot/cloudflare-agent';
+import { getChatAgent } from '@duyetbot/cloudflare-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -37,7 +33,6 @@ import {
 type EnvWithAgent = Env & ObservabilityEnv;
 
 // Re-export local agent for Durable Object binding
-// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-shared-agents via script_name
 export { TelegramAgent };
 
 export type { TelegramBot } from './test-utils.js';
@@ -227,34 +222,7 @@ app.post(
       return c.text('OK');
     }
 
-    // Create GlobalContext at webhook entry point (ONLY place it's created)
-    const webhookInput = telegramToWebhookInput(
-      { update_id: 0 } as any, // Not used by adapter
-      {
-        TELEGRAM_BOT_TOKEN: env.TELEGRAM_BOT_TOKEN,
-        TELEGRAM_ADMIN: env.TELEGRAM_ADMIN,
-        TELEGRAM_PARSE_MODE: env.TELEGRAM_PARSE_MODE,
-      },
-      {
-        userId: webhookCtx.userId,
-        chatId: webhookCtx.chatId,
-        text: webhookCtx.task ?? webhookCtx.text,
-        username: webhookCtx.username,
-        messageId: webhookCtx.messageId,
-        replyToMessageId: webhookCtx.replyToMessageId,
-        quotedText: webhookCtx.quotedText,
-        quotedUsername: webhookCtx.quotedUsername,
-      }
-    );
-
-    // Set observability event ID for correlation
-    webhookInput.eventId = eventId;
-    webhookInput.requestId = requestId;
-
-    // Create GlobalContext - single context for entire request lifecycle
-    const globalContext = createGlobalContext(webhookInput);
-
-    // Create transport context with GlobalContext for backward compatibility
+    // Create transport context
     // Default to MarkdownV2 (LLMs generate Markdown naturally)
     const ctx = createTelegramContext(
       env.TELEGRAM_BOT_TOKEN,
@@ -279,10 +247,13 @@ app.post(
     const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
     const agent = getChatAgent(env.TelegramAgent, agentId);
 
+    // Generate traceId for logging correlation
+    const traceId = `telegram:${ctx.chatId}:${Date.now()}`;
+
     logger.info(`[${requestId}] [WEBHOOK] Agent ready`, {
       requestId,
       agentId,
-      traceId: globalContext.traceId,
+      traceId,
     });
 
     // Check for slash commands - handle at webhook level before batch queue
@@ -322,7 +293,7 @@ app.post(
           platform: 'telegram',
           requestId,
           eventId, // Full UUID for D1 observability correlation
-          traceId: globalContext.traceId,
+          traceId,
           startTime: ctx.startTime,
           adminUsername: ctx.adminUsername,
           parseMode: ctx.parseMode,

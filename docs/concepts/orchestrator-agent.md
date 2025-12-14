@@ -1,11 +1,16 @@
 ---
-title: Orchestrator Agent
-description: Decomposes complex tasks into parallel worker steps. Plans, executes, aggregates Code/Research/GitHub workers.
+title: Orchestrator Agent (LEGACY)
+description: DEPRECATED - This document describes the legacy OrchestratorAgent which was removed in December 2024.
+deprecated: true
 ---
 
 <!-- i18n: en -->
 
-**TL;DR**: Plans high-complexity tasks. Dispatches parallel Code/Research/GitHub Workers. Aggregates results. Router -> Orchestrator -> Workers.
+> **DEPRECATION NOTICE**: This document describes the legacy OrchestratorAgent which was removed in December 2024 as part of the loop-based agent refactoring. The system now uses a single `CloudflareChatAgent` with tool iterations and the `plan` tool for task decomposition. See [architecture.md](../architecture.md) for current implementation.
+
+## Legacy Documentation
+
+**TL;DR** (Historical): Planned high-complexity tasks. Dispatched parallel Code/Research/GitHub Workers. Aggregated results. Router -> Orchestrator -> Workers.
 
 ## Table of Contents
 - [Flow](#flow)

@@ -21,16 +21,7 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent } from 'agents';
-import type {
-  AgentProvider,
-  ExecutionContext,
-  ChatOptions as ProviderChatOptions,
-} from '../execution/index.js';
-import {
-  createProviderContext as createProviderContextFn,
-  createSpanId as createSpanIdFn,
-  recordAgentSpan as recordAgentSpanFn,
-} from '../execution/index.js';
+import type { ExecutionContext } from '../memory/context-helper.js';
 import {
   formatMemoryContextForPrompt,
   loadMemoryContext,
@@ -60,8 +51,11 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
   /**
    * LLM provider for chat and transport operations
    * Set via setProvider() before agent execution
+   *
+   * NOTE: Legacy property from deleted execution module.
+   * This class is deprecated and no longer actively maintained.
    */
-  protected provider!: AgentProvider;
+  protected provider!: any;
 
   /**
    * Set the provider for this agent
@@ -69,7 +63,10 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    * The provider combines LLM capabilities with platform-specific message operations.
    * This should be called during agent initialization.
    *
-   * @param provider - AgentProvider instance for LLM and transport operations
+   * NOTE: Legacy method from deleted execution module.
+   * This class is deprecated and no longer actively maintained.
+   *
+   * @param provider - Provider instance for LLM and transport operations
    *
    * @example
    * ```typescript
@@ -77,7 +74,7 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    * agent.setProvider(createProvider(this.env));
    * ```
    */
-  setProvider(provider: AgentProvider): void {
+  setProvider(provider: any): void {
     this.provider = provider;
     logger.debug('[BaseAgent] Provider set', {
       agent: this.constructor.name,
@@ -106,38 +103,38 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
       throw new Error('Provider not set. Call setProvider() before responding.');
     }
 
-    const providerCtx = createProviderContextFn({
-      text: ctx.query,
+    // NOTE: Legacy code using deleted execution module
+    // createProviderContextFn is no longer available, replaced with simple context object
+    const providerCtx = {
+      text: 'query' in ctx ? (ctx as any).query : '',
       userId: ctx.userId,
       chatId: ctx.chatId,
-      ...(ctx.username && { username: ctx.username }),
-      messageRef: ctx.userMessageId,
-    });
+      ...('username' in ctx && { username: (ctx as any).username }),
+      messageRef: 'userMessageId' in ctx ? (ctx as any).userMessageId : undefined,
+    };
 
     try {
-      if (ctx.responseMessageId) {
+      if ('responseMessageId' in ctx && (ctx as any).responseMessageId) {
         // Edit existing message
-        await this.provider.edit(providerCtx, ctx.responseMessageId, content);
+        await this.provider.edit(providerCtx, (ctx as any).responseMessageId, content);
         logger.debug('[BaseAgent] Message edited', {
-          spanId: ctx.spanId,
-          messageRef: ctx.responseMessageId,
+          platform: ctx.platform,
           contentLength: content.length,
         });
       } else {
         // Send new message and store reference
         const messageRef = await this.provider.send(providerCtx, content);
-        ctx.responseMessageId = messageRef;
+        (ctx as any).responseMessageId = messageRef;
         logger.debug('[BaseAgent] Message sent', {
-          spanId: ctx.spanId,
+          platform: ctx.platform,
           messageRef,
           contentLength: content.length,
         });
       }
     } catch (error) {
       logger.error('[BaseAgent] Failed to respond', {
-        spanId: ctx.spanId,
         error: error instanceof Error ? error.message : String(error),
-        hasExistingMessage: !!ctx.responseMessageId,
+        hasExistingMessage: 'responseMessageId' in ctx,
       });
       throw error;
     }
@@ -161,32 +158,29 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    * ```
    */
   protected async updateThinking(ctx: ExecutionContext, status: string): Promise<void> {
-    if (!ctx.responseMessageId) {
-      logger.warn('[BaseAgent] updateThinking called without responseMessageId', {
-        spanId: ctx.spanId,
-      });
+    if (!('responseMessageId' in ctx) || !(ctx as any).responseMessageId) {
+      logger.warn('[BaseAgent] updateThinking called without responseMessageId');
       return;
     }
 
     const content = `🤔 ${status}...`;
 
     try {
-      const providerCtx = createProviderContextFn({
-        text: ctx.query,
+      // NOTE: Legacy code using deleted execution module
+      const providerCtx = {
+        text: 'query' in ctx ? (ctx as any).query : '',
         userId: ctx.userId,
         chatId: ctx.chatId,
-        ...(ctx.username && { username: ctx.username }),
-        messageRef: ctx.userMessageId,
-      });
+        ...('username' in ctx && { username: (ctx as any).username }),
+        messageRef: 'userMessageId' in ctx ? (ctx as any).userMessageId : undefined,
+      };
 
-      await this.provider.edit(providerCtx, ctx.responseMessageId, content);
+      await this.provider.edit(providerCtx, (ctx as any).responseMessageId, content);
       logger.debug('[BaseAgent] Thinking status updated', {
-        spanId: ctx.spanId,
         status,
       });
     } catch (error) {
       logger.warn('[BaseAgent] Failed to update thinking status', {
-        spanId: ctx.spanId,
         error: error instanceof Error ? error.message : String(error),
       });
       // Don't throw - thinking indicator is not critical
@@ -198,6 +192,8 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    *
    * Displays a typing indicator on the platform to provide user feedback
    * during long operations.
+   *
+   * NOTE: Legacy method from deleted execution module.
    *
    * @param ctx - ExecutionContext containing platform information
    * @throws Error if provider.typing() fails (may be unsupported on some platforms)
@@ -211,28 +207,24 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    */
   protected async sendTyping(ctx: ExecutionContext): Promise<void> {
     if (!this.provider) {
-      logger.warn('[BaseAgent] Provider not set for sendTyping', {
-        spanId: ctx.spanId,
-      });
+      logger.warn('[BaseAgent] Provider not set for sendTyping');
       return;
     }
 
     try {
-      const providerCtx = createProviderContextFn({
-        text: ctx.query,
+      // NOTE: Legacy code using deleted execution module
+      const providerCtx = {
+        text: 'query' in ctx ? (ctx as any).query : '',
         userId: ctx.userId,
         chatId: ctx.chatId,
-        ...(ctx.username && { username: ctx.username }),
-        messageRef: ctx.userMessageId,
-      });
+        ...('username' in ctx && { username: (ctx as any).username }),
+        messageRef: 'userMessageId' in ctx ? (ctx as any).userMessageId : undefined,
+      };
 
       await this.provider.typing(providerCtx);
-      logger.debug('[BaseAgent] Typing indicator sent', {
-        spanId: ctx.spanId,
-      });
+      logger.debug('[BaseAgent] Typing indicator sent');
     } catch (error) {
       logger.warn('[BaseAgent] Failed to send typing indicator', {
-        spanId: ctx.spanId,
         error: error instanceof Error ? error.message : String(error),
       });
       // Don't throw - typing indicator is optional
@@ -267,7 +259,7 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
   protected async chat(
     ctx: ExecutionContext,
     messages: Message[],
-    options?: ProviderChatOptions
+    options?: any
   ): Promise<LLMResponse> {
     if (!this.provider) {
       throw new Error('Provider not set. Call setProvider() before calling chat().');
@@ -326,12 +318,12 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    */
   protected hasTimeRemaining(ctx: ExecutionContext, bufferMs: number = 5000): boolean {
     const now = Date.now();
-    const timeRemaining = ctx.deadline - now;
+    const deadline = ctx.deadline || now + 30000; // Default to 30 seconds if not set
+    const timeRemaining = deadline - now;
     const hasTime = timeRemaining > bufferMs;
 
     if (!hasTime) {
       logger.warn('[BaseAgent] Approaching deadline', {
-        spanId: ctx.spanId,
         timeRemaining,
         bufferMs,
       });
@@ -361,12 +353,14 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    * ```
    */
   protected createChildContext(ctx: ExecutionContext): ExecutionContext {
-    const newSpanId = createSpanIdFn();
+    // NOTE: Legacy code using deleted execution module
+    // createSpanIdFn is no longer available, using simple UUID alternative
+    const newSpanId = `span-${Math.random().toString(36).substr(2, 9)}`;
 
     return {
       ...ctx,
-      spanId: newSpanId,
-      parentSpanId: ctx.spanId,
+      ...('spanId' in ctx ? { spanId: newSpanId } : {}),
+      ...('parentSpanId' in ctx ? { parentSpanId: (ctx as any).spanId } : {}),
     };
   }
 
@@ -375,6 +369,9 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    *
    * Adds an entry to the debug.agentChain tracking which agents executed
    * and how long they took.
+   *
+   * NOTE: Legacy method from deleted execution module.
+   * Recording functionality is no longer available.
    *
    * @param ctx - ExecutionContext with debug accumulator
    * @param agentName - Name of the agent that executed (e.g., 'simple-agent')
@@ -391,13 +388,12 @@ export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> 
    * ```
    */
   protected recordExecution(ctx: ExecutionContext, agentName: string, durationMs: number): void {
-    recordAgentSpanFn(ctx.debug, agentName, ctx.spanId, durationMs, ctx.parentSpanId);
-
+    // NOTE: Legacy code - recordAgentSpanFn is no longer available
+    // Just log the execution instead
     logger.debug('[BaseAgent] Execution recorded', {
-      spanId: ctx.spanId,
+      platform: ctx.platform,
       agentName,
       durationMs,
-      parentSpanId: ctx.parentSpanId,
     });
   }
 

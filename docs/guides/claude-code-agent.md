@@ -134,12 +134,14 @@ curl http://localhost:3003/health
 └─────────────────────────────────────────────────────────┘
 ```
 
-## Routing from Tier 1
+## Future: Integration with Cloudflare Agent
 
-The RouterAgent in Tier 1 can escalate to Tier 2 when:
-- Task complexity is high
+> **Note**: This is a planned feature for future implementation (Tier 2 integration).
+
+The CloudflareChatAgent could escalate to Tier 2 (Claude Code Agent) when:
 - Task requires filesystem access
 - Task needs extended execution time
+- Complex code operations are needed
 - User explicitly requests long-running mode
 
 ## Next Steps

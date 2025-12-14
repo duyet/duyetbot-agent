@@ -13,6 +13,8 @@ export interface CommandContext {
   setState: (newState: CloudflareAgentState) => void;
   /** Reset MCP connection state */
   resetMcp?: () => void;
+  /** Clear persistent messages from D1 storage */
+  clearMessages?: () => Promise<number>;
   /** Agent configuration */
   config: {
     welcomeMessage?: string;

@@ -30,6 +30,7 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
     text: 'test message',
     startTime: Date.now(),
     isAdmin: false,
+    isGroupChat: false,
     ...overrides,
   };
 }
@@ -137,8 +138,30 @@ describe('transport', () => {
   });
 
   describe('telegramTransport.send', () => {
-    it('sends message with HTML parse mode and escaped text', async () => {
-      const ctx = createMockContext();
+    it('sends message without reply threading in private chat', async () => {
+      const ctx = createMockContext({ isGroupChat: false });
+      mockFetch.mockResolvedValueOnce(createMockResponse(42));
+
+      const messageId = await telegramTransport.send(ctx, 'Hello *world*');
+
+      expect(messageId).toBe(42);
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+      expect(mockFetch).toHaveBeenCalledWith(
+        'https://api.telegram.org/bottest-bot-token/sendMessage',
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: 123456,
+            text: 'Hello *world*',
+            parse_mode: 'HTML',
+          }),
+        })
+      );
+    });
+
+    it('sends message with reply threading in group chat', async () => {
+      const ctx = createMockContext({ isGroupChat: true });
       mockFetch.mockResolvedValueOnce(createMockResponse(42));
 
       const messageId = await telegramTransport.send(ctx, 'Hello *world*');
@@ -357,6 +380,7 @@ describe('transport', () => {
         username: 'testuser',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin', 'req-123');
@@ -372,6 +396,7 @@ describe('transport', () => {
         startTime: 1700000000000,
         adminUsername: 'admin',
         isAdmin: false,
+        isGroupChat: false,
       });
     });
 
@@ -382,6 +407,7 @@ describe('transport', () => {
         text: 'Hello',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx);
@@ -402,6 +428,7 @@ describe('transport', () => {
         username: 'testuser',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx);
@@ -417,6 +444,7 @@ describe('transport', () => {
         username: 'testuser',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
@@ -432,6 +460,7 @@ describe('transport', () => {
         username: 'admin',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
@@ -447,6 +476,7 @@ describe('transport', () => {
         username: '@admin',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');
@@ -462,6 +492,7 @@ describe('transport', () => {
         username: 'admin',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, '@admin');
@@ -477,6 +508,7 @@ describe('transport', () => {
         username: '@admin',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, '@admin');
@@ -491,6 +523,7 @@ describe('transport', () => {
         text: 'Hello',
         startTime: 1700000000000,
         messageId: 42,
+        isGroupChat: false,
       };
 
       const ctx = createTelegramContext('bot-token', webhookCtx, 'admin');

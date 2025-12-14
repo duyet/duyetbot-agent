@@ -4,7 +4,7 @@ Guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-**duyetbot-agent** is a personal AI agent system built as a monorepo. It implements a **Hybrid Supervisor-Worker Architecture** with Cloudflare Workers for edge deployment and Durable Objects for stateful agent persistence.
+**duyetbot-agent** is a personal AI agent system built as a monorepo. It implements a **loop-based agent architecture** with Cloudflare Workers for edge deployment and Durable Objects for stateful agent persistence.
 
 **Stack**: Bun + TypeScript + Hono + Cloudflare Workers + Vitest
 
@@ -20,11 +20,10 @@ bun run test             # All tests
 
 # Local Deployment (includes dependencies)
 bun run deploy           # Deploy all bots
-bun run deploy:telegram  # Telegram + shared-agents
-bun run deploy:github    # GitHub + shared-agents
+bun run deploy:telegram  # Telegram + dependencies
+bun run deploy:github    # GitHub + dependencies
 
 # CI Deployment (single app, for Cloudflare Dashboard)
-bun run ci:deploy:shared-agents  # Deploy shared-agents only
 bun run ci:deploy:telegram       # Deploy telegram only
 bun run ci:deploy:github         # Deploy github only
 bun run ci:deploy-version:*      # Branch deploy
@@ -40,34 +39,35 @@ bun run prompt:view              # Interactive results UI
 
 > **Full details**: See [docs/architecture.md](docs/architecture.md)
 
-### Two-Tier Agent System
+### Loop-Based Agent Architecture
+
+Each bot deploys a single Durable Object using `createCloudflareChatAgent()` with an LLM chat loop and tool iterations:
 
 ```
-Tier 1 (Cloudflare Workers)          Tier 2 (Container/Fly.io)
-├── telegram-bot (DO)                └── agent-server
-├── github-bot (DO)                      ├── Claude Agent SDK
-└── memory-mcp (D1+KV)                   ├── Filesystem access
-    Fast, serverless, stateful           └── Shell tools (git, bash)
+User Message → CloudflareChatAgent
+                      │
+                      ▼
+              ┌──────────────┐
+              │   Chat Loop  │ ◄─── LLM Provider (OpenRouter)
+              │              │
+              │  ┌────────┐  │
+              │  │ Tools  │  │ ◄─── Built-in + MCP tools
+              │  └────────┘  │
+              │              │
+              │  ┌────────┐  │
+              │  │ Track  │  │ ◄─── Token/step tracking → D1
+              │  └────────┘  │
+              └──────────────┘
+                      │
+                      ▼
+              Transport Layer → Platform (Telegram/GitHub)
 ```
 
-### Multi-Agent Routing (Tier 1)
-
-Each bot deploys Durable Objects implementing [Cloudflare Agent Patterns](https://developers.cloudflare.com/agents/patterns/):
-
-```
-User Message → CloudflareChatAgent → RouterAgent (classifier)
-                                          │
-              ┌───────────────────────────┼──────────────────────┐
-              ↓                           ↓                      ↓
-        SimpleAgent              OrchestratorAgent         DuyetInfoAgent
-        (quick Q&A)              (task decomposition)      (personal info)
-                                          │
-                    ┌─────────────────────┼─────────────────────┐
-                    ↓                     ↓                     ↓
-              CodeWorker          ResearchWorker          GitHubWorker
-```
-
-**Note**: Router dispatches to **Agents** only. Workers are dispatched by OrchestratorAgent.
+**Key Modules** (in `@duyetbot/cloudflare-agent`):
+- `chat/` - Chat loop, tool executor, context builder, response handler
+- `tracking/` - Token tracker, execution logger
+- `persistence/` - Message store, session manager
+- `workflow/` - Step tracker, debug footer
 
 ### Transport Layer Pattern
 
@@ -86,7 +86,7 @@ interface Transport<TContext> {
 | Package | Purpose | Key Exports |
 |---------|---------|-------------|
 | `@duyetbot/core` | SDK adapter, session, MCP client | `query()`, `sdkTool()` |
-| `@duyetbot/cloudflare-agent` | Cloudflare agent patterns | `CloudflareChatAgent`, routing, HITL |
+| `@duyetbot/cloudflare-agent` | Cloudflare agent with chat loop | `createCloudflareChatAgent`, `ChatLoop`, `TokenTracker` |
 | `@duyetbot/tools` | Built-in tools | `bash`, `git`, `github`, `research`, `plan` |
 | `@duyetbot/providers` | LLM providers | Claude, OpenRouter, AI Gateway |
 | `@duyetbot/prompts` | System prompts | `getTelegramPrompt()`, `getGitHubBotPrompt()` |
@@ -163,21 +163,23 @@ bun run config:github
 
 ## Testing
 
-**746+ tests** across all packages:
+**969+ tests** across all packages:
 
 ```bash
 bun run test                                 # All tests
 bun run test --filter @duyetbot/core         # Specific package
-bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
+bun run test --filter @duyetbot/cloudflare-agent # Agent tests (969)
 ```
 
 ## Key Files
 
 | File | Purpose |
 |------|---------|
-| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main Cloudflare agent (2400+ LOC) |
-| `packages/cloudflare-agent/src/agents/router-agent.ts` | Query classification & routing |
-| `packages/cloudflare-agent/src/routing/classifier.ts` | Hybrid classifier (pattern + LLM) |
+| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main Cloudflare agent factory |
+| `packages/cloudflare-agent/src/chat/chat-loop.ts` | LLM chat loop with tool iterations |
+| `packages/cloudflare-agent/src/chat/tool-executor.ts` | Unified tool execution (builtin + MCP) |
+| `packages/cloudflare-agent/src/tracking/token-tracker.ts` | Token usage and cost tracking |
+| `packages/cloudflare-agent/src/persistence/message-store.ts` | Message persistence facade |
 | `packages/core/src/sdk/query.ts` | SDK query execution |
 | `apps/*/src/transport.ts` | Platform-specific transports |
 
@@ -203,8 +205,7 @@ bun run test --filter @duyetbot/cloudflare-agent # Routing tests (226)
 ## Important notes
 
 - Whenever there is a lint error or a type check error, launch a senior engineer to fix it in the background.
-- When to run `bun run test`, `bun run deploy`, or `git push`: do it in the senior engineer sub-agent (to save token usage).
-- test, deploy, and `git push` can run in parallel. Launch multiple senior engineers to do this at the same time.
-- When running tests and deploying in parallel using senior engineers, these agents should only report a summary of their tasks, not the full details. For example, deploy and test steps produce a lot of logs, which can overload the main thread context.
-- When running tests and deploying in parallel using senior engineers, these agents should only report a summary of their tasks, not the full details. For example, deploy and test steps produce a lot of logs, which can overload the main thread context.
-- Senior engineers, when running deploys, should use the bun script running at the root. For example: `bun run deploy:telegram`, `bun run deploy:github`, ... `bun run deploy` to deploy all.
+- When to run `bun run test`, `bun run deploy`, or `git push`: do it in the junior engineer sub-agent (to save token usage).
+- test, deploy, and `git push` can run in parallel. Launch multiple junior engineers to do this at the same time.
+- When running tests and deploying in parallel using junior engineers, these agents should only report a summary of their tasks, not the full details. For example, deploy and test steps produce a lot of logs, which can overload the main thread context.
+- Junior engineers, when running deploys, should use the bun script running at the root. For example: `bun run deploy:telegram`, `bun run deploy:github`, ... `bun run deploy` to deploy all.

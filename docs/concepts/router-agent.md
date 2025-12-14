@@ -1,11 +1,16 @@
 ---
-title: Router Agent
-description: Hybrid pattern+LLM classifier routes queries across 8 agents. Instant patterns cover 80%. Semantic fallback.
+title: Router Agent (LEGACY)
+description: DEPRECATED - This document describes the legacy multi-agent routing system that was removed in December 2024.
+deprecated: true
 ---
 
 <!-- i18n: en -->
 
-**TL;DR**: Analyzes queries with patterns (instant) then LLM. Routes to Simple/Orchestrator/HITL/etc. Saves 75% tokens via smart dispatch.
+> **DEPRECATION NOTICE**: This document describes the legacy RouterAgent which was removed in December 2024 as part of the loop-based agent refactoring. The system now uses a single `CloudflareChatAgent` with tool iterations instead of multi-agent routing. See [architecture.md](../architecture.md) for current implementation.
+
+## Legacy Documentation
+
+**TL;DR** (Historical): Analyzed queries with patterns (instant) then LLM. Routed to Simple/Orchestrator/HITL/etc. Saved 75% tokens via smart dispatch.
 
 ## Table of Contents
 - [Hybrid Flow](#hybrid-flow)

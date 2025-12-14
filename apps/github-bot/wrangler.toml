@@ -36,53 +36,7 @@ mode = "smart"
 name = "GitHubAgent"
 class_name = "GitHubAgent"
 
-# Shared Durable Objects - from duyetbot-shared-agents worker
-[[durable_objects.bindings]]
-name = "RouterAgent"
-class_name = "RouterAgent"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "SimpleAgent"
-class_name = "SimpleAgent"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "HITLAgent"
-class_name = "HITLAgent"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "OrchestratorAgent"
-class_name = "OrchestratorAgent"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "CodeWorker"
-class_name = "CodeWorker"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "ResearchWorker"
-class_name = "ResearchWorker"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "GitHubWorker"
-class_name = "GitHubWorker"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "DuyetInfoAgent"
-class_name = "DuyetInfoAgent"
-script_name = "duyetbot-shared-agents"
-
-[[durable_objects.bindings]]
-name = "GitHubMCPAgent"
-class_name = "GitHubMCPAgent"
-script_name = "duyetbot-shared-agents"
-
-# Migrations for local DO only (shared DOs managed by duyetbot-shared-agents)
+# Migrations for local DO only
 [[migrations]]
 tag = "v1"
 new_sqlite_classes = ["GitHubAgent"]
@@ -92,15 +46,3 @@ new_sqlite_classes = ["GitHubAgent"]
 binding = "OBSERVABILITY_DB"
 database_name = "duyetbot"
 database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
-
-# =============================================================================
-# Workflows (Cross-Script Binding)
-# =============================================================================
-
-# AgenticLoopWorkflow - Timeout-resistant agent execution
-# Defined in duyetbot-shared-agents, bound here for CloudflareAgent to spawn
-[[workflows]]
-name = "agentic-loop-workflow"
-binding = "AGENTIC_LOOP_WORKFLOW"
-class_name = "AgenticLoopWorkflow"
-script_name = "duyetbot-shared-agents"

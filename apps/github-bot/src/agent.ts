@@ -15,7 +15,6 @@ import {
   createCloudflareChatAgent,
   type GitHubPlatformConfig,
   type MCPServerConnection,
-  type RouterAgentEnv,
 } from '@duyetbot/cloudflare-agent';
 import { getGitHubBotPrompt } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
@@ -39,7 +38,7 @@ const githubMcpServer: MCPServerConnection = {
 /**
  * Base environment without self-reference
  */
-interface BaseEnv extends ProviderEnv, RouterAgentEnv {
+interface BaseEnv extends ProviderEnv {
   // Common config (from wrangler.toml [vars])
   ENVIRONMENT?: string;
   // GitHub-specific

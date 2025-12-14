@@ -9,7 +9,6 @@
  * duyetbot-shared-agents worker via script_name in wrangler.toml.
  */
 
-import type { RouterAgentEnv } from '@duyetbot/cloudflare-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
@@ -28,7 +27,7 @@ import { type TelegramContext, telegramTransport } from './transport.js';
 /**
  * Base environment without self-reference
  */
-interface BaseEnv extends ProviderEnv, RouterAgentEnv {
+interface BaseEnv extends ProviderEnv {
   // Common config (from wrangler.toml [vars])
   ENVIRONMENT?: string;
   // Telegram-specific

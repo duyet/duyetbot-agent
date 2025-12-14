@@ -87,6 +87,8 @@ export interface TelegramContext {
   messageId: number;
   /** Message ID of the quoted message (when user replied to a message) */
   replyToMessageId?: number;
+  /** Whether this is a group or supergroup chat (for conditional reply threading) */
+  isGroupChat: boolean;
 }
 
 /**
@@ -551,8 +553,10 @@ export const telegramTransport: Transport<TelegramContext> = {
   send: async (ctx, text) => {
     // Apply debug footer for admin users (context chain pattern)
     const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
-    // Always reply to user's message for threading
-    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode, ctx.messageId);
+    // Reply to user's message only in group chats for threading clarity
+    // In direct chats, quoting is redundant since context is obvious
+    const replyTo = ctx.isGroupChat ? ctx.messageId : undefined;
+    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode, replyTo);
   },
 
   edit: async (ctx, ref, text) => {
@@ -593,7 +597,9 @@ export const telegramTransport: Transport<TelegramContext> = {
 export async function sendRaw(ctx: TelegramContext, text: string): Promise<number> {
   // Send directly without prepareMessageWithDebug() escaping
   // The text is already formatted for ctx.parseMode
-  return sendTelegramMessage(ctx.token, ctx.chatId, text, ctx.parseMode, ctx.messageId);
+  // Reply to user's message only in group chats for threading clarity
+  const replyTo = ctx.isGroupChat ? ctx.messageId : undefined;
+  return sendTelegramMessage(ctx.token, ctx.chatId, text, ctx.parseMode, replyTo);
 }
 
 /**
@@ -614,6 +620,8 @@ export async function sendWithOptions(
 ): Promise<number> {
   const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
   const effectiveParseMode = options?.parseMode ?? parseMode;
+  // Use explicit replyToMessageId if provided, otherwise apply group chat logic
+  const replyTo = options?.replyToMessageId ?? (ctx.isGroupChat ? ctx.messageId : undefined);
 
   if (options?.keyboard) {
     return sendTelegramMessageWithKeyboard(
@@ -622,16 +630,10 @@ export async function sendWithOptions(
       finalText,
       options.keyboard,
       effectiveParseMode,
-      options?.replyToMessageId ?? ctx.messageId
+      replyTo
     );
   }
-  return sendTelegramMessage(
-    ctx.token,
-    ctx.chatId,
-    finalText,
-    effectiveParseMode,
-    options?.replyToMessageId ?? ctx.messageId
-  );
+  return sendTelegramMessage(ctx.token, ctx.chatId, finalText, effectiveParseMode, replyTo);
 }
 
 /**
@@ -703,6 +705,7 @@ export function createTelegramContext(
     startTime: number;
     messageId: number;
     replyToMessageId?: number;
+    isGroupChat: boolean;
   },
   adminUsername?: string,
   requestId?: string,
@@ -723,5 +726,6 @@ export function createTelegramContext(
     parseMode,
     messageId: webhookCtx.messageId,
     replyToMessageId: webhookCtx.replyToMessageId,
+    isGroupChat: webhookCtx.isGroupChat,
   };
 }
