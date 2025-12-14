@@ -36,3 +36,11 @@ export type {
 } from './types.js';
 // Utilities
 export { debugContextToAgentSteps } from './types.js';
+// Log Compaction
+export {
+  compactDebugContext,
+  compactLog,
+  compactStateUpdate,
+  createCompactMiddleware,
+  type CompactLogOptions,
+} from './log-compactor.js';
