@@ -1148,6 +1148,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               stepTracker = new StepProgressTracker(
                 async (message) => {
                   try {
+                    // Update context with progressive debug info for footer display
+                    const ctxWithDebug = ctx as unknown as { debugContext?: unknown };
+                    if (stepTracker) {
+                      ctxWithDebug.debugContext = stepTracker.getDebugContext();
+                    }
                     await transport.edit!(ctx, messageRef!, message);
                   } catch (err) {
                     logger.error(`[CloudflareAgent][RPC] Edit failed: ${err}`);
@@ -1163,14 +1168,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               // Call chat to get LLM response
               const response = await this.chat(input.text, stepTracker, quotedContext, eventId);
 
+              // Update context with final debug info before sending
+              const ctxWithDebug = ctx as unknown as { debugContext?: unknown };
+              if (stepTracker) {
+                ctxWithDebug.debugContext = stepTracker.getDebugContext();
+              }
+
               // Edit thinking message with actual response
               if (transport.edit && messageRef !== undefined) {
                 try {
-                  // Update context with final debug info before sending
-                  const ctxWithDebug = ctx as unknown as { debugContext?: unknown };
-                  if (stepTracker) {
-                    ctxWithDebug.debugContext = stepTracker.getDebugContext();
-                  }
                   await transport.edit(ctx, messageRef, response);
                 } catch (editError) {
                   // Fallback: send new message if edit fails
