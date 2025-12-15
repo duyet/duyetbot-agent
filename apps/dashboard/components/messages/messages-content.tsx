@@ -371,8 +371,7 @@ export function MessagesContent() {
               placeholder="Search messages or users..."
               value={filters.search}
               onChange={(e) => updateFilter('search', e.target.value)}
-              className="pl-10 pr-10"
-              variant="ghost"
+              className="pl-10 pr-10 border-0 bg-transparent shadow-none focus-visible:ring-0"
             />
             {filters.search && (
               <button

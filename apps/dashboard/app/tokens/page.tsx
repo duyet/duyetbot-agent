@@ -1,25 +1,25 @@
 'use client';
 
-import { 
-  Area, 
-  AreaChart, 
-  CartesianGrid, 
-  ResponsiveContainer, 
-  Tooltip, 
-  XAxis, 
-  YAxis 
-} from 'recharts';
 import { Calendar, CreditCard, TrendingUp } from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Shell } from '@/components/layout/shell';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
 } from '@/components/ui/table';
 
 // Mock Data
@@ -52,7 +52,6 @@ export default function AnalyticsPage() {
       }
     >
       <div className="space-y-6">
-        
         {/* Top Stats */}
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
@@ -65,7 +64,7 @@ export default function AnalyticsPage() {
               <p className="text-xs text-muted-foreground">+2.5% from last month</p>
             </CardContent>
           </Card>
-           <Card>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Tokens Processed</CardTitle>
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -75,7 +74,7 @@ export default function AnalyticsPage() {
               <p className="text-xs text-muted-foreground">+18% from last month</p>
             </CardContent>
           </Card>
-           <Card>
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Avg. Latency</CardTitle>
               <CreditCard className="h-4 w-4 text-muted-foreground" />
@@ -99,36 +98,57 @@ export default function AnalyticsPage() {
                 <AreaChart data={USAGE_DATA}>
                   <defs>
                     <linearGradient id="colorGpt" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0} />
                     </linearGradient>
                     <linearGradient id="colorClaude" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#82ca9d" stopOpacity={0}/>
+                      <stop offset="5%" stopColor="#82ca9d" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#82ca9d" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#888888" 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
+                  <XAxis
+                    dataKey="date"
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
                   />
-                  <YAxis 
-                    stroke="#888888" 
-                    fontSize={12} 
-                    tickLine={false} 
-                    axisLine={false} 
-                    tickFormatter={(value) => `${value}`} 
+                  <YAxis
+                    stroke="#888888"
+                    fontSize={12}
+                    tickLine={false}
+                    axisLine={false}
+                    tickFormatter={(value) => `${value}`}
                   />
-                  <Tooltip 
+                  <Tooltip
                     contentStyle={{ backgroundColor: '#000', border: '1px solid #333' }}
                     itemStyle={{ color: '#fff' }}
                   />
                   <CartesianGrid strokeDasharray="3 3" stroke="#333" vertical={false} />
-                  <Area type="monotone" dataKey="gpt4" stackId="1" stroke="#8884d8" fillOpacity={1} fill="url(#colorGpt)" />
-                  <Area type="monotone" dataKey="claude" stackId="1" stroke="#82ca9d" fillOpacity={1} fill="url(#colorClaude)" />
-                  <Area type="monotone" dataKey="local" stackId="1" stroke="#ffc658" fillOpacity={1} fill="#ffc658" />
+                  <Area
+                    type="monotone"
+                    dataKey="gpt4"
+                    stackId="1"
+                    stroke="#8884d8"
+                    fillOpacity={1}
+                    fill="url(#colorGpt)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="claude"
+                    stackId="1"
+                    stroke="#82ca9d"
+                    fillOpacity={1}
+                    fill="url(#colorClaude)"
+                  />
+                  <Area
+                    type="monotone"
+                    dataKey="local"
+                    stackId="1"
+                    stroke="#ffc658"
+                    fillOpacity={1}
+                    fill="#ffc658"
+                  />
                 </AreaChart>
               </ResponsiveContainer>
             </CardContent>
@@ -155,17 +175,19 @@ export default function AnalyticsPage() {
                       <TableCell className="font-medium font-mono text-xs">{model.model}</TableCell>
                       <TableCell>{model.tokens}</TableCell>
                       <TableCell>{model.cost}</TableCell>
-                      <TableCell className={`text-right ${model.trend.startsWith('+') ? 'text-red-500' : 'text-green-500'}`}>
+                      <TableCell
+                        className={`text-right ${model.trend.startsWith('+') ? 'text-red-500' : 'text-green-500'}`}
+                      >
                         {model.trend}
                       </TableCell>
                     </TableRow>
                   ))}
-                   <TableRow>
-                      <TableCell className="font-medium">Total</TableCell>
-                      <TableCell>4.45M</TableCell>
-                      <TableCell className="font-bold">$20.65</TableCell>
-                      <TableCell></TableCell>
-                    </TableRow>
+                  <TableRow>
+                    <TableCell className="font-medium">Total</TableCell>
+                    <TableCell>4.45M</TableCell>
+                    <TableCell className="font-bold">$20.65</TableCell>
+                    <TableCell></TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </CardContent>
