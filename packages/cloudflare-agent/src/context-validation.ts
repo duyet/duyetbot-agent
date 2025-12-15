@@ -97,9 +97,7 @@ export function assertContextComplete(ctx: any): asserts ctx is TelegramContextF
   }
 
   if (missingFields.length > 0) {
-    throw new Error(
-      `[VALIDATION] Context missing required fields: ${missingFields.join(', ')}`
-    );
+    throw new Error(`[VALIDATION] Context missing required fields: ${missingFields.join(', ')}`);
   }
 
   // Validate field types
@@ -272,7 +270,10 @@ export class TelegramContextBuilder {
 
   /** Set reply-to message ID */
   setReplyToMessageId(replyToMessageId: number | undefined): this {
-    if (replyToMessageId !== undefined && (typeof replyToMessageId !== 'number' || replyToMessageId <= 0)) {
+    if (
+      replyToMessageId !== undefined &&
+      (typeof replyToMessageId !== 'number' || replyToMessageId <= 0)
+    ) {
       throw new Error('[BUILDER] replyToMessageId must be positive number or undefined');
     }
     this.data.replyToMessageId = replyToMessageId;

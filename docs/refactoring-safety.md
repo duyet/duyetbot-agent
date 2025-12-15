@@ -1,3 +1,8 @@
+---
+title: Refactoring Safety
+description: Preventing Context Variable Removal
+---
+
 # Refactoring Safety: Preventing Context Variable Removal
 
 Guide to using TypeScript's type system to prevent accidentally removing context variables during refactoring.

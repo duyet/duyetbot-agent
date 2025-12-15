@@ -1,3 +1,8 @@
+---
+title: Debug Footer Analysis
+description: Analysis of debug footer implementation
+---
+
 # Debug Footer Analysis & Log Compaction Guide
 
 ## Summary

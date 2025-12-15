@@ -1,4 +1,9 @@
-# Log Compaction & Context Validation Integration Guide
+---
+title: Integration Guide
+description: How to integrate safety patterns
+---
+
+# Integration Guide: How to Use Safety Patterns
 
 Complete walkthrough of integrating log compaction and context validation in your application.
 

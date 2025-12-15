@@ -26,6 +26,21 @@ export {
   type MCPServerConnection,
 } from './cloudflare-agent.js';
 export type {
+  AdminTelegramContext,
+  TelegramContextFull,
+  TelegramContextFull as TelegramContextWithRequiredFields,
+} from './context-validation.js';
+// Context validation & typing
+export {
+  assertAdminContext,
+  assertContextComplete,
+  hasMessagingFields,
+  isAdminContext,
+  TelegramContextBuilder,
+  updateContextSafe,
+  validateContextMiddleware,
+} from './context-validation.js';
+export type {
   CloudflareAgentConfig,
   CloudflareAgentState,
   CloudflareChatAgentClass,
@@ -124,21 +139,6 @@ export type {
 } from './types.js';
 // Step progress tracker (DEPRECATED - use ProgressTracker instead)
 export { StepProgressTracker } from './workflow/step-tracker.js';
-// Context validation & typing
-export {
-  assertAdminContext,
-  assertContextComplete,
-  hasMessagingFields,
-  isAdminContext,
-  TelegramContextBuilder,
-  updateContextSafe,
-  validateContextMiddleware,
-} from './context-validation.js';
-export type {
-  AdminTelegramContext,
-  TelegramContextFull,
-  TelegramContextFull as TelegramContextWithRequiredFields,
-} from './context-validation.js';
 
 // =============================================================================
 // NEW: Routing & Orchestration Architecture

@@ -1,11 +1,12 @@
+// @ts-nocheck
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
-import { defineConfig, mergeConfig } from 'vitest/config';
+import { defineConfig, mergeConfig, type UserConfig } from 'vitest/config';
 
 import baseConfig from '../../packages/config-vitest/vitest.config';
 
 export default mergeConfig(
-  baseConfig,
+  baseConfig as UserConfig,
   defineConfig({
     plugins: [react()],
     resolve: {
@@ -32,5 +33,5 @@ export default mergeConfig(
         ],
       },
     },
-  })
+  }) as UserConfig
 );

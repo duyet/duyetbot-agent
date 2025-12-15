@@ -1,3 +1,8 @@
+---
+title: Log Compaction Examples
+description: Quick reference for using log compaction utilities
+---
+
 # Log Compaction Examples
 
 Quick reference for using the new log compaction utilities.
