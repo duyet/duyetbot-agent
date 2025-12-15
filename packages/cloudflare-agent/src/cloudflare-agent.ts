@@ -391,7 +391,14 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
      * Called when state is updated from any source
      */
     override onStateUpdate(state: CloudflareAgentState, source: 'server' | Connection) {
-      logger.info(`[CloudflareAgent] State updated: ${JSON.stringify(state)}, Source: ${source}`);
+      // Compact state logging - only show message count and key fields
+      logger.info('[CloudflareAgent] State updated', {
+        source,
+        messageCount: state.messages?.length ?? 0,
+        hasExecution: !!state.chatExecution,
+        userId: state.userId,
+        chatId: state.chatId,
+      });
     }
 
     /**
@@ -1263,6 +1270,67 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               isGroupChat: (input.metadata.isGroupChat as boolean) ?? false,
             } as TContext;
 
+            // ========================================
+            // Handle built-in commands FIRST (before chat loop)
+            // ========================================
+            if (input.text.startsWith('/')) {
+              // Build admin options conditionally to satisfy exactOptionalPropertyTypes
+              const parseMode = input.metadata?.parseMode as 'HTML' | 'MarkdownV2' | undefined;
+              const adminOptions: {
+                isAdmin?: boolean;
+                username?: string;
+                parseMode?: 'HTML' | 'MarkdownV2';
+              } = {
+                isAdmin: (input.metadata?.isAdmin as boolean) || false,
+                ...(input.username ? { username: input.username } : {}),
+                ...(parseMode ? { parseMode } : {}),
+              };
+
+              const commandContext = this.getCommandContext(input.text, adminOptions);
+              const builtinResponse = await handleBuiltinCommand(input.text, commandContext);
+
+              if (builtinResponse !== null) {
+                logger.info('[CloudflareAgent][RPC] Built-in command handled', {
+                  command: input.text.split(/[\s\n]/)[0],
+                });
+
+                // Send command response directly
+                await transport.send(ctx, builtinResponse);
+
+                // Persist command to D1 (skip /clear as it clears history)
+                const command = (input.text.split(/[\s\n]/)[0] ?? '').toLowerCase();
+                if (this.messagePersistence && command !== '/clear') {
+                  const sessionId = {
+                    platform: String(this.state.metadata?.platform ?? 'api'),
+                    userId: String(this.state.userId ?? 'unknown'),
+                    chatId: String(this.state.chatId ?? 'unknown'),
+                  };
+                  this.messagePersistence.persistCommand(
+                    sessionId,
+                    input.text,
+                    builtinResponse,
+                    eventId
+                  );
+                }
+
+                // Update observability for command
+                if (eventId && this.observabilityAdapter) {
+                  this.observabilityAdapter.upsertEvent({
+                    eventId,
+                    status: 'success',
+                    completedAt: Date.now(),
+                    durationMs: Date.now() - ((input.metadata?.startTime as number) ?? Date.now()),
+                    responseText: builtinResponse,
+                  });
+                }
+
+                // Return early - do NOT proceed to chat loop
+                return { traceId, queued: false, batchId: undefined };
+              }
+              // Not a built-in command - fall through to chat processing
+              logger.info('[CloudflareAgent][RPC] Not a built-in command, proceeding to chat');
+            }
+
             // Send typing indicator
             if (transport.typing) {
               await transport.typing(ctx);
@@ -1677,6 +1745,31 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Reconstruct transport context
       const ctx = this.reconstructTransportContext(execution) as TContext;
 
+      // Build progressive debug context for admin footer during progress updates
+      const durationMs = Date.now() - execution.startedAt;
+      const debugContext: DebugContext = {
+        routingFlow: [],
+        totalDurationMs: durationMs,
+        ...(execution.executionSteps.length > 0 && {
+          steps: execution.executionSteps,
+        }),
+        metadata: {
+          ...(execution.tokenUsage && {
+            tokenUsage: {
+              inputTokens: execution.tokenUsage.input,
+              outputTokens: execution.tokenUsage.output,
+              totalTokens: execution.tokenUsage.input + execution.tokenUsage.output,
+              ...(execution.tokenUsage.cached && { cachedTokens: execution.tokenUsage.cached }),
+            },
+          }),
+          ...(execution.model && { model: execution.model }),
+        },
+      };
+
+      // Attach debug context to transport context for admin footer
+      const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
+      ctxWithDebug.debugContext = debugContext;
+
       try {
         if (transport.edit) {
           await transport.edit(ctx, execution.messageRef, progressMessage);
@@ -1714,6 +1807,37 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         const response = execution.error
           ? `[error] ${execution.error}`
           : execution.response || 'No response generated';
+
+        // Build debug context for admin footer (durable chat loop path)
+        const durationMs = Date.now() - execution.startedAt;
+        const debugContext: DebugContext = {
+          routingFlow: [],
+          totalDurationMs: durationMs,
+          ...(execution.executionSteps.length > 0 && {
+            steps: execution.executionSteps,
+          }),
+          metadata: {
+            ...(execution.tokenUsage && {
+              tokenUsage: {
+                inputTokens: execution.tokenUsage.input,
+                outputTokens: execution.tokenUsage.output,
+                totalTokens: execution.tokenUsage.input + execution.tokenUsage.output,
+                ...(execution.tokenUsage.cached && { cachedTokens: execution.tokenUsage.cached }),
+              },
+            }),
+            ...(execution.model && { model: execution.model }),
+          },
+        };
+
+        // Attach debug context to transport context for admin footer
+        const ctxWithDebug = ctx as unknown as { debugContext?: DebugContext };
+        ctxWithDebug.debugContext = debugContext;
+
+        logger.debug('[CloudflareAgent][CHATLOOP] Debug context built for response', {
+          hasDebugContext: !!debugContext,
+          isAdmin: (ctx as { isAdmin?: boolean }).isAdmin,
+          stepsCount: execution.executionSteps.length,
+        });
 
         try {
           if (transport.edit) {

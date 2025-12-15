@@ -36,7 +36,9 @@ export function compactStateUpdate(
 ): string {
   const messages = (log.payload as any)?.messages;
   const msgCount = Array.isArray(messages) ? messages.length : '?';
-  const timestamp = opts.abbreviate ? (log.t ?? log.timestamp)?.toString().slice(-6) : log.timestamp;
+  const timestamp = opts.abbreviate
+    ? (log.t ?? log.timestamp)?.toString().slice(-6)
+    : log.timestamp;
 
   return `[state] msgs:${msgCount} | t:${timestamp}`;
 }
@@ -74,11 +76,13 @@ export function compactDebugContext(
         type: first?.type || 'text',
         ...(opts.hideRefs ? {} : { id: first?.id }),
       },
-      first !== last ? {
-        role: last?.role || 'assistant',
-        type: last?.type || 'text',
-        ...(opts.hideRefs ? {} : { id: last?.id }),
-      } : undefined,
+      first !== last
+        ? {
+            role: last?.role || 'assistant',
+            type: last?.type || 'text',
+            ...(opts.hideRefs ? {} : { id: last?.id }),
+          }
+        : undefined,
     ].filter(Boolean),
     messageCount: messages.length,
   };
@@ -117,7 +121,10 @@ export function compactLog(
       // Abbreviate timestamps
       compacted[opts.abbreviate ? 't' : key] =
         typeof value === 'number' ? value.toString().slice(-6) : value;
-    } else if ((key === 'traceId' || key === 'requestId' || key === 'id') && typeof value === 'string') {
+    } else if (
+      (key === 'traceId' || key === 'requestId' || key === 'id') &&
+      typeof value === 'string'
+    ) {
       // Truncate IDs
       compacted[key] = `${value.slice(0, 8)}...`;
     } else if (typeof value === 'object' && value !== null && Object.keys(value).length > 5) {

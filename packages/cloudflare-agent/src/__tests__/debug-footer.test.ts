@@ -64,9 +64,10 @@ describe('formatDebugFooter', () => {
       },
     };
     const footer = formatDebugFooter(ctx);
-    expect(footer).toContain('2.34s');
-    expect(footer).toContain('model:sonnet-3.5');
-    expect(footer).toContain('trace:abc12345');
+    // New stats card format: ⚡ 2.34s • 🤖 sonnet-3.5 • 🔗 abc12345
+    expect(footer).toContain('⚡ 2.34s');
+    expect(footer).toContain('🤖 sonnet-3.5');
+    expect(footer).toContain('🔗 abc12345');
     expect(footer).toContain('<blockquote expandable>');
   });
 
@@ -365,15 +366,15 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    // Should use chain format
-    expect(footer).toContain('⏺ Let me search for information about OpenAI skills...');
-    expect(footer).toContain('⏺ web_search(query: "OpenAI skills")');
-    expect(footer).toContain('⎿ 🔍 Found 5 results: OpenAI announces new');
-    expect(footer).toContain('⏺ Based on my research, here is the summary...');
+    // Should use mobile-friendly format without box-drawing chars
+    expect(footer).toContain('💭 Let me search for information about OpenAI skills...');
+    expect(footer).toContain('🔧 web_search(query: "OpenAI skills")');
+    expect(footer).toContain(' ↳ ✓ Found 5 results: OpenAI announces new');
+    expect(footer).toContain('💭 Based on my research, here is the summary...');
 
-    // Should include summary line
-    expect(footer).toContain('⏱️ 7.60s');
-    expect(footer).toContain('📊 5.0kin/417out'); // formatNumber adds .0 for values < 10k
+    // Should include stats card with icons
+    expect(footer).toContain('⚡ 7.60s');
+    expect(footer).toContain('📊 ↓5.0k ↑417'); // Token format with icons
     expect(footer).toContain('🤖 sonnet-3.5');
 
     // Should be wrapped in blockquote
@@ -396,8 +397,9 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain('⏺ failing_tool(param: "test")');
-    expect(footer).toContain('⎿ ❌ Connection timeout after 30 seconds waiting for response...'); // Full 60 char truncation
+    // Mobile-friendly format with tool icon and error indicator
+    expect(footer).toContain('🔧 failing_tool(param: "test")');
+    expect(footer).toContain(' ↳ ✗ Connection timeout after 30 seconds waiting for re...'); // 50 char truncation
   });
 
   it('truncates long thinking text in execution steps', () => {
@@ -415,9 +417,8 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    expect(footer).toContain(
-      '⏺ This is a very long thinking text that should be truncated to approximately 80 c...'
-    ); // Exact 80 char truncation
+    // Mobile format uses 60 char truncation and thought icon
+    expect(footer).toContain('💭 This is a very long thinking text that should be truncated t...'); // 60 char truncation
   });
 
   it('formats nested workers for orchestrator', () => {

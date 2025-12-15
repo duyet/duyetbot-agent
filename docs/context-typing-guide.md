@@ -1,3 +1,8 @@
+---
+title: Context Typing Guide
+description: Approaches for validation
+---
+
 # Context Passing & Strong Typing Guide
 
 **Problem**: Ensuring all required context is passed through the call chain without missing fields, type-safe.

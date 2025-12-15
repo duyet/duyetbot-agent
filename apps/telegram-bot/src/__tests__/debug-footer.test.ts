@@ -86,7 +86,7 @@ describe('debug-footer', () => {
       });
       const footer = formatDebugFooter(ctx);
       expect(footer).toContain('1.50s');
-      expect(footer).toContain('model:sonnet-3.5');
+      expect(footer).toContain('sonnet-3.5');
       expect(footer).toContain('<blockquote expandable>');
     });
 

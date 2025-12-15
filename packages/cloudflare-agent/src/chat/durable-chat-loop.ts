@@ -81,7 +81,7 @@ export async function runChatIteration(
   // Parse response
   const parsed = parse(response);
 
-  // Track token usage
+  // Track token usage and model
   if (parsed.usage) {
     execution.tokenUsage.input += parsed.usage.inputTokens || 0;
     execution.tokenUsage.output += parsed.usage.outputTokens || 0;
@@ -89,10 +89,13 @@ export async function runChatIteration(
       execution.tokenUsage.cached = (execution.tokenUsage.cached || 0) + parsed.usage.cachedTokens;
     }
   }
+  if (parsed.model) {
+    execution.model = parsed.model;
+  }
 
-  // Add execution step
+  // Add execution step (using unified 'thinking' type)
   execution.executionSteps.push({
-    type: 'llm_call',
+    type: 'thinking',
     iteration: execution.iteration,
     thinking: parsed.content,
     timestamp: Date.now(),
@@ -147,6 +150,7 @@ export async function runChatIteration(
             type: 'tool_error',
             iteration: execution.iteration,
             toolName: toolCall.name,
+            args: toolArgs, // Include args for display in debug footer
             error: result.error,
             timestamp: Date.now(),
             durationMs: Date.now() - toolStart,
@@ -161,6 +165,7 @@ export async function runChatIteration(
             type: 'tool_complete',
             iteration: execution.iteration,
             toolName: toolCall.name,
+            args: toolArgs, // Include args for display in debug footer
             result: result.result?.substring(0, 200) || '',
             timestamp: Date.now(),
             durationMs: Date.now() - toolStart,
@@ -184,6 +189,7 @@ export async function runChatIteration(
           type: 'tool_error',
           iteration: execution.iteration,
           toolName: toolCall.name,
+          args: toolArgs, // Include args for display in debug footer
           error: errorMessage,
           timestamp: Date.now(),
           durationMs: Date.now() - toolStart,
@@ -262,7 +268,39 @@ export function createChatExecution(params: {
 }
 
 /**
- * Format progress message for display
+ * Format tool arguments for compact display
+ * Shows first argument value or ellipsis for multiple args
+ */
+function formatToolArgsCompact(args: Record<string, unknown>): string {
+  const keys = Object.keys(args);
+  if (keys.length === 0) return '';
+
+  const firstKey = keys[0] as string;
+  const firstValue = args[firstKey];
+
+  if (typeof firstValue === 'string') {
+    const truncated = firstValue.length > 40 ? `${firstValue.slice(0, 37)}...` : firstValue;
+    return `${firstKey}: "${truncated}"`;
+  }
+  return keys.length > 1 ? '...' : `${firstKey}: ${String(firstValue).slice(0, 20)}`;
+}
+
+/**
+ * Format tool result for compact display
+ */
+function formatToolResultCompact(result: string): string {
+  const firstLine = result.split('\n')[0] ?? '';
+  return firstLine.length > 60 ? `${firstLine.slice(0, 57)}...` : firstLine;
+}
+
+/**
+ * Format progress message for display (Claude Code-style chain)
+ *
+ * Shows a visual chain of execution steps with:
+ * - ⏺ prefix for completed steps
+ * - * prefix for currently running step
+ * - Tool args inline with tool name
+ * - Tool results indented with ⎿
  */
 export function formatExecutionProgress(execution: ChatLoopExecution): string {
   const steps = execution.executionSteps;
@@ -272,23 +310,73 @@ export function formatExecutionProgress(execution: ChatLoopExecution): string {
 
   const lines: string[] = [];
 
-  // Show completed steps
-  for (const step of steps) {
-    if (step.type === 'thinking' && step.thinking) {
-      lines.push(`⏺ ${step.thinking.substring(0, 100)}...`);
-    } else if (step.type === 'tool_complete') {
-      lines.push(`⏺ ${step.toolName} ✓`);
-    } else if (step.type === 'tool_error') {
-      lines.push(`⏺ ${step.toolName} ✗`);
+  // Process all steps in order
+  for (let i = 0; i < steps.length; i++) {
+    const step = steps[i];
+    const isLast = i === steps.length - 1;
+    const stepOrNull = step ?? null;
+    if (!stepOrNull) continue;
+
+    // Thinking step - LLM reasoning/content
+    if (stepOrNull.type === 'thinking' && stepOrNull.thinking) {
+      const thinking = stepOrNull.thinking.replace(/\n/g, ' ').trim();
+      const truncated = thinking.slice(0, 80);
+      const ellipsis = thinking.length > 80 ? '...' : '';
+
+      // If this is the last step and still processing, show as running
+      if (isLast && !execution.done) {
+        lines.push(`* ${truncated}${ellipsis}`);
+      } else {
+        lines.push(`⏺ ${truncated}${ellipsis}`);
+      }
+    }
+
+    // Tool starting - show as running with args
+    else if (stepOrNull.type === 'tool_start') {
+      const argsStr = stepOrNull.args ? formatToolArgsCompact(stepOrNull.args) : '';
+      const toolDisplay = argsStr
+        ? `${stepOrNull.toolName}(${argsStr})`
+        : `${stepOrNull.toolName}()`;
+
+      // If this is the last step, show as running
+      if (isLast) {
+        lines.push(`* ${toolDisplay}`);
+        lines.push(`  ⎿ Running…`);
+      } else {
+        lines.push(`⏺ ${toolDisplay}`);
+      }
+    }
+
+    // Tool completed - show result with args
+    else if (stepOrNull.type === 'tool_complete') {
+      const argsStr = stepOrNull.args ? formatToolArgsCompact(stepOrNull.args) : '';
+      const toolDisplay = argsStr
+        ? `${stepOrNull.toolName}(${argsStr})`
+        : `${stepOrNull.toolName}()`;
+      lines.push(`⏺ ${toolDisplay}`);
+      if (stepOrNull.result && typeof stepOrNull.result === 'string') {
+        const resultPreview = formatToolResultCompact(stepOrNull.result);
+        lines.push(`  ⎿ ${resultPreview}`);
+      }
+    }
+
+    // Tool error - show with args
+    else if (stepOrNull.type === 'tool_error') {
+      const argsStr = stepOrNull.args ? formatToolArgsCompact(stepOrNull.args) : '';
+      const toolDisplay = argsStr
+        ? `${stepOrNull.toolName}(${argsStr})`
+        : `${stepOrNull.toolName}()`;
+      lines.push(`⏺ ${toolDisplay}`);
+      lines.push(`  ⎿ ❌ ${stepOrNull.error.slice(0, 60)}...`);
     }
   }
 
-  // Show current state
-  const lastStep = steps[steps.length - 1];
-  if (lastStep?.type === 'tool_start') {
-    lines.push(`* ${lastStep.toolName}...`);
-  } else if (!execution.done) {
-    lines.push(`* ${getRandomMessage()}`);
+  // If still processing and last step wasn't thinking or tool_start, show rotating message
+  if (!execution.done && lines.length > 0) {
+    const lastStep = steps[steps.length - 1];
+    if (lastStep && lastStep.type !== 'tool_start' && lastStep.type !== 'thinking') {
+      lines.push(`\n* ${getRandomMessage()}`);
+    }
   }
 
   return lines.join('\n') || `* ${getRandomMessage()}`;

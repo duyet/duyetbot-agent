@@ -9,7 +9,7 @@ import type {
   CallbackContext as CloudflareCallbackContext,
   ParsedInput,
 } from '@duyetbot/cloudflare-agent';
-import { getChatAgent, assertContextComplete } from '@duyetbot/cloudflare-agent';
+import { assertContextComplete, getChatAgent } from '@duyetbot/cloudflare-agent';
 import { createBaseApp, createTelegramWebhookAuth, logger } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -130,7 +130,8 @@ app.post(
         } catch (validationError) {
           logger.error(`[${requestId}] [VALIDATION] Context incomplete (unauthorized user)`, {
             requestId,
-            error: validationError instanceof Error ? validationError.message : String(validationError),
+            error:
+              validationError instanceof Error ? validationError.message : String(validationError),
           });
         }
       }
@@ -248,7 +249,8 @@ app.post(
       if (collector) {
         collector.complete({
           status: 'error',
-          error: validationError instanceof Error ? validationError : new Error(String(validationError)),
+          error:
+            validationError instanceof Error ? validationError : new Error(String(validationError)),
         });
       }
       return c.text('OK');

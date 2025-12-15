@@ -5,50 +5,11 @@
  * without requiring Cloudflare Workflows.
  */
 
-import type { Message } from '../types.js';
+import type { ExecutionStep, Message } from '../types.js';
 import type { QuotedContext } from '../workflow/types.js';
 
-/**
- * Execution step for debug tracking (discriminated union for type safety)
- */
-export type ExecutionStep =
-  | {
-      type: 'thinking';
-      iteration: number;
-      thinking?: string | undefined;
-      timestamp: number;
-      durationMs?: number | undefined;
-    }
-  | {
-      type: 'tool_start';
-      iteration: number;
-      toolName: string;
-      args: Record<string, unknown>;
-      timestamp: number;
-    }
-  | {
-      type: 'tool_complete';
-      iteration: number;
-      toolName: string;
-      result: string;
-      timestamp: number;
-      durationMs?: number | undefined;
-    }
-  | {
-      type: 'tool_error';
-      iteration: number;
-      toolName: string;
-      error: string;
-      timestamp: number;
-      durationMs?: number | undefined;
-    }
-  | {
-      type: 'llm_call';
-      iteration: number;
-      thinking?: string | undefined;
-      timestamp: number;
-      durationMs?: number | undefined;
-    };
+// Re-export ExecutionStep for convenience (single source of truth in types.ts)
+export type { ExecutionStep };
 
 /**
  * State for a durable chat loop execution
@@ -98,6 +59,7 @@ export interface ChatLoopExecution {
   };
   toolsUsed: string[];
   executionSteps: ExecutionStep[];
+  model?: string | undefined; // LLM model used (e.g., 'grok-beta')
 
   // Transport context reconstruction
   transportMetadata: Record<string, unknown>;

@@ -374,30 +374,37 @@ function formatNumber(n: number): string {
 }
 
 /**
- * Format token usage as compact string
- * Examples: "500in/100out", "1.2kin/0.5kout/0.3kcache"
+ * Format token usage as compact string with icons
+ * Examples: "↓5k ↑400", "↓5k ↑400 ⚡2k 🧠1k"
  *
- * Symbols (text-based to avoid Telegram emoji issues):
- * - in = input tokens (prompt)
- * - out = output tokens (completion)
- * - cache = cached tokens (prompt cache hits)
- * - reason = reasoning tokens (o1/o3 internal reasoning)
+ * Icons for visual scanning:
+ * - ↓ = input tokens (prompt)
+ * - ↑ = output tokens (completion)
+ * - ⚡ = cached tokens (prompt cache hits)
+ * - 🧠 = reasoning tokens (o1/o3 internal reasoning)
  */
 function formatTokenUsage(usage?: TokenUsage): string {
   if (!usage || usage.totalTokens === 0) {
     return '';
   }
 
-  let result = `${formatNumber(usage.inputTokens)}in/${formatNumber(usage.outputTokens)}out`;
+  const parts: string[] = [];
 
+  // Input/output tokens
+  parts.push(`↓${formatNumber(usage.inputTokens)}`);
+  parts.push(`↑${formatNumber(usage.outputTokens)}`);
+
+  // Cache hits
   if (usage.cachedTokens && usage.cachedTokens > 0) {
-    result += `/${formatNumber(usage.cachedTokens)}cache`;
-  }
-  if (usage.reasoningTokens && usage.reasoningTokens > 0) {
-    result += `/${formatNumber(usage.reasoningTokens)}reason`;
+    parts.push(`⚡${formatNumber(usage.cachedTokens)}`);
   }
 
-  return result;
+  // Reasoning tokens (for o1/o3 models)
+  if (usage.reasoningTokens && usage.reasoningTokens > 0) {
+    parts.push(`🧠${formatNumber(usage.reasoningTokens)}`);
+  }
+
+  return parts.join(' ');
 }
 
 /**
@@ -618,63 +625,17 @@ function formatRoutingFlow(debugContext: DebugContext): string {
 }
 
 /**
- * Format metadata with model, trace ID, and error info
+ * Format execution steps as a simple mobile-friendly list
+ * Shows thinking text, tool calls, and results with emoji indicators
  *
- * Enhanced to show:
- * - Model name (short form)
- * - Trace ID (truncated for readability)
- * - Error messages
- *
- * Uses text-based labels to avoid Telegram emoji restrictions.
- */
-function formatMetadata(
-  metadata?: DebugMetadata,
-  escapeFn: (text: string) => string = escapeHtml
-): string {
-  if (!metadata) {
-    return '';
-  }
-
-  const lines: string[] = [];
-
-  // Add model info on same line if present
-  const infoParts: string[] = [];
-  if (metadata.model) {
-    // Shorten model name for readability
-    const shortModel = shortenModelName(metadata.model);
-    infoParts.push(`model:${shortModel}`);
-  }
-
-  if (metadata.traceId) {
-    // Show first 8 chars of trace ID
-    infoParts.push(`trace:${metadata.traceId.slice(0, 8)}`);
-  }
-
-  if (metadata.requestId) {
-    infoParts.push(`req:${metadata.requestId.slice(0, 8)}`);
-  }
-
-  if (infoParts.length > 0) {
-    lines.push(`\n   ${infoParts.join(' | ')}`);
-  }
-
-  // Show error message on separate line if present
-  if (metadata.lastToolError) {
-    lines.push(`\n[!] ${escapeFn(metadata.lastToolError)}`);
-  }
-
-  return lines.join('');
-}
-
-/**
- * Format execution steps in chain format
- * Shows thinking text, tool calls, and results in order
+ * Design: Compact format without box-drawing chars (breaks on mobile Telegram)
  *
  * @example Output:
  * ```
- * ⏺ Let me search for information...
- * ⏺ web_search(query: "OpenAI skills")
- *   ⎿ 🔍 Found 5 results: OpenAI announces new...
+ * 💭 Let me search for information...
+ * 🔧 web_search(query: "OpenAI skills")
+ *  ↳ ✓ Found 5 results: OpenAI announces new...
+ * 💭 Based on my research...
  * ```
  */
 function formatExecutionChain(steps: DebugContext['steps']): string {
@@ -686,40 +647,44 @@ function formatExecutionChain(steps: DebugContext['steps']): string {
 
   for (const step of steps) {
     if (step.type === 'thinking' && step.thinking) {
-      // Show thinking text, truncated to ~80 chars
+      // Show thinking text with thought icon
       const text = step.thinking.replace(/\n/g, ' ').trim();
-      const truncated = text.slice(0, 80);
-      const ellipsis = text.length > 80 ? '...' : '';
-      lines.push(`⏺ ${truncated}${ellipsis}`);
+      const truncated = text.slice(0, 60).trimEnd();
+      const ellipsis = text.length > 60 ? '...' : '';
+      lines.push(`💭 ${truncated}${ellipsis}`);
     } else if (step.type === 'tool_start') {
-      // Tool starting - show name and args
+      // Tool starting - show name and args with tool icon
       const argStr = formatToolArgs(step.args);
-      lines.push(`⏺ ${step.toolName}(${argStr})`);
+      lines.push(`🔧 ${step.toolName}(${argStr})`);
     } else if (step.type === 'tool_complete' || step.type === 'tool_execution') {
       // Tool completed - show name, args, and result
       const argStr = formatToolArgs(step.args);
-      lines.push(`⏺ ${step.toolName}(${argStr})`);
+      lines.push(`🔧 ${step.toolName}(${argStr})`);
 
-      // Show tool response if available
+      // Show tool response if available with nested indicator
       const result = step.result;
       if (result) {
         if (typeof result === 'object' && result !== null) {
           if (result.output) {
             const responseLines = formatToolResult(result.output, 3);
-            lines.push(`  ⎿ 🔍 ${responseLines}`);
+            lines.push(` ↳ ✓ ${responseLines}`);
           } else if (result.error) {
-            lines.push(`  ⎿ ❌ ${result.error.slice(0, 60)}...`);
+            const errorText = result.error;
+            const truncated = errorText.length > 50 ? `${errorText.slice(0, 50)}...` : errorText;
+            lines.push(` ↳ ✗ ${truncated}`);
           }
         } else if (typeof result === 'string') {
           const responseLines = formatToolResult(result, 3);
-          lines.push(`  ⎿ 🔍 ${responseLines}`);
+          lines.push(` ↳ ✓ ${responseLines}`);
         }
       }
     } else if (step.type === 'tool_error') {
-      // Tool error - show name, args, and error
+      // Tool error - show name, args, and error with error indicator
       const argStr = formatToolArgs(step.args);
-      lines.push(`⏺ ${step.toolName}(${argStr})`);
-      lines.push(`  ⎿ ❌ ${step.error.slice(0, 60)}...`);
+      lines.push(`🔧 ${step.toolName}(${argStr})`);
+      const errorText = step.error;
+      const truncated = errorText.length > 50 ? `${errorText.slice(0, 50)}...` : errorText;
+      lines.push(` ↳ ✗ ${truncated}`);
     }
   }
 
@@ -729,52 +694,24 @@ function formatExecutionChain(steps: DebugContext['steps']): string {
 /**
  * Format minimal debug footer when full routing flow is unavailable
  *
- * Shows basic info like duration, model, and trace ID.
+ * Shows basic info using the stats card format.
  * Used as fallback when routingFlow is empty but metadata exists.
- *
- * Uses text-based labels to avoid Telegram emoji restrictions.
  *
  * @example Output:
  * ```
- * [debug] 2.34s | model:sonnet-3.5 | trace:abc12345
+ * [debug] ⚡ 2.34s • 📊 ↓5k ↑400 • 🤖 sonnet-3.5 • 🔗 abc12345
  * ```
  */
 function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
-  const parts: string[] = [];
-
-  // Duration
-  if (debugContext.totalDurationMs) {
-    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
-  }
-
-  // Model from metadata
-  if (debugContext.metadata?.model) {
-    const shortModel = shortenModelName(debugContext.metadata.model);
-    parts.push(`model:${shortModel}`);
-  }
-
-  // Trace ID from metadata
-  if (debugContext.metadata?.traceId) {
-    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
-  }
-
-  // Token usage from metadata
-  if (debugContext.metadata?.tokenUsage) {
-    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
-    if (tokens) {
-      parts.push(tokens);
-    }
-  }
+  const statsCard = formatStatsCard(debugContext);
 
   // If no meaningful info, return null
-  if (parts.length === 0) {
+  if (!statsCard) {
     return null;
   }
 
-  // Build minimal footer
-  let content = parts.join(' | ');
-
   // Add error if present
+  let content = statsCard;
   if (debugContext.metadata?.lastToolError) {
     content += `\n[!] ${escapeHtml(debugContext.metadata.lastToolError)}`;
   }
@@ -783,33 +720,105 @@ function formatMinimalDebugFooter(debugContext: DebugContext): string | null {
 }
 
 /**
+ * Format cost as compact string
+ * Examples: "$0.001", "$0.05", "<$0.0001"
+ */
+function formatCost(costUsd?: number): string {
+  if (!costUsd || costUsd === 0) {
+    return '';
+  }
+  if (costUsd < 0.0001) {
+    return '<$0.0001';
+  }
+  if (costUsd < 0.01) {
+    return `$${costUsd.toFixed(4)}`;
+  }
+  if (costUsd < 1) {
+    return `$${costUsd.toFixed(3)}`;
+  }
+  return `$${costUsd.toFixed(2)}`;
+}
+
+/**
+ * Format stats card as a compact visual summary line
+ *
+ * @example Output:
+ * ```
+ * ⚡ 2.34s • 📊 ↓5k ↑400 ⚡2k • 💰 $0.003 • 🤖 sonnet-3.5
+ * ```
+ */
+function formatStatsCard(debugContext: DebugContext): string {
+  const parts: string[] = [];
+
+  // Duration with lightning bolt
+  if (debugContext.totalDurationMs) {
+    parts.push(`⚡ ${formatDuration(debugContext.totalDurationMs)}`);
+  }
+
+  // Token usage with chart icon
+  if (debugContext.metadata?.tokenUsage) {
+    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
+    if (tokens) {
+      parts.push(`📊 ${tokens}`);
+    }
+
+    // Cost with money bag icon
+    const cost = formatCost(debugContext.metadata.tokenUsage.estimatedCostUsd);
+    if (cost) {
+      parts.push(`💰 ${cost}`);
+    }
+  }
+
+  // Model with robot icon
+  if (debugContext.metadata?.model) {
+    const shortModel = shortenModelName(debugContext.metadata.model);
+    parts.push(`🤖 ${shortModel}`);
+  }
+
+  // Trace ID (compact)
+  if (debugContext.metadata?.traceId) {
+    parts.push(`🔗 ${debugContext.metadata.traceId.slice(0, 8)}`);
+  }
+
+  return parts.join(' • ');
+}
+
+/**
  * Format debug context as expandable blockquote footer
  *
- * Uses text-based labels to avoid Telegram emoji restrictions.
+ * Two-part design:
+ * 1. Raw tool chain trace (detailed tree structure for debugging)
+ * 2. Stats card (compact visual summary for quick glance)
  *
- * @example Output (simple agent):
+ * @example Output (simple agent without tools):
  * ```
- * [debug] router-agent (0.4s) -> [simple/general/low] -> simple-agent (3.77s)
+ * [debug] router-agent (0.4s) → [simple/general/low] → simple-agent (3.77s)
+ * ⚡ 0.45s • 📊 ↓5k ↑400 • 🤖 sonnet-3.5
  * ```
  *
  * @example Output (orchestrator with workers):
  * ```
- * [debug] router-agent (0.4s) -> [complex/research/low] -> orchestrator-agent (5.2s)
- *    |- research-worker (2.5s)
- *    +- code-worker (1.2s)
+ * [debug] router-agent (0.4s) → [complex/research/low] → orchestrator-agent (5.2s)
+ *    ├─ research-worker (2.5s)
+ *    └─ code-worker (1.2s)
+ * ⚡ 5.20s • 📊 ↓10k ↑1.5k ⚡3k • 🤖 sonnet-3.5
  * ```
  *
- * @example Output (with execution steps):
+ * @example Output (with execution steps - two-part footer):
  * ```
- * [debug] ⏺ Let me search for information...
- * ⏺ web_search(query: "OpenAI skills")
- *   ⎿ 🔍 Found 5 results: OpenAI announces new...
- * ⏱️ 7.6s | 📊 5.4k | 🤖 sonnet-3.5
+ * [debug]
+ * ┌─ Tool Chain ──────────────────────
+ * │ 💭 Let me search for information...
+ * │ 🔧 web_search(query: "OpenAI skills")
+ * │   └─ ✓ Found 5 results: OpenAI announces new...
+ * │ 💭 Based on my research...
+ * └───────────────────────────────────
+ * ⚡ 7.60s • 📊 ↓5k ↑400 • 🤖 sonnet-3.5
  * ```
  *
  * @example Output (minimal fallback):
  * ```
- * [debug] 2.34s | model:sonnet-3.5 | trace:abc12345
+ * [debug] ⚡ 2.34s • 📊 ↓5k ↑400 • 🤖 sonnet-3.5 • 🔗 abc12345
  * ```
  */
 export function formatDebugFooter(debugContext?: DebugContext): string | null {
@@ -817,47 +826,37 @@ export function formatDebugFooter(debugContext?: DebugContext): string | null {
     return null;
   }
 
-  // If execution steps are available, use chain format
+  // If execution steps are available, use two-part format: tool chain + stats card
   if (debugContext.steps && debugContext.steps.length > 0) {
     const chain = formatExecutionChain(debugContext.steps);
-    const summaryParts: string[] = [];
+    const statsCard = formatStatsCard(debugContext);
 
-    // Duration
-    if (debugContext.totalDurationMs) {
-      summaryParts.push(`⏱️ ${formatDuration(debugContext.totalDurationMs)}`);
-    }
+    // Two-part layout: tool chain trace on top, stats card below
+    const content = chain + (statsCard ? `\n${statsCard}` : '');
 
-    // Token usage
-    if (debugContext.metadata?.tokenUsage) {
-      const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
-      if (tokens) {
-        summaryParts.push(`📊 ${tokens}`);
-      }
-    }
-
-    // Model
-    if (debugContext.metadata?.model) {
-      const shortModel = shortenModelName(debugContext.metadata.model);
-      summaryParts.push(`🤖 ${shortModel}`);
-    }
-
-    const summary = summaryParts.join(' | ');
-    const content = chain + (summary ? `\n${summary}` : '');
-
-    return `\n\n<blockquote expandable>[debug] ${content}</blockquote>`;
+    return `\n\n<blockquote expandable>[debug]\n${content}</blockquote>`;
   }
 
-  // If no routing flow, try minimal fallback
+  // If no routing flow, try minimal fallback (just stats card)
   if (!debugContext.routingFlow?.length) {
     return formatMinimalDebugFooter(debugContext);
   }
 
+  // Routing flow format with stats card
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkers(debugContext.workers);
   const webSearch = formatWebSearch(debugContext.metadata);
-  const metadata = formatMetadata(debugContext.metadata);
+  const statsCard = formatStatsCard(debugContext);
 
-  return `\n\n<blockquote expandable>[debug] ${flow}${workers}${webSearch}${metadata}</blockquote>`;
+  // Add stats card after routing flow if we have any stats
+  const statsLine = statsCard ? `\n${statsCard}` : '';
+
+  // Include error if present (using old metadata format for backwards compatibility)
+  const errorLine = debugContext.metadata?.lastToolError
+    ? `\n[!] ${escapeHtml(debugContext.metadata.lastToolError)}`
+    : '';
+
+  return `\n\n<blockquote expandable>[debug] ${flow}${workers}${webSearch}${statsLine}${errorLine}</blockquote>`;
 }
 
 /**
@@ -884,42 +883,25 @@ function formatWorkersMarkdownV2(workers?: WorkerDebugInfo[]): string {
 }
 
 /**
+ * Format stats card for MarkdownV2 with proper escaping
+ */
+function formatStatsCardMarkdownV2(debugContext: DebugContext): string {
+  const statsCard = formatStatsCard(debugContext);
+  // Escape the stats card for MarkdownV2 (dots, dashes need escaping)
+  return escapeMarkdownV2(statsCard);
+}
+
+/**
  * Format minimal debug footer for MarkdownV2 when routing flow is unavailable
  */
 function formatMinimalDebugFooterMarkdownV2(debugContext: DebugContext): string | null {
-  const parts: string[] = [];
+  const statsCard = formatStatsCardMarkdownV2(debugContext);
 
-  // Duration
-  if (debugContext.totalDurationMs) {
-    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
-  }
-
-  // Model from metadata
-  if (debugContext.metadata?.model) {
-    const shortModel = shortenModelName(debugContext.metadata.model);
-    parts.push(`model:${shortModel}`);
-  }
-
-  // Trace ID from metadata
-  if (debugContext.metadata?.traceId) {
-    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
-  }
-
-  // Token usage from metadata
-  if (debugContext.metadata?.tokenUsage) {
-    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
-    if (tokens) {
-      parts.push(tokens);
-    }
-  }
-
-  if (parts.length === 0) {
+  if (!statsCard) {
     return null;
   }
 
-  // Build minimal footer with escaping
-  let content = escapeMarkdownV2(parts.join(' | '));
-
+  let content = statsCard;
   if (debugContext.metadata?.lastToolError) {
     content += `\n[!] ${escapeMarkdownV2(debugContext.metadata.lastToolError)}`;
   }
@@ -931,12 +913,12 @@ function formatMinimalDebugFooterMarkdownV2(debugContext: DebugContext): string 
  * Format debug context as expandable quote for MarkdownV2
  *
  * Uses MarkdownV2 expandable blockquote syntax: **>content||
- * All special characters in content are escaped.
- * Uses text-based labels to avoid Telegram emoji restrictions.
+ * Two-part design: routing flow + stats card
  *
  * @example Output (simple agent):
  * ```
- * **>[debug] router\-agent \(0\.4s\) \-> \[simple/general/low\] \-> simple\-agent \(3\.77s\)||
+ * **>[debug] router\-agent \(0\.4s\) \-> \[simple/general/low\] \-> simple\-agent \(3\.77s\)
+ * ⚡ 0\.45s • 📊 ↓5k ↑400 • 🤖 sonnet\-3\.5||
  * ```
  */
 export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string | null {
@@ -952,13 +934,21 @@ export function formatDebugFooterMarkdownV2(debugContext?: DebugContext): string
   const flow = formatRoutingFlow(debugContext);
   const workers = formatWorkersMarkdownV2(debugContext.workers);
   const webSearch = formatWebSearch(debugContext.metadata, escapeMarkdownV2);
-  const metadata = formatMetadata(debugContext.metadata, escapeMarkdownV2);
+  const statsCard = formatStatsCardMarkdownV2(debugContext);
 
   // Escape the flow for MarkdownV2
   const escapedFlow = escapeMarkdownV2(flow);
 
+  // Add stats card after routing flow if we have any stats
+  const statsLine = statsCard ? `\n${statsCard}` : '';
+
+  // Include error if present
+  const errorLine = debugContext.metadata?.lastToolError
+    ? `\n[!] ${escapeMarkdownV2(debugContext.metadata.lastToolError)}`
+    : '';
+
   // MarkdownV2 expandable blockquote: **>content||
-  return `\n\n**>[debug] ${escapedFlow}${workers}${webSearch}${metadata}||`;
+  return `\n\n**>[debug] ${escapedFlow}${workers}${webSearch}${statsLine}${errorLine}||`;
 }
 
 /**
@@ -1022,33 +1012,13 @@ export function formatProgressiveDebugFooter(debugContext?: DebugContext): strin
  * Format minimal debug footer for GitHub Markdown when routing flow is unavailable
  */
 function formatMinimalDebugFooterMarkdown(debugContext: DebugContext): string | null {
-  const parts: string[] = [];
+  const statsCard = formatStatsCard(debugContext);
 
-  if (debugContext.totalDurationMs) {
-    parts.push(`${(debugContext.totalDurationMs / 1000).toFixed(2)}s`);
-  }
-
-  if (debugContext.metadata?.model) {
-    const shortModel = shortenModelName(debugContext.metadata.model);
-    parts.push(`model:${shortModel}`);
-  }
-
-  if (debugContext.metadata?.traceId) {
-    parts.push(`trace:${debugContext.metadata.traceId.slice(0, 8)}`);
-  }
-
-  if (debugContext.metadata?.tokenUsage) {
-    const tokens = formatTokenUsage(debugContext.metadata.tokenUsage);
-    if (tokens) {
-      parts.push(tokens);
-    }
-  }
-
-  if (parts.length === 0) {
+  if (!statsCard) {
     return null;
   }
 
-  let content = parts.join(' | ');
+  let content = statsCard;
   if (debugContext.metadata?.lastToolError) {
     content += `\n[!] ${debugContext.metadata.lastToolError}`;
   }
@@ -1079,12 +1049,19 @@ export function formatDebugFooterMarkdown(debugContext?: DebugContext): string |
   const workers = formatWorkers(debugContext.workers);
   // No escaping needed for Markdown code blocks
   const webSearch = formatWebSearch(debugContext.metadata, (s) => s);
-  const metadata = formatMetadata(debugContext.metadata, (s) => s);
+  const statsCard = formatStatsCard(debugContext);
 
-  // Build content lines
-  const contentLines = [`[debug] ${flow}${workers}${webSearch}`];
-  if (metadata) {
-    contentLines.push(metadata);
+  // Build content lines: flow, workers, web search, then stats card
+  let content = `[debug] ${flow}${workers}${webSearch}`;
+
+  // Add stats card on a separate line
+  if (statsCard) {
+    content += `\n${statsCard}`;
+  }
+
+  // Add error if present
+  if (debugContext.metadata?.lastToolError) {
+    content += `\n[!] ${debugContext.metadata.lastToolError}`;
   }
 
   // GitHub-flavored Markdown with collapsible details and code block
@@ -1094,7 +1071,7 @@ export function formatDebugFooterMarkdown(debugContext?: DebugContext): string |
 <summary>[debug] Info</summary>
 
 \`\`\`
-${contentLines.join('\n')}
+${content}
 \`\`\`
 
 </details>`;

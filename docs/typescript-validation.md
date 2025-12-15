@@ -1,3 +1,8 @@
+---
+title: TypeScript Type Validation
+description: Compile-Time Safety Guide
+---
+
 # TypeScript Type Validation: Compile-Time Safety
 
 Complete guide to using TypeScript's type system to validate context and prevent errors at compile-time.
