@@ -1,27 +1,19 @@
 'use client';
 
 import { BookOpen, Command, Moon, Search, Sun } from 'lucide-react';
+import { useTheme } from 'next-themes';
 import { useEffect, useState } from 'react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 
 export function Header() {
-  const [theme, setTheme] = useState<'light' | 'dark'>('dark');
+  const { setTheme, theme } = useTheme();
+  const [mounted, setMounted] = useState(false);
 
-  // Simple theme toggle logic
   useEffect(() => {
-    const isDark = document.documentElement.classList.contains('dark');
-    setTheme(isDark ? 'dark' : 'light');
+    setMounted(true);
   }, []);
-
-  const toggleTheme = () => {
-    const nextTheme = theme === 'dark' ? 'light' : 'dark';
-    setTheme(nextTheme);
-    const root = document.documentElement;
-    root.classList.remove('light', 'dark');
-    root.classList.add(nextTheme);
-  };
 
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background">
@@ -59,10 +51,11 @@ export function Header() {
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleTheme}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
             className="h-9 w-9 text-muted-foreground"
           >
-            {theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}
+            {mounted &&
+              (theme === 'dark' ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />)}
           </Button>
 
           {/* User Profile */}

@@ -7,7 +7,9 @@ export default function MessagesPage() {
     <Shell
       title="Messages"
       description="View and analyze agent conversations."
-      headerActions={<Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Messages' }]} />}
+      headerActions={
+        <Breadcrumbs items={[{ label: 'Dashboard', href: '/' }, { label: 'Messages' }]} />
+      }
       fullWidth
     >
       <MessagesContent />
