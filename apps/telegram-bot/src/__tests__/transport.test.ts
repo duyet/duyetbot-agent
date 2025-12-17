@@ -153,7 +153,7 @@ describe('transport', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: 123456,
-            text: 'Hello *world*',
+            text: 'Hello <i>world</i>',
             parse_mode: 'HTML',
           }),
         })
@@ -175,7 +175,7 @@ describe('transport', () => {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: 123456,
-            text: 'Hello *world*',
+            text: 'Hello <i>world</i>',
             parse_mode: 'HTML',
             reply_to_message_id: 123,
           }),
@@ -240,7 +240,7 @@ describe('transport', () => {
           body: JSON.stringify({
             chat_id: 123456,
             message_id: 42,
-            text: 'Updated *text*',
+            text: 'Updated <i>text</i>',
             parse_mode: 'HTML',
           }),
         })

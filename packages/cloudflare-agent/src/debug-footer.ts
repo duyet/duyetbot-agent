@@ -647,44 +647,45 @@ function formatExecutionChain(steps: DebugContext['steps']): string {
 
   for (const step of steps) {
     if (step.type === 'thinking' && step.thinking) {
-      // Show thinking text with thought icon
+      // Show thinking text with ⏺ prefix (matches progress display)
       const text = step.thinking.replace(/\n/g, ' ').trim();
-      const truncated = text.slice(0, 60).trimEnd();
-      const ellipsis = text.length > 60 ? '...' : '';
-      lines.push(`💭 ${truncated}${ellipsis}`);
+      const truncated = text.slice(0, 80).trimEnd();
+      const ellipsis = text.length > 80 ? '...' : '';
+      lines.push(`⏺ ${truncated}${ellipsis}`);
     } else if (step.type === 'tool_start') {
-      // Tool starting - show name and args with tool icon
+      // Tool starting - show name and args with ⏺ prefix
       const argStr = formatToolArgs(step.args);
-      lines.push(`🔧 ${step.toolName}(${argStr})`);
+      lines.push(`⏺ ${step.toolName}(${argStr})`);
+      lines.push(`  ⎿ Running…`);
     } else if (step.type === 'tool_complete' || step.type === 'tool_execution') {
       // Tool completed - show name, args, and result
       const argStr = formatToolArgs(step.args);
-      lines.push(`🔧 ${step.toolName}(${argStr})`);
+      lines.push(`⏺ ${step.toolName}(${argStr})`);
 
-      // Show tool response if available with nested indicator
+      // Show tool response if available with ⎿ indicator
       const result = step.result;
       if (result) {
         if (typeof result === 'object' && result !== null) {
           if (result.output) {
             const responseLines = formatToolResult(result.output, 3);
-            lines.push(` ↳ ✓ ${responseLines}`);
+            lines.push(`  ⎿ ${responseLines}`);
           } else if (result.error) {
             const errorText = result.error;
             const truncated = errorText.length > 50 ? `${errorText.slice(0, 50)}...` : errorText;
-            lines.push(` ↳ ✗ ${truncated}`);
+            lines.push(`  ⎿ ❌ ${truncated}`);
           }
         } else if (typeof result === 'string') {
           const responseLines = formatToolResult(result, 3);
-          lines.push(` ↳ ✓ ${responseLines}`);
+          lines.push(`  ⎿ ${responseLines}`);
         }
       }
     } else if (step.type === 'tool_error') {
-      // Tool error - show name, args, and error with error indicator
+      // Tool error - show name, args, and error
       const argStr = formatToolArgs(step.args);
-      lines.push(`🔧 ${step.toolName}(${argStr})`);
+      lines.push(`⏺ ${step.toolName}(${argStr})`);
       const errorText = step.error;
       const truncated = errorText.length > 50 ? `${errorText.slice(0, 50)}...` : errorText;
-      lines.push(` ↳ ✗ ${truncated}`);
+      lines.push(`  ⎿ ❌ ${truncated}`);
     }
   }
 
@@ -762,8 +763,11 @@ function formatStatsCard(debugContext: DebugContext): string {
       parts.push(`📊 ${tokens}`);
     }
 
-    // Cost with money bag icon
-    const cost = formatCost(debugContext.metadata.tokenUsage.estimatedCostUsd);
+    // Cost with money bag icon - prefer actual cost from API, fall back to estimated
+    const cost = formatCost(
+      debugContext.metadata.tokenUsage.actualCostUsd ??
+        debugContext.metadata.tokenUsage.estimatedCostUsd
+    );
     if (cost) {
       parts.push(`💰 ${cost}`);
     }

@@ -366,11 +366,11 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    // Should use mobile-friendly format without box-drawing chars
-    expect(footer).toContain('💭 Let me search for information about OpenAI skills...');
-    expect(footer).toContain('🔧 web_search(query: "OpenAI skills")');
-    expect(footer).toContain(' ↳ ✓ Found 5 results: OpenAI announces new');
-    expect(footer).toContain('💭 Based on my research, here is the summary...');
+    // Should use ⏺ prefix for all steps (matches progress display)
+    expect(footer).toContain('⏺ Let me search for information about OpenAI skills...');
+    expect(footer).toContain('⏺ web_search(query: "OpenAI skills")');
+    expect(footer).toContain('  ⎿ Found 5 results: OpenAI announces new');
+    expect(footer).toContain('⏺ Based on my research, here is the summary...');
 
     // Should include stats card with icons
     expect(footer).toContain('⚡ 7.60s');
@@ -397,9 +397,9 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    // Mobile-friendly format with tool icon and error indicator
-    expect(footer).toContain('🔧 failing_tool(param: "test")');
-    expect(footer).toContain(' ↳ ✗ Connection timeout after 30 seconds waiting for re...'); // 50 char truncation
+    // Uses ⏺ prefix and ⎿ result indicator
+    expect(footer).toContain('⏺ failing_tool(param: "test")');
+    expect(footer).toContain('  ⎿ ❌ Connection timeout after 30 seconds waiting for re...'); // 50 char truncation
   });
 
   it('truncates long thinking text in execution steps', () => {
@@ -417,8 +417,8 @@ describe('formatDebugFooter', () => {
     };
     const footer = formatDebugFooter(ctx);
 
-    // Mobile format uses 60 char truncation and thought icon
-    expect(footer).toContain('💭 This is a very long thinking text that should be truncated t...'); // 60 char truncation
+    // Uses ⏺ prefix with 80 char truncation
+    expect(footer).toContain('⏺ This is a very long thinking text that should be truncated to approximately 80 c...'); // 80 char truncation
   });
 
   it('formats nested workers for orchestrator', () => {

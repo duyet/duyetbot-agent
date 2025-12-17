@@ -68,4 +68,16 @@ describe('Telegram Sanitization', () => {
     const input = '```javascript\nconst a = "**not bold**";\n```';
     expect(sanitizeLLMResponseForTelegram(input)).toBe('<pre>const a = "**not bold**";</pre>');
   });
+
+  it('should convert markdown headers to bold', () => {
+    expect(sanitizeLLMResponseForTelegram('### Skills')).toBe('<b>Skills</b>');
+    expect(sanitizeLLMResponseForTelegram('## Education')).toBe('<b>Education</b>');
+    expect(sanitizeLLMResponseForTelegram('# Title')).toBe('<b>Title</b>');
+    // Multi-line with headers
+    const multiLine = '### Skills\nTypescript, Python\n\n### Education\nBS degree';
+    expect(sanitizeLLMResponseForTelegram(multiLine)).toBe(
+      '<b>Skills</b>\nTypescript, Python\n\n<b>Education</b>\nBS degree'
+    );
+  });
 });
+

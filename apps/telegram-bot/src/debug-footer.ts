@@ -16,6 +16,7 @@ import {
   escapeMarkdownV2,
   smartEscapeMarkdownV2,
 } from '@duyetbot/cloudflare-agent/debug-footer';
+import { sanitizeLLMResponseForTelegram } from '@duyetbot/cloudflare-agent/sanitization';
 import type { TelegramContext } from './transport.js';
 
 // Re-export escape functions directly (no wrapper needed)
@@ -45,20 +46,12 @@ export function formatDebugFooter(ctx: TelegramContext): string | null {
 /**
  * Prepare message with optional debug footer for sending
  *
- * Returns the message text and parse mode based on context configuration.
- *
- * IMPORTANT: Text is NOT escaped because the LLM is instructed to produce
- * properly formatted output (HTML tags for HTML mode, MarkdownV2 syntax for
- * MarkdownV2 mode). Escaping would break the LLM's intentional formatting.
- *
- * The system prompts instruct the LLM to:
- * - Use <b>, <i>, <code> tags in HTML mode
- * - Escape special chars (&lt;, &gt;, &amp;) in regular text
- * - Use *bold*, _italic_, `code` in MarkdownV2 mode
+ * For HTML mode: Sanitizes LLM response to convert markdown to valid Telegram HTML.
+ * This handles common markdown patterns like headers, bold, italic, links, and code.
  *
  * Admin users with debug context get an expandable footer appended.
  *
- * @see packages/prompts/src/sections/guidelines.ts for LLM formatting instructions
+ * @see packages/cloudflare-agent/src/sanitization/telegram-sanitizer.ts
  */
 export function prepareMessageWithDebug(
   text: string,
@@ -76,9 +69,11 @@ export function prepareMessageWithDebug(
   }
 
   // Default to HTML parse mode
-  // Text is NOT escaped - LLM produces properly formatted HTML
+  // Sanitize LLM response to convert markdown to valid Telegram HTML
+  const sanitizedText = sanitizeLLMResponseForTelegram(text);
   return {
-    text: debugFooter ? text + debugFooter : text,
+    text: debugFooter ? sanitizedText + debugFooter : sanitizedText,
     parseMode: 'HTML',
   };
 }
+

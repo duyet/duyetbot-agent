@@ -13,6 +13,10 @@
     "./debug-footer": {
       "types": "./dist/debug-footer.d.ts",
       "import": "./dist/debug-footer.js"
+    },
+    "./sanitization": {
+      "types": "./dist/sanitization/index.d.ts",
+      "import": "./dist/sanitization/index.js"
     }
   },
   "scripts": {

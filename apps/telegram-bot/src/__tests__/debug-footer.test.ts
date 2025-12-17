@@ -204,7 +204,7 @@ describe('debug-footer', () => {
       expect(result.parseMode).toBe('HTML');
     });
 
-    it('preserves HTML tags in message (LLM produces formatted HTML)', () => {
+    it('converts markdown formatting to HTML', () => {
       const ctx = createMockContext({
         isAdmin: true,
         debugContext: {
@@ -212,8 +212,8 @@ describe('debug-footer', () => {
           totalDurationMs: 500,
         },
       });
-      // LLM is instructed to produce HTML-formatted output, so tags should be preserved
-      const result = prepareMessageWithDebug('Hello <b>world</b>', ctx);
+      // Sanitizer converts markdown bold to HTML bold
+      const result = prepareMessageWithDebug('Hello **world**', ctx);
       expect(result.text).toContain('Hello <b>world</b>');
       expect(result.parseMode).toBe('HTML');
     });
@@ -227,14 +227,15 @@ describe('debug-footer', () => {
       expect(result.parseMode).toBe('HTML');
     });
 
-    it('preserves HTML formatting for all users (LLM produces formatted HTML)', () => {
+    it('converts markdown and escapes special chars for HTML mode', () => {
       const ctx = createMockContext({
         isAdmin: false,
       });
-      // LLM is instructed to produce HTML-formatted output, so tags should be preserved
-      // The LLM handles entity escaping in plain text as per the prompt instructions
-      const result = prepareMessageWithDebug('Use <code>command</code> &amp; "quotes"', ctx);
-      expect(result.text).toBe('Use <code>command</code> &amp; "quotes"');
+      // Sanitizer converts markdown `code` to <code>code</code>
+      // and properly handles special characters
+      const result = prepareMessageWithDebug('Use `command` & check "quotes"', ctx);
+      expect(result.text).toContain('<code>command</code>');
+      expect(result.text).toContain('&amp;');
       expect(result.parseMode).toBe('HTML');
     });
 
