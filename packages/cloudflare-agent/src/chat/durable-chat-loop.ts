@@ -39,6 +39,8 @@ export interface DurableChatLoopConfig {
   llmProvider: LLMProvider;
   tools: OpenAITool[];
   toolExecutor: ToolExecutorConfig;
+  /** Optional callback to update progress after each step (for real-time message editing) */
+  onProgress?: (execution: ChatLoopExecution) => Promise<void>;
 }
 
 /**
@@ -102,6 +104,11 @@ export async function runChatIteration(
     durationMs: Date.now() - startTime,
   });
 
+  // Update progress after thinking step
+  if (config.onProgress) {
+    await config.onProgress(execution);
+  }
+
   // Check if we have tool calls
   if (hasToolCalls(parsed)) {
     const toolCalls = getToolCalls(parsed);
@@ -135,6 +142,11 @@ export async function runChatIteration(
         args: toolArgs,
         timestamp: Date.now(),
       });
+
+      // Update progress to show tool running
+      if (config.onProgress) {
+        await config.onProgress(execution);
+      }
 
       const toolStart = Date.now();
 
@@ -179,6 +191,11 @@ export async function runChatIteration(
           if (!execution.toolsUsed.includes(toolCall.name)) {
             execution.toolsUsed.push(toolCall.name);
           }
+        }
+
+        // Update progress after tool completes
+        if (config.onProgress) {
+          await config.onProgress(execution);
         }
       } catch (timeoutError) {
         // Handle timeout error

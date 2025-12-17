@@ -67,6 +67,10 @@ export function sanitizeLLMResponseForTelegram(response: string): string {
 
   // Step 5: Convert markdown to HTML tags (order matters!)
 
+  // Step 5a: Convert markdown headers to bold (Telegram doesn't support headings)
+  // ### Header → <b>Header</b>
+  processed = processed.replace(/^#{1,6}\s+(.+)$/gm, '<b>$1</b>');
+
   // Code blocks (``` ... ```) - extract to placeholders to protect from bold/italic
   const codeBlockPlaceholders: Array<{ placeholder: string; code: string }> = [];
   let codeBlockIndex = 0;

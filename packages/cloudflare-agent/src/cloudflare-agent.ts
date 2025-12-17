@@ -1664,13 +1664,15 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
               };
             },
           },
+          // Real-time progress updates during tool execution
+          onProgress: async (exec) => {
+            await this.updateChatProgress(exec);
+          },
         };
 
-        // Run one iteration
+        // Run one iteration (onProgress updates message during execution)
         const result = await runChatIteration(execution, durableConfig);
 
-        // Update progress message
-        await this.updateChatProgress(execution);
 
         // Save updated execution state
         this.setState({

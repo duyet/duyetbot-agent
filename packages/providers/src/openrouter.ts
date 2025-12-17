@@ -144,6 +144,13 @@ interface OpenRouterChatResponse {
       /** Reasoning tokens for o1/o3 models */
       reasoning_tokens?: number;
     };
+    /** Actual cost charged to account (when usage: {include: true} is set) */
+    cost?: number;
+    /** Detailed cost breakdown */
+    cost_details?: {
+      /** Upstream provider inference cost (for BYOK) */
+      upstream_inference_cost?: number;
+    };
   };
   error?: {
     message: string;
@@ -268,6 +275,9 @@ export function createOpenRouterProvider(
           model,
           messages: openRouterMessages,
           max_tokens: maxTokens,
+          // Request detailed usage including cost
+          // @see https://openrouter.ai/docs/guides/features/usage-accounting
+          usage: { include: true },
           // Add plugins for web search
           ...(plugins.length > 0 && { plugins }),
           // Pass standard function tools
@@ -386,7 +396,9 @@ export function createOpenRouterProvider(
                 ...(data.usage.completion_tokens_details?.reasoning_tokens && {
                   reasoningTokens: data.usage.completion_tokens_details.reasoning_tokens,
                 }),
-                // Estimated cost in USD
+                // Actual cost from OpenRouter API (when usage: {include: true} is set)
+                ...(data.usage.cost !== undefined && { actualCostUsd: data.usage.cost }),
+                // Estimated cost in USD (fallback using local pricing)
                 ...(costEstimate !== undefined && { estimatedCostUsd: costEstimate }),
               },
             }),
