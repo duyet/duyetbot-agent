@@ -53,7 +53,7 @@ export function shortenModelName(model: string): string {
 
   // Handle generic length truncation
   if (model.length > 20) {
-    return model.substring(0, 17) + '...';
+    return `${model.substring(0, 17)}...`;
   }
 
   // Return as-is for short names

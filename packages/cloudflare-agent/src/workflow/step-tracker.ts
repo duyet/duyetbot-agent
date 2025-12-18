@@ -164,7 +164,7 @@ export class StepProgressTracker {
         if (step.thinking) {
           // Truncate long thinking text for display (keep first ~100 chars)
           const text = step.thinking.replace(/\n/g, ' ').trim();
-          this.currentThinkingVerb = text.length > 100 ? text.slice(0, 97) + '...' : text;
+          this.currentThinkingVerb = text.length > 100 ? `${text.slice(0, 97)}...` : text;
         } else {
           this.currentThinkingVerb = getRandomThinkingMessage();
         }
@@ -384,8 +384,7 @@ export class StepProgressTracker {
     // Find the last parallel_tools step
     const parallelStep = [...this.steps].reverse().find((s) => s.type === 'parallel_tools');
     if (
-      parallelStep &&
-      parallelStep.args &&
+      parallelStep?.args &&
       typeof parallelStep.args === 'object' &&
       'tools' in parallelStep.args
     ) {
@@ -444,7 +443,7 @@ export class StepProgressTracker {
     const subagentStep = this.steps.find(
       (s): s is StepEvent => s.type === 'subagent' && s.args?.id === id
     );
-    if (subagentStep && subagentStep.args) {
+    if (subagentStep?.args) {
       Object.assign(subagentStep.args, {
         status: result.error ? 'error' : 'completed',
         ...result,

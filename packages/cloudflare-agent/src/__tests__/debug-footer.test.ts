@@ -418,7 +418,9 @@ describe('formatDebugFooter', () => {
     const footer = formatDebugFooter(ctx);
 
     // Uses ⏺ prefix with 80 char truncation
-    expect(footer).toContain('⏺ This is a very long thinking text that should be truncated to approximately 80 c...'); // 80 char truncation
+    expect(footer).toContain(
+      '⏺ This is a very long thinking text that should be truncated to approximately 80 c...'
+    ); // 80 char truncation
   });
 
   it('formats nested workers for orchestrator', () => {

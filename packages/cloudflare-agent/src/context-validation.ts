@@ -181,7 +181,9 @@ export class TelegramContextBuilder {
 
   /** Set bot token */
   setToken(token: string): this {
-    if (!token) throw new Error('[BUILDER] token cannot be empty');
+    if (!token) {
+      throw new Error('[BUILDER] token cannot be empty');
+    }
     this.data.token = token;
     return this;
   }
@@ -227,7 +229,9 @@ export class TelegramContextBuilder {
 
   /** Set message text */
   setText(text: string): this {
-    if (!text) throw new Error('[BUILDER] text cannot be empty');
+    if (!text) {
+      throw new Error('[BUILDER] text cannot be empty');
+    }
     this.data.text = text;
     return this;
   }

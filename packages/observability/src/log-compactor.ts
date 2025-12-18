@@ -60,7 +60,7 @@ export function compactDebugContext(
     return context;
   }
 
-  const messages = context.messages as Array<Record<string, unknown>>;
+  const messages = context.messages as Record<string, unknown>[];
   if (messages.length <= 4) {
     return context; // Keep original if already small
   }

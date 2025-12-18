@@ -1563,7 +1563,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         logger.info(
           `[CloudflareAgent][ALARM] Execution ${execution.executionId} already done, clearing alarm`
         );
-        const { pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        const {
+          pendingAlarmType: _pendingAlarmType,
+          chatExecutionLock: _chatExecutionLock,
+          ...rest
+        } = this.state;
         this.setState({
           ...rest,
         });
@@ -1575,7 +1579,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       } else {
         // Unknown or legacy alarm type - clear state
         logger.warn(`[CloudflareAgent][ALARM] Unknown alarm type: ${alarmType}, clearing`);
-        const { pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        const {
+          pendingAlarmType: _pendingAlarmType,
+          chatExecutionLock: _chatExecutionLock,
+          ...rest
+        } = this.state;
         this.setState({
           ...rest,
         });
@@ -1591,7 +1599,11 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
       if (!execution) {
         logger.warn('[CloudflareAgent][CHATLOOP] No execution in state, clearing alarm type');
-        const { pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        const {
+          pendingAlarmType: _pendingAlarmType,
+          chatExecutionLock: _chatExecutionLock,
+          ...rest
+        } = this.state;
         this.setState({
           ...rest,
         });
@@ -1609,7 +1621,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       // Idempotency check: Verify execution is still pending
       if (execution.done === true) {
         logger.info(`[CloudflareAgent][CHATLOOP] Execution ${execution.executionId} already done`);
-        const { chatExecution, pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+        const {
+          chatExecution: _chatExecution,
+          pendingAlarmType: _pendingAlarmType,
+          chatExecutionLock: _chatExecutionLock,
+          ...rest
+        } = this.state;
         this.setState({
           ...rest,
         });
@@ -1673,7 +1690,6 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
         // Run one iteration (onProgress updates message during execution)
         const result = await runChatIteration(execution, durableConfig);
 
-
         // Save updated execution state
         this.setState({
           ...this.state,
@@ -1708,7 +1724,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
           );
 
           // Force clear state to prevent memory leak
-          const { chatExecution, pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+          const {
+            chatExecution: _chatExecution,
+            pendingAlarmType: _pendingAlarmType,
+            chatExecutionLock: _chatExecutionLock,
+            ...rest
+          } = this.state;
           this.setState({
             ...rest,
             updatedAt: Date.now(),
@@ -1796,7 +1817,12 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
       const updatedMessages = trimHistory([...this.state.messages, ...newMessages], maxHistory);
 
       // Clear execution from state AND release lock
-      const { chatExecution, pendingAlarmType, chatExecutionLock, ...rest } = this.state;
+      const {
+        chatExecution: _chatExecution,
+        pendingAlarmType: _pendingAlarmType,
+        chatExecutionLock: _chatExecutionLock,
+        ...rest
+      } = this.state;
       this.setState({
         ...rest,
         messages: updatedMessages,

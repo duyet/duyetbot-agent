@@ -290,7 +290,9 @@ export function createChatExecution(params: {
  */
 function formatToolArgsCompact(args: Record<string, unknown>): string {
   const keys = Object.keys(args);
-  if (keys.length === 0) return '';
+  if (keys.length === 0) {
+    return '';
+  }
 
   const firstKey = keys[0] as string;
   const firstValue = args[firstKey];
@@ -332,7 +334,9 @@ export function formatExecutionProgress(execution: ChatLoopExecution): string {
     const step = steps[i];
     const isLast = i === steps.length - 1;
     const stepOrNull = step ?? null;
-    if (!stepOrNull) continue;
+    if (!stepOrNull) {
+      continue;
+    }
 
     // Thinking step - LLM reasoning/content
     if (stepOrNull.type === 'thinking' && stepOrNull.thinking) {

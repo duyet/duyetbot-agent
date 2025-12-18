@@ -1,5 +1,4 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import type { Step } from '../../types.js';
 import { StepCollector } from '../step-collector.js';
 
 describe('StepCollector', () => {
