@@ -327,7 +327,7 @@ describe('formatToolResult', () => {
   });
 
   it('should handle multi-line output with long lines', () => {
-    const result = 'a'.repeat(100) + '\n' + 'b'.repeat(100);
+    const result = `${'a'.repeat(100)}\n${'b'.repeat(100)}`;
     const formatted = formatToolResult(result, 10, 50);
     expect(formatted.length).toBeLessThanOrEqual(53);
   });

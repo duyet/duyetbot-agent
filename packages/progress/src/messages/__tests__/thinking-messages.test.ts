@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   createRotator,
   EXTENDED_MESSAGES,
@@ -119,7 +119,7 @@ describe('Thinking Messages', () => {
         });
 
         rotator = createRotator({ interval: 100, random: true });
-        const initialMessage = rotator.getCurrentMessage();
+        const _initialMessage = rotator.getCurrentMessage();
 
         rotator.start(callback);
         await vi.advanceTimersByTimeAsync(100);

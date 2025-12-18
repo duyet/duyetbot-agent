@@ -95,7 +95,7 @@ export function truncate(text: string, maxLength: number): string {
     return text;
   }
 
-  return text.slice(0, Math.max(0, maxLength - 3)) + '...';
+  return `${text.slice(0, Math.max(0, maxLength - 3))}...`;
 }
 
 /**

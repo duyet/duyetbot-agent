@@ -1,7 +1,7 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 
 interface Badge {
   label: string;
@@ -71,7 +71,7 @@ export function CapabilityBadges({ className = '' }: CapabilityBadgesProps) {
           href={badge.href}
           className="group flex items-center gap-1.5 text-fd-muted-foreground transition-colors hover:text-fd-foreground"
         >
-          <span 
+          <span
             className="flex items-center justify-center p-0.5 rounded transition-all group-hover:bg-opacity-20"
             style={{ color: badge.color }}
           >

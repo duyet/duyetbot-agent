@@ -78,13 +78,13 @@ describe('shortenModelName', () => {
 
     it('should truncate model names longer than 20 characters', () => {
       const longName = 'very-long-model-name-that-exceeds-limit';
-      expect(shortenModelName(longName)).toBe(longName.substring(0, 17) + '...');
+      expect(shortenModelName(longName)).toBe(`${longName.substring(0, 17)}...`);
       expect(shortenModelName(longName).length).toBe(20);
     });
 
     it('should truncate very long model names correctly', () => {
       const veryLongName = 'a'.repeat(50);
-      expect(shortenModelName(veryLongName)).toBe('a'.repeat(17) + '...');
+      expect(shortenModelName(veryLongName)).toBe(`${'a'.repeat(17)}...`);
       expect(shortenModelName(veryLongName).length).toBe(20);
     });
   });
@@ -113,7 +113,7 @@ describe('shortenModelName', () => {
     it('should case-sensitively match claude patterns', () => {
       // These should be treated as unknown models since they don\'t match exactly
       const upperModel = 'CLAUDE-3-5-SONNET-20241022';
-      expect(shortenModelName(upperModel)).toBe(upperModel.substring(0, 17) + '...');
+      expect(shortenModelName(upperModel)).toBe(`${upperModel.substring(0, 17)}...`);
     });
   });
 
