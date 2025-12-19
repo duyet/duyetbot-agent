@@ -144,6 +144,15 @@ export interface ChatOptions {
  */
 export interface LLMProvider {
   chat(messages: LLMMessage[], tools?: OpenAITool[], options?: ChatOptions): Promise<LLMResponse>;
+  /**
+   * Stream chat response with tokens as they arrive
+   * Each yielded response contains partial content or tool calls
+   */
+  streamChat?(
+    messages: LLMMessage[],
+    tools?: OpenAITool[],
+    options?: ChatOptions
+  ): AsyncIterable<LLMResponse>;
 }
 
 /**
