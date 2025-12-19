@@ -49,8 +49,19 @@ export function buildInitialMessages(
  */
 export function buildToolIterationMessages(
   initialMessages: LLMMessage[],
-  toolConversation: Array<{ role: 'user' | 'assistant'; content: string }>
+  toolConversation: Message[]
 ): LLMMessage[] {
+  // Convert Message (with toolCallId) to LLMMessage (with tool_call_id)
+  const toolTurns: LLMMessage[] = toolConversation.map((msg) => {
+    const llmMsg: LLMMessage = {
+      role: msg.role === 'tool' ? 'tool' : (msg.role as any),
+      content: msg.content,
+    };
+    if (msg.toolCallId) llmMsg.tool_call_id = msg.toolCallId;
+    if (msg.name) llmMsg.name = msg.name;
+    return llmMsg;
+  });
+
   // Combine: system prompt + embedded history with user message + tool turns
-  return [...initialMessages, ...toolConversation];
+  return [...initialMessages, ...toolTurns];
 }

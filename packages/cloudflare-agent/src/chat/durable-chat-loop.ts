@@ -9,7 +9,7 @@ import { logger } from '@duyetbot/hono-middleware';
 import { getRandomMessage } from '@duyetbot/progress';
 import type { LLMProvider, Message, OpenAITool } from '../types.js';
 import { buildInitialMessages, type ContextBuilderConfig } from './context-builder.js';
-import { getToolCalls, hasToolCalls, parse } from './response-handler.js';
+import { parse } from './response-handler.js';
 import { ToolExecutor, type ToolExecutorConfig } from './tool-executor.js';
 import type { ChatIterationResult, ChatLoopExecution } from './types.js';
 
@@ -78,149 +78,199 @@ export async function runChatIteration(
 
   // Call LLM
   const hasTools = config.tools.length > 0;
-  const response = await config.llmProvider.chat(llmMessages, hasTools ? config.tools : undefined);
+  let responseContent = '';
+  let toolCalls: any[] = [];
+  let usage: any = undefined;
+  let responseModel: string | undefined = undefined;
 
-  // Parse response
-  const parsed = parse(response);
+  if (config.llmProvider.streamChat) {
+    const stream = config.llmProvider.streamChat(llmMessages, hasTools ? config.tools : undefined);
+    let thinkingStepIndex = -1;
+    let lastProgressUpdate = 0;
+    const PROGRESS_MIN_INTERVAL = 1000;
 
-  // Track token usage and model
-  if (parsed.usage) {
-    execution.tokenUsage.input += parsed.usage.inputTokens || 0;
-    execution.tokenUsage.output += parsed.usage.outputTokens || 0;
-    if (parsed.usage.cachedTokens) {
-      execution.tokenUsage.cached = (execution.tokenUsage.cached || 0) + parsed.usage.cachedTokens;
+    for await (const chunk of stream) {
+      responseContent = chunk.content || responseContent;
+      if (chunk.toolCalls) toolCalls = chunk.toolCalls;
+      if (chunk.usage) usage = chunk.usage;
+      if (chunk.model) responseModel = chunk.model;
+
+      // Add or update thinking step
+      if (thinkingStepIndex === -1) {
+        thinkingStepIndex = execution.executionSteps.length;
+        execution.executionSteps.push({
+          type: 'thinking',
+          iteration: execution.iteration,
+          thinking: responseContent,
+          timestamp: Date.now(),
+        });
+      } else {
+        const step = execution.executionSteps[thinkingStepIndex];
+        if (step && step.type === 'thinking') {
+          step.thinking = responseContent;
+        }
+      }
+
+      // Update progress frequently during streaming (throttled)
+      if (config.onProgress && Date.now() - lastProgressUpdate > PROGRESS_MIN_INTERVAL) {
+        await config.onProgress(execution);
+        lastProgressUpdate = Date.now();
+      }
+    }
+
+    // Final update for thinking step duration
+    const step = execution.executionSteps[thinkingStepIndex];
+    if (step && step.type === 'thinking') {
+      step.durationMs = Date.now() - startTime;
+    }
+  } else {
+    const response = await config.llmProvider.chat(llmMessages, hasTools ? config.tools : undefined);
+    const parsed = parse(response);
+    responseContent = parsed.content;
+    toolCalls = parsed.toolCalls || [];
+    usage = parsed.usage;
+    responseModel = parsed.model;
+
+    // Add single thinking step
+    execution.executionSteps.push({
+      type: 'thinking',
+      iteration: execution.iteration,
+      thinking: responseContent,
+      timestamp: Date.now(),
+      durationMs: Date.now() - startTime,
+    });
+
+    if (config.onProgress) {
+      await config.onProgress(execution);
     }
   }
-  if (parsed.model) {
-    execution.model = parsed.model;
+
+  // Track token usage and model
+  if (usage) {
+    execution.tokenUsage.input += usage.inputTokens || 0;
+    execution.tokenUsage.output += usage.outputTokens || 0;
+    if (usage.cachedTokens) {
+      execution.tokenUsage.cached = (execution.tokenUsage.cached || 0) + usage.cachedTokens;
+    }
   }
-
-  // Add execution step (using unified 'thinking' type)
-  execution.executionSteps.push({
-    type: 'thinking',
-    iteration: execution.iteration,
-    thinking: parsed.content,
-    timestamp: Date.now(),
-    durationMs: Date.now() - startTime,
-  });
-
-  // Update progress after thinking step
-  if (config.onProgress) {
-    await config.onProgress(execution);
+  if (responseModel) {
+    execution.model = responseModel;
   }
 
   // Check if we have tool calls
-  if (hasToolCalls(parsed)) {
-    const toolCalls = getToolCalls(parsed);
-
+  if (toolCalls.length > 0) {
     logger.info(
-      `[DurableChatLoop] Processing ${toolCalls.length} tool calls (iteration ${execution.iteration})`
+      `[DurableChatLoop] Processing ${toolCalls.length} tool calls in parallel (iteration ${execution.iteration})`
     );
 
     // Store assistant message with tool calls
     execution.iterationMessages.push({
       role: 'assistant',
-      content: parsed.content || '',
+      content: responseContent || '',
     });
 
-    // Execute tools
+    // Execute tools in parallel
     const toolExecutor = new ToolExecutor(config.toolExecutor);
 
-    for (const toolCall of toolCalls) {
-      let toolArgs: Record<string, unknown> = {};
-      try {
-        toolArgs = JSON.parse(toolCall.arguments);
-      } catch {
-        // Invalid JSON args, continue with empty object
-      }
+    await Promise.all(
+      toolCalls.map(async (toolCall) => {
+        let toolArgs: Record<string, unknown> = {};
+        try {
+          toolArgs = JSON.parse(toolCall.arguments);
+        } catch {
+          // Invalid JSON args, continue with empty object
+        }
 
-      // Track tool start
-      execution.executionSteps.push({
-        type: 'tool_start',
-        iteration: execution.iteration,
-        toolName: toolCall.name,
-        args: toolArgs,
-        timestamp: Date.now(),
-      });
+        // Track tool start
+        execution.executionSteps.push({
+          type: 'tool_start',
+          iteration: execution.iteration,
+          toolName: toolCall.name,
+          args: toolArgs,
+          timestamp: Date.now(),
+        });
 
-      // Update progress to show tool running
-      if (config.onProgress) {
-        await config.onProgress(execution);
-      }
+        // Update progress to show tool running
+        if (config.onProgress) {
+          await config.onProgress(execution);
+        }
 
-      const toolStart = Date.now();
+        const toolStart = Date.now();
 
-      try {
-        const result = await withTimeout(
-          toolExecutor.execute(toolCall),
-          TOOL_TIMEOUT_MS,
-          `Tool execution: ${toolCall.name}`
-        );
+        try {
+          const result = await withTimeout(
+            toolExecutor.execute(toolCall),
+            TOOL_TIMEOUT_MS,
+            `Tool execution: ${toolCall.name}`
+          );
 
-        if (result.error) {
+          if (result.error) {
+            execution.executionSteps.push({
+              type: 'tool_error',
+              iteration: execution.iteration,
+              toolName: toolCall.name,
+              args: toolArgs,
+              error: result.error,
+              timestamp: Date.now(),
+              durationMs: Date.now() - toolStart,
+            });
+
+            execution.iterationMessages.push({
+              role: 'user',
+              content: `[Tool Error for ${toolCall.name}]: ${result.error}`,
+              toolCallId: toolCall.id,
+            });
+          } else {
+            execution.executionSteps.push({
+              type: 'tool_complete',
+              iteration: execution.iteration,
+              toolName: toolCall.name,
+              args: toolArgs,
+              result: result.result?.substring(0, 200) || '',
+              timestamp: Date.now(),
+              durationMs: Date.now() - toolStart,
+            });
+
+            execution.iterationMessages.push({
+              role: 'user',
+              content: `[Tool Result for ${toolCall.name}]: ${result.result}`,
+              toolCallId: toolCall.id,
+            });
+
+            if (!execution.toolsUsed.includes(toolCall.name)) {
+              execution.toolsUsed.push(toolCall.name);
+            }
+          }
+        } catch (timeoutError) {
+          const errorMessage =
+            timeoutError instanceof Error ? timeoutError.message : 'Tool execution timed out';
+
           execution.executionSteps.push({
             type: 'tool_error',
             iteration: execution.iteration,
             toolName: toolCall.name,
-            args: toolArgs, // Include args for display in debug footer
-            error: result.error,
+            args: toolArgs,
+            error: errorMessage,
             timestamp: Date.now(),
             durationMs: Date.now() - toolStart,
           });
 
           execution.iterationMessages.push({
             role: 'user',
-            content: `[Tool Error for ${toolCall.name}]: ${result.error}`,
+            content: `[Tool Error for ${toolCall.name}]: ${errorMessage}`,
+            toolCallId: toolCall.id,
           });
-        } else {
-          execution.executionSteps.push({
-            type: 'tool_complete',
-            iteration: execution.iteration,
-            toolName: toolCall.name,
-            args: toolArgs, // Include args for display in debug footer
-            result: result.result?.substring(0, 200) || '',
-            timestamp: Date.now(),
-            durationMs: Date.now() - toolStart,
-          });
-
-          execution.iterationMessages.push({
-            role: 'user',
-            content: `[Tool Result for ${toolCall.name}]: ${result.result}`,
-          });
-
-          if (!execution.toolsUsed.includes(toolCall.name)) {
-            execution.toolsUsed.push(toolCall.name);
+        } finally {
+          // Update progress after tool completes/fails
+          if (config.onProgress) {
+            await config.onProgress(execution);
           }
         }
-
-        // Update progress after tool completes
-        if (config.onProgress) {
-          await config.onProgress(execution);
-        }
-      } catch (timeoutError) {
-        // Handle timeout error
-        const errorMessage =
-          timeoutError instanceof Error ? timeoutError.message : 'Tool execution timed out';
-
-        execution.executionSteps.push({
-          type: 'tool_error',
-          iteration: execution.iteration,
-          toolName: toolCall.name,
-          args: toolArgs, // Include args for display in debug footer
-          error: errorMessage,
-          timestamp: Date.now(),
-          durationMs: Date.now() - toolStart,
-        });
-
-        execution.iterationMessages.push({
-          role: 'user',
-          content: `[Tool Error for ${toolCall.name}]: ${errorMessage}`,
-        });
-      }
-    }
+      })
+    );
 
     logger.info(
-      `[DurableChatLoop] Iteration ${execution.iteration} completed with tool calls - scheduling next iteration`
+      `[DurableChatLoop] Iteration ${execution.iteration} completed with parallel tool calls - scheduling next iteration`
     );
 
     return {
@@ -231,9 +281,9 @@ export async function runChatIteration(
   }
 
   // No tool calls - we're done
-  execution.lastAssistantContent = parsed.content;
+  execution.lastAssistantContent = responseContent;
   execution.done = true;
-  execution.response = parsed.content;
+  execution.response = responseContent;
 
   logger.info(
     `[DurableChatLoop] Execution ${execution.executionId} completed after ${execution.iteration} iterations`
@@ -241,7 +291,7 @@ export async function runChatIteration(
 
   return {
     done: true,
-    response: parsed.content,
+    response: responseContent,
     hasToolCalls: false,
     tokenUsage: execution.tokenUsage,
   };

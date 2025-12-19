@@ -17,7 +17,7 @@ import {
   buildToolIterationMessages,
   type ContextBuilderConfig,
 } from './context-builder.js';
-import { getToolCalls, hasToolCalls, parse } from './response-handler.js';
+import { parse } from './response-handler.js';
 import { ToolExecutor, type ToolExecutorConfig } from './tool-executor.js';
 
 /**
@@ -94,115 +94,158 @@ export class ChatLoop {
     const llmMessages = buildInitialMessages(contextConfig, userMessage, quotedContext);
 
     // Call LLM with tools if available
-    let response = await this.config.llmProvider.chat(
-      llmMessages,
-      hasTools ? this.config.tools : undefined
-    );
+    let response: any;
+    let responseContent = '';
+    let toolCalls: any[] = [];
+    let usage: any = undefined;
+    let responseModel: string | undefined = undefined;
 
-    // Parse response
-    let parsedResponse = parse(response);
+    if (this.config.llmProvider.streamChat) {
+      const stream = this.config.llmProvider.streamChat(
+        llmMessages,
+        hasTools ? this.config.tools : undefined
+      );
+      let lastProgressUpdate = 0;
+      const PROGRESS_MIN_INTERVAL = 1000;
+
+      for await (const chunk of stream) {
+        responseContent = chunk.content || responseContent;
+        if (chunk.toolCalls) toolCalls = chunk.toolCalls;
+        if (chunk.usage) usage = chunk.usage;
+        if (chunk.model) responseModel = chunk.model;
+
+        // Throttled update to step tracker
+        if (Date.now() - lastProgressUpdate > PROGRESS_MIN_INTERVAL) {
+          if (responseContent) {
+            await stepTracker?.addStep({
+              type: 'thinking',
+              iteration: 0,
+              thinking: responseContent,
+            });
+          }
+          lastProgressUpdate = Date.now();
+        }
+      }
+
+      // Final update after stream ends
+      if (responseContent) {
+        await stepTracker?.addStep({
+          type: 'thinking',
+          iteration: 0,
+          thinking: responseContent,
+        });
+      }
+    } else {
+      response = await this.config.llmProvider.chat(
+        llmMessages,
+        hasTools ? this.config.tools : undefined
+      );
+      const parsed = parse(response);
+      responseContent = parsed.content;
+      toolCalls = parsed.toolCalls || [];
+      usage = parsed.usage;
+      responseModel = parsed.model;
+
+      if (responseContent) {
+        await stepTracker?.addStep({
+          type: 'thinking',
+          iteration: 0,
+          thinking: responseContent,
+        });
+      }
+    }
 
     // Track token usage
     const tokenUsage = {
-      input: parsedResponse.usage?.inputTokens || 0,
-      output: parsedResponse.usage?.outputTokens || 0,
-      total: parsedResponse.usage?.totalTokens || 0,
-      cached: parsedResponse.usage?.cachedTokens,
+      input: usage?.inputTokens || 0,
+      output: usage?.outputTokens || 0,
+      total: usage?.totalTokens || (usage?.inputTokens || 0) + (usage?.outputTokens || 0),
+      cached: usage?.cachedTokens,
     };
 
     // Update step tracker
-    if (parsedResponse.usage) {
-      stepTracker?.addTokenUsage(parsedResponse.usage);
+    if (usage) {
+      stepTracker?.addTokenUsage(usage);
     }
-    if (parsedResponse.model) {
-      stepTracker?.setModel(parsedResponse.model);
-    }
-
-    // Emit thinking with LLM's response content
-    // This shows what the LLM is "thinking" before/during tool execution
-    if (parsedResponse.content) {
-      await stepTracker?.addStep({
-        type: 'thinking',
-        iteration: 0,
-        thinking: parsedResponse.content,
-      });
+    if (responseModel) {
+      stepTracker?.setModel(responseModel);
     }
 
     // Handle tool calls (up to maxToolIterations)
     let iterations = 0;
 
     // Track tool conversation for iterations (separate from embedded history)
-    const toolConversation: Array<{
-      role: 'user' | 'assistant';
-      content: string;
-    }> = [];
+    const toolConversation: Message[] = [];
 
-    while (hasToolCalls(parsedResponse) && iterations < this.config.maxToolIterations) {
+    while (toolCalls.length > 0 && iterations < this.config.maxToolIterations) {
       iterations++;
       logger.info(
-        `[ChatLoop] Processing ${parsedResponse.toolCalls?.length} tool calls (iteration ${iterations})`
+        `[ChatLoop] Processing ${toolCalls.length} tool calls in parallel (iteration ${iterations})`
       );
 
       // Add assistant message with tool calls to tool conversation
       toolConversation.push({
         role: 'assistant' as const,
-        content: parsedResponse.content || '',
+        content: responseContent || '',
       });
 
-      // Execute each tool call
-      const toolCalls = getToolCalls(parsedResponse);
-      for (const toolCall of toolCalls) {
-        // Parse args for step tracking
-        let toolArgs: Record<string, unknown> = {};
-        try {
-          toolArgs = JSON.parse(toolCall.arguments);
-        } catch {
-          // Invalid JSON args, continue with empty object
-        }
+      // Execute tools in parallel
+      await Promise.all(
+        toolCalls.map(async (toolCall) => {
+          // Parse args for step tracking
+          let toolArgs: Record<string, unknown> = {};
+          try {
+            toolArgs = JSON.parse(toolCall.arguments);
+          } catch {
+            // Invalid JSON args, continue with empty object
+          }
 
-        // Emit tool start step with args
-        await stepTracker?.addStep({
-          type: 'tool_start',
-          toolName: toolCall.name,
-          args: toolArgs,
-          iteration: iterations,
-        });
-
-        // Execute tool
-        const executionResult = await this.toolExecutor.execute(toolCall);
-
-        if (executionResult.error) {
-          // Emit tool error step
+          // Emit tool start step with args
           await stepTracker?.addStep({
-            type: 'tool_error',
+            type: 'tool_start',
             toolName: toolCall.name,
             args: toolArgs,
-            error: executionResult.error,
             iteration: iterations,
           });
 
-          // Add error to conversation
-          toolConversation.push({
-            role: 'user' as const,
-            content: `[Tool Error for ${toolCall.name}]: ${executionResult.error}`,
-          });
-        } else {
-          // Emit tool complete step
-          await stepTracker?.addStep({
-            type: 'tool_complete',
-            toolName: toolCall.name,
-            args: toolArgs,
-            result: executionResult.result,
-            iteration: iterations,
-          });
+          // Execute tool
+          const executionResult = await this.toolExecutor.execute(toolCall);
 
-          // Add result to conversation
-          toolConversation.push({
-            role: 'user' as const,
-            content: `[Tool Result for ${toolCall.name}]: ${executionResult.result}`,
-          });
-        }
-      }
+          if (executionResult.error) {
+            // Emit tool error step
+            await stepTracker?.addStep({
+              type: 'tool_error',
+              toolName: toolCall.name,
+              args: toolArgs,
+              error: executionResult.error,
+              iteration: iterations,
+            });
+
+            // Add error to conversation
+            toolConversation.push({
+              role: 'user' as const,
+              content: `[Tool Error for ${toolCall.name}]: ${executionResult.error}`,
+              toolCallId: toolCall.id,
+            });
+          } else {
+            // Emit tool complete step
+            await stepTracker?.addStep({
+              type: 'tool_complete',
+              toolName: toolCall.name,
+              args: toolArgs,
+              result: executionResult.result,
+              iteration: iterations,
+            });
+
+            // Add result to conversation
+            toolConversation.push({
+              role: 'user' as const,
+              content: `[Tool Result for ${toolCall.name}]: ${executionResult.result}`,
+              toolCallId: toolCall.id,
+            });
+          }
+        })
+      );
 
       // Rebuild messages with embedded history + tool conversation
       const toolMessages = buildToolIterationMessages(llmMessages, toolConversation);
@@ -215,44 +258,87 @@ export class ChatLoop {
       });
 
       // Continue conversation with tool results
-      response = await this.config.llmProvider.chat(
-        toolMessages,
-        hasTools ? this.config.tools : undefined
-      );
+      let nextUsage: any = undefined;
+      let nextModel: string | undefined = undefined;
 
-      // Parse new response
-      parsedResponse = parse(response);
+      if (this.config.llmProvider.streamChat) {
+        const stream = this.config.llmProvider.streamChat(
+          toolMessages,
+          hasTools ? this.config.tools : undefined
+        );
+        let lastProgressUpdate = 0;
+        const PROGRESS_MIN_INTERVAL = 1000;
+        responseContent = ''; // Reset for next iteration
+        toolCalls = [];
 
-      // Track token usage from follow-up calls
-      if (parsedResponse.usage) {
-        tokenUsage.input += parsedResponse.usage.inputTokens || 0;
-        tokenUsage.output += parsedResponse.usage.outputTokens || 0;
-        tokenUsage.total += parsedResponse.usage.totalTokens || 0;
-        if (typeof parsedResponse.usage.cachedTokens === 'number') {
-          tokenUsage.cached = (tokenUsage.cached || 0) + parsedResponse.usage.cachedTokens;
+        for await (const chunk of stream) {
+          responseContent = chunk.content || responseContent;
+          if (chunk.toolCalls) toolCalls = chunk.toolCalls;
+          if (chunk.usage) nextUsage = chunk.usage;
+          if (chunk.model) nextModel = chunk.model;
+
+          // Throttled update to step tracker
+          if (Date.now() - lastProgressUpdate > PROGRESS_MIN_INTERVAL) {
+            if (responseContent) {
+              await stepTracker?.addStep({
+                type: 'thinking',
+                iteration: iterations,
+                thinking: responseContent,
+              });
+            }
+            lastProgressUpdate = Date.now();
+          }
         }
 
-        stepTracker?.addTokenUsage(parsedResponse.usage);
-      }
-      if (parsedResponse.model) {
-        stepTracker?.setModel(parsedResponse.model);
+        // Final update
+        if (responseContent) {
+          await stepTracker?.addStep({
+            type: 'thinking',
+            iteration: iterations,
+            thinking: responseContent,
+          });
+        }
+      } else {
+        const response = await this.config.llmProvider.chat(
+          toolMessages,
+          hasTools ? this.config.tools : undefined
+        );
+        const parsed = parse(response);
+        responseContent = parsed.content;
+        toolCalls = parsed.toolCalls || [];
+        nextUsage = parsed.usage;
+        nextModel = parsed.model;
+
+        if (responseContent) {
+          await stepTracker?.addStep({
+            type: 'thinking',
+            iteration: iterations,
+            thinking: responseContent,
+          });
+        }
       }
 
-      // Emit thinking text from follow-up response
-      // This shows the LLM's reasoning after receiving tool results
-      if (parsedResponse.content) {
-        await stepTracker?.addStep({
-          type: 'thinking',
-          iteration: iterations,
-          thinking: parsedResponse.content,
-        });
+      // Track token usage from follow-up calls
+      if (nextUsage) {
+        tokenUsage.input += nextUsage.inputTokens || 0;
+        tokenUsage.output += nextUsage.outputTokens || 0;
+        tokenUsage.total += nextUsage.totalTokens || (nextUsage.inputTokens || 0) + (nextUsage.outputTokens || 0);
+        if (typeof nextUsage.cachedTokens === 'number') {
+          tokenUsage.cached = (tokenUsage.cached || 0) + nextUsage.cachedTokens;
+        }
+
+        stepTracker?.addTokenUsage(nextUsage);
+      }
+      if (nextModel) {
+        stepTracker?.setModel(nextModel);
+        responseModel = nextModel;
       }
     }
 
     // Emit preparing step before finalizing
     await stepTracker?.addStep({ type: 'preparing', iteration: 0 });
 
-    const assistantContent = parsedResponse.content;
+    const assistantContent = responseContent;
 
     // Build new messages for history
     const newMessages: Message[] = [
@@ -277,8 +363,8 @@ export class ChatLoop {
     }
 
     // Only add model if defined (exactOptionalPropertyTypes compliance)
-    if (parsedResponse.model) {
-      result.model = parsedResponse.model;
+    if (responseModel) {
+      result.model = responseModel;
     }
 
     return result;
