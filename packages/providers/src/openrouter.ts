@@ -226,7 +226,7 @@ export function createOpenRouterProvider(
     return gatewayUrlPromise;
   };
 
-  const processResponse = (data: OpenRouterChatResponse, startTime: number): LLMResponse => {
+  const processResponse = (data: OpenRouterChatResponse, _startTime: number): LLMResponse => {
     if (data.error) {
       throw new Error(data.error.message || 'Unknown API error');
     }

@@ -33,7 +33,7 @@ export interface ChatLoopExecution {
 
   // Conversation state (accumulates across iterations)
   conversationHistory: Message[]; // History before this execution
-  iterationMessages: Message[];   // Messages from current execution
+  iterationMessages: Message[]; // Messages from current execution
 
   // Current iteration state
   lastAssistantContent?: string | undefined;
