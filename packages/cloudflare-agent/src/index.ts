@@ -83,6 +83,23 @@ export {
   MCPMemoryAdapterError,
   ResilientMCPMemoryAdapter,
 } from './mcp-memory-adapter.js';
+// Mem0.ai memory adapter
+export {
+  createMem0MemoryAdapter,
+  createResilientMem0MemoryAdapter,
+  type DuyetbotCategory,
+  MEM0_CATEGORY_MAP,
+  Mem0AdapterError,
+  type Mem0AddMemoryRequest,
+  type Mem0AddMemoryResponse,
+  type Mem0Category,
+  type Mem0Config,
+  type Mem0GetMemoriesRequest,
+  type Mem0Memory,
+  Mem0MemoryAdapter,
+  type Mem0SearchRequest,
+  ResilientMem0MemoryAdapter,
+} from './mem0/index.js';
 // Memory adapters
 export type {
   MemoryAdapter,
@@ -182,7 +199,10 @@ export {
 // Feature Flags
 export {
   type FeatureFlagEnv,
+  type MemoryFlags,
+  MemoryFlagsSchema,
   parseFlagsFromEnv,
+  parseMem0Flags,
   type RoutingFlags,
   RoutingFlagsSchema,
 } from './feature-flags.js';

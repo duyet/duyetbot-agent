@@ -97,8 +97,8 @@ export class ChatLoop {
     let response: any;
     let responseContent = '';
     let toolCalls: any[] = [];
-    let usage: any = undefined;
-    let responseModel: string | undefined = undefined;
+    let usage: any;
+    let responseModel: string | undefined;
 
     if (this.config.llmProvider.streamChat) {
       const stream = this.config.llmProvider.streamChat(
@@ -110,9 +110,15 @@ export class ChatLoop {
 
       for await (const chunk of stream) {
         responseContent = chunk.content || responseContent;
-        if (chunk.toolCalls) toolCalls = chunk.toolCalls;
-        if (chunk.usage) usage = chunk.usage;
-        if (chunk.model) responseModel = chunk.model;
+        if (chunk.toolCalls) {
+          toolCalls = chunk.toolCalls;
+        }
+        if (chunk.usage) {
+          usage = chunk.usage;
+        }
+        if (chunk.model) {
+          responseModel = chunk.model;
+        }
 
         // Throttled update to step tracker
         if (Date.now() - lastProgressUpdate > PROGRESS_MIN_INTERVAL) {
@@ -190,7 +196,7 @@ export class ChatLoop {
       });
 
       // Execute tools in parallel
-      await Promise.all(
+      const toolResults = await Promise.all(
         toolCalls.map(async (toolCall) => {
           // Parse args for step tracking
           let toolArgs: Record<string, unknown> = {};
@@ -209,7 +215,9 @@ export class ChatLoop {
           });
 
           // Execute tool
+          // TODO: Add timeout support like in durable-chat-loop
           const executionResult = await this.toolExecutor.execute(toolCall);
+          let resultMessage: Message | null = null;
 
           if (executionResult.error) {
             // Emit tool error step
@@ -221,12 +229,13 @@ export class ChatLoop {
               iteration: iterations,
             });
 
-            // Add error to conversation
-            toolConversation.push({
-              role: 'user' as const,
+            // Prepare error for conversation
+            resultMessage = {
+              role: 'tool' as const,
               content: `[Tool Error for ${toolCall.name}]: ${executionResult.error}`,
               toolCallId: toolCall.id,
-            });
+              name: toolCall.name,
+            };
           } else {
             // Emit tool complete step
             await stepTracker?.addStep({
@@ -237,15 +246,25 @@ export class ChatLoop {
               iteration: iterations,
             });
 
-            // Add result to conversation
-            toolConversation.push({
-              role: 'user' as const,
-              content: `[Tool Result for ${toolCall.name}]: ${executionResult.result}`,
+            // Prepare result for conversation
+            resultMessage = {
+              role: 'tool' as const,
+              content: executionResult.result,
               toolCallId: toolCall.id,
-            });
+              name: toolCall.name,
+            };
           }
+
+          return resultMessage;
         })
       );
+
+      // Add tool results to conversation in strict order
+      toolResults.forEach((result) => {
+        if (result) {
+          toolConversation.push(result);
+        }
+      });
 
       // Rebuild messages with embedded history + tool conversation
       const toolMessages = buildToolIterationMessages(llmMessages, toolConversation);
@@ -258,8 +277,8 @@ export class ChatLoop {
       });
 
       // Continue conversation with tool results
-      let nextUsage: any = undefined;
-      let nextModel: string | undefined = undefined;
+      let nextUsage: any;
+      let nextModel: string | undefined;
 
       if (this.config.llmProvider.streamChat) {
         const stream = this.config.llmProvider.streamChat(
@@ -273,9 +292,15 @@ export class ChatLoop {
 
         for await (const chunk of stream) {
           responseContent = chunk.content || responseContent;
-          if (chunk.toolCalls) toolCalls = chunk.toolCalls;
-          if (chunk.usage) nextUsage = chunk.usage;
-          if (chunk.model) nextModel = chunk.model;
+          if (chunk.toolCalls) {
+            toolCalls = chunk.toolCalls;
+          }
+          if (chunk.usage) {
+            nextUsage = chunk.usage;
+          }
+          if (chunk.model) {
+            nextModel = chunk.model;
+          }
 
           // Throttled update to step tracker
           if (Date.now() - lastProgressUpdate > PROGRESS_MIN_INTERVAL) {
@@ -322,7 +347,8 @@ export class ChatLoop {
       if (nextUsage) {
         tokenUsage.input += nextUsage.inputTokens || 0;
         tokenUsage.output += nextUsage.outputTokens || 0;
-        tokenUsage.total += nextUsage.totalTokens || (nextUsage.inputTokens || 0) + (nextUsage.outputTokens || 0);
+        tokenUsage.total +=
+          nextUsage.totalTokens || (nextUsage.inputTokens || 0) + (nextUsage.outputTokens || 0);
         if (typeof nextUsage.cachedTokens === 'number') {
           tokenUsage.cached = (tokenUsage.cached || 0) + nextUsage.cachedTokens;
         }

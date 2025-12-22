@@ -25,14 +25,22 @@ async function withTimeout<T>(
   timeoutMs: number,
   operationName: string
 ): Promise<T> {
+  let timeoutId: NodeJS.Timeout | undefined;
+
   const timeoutPromise = new Promise<T>((_, reject) => {
-    setTimeout(
+    timeoutId = setTimeout(
       () => reject(new Error(`${operationName} timed out after ${timeoutMs}ms`)),
       timeoutMs
     );
   });
 
-  return Promise.race([promise, timeoutPromise]);
+  try {
+    return await Promise.race([promise, timeoutPromise]);
+  } finally {
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 }
 
 export interface DurableChatLoopConfig {
@@ -41,6 +49,8 @@ export interface DurableChatLoopConfig {
   toolExecutor: ToolExecutorConfig;
   /** Optional callback to update progress after each step (for real-time message editing) */
   onProgress?: (execution: ChatLoopExecution) => Promise<void>;
+  /** Timeout for tool execution in milliseconds (default: 25000) */
+  toolExecutionTimeoutMs?: number;
 }
 
 /**
@@ -80,8 +90,8 @@ export async function runChatIteration(
   const hasTools = config.tools.length > 0;
   let responseContent = '';
   let toolCalls: any[] = [];
-  let usage: any = undefined;
-  let responseModel: string | undefined = undefined;
+  let usage: any;
+  let responseModel: string | undefined;
 
   if (config.llmProvider.streamChat) {
     const stream = config.llmProvider.streamChat(llmMessages, hasTools ? config.tools : undefined);
@@ -91,9 +101,15 @@ export async function runChatIteration(
 
     for await (const chunk of stream) {
       responseContent = chunk.content || responseContent;
-      if (chunk.toolCalls) toolCalls = chunk.toolCalls;
-      if (chunk.usage) usage = chunk.usage;
-      if (chunk.model) responseModel = chunk.model;
+      if (chunk.toolCalls) {
+        toolCalls = chunk.toolCalls;
+      }
+      if (chunk.usage) {
+        usage = chunk.usage;
+      }
+      if (chunk.model) {
+        responseModel = chunk.model;
+      }
 
       // Add or update thinking step
       if (thinkingStepIndex === -1) {
@@ -124,7 +140,10 @@ export async function runChatIteration(
       step.durationMs = Date.now() - startTime;
     }
   } else {
-    const response = await config.llmProvider.chat(llmMessages, hasTools ? config.tools : undefined);
+    const response = await config.llmProvider.chat(
+      llmMessages,
+      hasTools ? config.tools : undefined
+    );
     const parsed = parse(response);
     responseContent = parsed.content;
     toolCalls = parsed.toolCalls || [];
@@ -172,7 +191,8 @@ export async function runChatIteration(
     // Execute tools in parallel
     const toolExecutor = new ToolExecutor(config.toolExecutor);
 
-    await Promise.all(
+    // Track tool results to ensure deterministic history order
+    const toolResults = await Promise.all(
       toolCalls.map(async (toolCall) => {
         let toolArgs: Record<string, unknown> = {};
         try {
@@ -196,11 +216,12 @@ export async function runChatIteration(
         }
 
         const toolStart = Date.now();
+        let resultMessage: Message | null = null;
 
         try {
           const result = await withTimeout(
             toolExecutor.execute(toolCall),
-            TOOL_TIMEOUT_MS,
+            config.toolExecutionTimeoutMs ?? TOOL_TIMEOUT_MS,
             `Tool execution: ${toolCall.name}`
           );
 
@@ -215,11 +236,12 @@ export async function runChatIteration(
               durationMs: Date.now() - toolStart,
             });
 
-            execution.iterationMessages.push({
-              role: 'user',
+            resultMessage = {
+              role: 'tool',
               content: `[Tool Error for ${toolCall.name}]: ${result.error}`,
               toolCallId: toolCall.id,
-            });
+              name: toolCall.name,
+            };
           } else {
             execution.executionSteps.push({
               type: 'tool_complete',
@@ -231,11 +253,12 @@ export async function runChatIteration(
               durationMs: Date.now() - toolStart,
             });
 
-            execution.iterationMessages.push({
-              role: 'user',
-              content: `[Tool Result for ${toolCall.name}]: ${result.result}`,
+            resultMessage = {
+              role: 'tool',
+              content: result.result,
               toolCallId: toolCall.id,
-            });
+              name: toolCall.name,
+            };
 
             if (!execution.toolsUsed.includes(toolCall.name)) {
               execution.toolsUsed.push(toolCall.name);
@@ -255,19 +278,29 @@ export async function runChatIteration(
             durationMs: Date.now() - toolStart,
           });
 
-          execution.iterationMessages.push({
-            role: 'user',
+          resultMessage = {
+            role: 'tool',
             content: `[Tool Error for ${toolCall.name}]: ${errorMessage}`,
             toolCallId: toolCall.id,
-          });
+            name: toolCall.name,
+          };
         } finally {
           // Update progress after tool completes/fails
           if (config.onProgress) {
             await config.onProgress(execution);
           }
         }
+
+        return resultMessage;
       })
     );
+
+    // Add tool results to history in strict order
+    toolResults.forEach((result) => {
+      if (result) {
+        execution.iterationMessages.push(result);
+      }
+    });
 
     logger.info(
       `[DurableChatLoop] Iteration ${execution.iteration} completed with parallel tool calls - scheduling next iteration`

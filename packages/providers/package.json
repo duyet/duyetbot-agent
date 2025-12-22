@@ -38,13 +38,13 @@
   "license": "MIT",
   "dependencies": {
     "@duyetbot/cloudflare-agent": "workspace:*",
-    "@duyetbot/types": "workspace:*",
-    "zod": "catalog:"
+    "@duyetbot/types": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
     "@types/node": "catalog:",
+    "@vitest/coverage-v8": "^4.0.16",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "^4.0.16"
   }
 }

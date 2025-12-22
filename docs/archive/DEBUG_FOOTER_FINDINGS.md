@@ -1,3 +1,7 @@
+---
+title: Debug Footer Investigation - Final Report
+---
+
 # Debug Footer Investigation - Final Report
 
 **Date**: 2025-12-15

@@ -1,3 +1,7 @@
+---
+title: Implementation Complete - Log Compaction & Context Validation
+---
+
 # Implementation Complete: Log Compaction & Context Validation
 
 **Date**: 2025-12-15

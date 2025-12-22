@@ -39,6 +39,7 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_TOKEN', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
+      { name: 'MEM0_API_KEY', required: false },
     ],
   },
   github: {
@@ -51,6 +52,7 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
+      { name: 'MEM0_API_KEY', required: false },
     ],
   },
   'memory-mcp': {
@@ -75,6 +77,7 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
+      { name: 'MEM0_API_KEY', required: false },
     ],
   },
   'safety-kernel': {
