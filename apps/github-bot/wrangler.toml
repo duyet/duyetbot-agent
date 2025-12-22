@@ -15,6 +15,10 @@ MODEL = "@preset/duyetbot"
 AI_GATEWAY_NAME = "duyetbot"
 BOT_USERNAME = "duyetbot"
 GITHUB_ADMIN = "duyet"
+MEM0_ENABLED = "false"
+MEM0_STRATEGY = "parallel"
+MEM0_MCP_ENABLED = "false"
+MEM0_AGENT_ID = "duyetbot-github"
 
 [observability]
 enabled = true

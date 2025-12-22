@@ -14,6 +14,10 @@ TELEGRAM_ADMIN = "duyet" # Admin username for verbose error messages
 TELEGRAM_ALLOWED_USERS = "" # Comma-separated user IDs (empty = allow all)
 TELEGRAM_PARSE_MODE = "HTML" # Response format: 'HTML' (recommended) or 'MarkdownV2'
 BOT_USERNAME = "duyetbot" # Bot username for @mention detection in groups
+MEM0_ENABLED = "false"
+MEM0_STRATEGY = "parallel"
+MEM0_MCP_ENABLED = "false"
+MEM0_AGENT_ID = "duyetbot-telegram"
 
 [observability]
 enabled = true
