@@ -1,0 +1,50 @@
+#:schema node_modules/wrangler/config-schema.json
+
+name = "duyetbot-web"
+main = "worker-entry.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[vars]
+ENVIRONMENT = "production"
+MODEL = "@preset/duyetbot"
+AI_GATEWAY_NAME = "duyetbot"
+APP_URL = "https://duyetbot-web.duyet.workers.dev"
+
+[ai]
+binding = "AI"
+
+# Durable Object binding for ChatAgent (defined in this worker)
+[[durable_objects.bindings]]
+name = "CHAT_AGENT"
+class_name = "ChatAgent"
+
+# Migration for ChatAgent Durable Object (SQLite-based for free tier)
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["ChatAgent"]
+
+# D1 Database binding (share "duyetbot" database)
+[[d1_databases]]
+binding = "DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[placement]
+mode = "smart"

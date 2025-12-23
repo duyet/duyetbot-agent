@@ -1,0 +1,51 @@
+{
+  "name": "@duyetbot/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3002",
+    "dev:remote": "opennextjs-cloudflare build && opennextjs-cloudflare preview --remote --port 3002",
+    "build": "next build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:branch": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --name duyetbot-web-preview",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "config": "bun ../../scripts/config.ts web",
+    "start": "next start",
+    "lint": "biome lint ./",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@openrouter/ai-sdk-provider": "^1.5.4",
+    "@ai-sdk/react": "^1.0.0",
+    "@duyetbot/cloudflare-agent": "workspace:*",
+    "@duyetbot/hono-middleware": "workspace:*",
+    "@duyetbot/observability": "workspace:*",
+    "@duyetbot/prompts": "workspace:*",
+    "@duyetbot/providers": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
+    "@hono/oauth-providers": "^0.4.0",
+    "ai": "^4.0.0",
+    "arctic": "^3.0.0",
+    "hono": "catalog:",
+    "lucide-react": "^0.460.0",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@opennextjs/cloudflare": "latest",
+    "@types/node": "catalog:",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.17",
+    "tailwindcss-animate": "^1.0.7",
+    "typescript": "^5.7.2",
+    "wrangler": "catalog:"
+  }
+}
