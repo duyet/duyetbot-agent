@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     const { env } = await (globalThis as any).getCloudflareContext();
     const db = env.DB as D1Database;
 
-    const result = await db
+    const result = (await db
       .prepare(`
         SELECT 
           s.id,
@@ -32,7 +32,14 @@ export async function GET(request: NextRequest) {
         LIMIT 50
       `)
       .bind(userId)
-      .all();
+      .all()) as Array<{
+      id: string;
+      userId: string;
+      title: string;
+      createdAt: number;
+      updatedAt: number;
+      messageCount: number;
+    }>;
 
     return NextResponse.json({ sessions: result });
   } catch (error) {
