@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'DuyetBot Chat',
+  title: 'duyetbot',
   description: 'AI-powered chat interface',
 };
 

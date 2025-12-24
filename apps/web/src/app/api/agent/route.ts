@@ -1,27 +1,28 @@
 /**
- * Chat API Route
+ * Agent API Route
  *
- * Handles AI chat messages using Cloudflare AI Gateway with AI SDK v6.
- * Uses streamText with multi-step tool calling support.
+ * Handles multi-step AI agent execution using Cloudflare AI Gateway with AI SDK v6.
+ * Uses streamText with extended step limits for complex agent workflows.
  * Compatible with AI SDK v6 useChat hook with UIMessage parts array format.
  */
 
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { stepCountIs, streamText } from 'ai';
 import { agentTools } from '../lib/agent-tools';
+import { getSubAgentById } from '../lib/sub-agents';
 
 /**
- * System prompt for chat mode - focused on dialogue and explanation
+ * Fallback agent system prompt
  */
-const CHAT_SYSTEM_PROMPT = `You are a helpful AI assistant focused on dialogue and explanation.
+const AGENT_SYSTEM_PROMPT = `You are a proactive AI agent focused on task execution.
 Your role is to:
-- Answer questions with detailed, clear explanations
-- Provide "how" and "why" breakdowns
-- Be reactive - wait for user input
-- Avoid taking actions or making changes
-- Minimize tool usage - only use when absolutely necessary
+- Create action plans for complex tasks
+- Use tools independently to accomplish goals
+- Chain multiple steps toward objectives
+- Be succinct in explanations, focus on results
+- Use web search, APIs, calculations as needed
 
-Prefer thorough explanations over quick actions.`;
+Prefer action plans over verbose explanations.`;
 
 /**
  * UIMessage format from AI SDK v6 useChat hook
@@ -40,9 +41,9 @@ type UIMessagePart =
   | { type: 'tool-result'; toolCallId: string; result: unknown };
 
 /**
- * Chat request body from AI SDK v6 useChat hook
+ * Agent request body from AI SDK v6 useChat hook
  */
-interface ChatRequest {
+interface AgentRequest {
   /** Messages in UIMessage format with parts array */
   messages: UIMessage[];
   /** Session ID for conversation tracking */
@@ -51,9 +52,7 @@ interface ChatRequest {
   model?: string;
   /** User ID from auth session */
   userId?: string;
-  /** Optional list of enabled tool names (empty array for minimal tool use in chat mode) */
-  enabledTools?: string[];
-  /** Sub-agent ID (ignored in chat mode, used for agent mode) */
+  /** Sub-agent ID for specialized behavior */
   subAgentId?: string;
 }
 
@@ -149,13 +148,13 @@ export async function POST(request: Request) {
   const executionId = generateExecutionId();
 
   try {
-    const body = (await request.json()) as ChatRequest;
+    const body = (await request.json()) as AgentRequest;
     const {
       messages,
       sessionId = crypto.randomUUID(),
       model = 'anthropic/claude-3.5-sonnet',
       userId = 'anonymous',
-      enabledTools,
+      subAgentId,
     } = body;
 
     const env = getCloudflareEnv();
@@ -215,7 +214,7 @@ export async function POST(request: Request) {
     const db = env.DB;
 
     // Convert UIMessage to CoreMessage format
-    const coreMessages = convertUIMessageToCoreMessages(messages);
+    let coreMessages = convertUIMessageToCoreMessages(messages);
 
     // Validate that we have at least one message
     if (coreMessages.length === 0) {
@@ -235,6 +234,20 @@ export async function POST(request: Request) {
       );
     }
 
+    // Determine system prompt and tools based on sub-agent
+    const subAgent = subAgentId ? getSubAgentById(subAgentId) : undefined;
+    const systemPrompt = subAgent?.systemPrompt ?? AGENT_SYSTEM_PROMPT;
+
+    // Filter tools based on sub-agent configuration
+    const filteredTools = subAgent
+      ? Object.fromEntries(
+          Object.entries(agentTools).filter(([key]) => subAgent.tools.includes(key))
+        )
+      : agentTools;
+
+    // Prepend system prompt as first message
+    coreMessages = [{ role: 'system' as const, content: systemPrompt }, ...coreMessages];
+
     // Create custom provider for Cloudflare Gateway
     const gatewayUrl = await env.AI.gateway(env.AI_GATEWAY_NAME).getUrl('openrouter');
 
@@ -247,22 +260,12 @@ export async function POST(request: Request) {
       includeUsage: true,
     });
 
-    // Filter tools based on enabledTools parameter
-    // If enabledTools is undefined or empty, disable all tools (minimal tool use for chat mode)
-    const filteredTools =
-      enabledTools && enabledTools.length > 0
-        ? Object.fromEntries(
-            Object.entries(agentTools).filter(([name]) => enabledTools.includes(name))
-          )
-        : {};
-
     // Use streamText with the custom provider
     const result = streamText({
       model: cloudflareGateway(model),
-      system: CHAT_SYSTEM_PROMPT,
       messages: coreMessages,
       temperature: 0,
-      stopWhen: stepCountIs(2), // Minimal tool use - allow up to 2 steps
+      stopWhen: stepCountIs(10), // Allow up to 10 steps for complex agent workflows
       tools: filteredTools,
       onFinish({ usage, finishReason }) {
         if (db) {
@@ -276,20 +279,20 @@ export async function POST(request: Request) {
             usage?.outputTokens ?? 0,
             finishReason ?? 'unknown'
           ).catch((error) => {
-            console.error('[Chat API] Failed to store usage:', error);
+            console.error('[Agent API] Failed to store usage:', error);
           });
         }
       },
     });
 
-    return result.toTextStreamResponse({
+    return result.toUIMessageStreamResponse({
       headers: {
         'X-Execution-ID': executionId,
         'X-Session-ID': sessionId,
       },
     });
   } catch (error) {
-    console.error('[Chat API] Error:', error);
+    console.error('[Agent API] Error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     // Return error as JSON for proper error display in UI
@@ -310,4 +313,4 @@ export async function POST(request: Request) {
   }
 }
 
-export const maxDuration = 60;
+export const maxDuration = 300;

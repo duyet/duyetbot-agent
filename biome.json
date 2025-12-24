@@ -12,12 +12,14 @@
   "css": {
     "parser": {
       "cssModules": true,
+      "allowWrongLineComments": true,
       "tailwindDirectives": true
     },
     "linter": { "enabled": false }
   },
   "formatter": {
     "enabled": true,
+    "formatWithErrors": true,
     "indentStyle": "space",
     "indentWidth": 2,
     "lineWidth": 100,
@@ -166,6 +168,32 @@
         "rules": {
           "suspicious": {
             "noArrayIndexKey": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": ["**/components/ai-elements/**/*.tsx"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noImgElement": "off"
+          }
+        }
+      }
+    },
+    {
+      "includes": [
+        "**/components/ui/button-group.tsx",
+        "**/components/ui/input-group.tsx",
+        "**/components/ui/label.tsx"
+      ],
+      "linter": {
+        "rules": {
+          "a11y": {
+            "useSemanticElements": "off",
+            "useKeyWithClickEvents": "off",
+            "noLabelWithoutControl": "off"
           }
         }
       }

@@ -3,11 +3,13 @@
  *
  * Renders chat messages with role-based styling.
  * Shows streaming indicators for in-progress messages.
+ * Supports both legacy content format and new parts array format.
  */
 
-import type { ModelMessage } from 'ai';
+import type { DynamicToolUIPart, ModelMessage, ReasoningUIPart, TextUIPart } from 'ai';
 import { Bot, User } from 'lucide-react';
 import { useMemo } from 'react';
+import { MessagePartRenderer } from './MessagePartRenderer';
 
 /**
  * Extended message with UI-specific properties
@@ -20,11 +22,20 @@ type _DisplayMessage = ModelMessage & {
 };
 
 /**
+ * Union type of all UI parts we support rendering
+ * Uses a flexible approach to handle various tool part types
+ */
+type SupportedUIPart = TextUIPart | ReasoningUIPart | DynamicToolUIPart | Record<string, unknown>;
+
+/**
  * Props for MessageList component
  */
 interface MessageListProps {
   /** Messages to display */
-  messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
+  messages: Array<
+    | { role: 'user' | 'assistant' | 'system'; content: string }
+    | { role: 'user' | 'assistant' | 'system'; parts: readonly SupportedUIPart[] }
+  >;
   /** Optional CSS class name */
   className?: string;
 }
@@ -35,10 +46,12 @@ interface MessageListProps {
 function Message({
   role,
   content,
+  parts,
   isStreaming,
 }: {
   role: 'user' | 'assistant' | 'system';
-  content: string;
+  content?: string;
+  parts?: readonly SupportedUIPart[];
   isStreaming?: boolean;
 }) {
   const isUser = role === 'user';
@@ -50,7 +63,7 @@ function Message({
       <div className="mx-auto max-w-2xl px-4 py-2">
         <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-1.5">
           <p className="text-xs text-gray-500 dark:text-gray-400 text-center">
-            {content || 'System message'}
+            {content || (parts ? 'System message with parts' : 'System message')}
           </p>
         </div>
       </div>
@@ -95,17 +108,21 @@ function Message({
             }
           `}
         >
-          {/* Content with streaming indicator */}
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            {isStreaming ? (
-              <>
-                {content}
-                <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
-              </>
-            ) : (
-              content
-            )}
-          </div>
+          {/* Content with parts renderer or fallback to content */}
+          {parts && parts.length > 0 ? (
+            <MessagePartRenderer parts={parts} />
+          ) : (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              {isStreaming ? (
+                <>
+                  {content}
+                  <span className="inline-block w-2 h-4 ml-1 bg-current animate-pulse" />
+                </>
+              ) : (
+                content
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -142,7 +159,9 @@ export function MessageList({ messages, className = '' }: MessageListProps) {
     return messages.map((msg, idx) => ({
       ...msg,
       id: `${msg.role}-${idx}`,
-      isStreaming: idx === messages.length - 1 && msg.content === '',
+      isStreaming:
+        idx === messages.length - 1 &&
+        (('content' in msg && msg.content === '') || ('parts' in msg && msg.parts.length === 0)),
     }));
   }, [messages]);
 
@@ -160,7 +179,8 @@ export function MessageList({ messages, className = '' }: MessageListProps) {
         <Message
           key={msg.id}
           role={msg.role as 'user' | 'assistant'}
-          content={msg.content}
+          content={'content' in msg ? msg.content : undefined}
+          parts={'parts' in msg ? msg.parts : undefined}
           isStreaming={msg.isStreaming}
         />
       ))}

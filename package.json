@@ -98,6 +98,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.3.8",
     "@vitest/coverage-v8": "^4.0.15",
+    "biome": "^0.3.3",
     "concurrently": "^9.2.1",
     "promptfoo": "^0.120.4",
     "tsx": "^4.21.0",
