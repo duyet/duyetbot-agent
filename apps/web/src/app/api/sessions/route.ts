@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
 
     await db
       .prepare(
-        `INSERT INTO sessions (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO sessions (id, user_id, title, created_at, updated_at) VALUES (?, ?, ?, ?)`
       )
       .bind(sessionId, userId, title, now, now)
       .run();
