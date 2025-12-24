@@ -183,6 +183,10 @@ async function storeUsage(
     .run();
 }
 
+function getCloudflareEnv() {
+  return (globalThis as any)[Symbol.for('__cloudflare-context__')]?.env;
+}
+
 export async function POST(request: Request) {
   const body = (await request.json()) as ChatRequest;
   const { messages, sessionId = crypto.randomUUID(), model = 'anthropic/claude-3.5-sonnet' } = body;
@@ -192,7 +196,10 @@ export async function POST(request: Request) {
   const executionId = generateExecutionId();
 
   try {
-    const { env } = await (globalThis as any).getCloudflareContext();
+    const env = getCloudflareEnv();
+    if (!env?.DB) {
+      throw new Error('Cloudflare bindings not available');
+    }
     const db = env.DB as D1Database;
 
     const tools = await buildTools();
