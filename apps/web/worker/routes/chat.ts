@@ -114,6 +114,12 @@ chatRouter.post('/', async (c) => {
       enabledTools,
     } = body;
 
+    // Validate messages
+    if (!messages || !Array.isArray(messages)) {
+      console.error('[Chat API] Missing or invalid messages field');
+      return c.json({ error: 'Bad Request', message: 'Messages field is required and must be an array', executionId }, 400);
+    }
+
     console.log('[Chat API] Request body:', { messagesCount: messages.length, model, sessionId, userId, enabledTools });
 
     if (!env?.AI) {
