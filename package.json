@@ -124,5 +124,8 @@
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.24.5"
   },
-  "dependencies": {}
+  "dependencies": {
+    "@ai-sdk/react": "^3.0.3",
+    "ai": "^6.0.3"
+  }
 }

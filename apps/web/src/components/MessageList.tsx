@@ -5,14 +5,14 @@
  * Shows streaming indicators for in-progress messages.
  */
 
-import type { CoreMessage } from 'ai';
+import type { ModelMessage } from 'ai';
 import { Bot, User } from 'lucide-react';
 import { useMemo } from 'react';
 
 /**
  * Extended message with UI-specific properties
  */
-type _DisplayMessage = CoreMessage & {
+type _DisplayMessage = ModelMessage & {
   /** Unique message ID */
   id?: string;
   /** Whether message is currently streaming */

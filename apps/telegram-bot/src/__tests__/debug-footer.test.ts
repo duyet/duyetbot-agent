@@ -136,7 +136,6 @@ describe('debug-footer', () => {
         debugContext: {
           routingFlow: [{ agent: 'test-agent' }],
           metadata: {
-            toolErrors: 1,
             lastToolError: 'tool: <timeout> & retry',
           },
         },

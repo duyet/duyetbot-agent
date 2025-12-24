@@ -1,29 +1,19 @@
-import type { ToolInvocation } from 'ai';
-import { CheckCircle, ChevronDown, ChevronRight, Clock } from 'lucide-react';
+import type { UIToolInvocation } from 'ai';
+import { CheckCircle, ChevronDown, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 
 interface ToolResultViewProps {
-  toolInvocation: ToolInvocation;
+  toolInvocation: UIToolInvocation<any>;
 }
 
 export function ToolResultView({ toolInvocation }: ToolResultViewProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const toolName = toolInvocation.toolName;
-  const result = toolInvocation.state === 'result' ? toolInvocation.result : undefined;
+  // Extract tool name from title or use a default
+  const toolName = toolInvocation.title ?? 'Tool';
 
-  const isError = result !== undefined && typeof result === 'object' && 'error' in result;
-  const error = isError ? (result as { error?: string }).error : null;
-  const displayResult = isError
-    ? (error ?? 'Unknown error')
-    : result !== undefined
-      ? typeof result === 'string'
-        ? result
-        : JSON.stringify(result, null, 2)
-      : 'No result';
-
-  const duration = undefined;
-
+  // Determine state
+  const isError = toolInvocation.state === 'output-error';
   const themeColor = isError ? 'red' : 'green';
 
   return (
@@ -37,22 +27,14 @@ export function ToolResultView({ toolInvocation }: ToolResultViewProps) {
       >
         {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
         <CheckCircle className={`w-4 h-4 text-${themeColor}-600`} />
-        <span className={`text-sm font-medium text-${themeColor}-900`}>
-          {isError ? 'Error' : 'Result'}
-        </span>
+        <span className={`text-sm font-medium text-${themeColor}-900`}>{toolInvocation.state}</span>
         <span className={`text-sm text-${themeColor}-700 ml-1`}>{toolName}</span>
-        {duration !== undefined && (
-          <div className="ml-auto flex items-center gap-1">
-            <Clock className="w-3 h-3 text-gray-500" />
-            <span className="text-xs text-gray-500">{duration}ms</span>
-          </div>
-        )}
       </button>
       {isExpanded && (
         <div className="px-3 pb-3 pt-0">
-          <pre className={`text-xs text-${themeColor}-800 whitespace-pre-wrap overflow-x-auto`}>
-            {displayResult}
-          </pre>
+          <p className={`text-xs text-${themeColor}-800`}>
+            Tool Call ID: {toolInvocation.toolCallId}
+          </p>
         </div>
       )}
     </div>
