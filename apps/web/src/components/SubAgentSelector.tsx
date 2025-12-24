@@ -12,7 +12,7 @@ import {
   Search,
 } from 'lucide-react';
 import { useState } from 'react';
-import { SUB_AGENTS, type SubAgentConfig } from '@/app/api/lib/sub-agents';
+import { SUB_AGENTS, type SubAgentConfig } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface SubAgentSelectorProps {
@@ -32,8 +32,6 @@ const TOOL_ICONS: Record<string, React.ElementType> = {
 const CATEGORY_ICONS: Record<SubAgentConfig['category'], React.ElementType> = {
   research: Globe,
   analysis: Calculator,
-  planning: Calendar,
-  search: Search,
   custom: Bot,
 };
 
@@ -47,20 +45,17 @@ export function SubAgentSelector({ value, onChange, className }: SubAgentSelecto
         {SUB_AGENTS.map((agent) => {
           const Icon = CATEGORY_ICONS[agent.category];
           const isSelected = value === agent.id;
-          const isEnabled = agent.id !== 'custom';
 
           return (
             <button
               key={agent.id}
               type="button"
-              onClick={() => isEnabled && onChange(agent.id)}
-              disabled={!isEnabled}
+              onClick={() => onChange(agent.id)}
               className={cn(
                 'w-full flex items-start gap-3 p-3 rounded-lg border transition-all text-left',
                 isSelected
                   ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-background border-border hover:bg-muted hover:border-muted-foreground/50',
-                !isEnabled && 'opacity-50 cursor-not-allowed'
+                  : 'bg-background border-border hover:bg-muted hover:border-muted-foreground/50'
               )}
             >
               <Icon className="h-5 w-5 shrink-0 mt-0.5" />

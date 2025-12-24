@@ -6,17 +6,14 @@ import {
   createContext,
   type HTMLAttributes,
   useContext,
-  useEffect,
-  useRef,
   useState,
 } from 'react';
-import { type BundledLanguage, codeToHtml, type ShikiTransformer } from 'shiki';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 type CodeBlockProps = HTMLAttributes<HTMLDivElement> & {
   code: string;
-  language: BundledLanguage;
+  language?: string;
   showLineNumbers?: boolean;
 };
 
@@ -28,73 +25,22 @@ const CodeBlockContext = createContext<CodeBlockContextType>({
   code: '',
 });
 
-const lineNumberTransformer: ShikiTransformer = {
-  name: 'line-numbers',
-  line(node, line) {
-    node.children.unshift({
-      type: 'element',
-      tagName: 'span',
-      properties: {
-        className: [
-          'inline-block',
-          'min-w-10',
-          'mr-4',
-          'text-right',
-          'select-none',
-          'text-muted-foreground',
-        ],
-      },
-      children: [{ type: 'text', value: String(line) }],
-    });
-  },
-};
-
-export async function highlightCode(
-  code: string,
-  language: BundledLanguage,
-  showLineNumbers = false
-) {
-  const transformers: ShikiTransformer[] = showLineNumbers ? [lineNumberTransformer] : [];
-
-  return await Promise.all([
-    codeToHtml(code, {
-      lang: language,
-      theme: 'one-light',
-      transformers,
-    }),
-    codeToHtml(code, {
-      lang: language,
-      theme: 'one-dark-pro',
-      transformers,
-    }),
-  ]);
-}
-
+/**
+ * Simple code block component without syntax highlighting
+ * Uses preformatted text for zero bundle size impact
+ */
 export const CodeBlock = ({
   code,
-  language,
+  language = 'text',
   showLineNumbers = false,
   className,
   children,
   ...props
 }: CodeBlockProps) => {
-  const [html, setHtml] = useState<string>('');
-  const [darkHtml, setDarkHtml] = useState<string>('');
-  const mounted = useRef(false);
-
-  useEffect(() => {
-    highlightCode(code, language, showLineNumbers).then(([light, dark]) => {
-      if (!mounted.current) {
-        setHtml(light);
-        setDarkHtml(dark);
-        mounted.current = true;
-      }
-    });
-
-    return () => {
-      mounted.current = false;
-    };
-  }, [code, language, showLineNumbers]);
+  // Format code with line numbers if requested
+  const formattedCode = showLineNumbers
+    ? code.split('\n').map((line, i) => `${String(i + 1).padStart(4, ' ')}  ${line}`).join('\n')
+    : code;
 
   return (
     <CodeBlockContext.Provider value={{ code }}>
@@ -105,21 +51,19 @@ export const CodeBlock = ({
         )}
         {...props}
       >
-        <div className="relative">
-          <div
-            className="overflow-auto dark:hidden [&>pre]:m-0 [&>pre]:bg-background! [&>pre]:p-4 [&>pre]:text-foreground! [&>pre]:text-sm [&_code]:font-mono [&_code]:text-sm"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
-            dangerouslySetInnerHTML={{ __html: html }}
-          />
-          <div
-            className="hidden overflow-auto dark:block [&>pre]:m-0 [&>pre]:bg-background! [&>pre]:p-4 [&>pre]:text-foreground! [&>pre]:text-sm [&_code]:font-mono [&_code]:text-sm"
-            // biome-ignore lint/security/noDangerouslySetInnerHtml: "this is needed."
-            dangerouslySetInnerHTML={{ __html: darkHtml }}
-          />
+        <div className="relative overflow-auto">
+          <pre className="m-0 bg-background! p-4 text-foreground! text-sm font-mono">
+            <code className="text-sm">{formattedCode}</code>
+          </pre>
           {children && (
             <div className="absolute top-2 right-2 flex items-center gap-2">{children}</div>
           )}
         </div>
+        {language && language !== 'text' && (
+          <div className="border-t border-border px-4 py-1 text-xs text-muted-foreground">
+            {language}
+          </div>
+        )}
       </div>
     </CodeBlockContext.Provider>
   );

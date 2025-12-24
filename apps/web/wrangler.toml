@@ -1,12 +1,12 @@
 #:schema node_modules/wrangler/config-schema.json
 
 name = "duyetbot-web"
-main = "worker-entry.ts"
+main = "worker/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 [assets]
-directory = ".open-next/assets"
+directory = "out"
 binding = "ASSETS"
 
 [vars]
@@ -15,20 +15,16 @@ MODEL = "@preset/duyetbot"
 AI_GATEWAY_NAME = "duyetbot"
 APP_URL = "https://duyetbot-web.duyet.workers.dev"
 
+# Secrets (set via: wrangler secret put <NAME>)
+# - AI_GATEWAY_API_KEY
+# - GITHUB_CLIENT_ID
+# - GITHUB_CLIENT_SECRET
+
+# AI binding for Cloudflare AI Gateway
 [ai]
 binding = "AI"
 
-# Durable Object binding for ChatAgent (defined in this worker)
-[[durable_objects.bindings]]
-name = "CHAT_AGENT"
-class_name = "ChatAgent"
-
-# Migration for ChatAgent Durable Object (SQLite-based for free tier)
-[[migrations]]
-tag = "v1"
-new_sqlite_classes = ["ChatAgent"]
-
-# D1 Database binding (share "duyetbot" database)
+# D1 Database binding
 [[d1_databases]]
 binding = "DB"
 database_name = "duyetbot"
@@ -40,11 +36,11 @@ enabled = true
 [observability.logs]
 enabled = true
 invocation_logs = true
-head_sampling_rate = 1 # Log 100% of requests
+head_sampling_rate = 1
 
 [observability.traces]
 enabled = true
-head_sampling_rate = 1 # Log 100% of requests
+head_sampling_rate = 1
 
 [placement]
 mode = "smart"

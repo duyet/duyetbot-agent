@@ -1,11 +1,9 @@
 /**
- * Session management utilities
+ * Session management utilities (client-side)
  *
- * Handles session parsing and validation
+ * For static export, session validation is done via API calls.
+ * This file exports only types for TypeScript.
  */
-
-import { cookies } from 'next/headers';
-import { isSessionValid, SESSION_COOKIE_NAME } from './auth';
 
 export interface SessionUser {
   id: string;
@@ -13,6 +11,12 @@ export interface SessionUser {
   name: string | null;
   avatarUrl: string | null;
   email: string | null;
+}
+
+export interface Session {
+  user: SessionUser;
+  accessToken: string;
+  expiresAt: number;
 }
 
 export interface SessionItem {
@@ -24,47 +28,22 @@ export interface SessionItem {
   messageCount: number;
 }
 
-export interface Session {
-  user: SessionUser;
-  accessToken: string;
-  expiresAt: number;
-}
-
-/**
- * Parse and validate session from cookie
- */
+// Client-side session utilities
 export async function getSession(): Promise<Session | null> {
   try {
-    const cookieStore = await cookies();
-    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME);
-
-    if (!sessionCookie?.value) {
-      return null;
-    }
-
-    const session: Session = JSON.parse(sessionCookie.value);
-
-    if (!isSessionValid(session)) {
-      return null;
-    }
-
-    return session;
+    const response = await fetch('/api/sessions');
+    if (!response.ok) return null;
+    return await response.json();
   } catch {
     return null;
   }
 }
 
-/**
- * Get current user from session
- */
 export async function getUser(): Promise<SessionUser | null> {
   const session = await getSession();
   return session?.user ?? null;
 }
 
-/**
- * Check if user is authenticated
- */
 export async function isAuthenticated(): Promise<boolean> {
   const session = await getSession();
   return session !== null;

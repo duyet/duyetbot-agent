@@ -1,7 +1,7 @@
 'use client';
 
 import { Check } from 'lucide-react';
-import { AVAILABLE_TOOLS } from '@/app/api/lib/sub-agents';
+import { AVAILABLE_TOOLS } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 
 interface ToolSelectorProps {
