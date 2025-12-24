@@ -363,11 +363,13 @@ export class StepPersistenceAdapter implements IStepPersistence {
 
       // Build execution chain with exactOptionalPropertyTypes compliance
       const chain: ExecutionChain = {
+        id: execResult.id,
         executionId: execResult.id,
         sessionId: execResult.session_id,
         startedAt: execResult.started_at,
         status: execResult.status as ExecutionChain['status'],
         userMessage: execResult.user_message,
+        finalResponse: execResult.final_response ?? '',
         steps,
       };
 
@@ -450,11 +452,13 @@ export class StepPersistenceAdapter implements IStepPersistence {
 
         // Build execution chain with exactOptionalPropertyTypes compliance
         const chain: ExecutionChain = {
+          id: exec.id,
           executionId: exec.id,
           sessionId: exec.session_id,
           startedAt: exec.started_at,
           status: exec.status as ExecutionChain['status'],
           userMessage: exec.user_message,
+          finalResponse: exec.final_response ?? '',
           steps,
         };
 
@@ -503,11 +507,13 @@ export class MemoryStepPersistence implements IStepPersistence {
     userMessage: string
   ): Promise<void> {
     const chain: ExecutionChain = {
+      id: executionId,
       executionId,
       sessionId,
       startedAt: Date.now(),
       status: 'running',
       userMessage,
+      finalResponse: '',
       steps: [],
     };
     this.executions.set(executionId, chain);

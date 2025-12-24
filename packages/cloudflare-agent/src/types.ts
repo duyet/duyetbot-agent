@@ -334,118 +334,127 @@ interface RoutingStep extends BaseStep {
 }
 
 /**
- * LLM iteration step - multi-turn conversation
+ * Execution step with timestamp for D1 persistence
+ * Combines ExecutionStep properties with timestamp
  */
-interface LlmIterationStep extends BaseStep {
-  type: 'llm_iteration';
-  /** Max iterations for progress display */
-  maxIterations?: number;
-}
-
-/**
- * Preparing step - finalizing response
- */
-interface PreparingStep extends BaseStep {
-  type: 'preparing';
-}
-
-/**
- * Responding step - sending response
- */
-interface RespondingStep extends BaseStep {
-  type: 'responding';
-}
-
-/**
- * Discriminated union of all execution step types
- * TypeScript will enforce required fields based on the 'type' discriminator
- */
-export type ExecutionStep =
-  | ThinkingStep
-  | ToolStartStep
-  | ToolCompleteStep
-  | ToolErrorStep
-  | ToolExecutionStep
-  | RoutingStep
-  | LlmIterationStep
-  | PreparingStep
-  | RespondingStep;
-
-export interface DebugContext {
-  /** Routing flow showing agent -> agent transitions */
-  routingFlow: Array<{
-    /** Agent name (e.g., 'router', 'simple-agent', 'orchestrator') */
-    agent: string;
-    /** Tools used by this agent (if any) - kept for backwards compat */
-    tools?: string[];
-    /** Ordered tool execution chain (e.g., ['duyet_cv', 'get_posts']) */
-    toolChain?: string[];
-    /** Execution duration for this step in milliseconds */
-    durationMs?: number;
-    /** Error message if this agent failed */
-    error?: string;
-    /** Current execution status for progressive updates */
-    status?: ExecutionStatus;
-    /** Token usage for this routing step */
-    tokenUsage?: TokenUsage;
-    /** Model used for this routing step (e.g., 'claude-3-5-sonnet-20241022') */
-    model?: string;
-  }>;
-  /** Router classification duration in milliseconds (separate from agent execution) */
-  routerDurationMs?: number;
-  /** Total execution duration in milliseconds */
-  totalDurationMs?: number;
-  /** Query classification details */
-  classification?: {
-    /** Query type (simple, complex, tool_confirmation) */
-    type: string;
-    /** Query category (general, code, research, github, admin) */
-    category: string;
-    /** Complexity level (low, medium, high) */
-    complexity: string;
-  };
-  /** Worker execution details for orchestrator (displayed as nested list) */
-  workers?: WorkerDebugInfo[];
-  /** Additional debug metadata (fallback, cache, timeout) */
-  metadata?: DebugMetadata;
-  /** Execution path trace for step-by-step debugging */
-  executionPath?: string[];
-  /**
-   * Detailed execution steps for chain display
-   * Shows thinking text, tool calls, and results in order
-   */
-  steps?: ExecutionStep[];
-}
-
-/**
- * Progress callback interface for real-time execution updates
- *
- * Used to emit progress events during agent execution for:
- * - Real-time message editing (showing tool chain as it executes)
- * - Accumulating steps for debug footer
- */
-export interface ProgressCallback {
-  /** Emit thinking/reasoning text from LLM */
-  onThinking: (text: string) => Promise<void>;
-  /** Emit tool execution start */
-  onToolStart: (toolName: string, args: Record<string, unknown>) => Promise<void>;
-  /** Emit tool execution completion */
-  onToolComplete: (toolName: string, result: string, durationMs: number) => Promise<void>;
-  /** Emit tool execution error */
-  onToolError: (toolName: string, error: string, durationMs?: number) => Promise<void>;
-}
-
-/**
- * Progress entry for accumulating execution chain
- */
-export interface ProgressEntry {
-  type: 'thinking' | 'tool_start' | 'tool_complete' | 'tool_error';
-  message: string;
-  toolName?: string;
-  toolArgs?: Record<string, unknown>;
-  toolResult?: string;
-  durationMs?: number;
+export interface ExecutionStepWithTimestamp {
+  /** Step iteration number */
+  iteration: number;
+  /** Timestamp when step occurred */
   timestamp: number;
+  /** Duration in milliseconds */
+  durationMs?: number;
+  /** Step discriminator type */
+  type:
+    | 'thinking'
+    | 'tool_start'
+    | 'tool_complete'
+    | 'tool_error'
+    | 'tool_execution'
+    | 'routing'
+    | 'llm_iteration'
+    | 'preparing'
+    | 'responding';
+  /** Additional step properties */
+  [key: string]: unknown;
+}
+
+/**
+ * Execution summary for completing an execution
+ */
+export interface ExecutionSummary {
+  /** Final response content */
+  finalResponse: string;
+  /** Completion timestamp */
+  completedAt: number;
+  /** Token usage */
+  tokenUsage?: TokenUsage | undefined;
+  /** Duration in milliseconds */
+  duration?: number | undefined;
+  /** Model used */
+  model?: string;
+}
+
+/**
+ * Complete execution chain with steps
+ */
+export interface ExecutionChain {
+  /** Execution ID */
+  id: string;
+  /** Execution ID (alias for compatibility) */
+  executionId: string;
+  /** Session ID */
+  sessionId: string;
+  /** User message that triggered execution */
+  userMessage: string;
+  /** Final assistant response */
+  finalResponse: string;
+  /** When execution started */
+  startedAt: number;
+  /** When execution completed */
+  completedAt?: number;
+  /** Execution status */
+  status: 'running' | 'completed' | 'error';
+  /** Execution steps */
+  steps: ExecutionStepWithTimestamp[];
+  /** Token usage */
+  tokenUsage?: TokenUsage | undefined;
+  /** Duration in milliseconds */
+  duration?: number | undefined;
+  /** Model used */
+  model?: string;
+}
+
+/**
+ * Execution step with timestamp for D1 persistence
+ */
+export interface ExecutionStepWithTimestamp extends ExecutionStep {
+  /** Timestamp when step occurred */
+  timestamp: number;
+}
+
+/**
+ * Execution summary for completing an execution
+ */
+export interface ExecutionSummary {
+  /** Final response content */
+  finalResponse: string;
+  /** Completion timestamp */
+  completedAt: number;
+  /** Token usage */
+  tokenUsage?: TokenUsage;
+  /** Duration in milliseconds */
+  duration?: number;
+  /** Model used */
+  model?: string;
+}
+
+/**
+ * Complete execution chain with steps
+ */
+export interface ExecutionChain {
+  /** Execution ID */
+  id: string;
+  /** Session ID */
+  sessionId: string;
+  /** User message that triggered the execution */
+  userMessage: string;
+  /** Final assistant response */
+  finalResponse: string;
+  /** When execution started */
+  startedAt: number;
+  /** When execution completed */
+  completedAt?: number;
+  /** Execution status */
+  status: 'running' | 'completed' | 'error';
+  /** Execution steps */
+  steps: ExecutionStepWithTimestamp[];
+  /** Token usage */
+  tokenUsage?: TokenUsage;
+  /** Duration in milliseconds */
+  duration?: number;
+  /** Model used */
+  model?: string;
 }
 
 // Re-export step progress types for convenience
