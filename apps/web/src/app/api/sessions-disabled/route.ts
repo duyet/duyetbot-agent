@@ -15,8 +15,9 @@ export async function GET(request: NextRequest) {
     const { env } = await (globalThis as any).getCloudflareContext();
     const db = env.DB as D1Database;
 
-    const result = (await db
-      .prepare(`
+    const result = (
+      await db
+        .prepare(`
         SELECT 
           s.id,
           s.user_id,
@@ -31,8 +32,9 @@ export async function GET(request: NextRequest) {
         ORDER BY s.updated_at DESC
         LIMIT 50
       `)
-      .bind(userId)
-      .all()) as Array<{
+        .bind(userId)
+        .all()
+    ).results as Array<{
       id: string;
       userId: string;
       title: string;
@@ -67,7 +69,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid session' }, { status: 401 });
     }
 
-    const { messages } = await request.json();
+    const { messages } = (await request.json()) as {
+      messages: Array<{ content: string; role: string; createdAt?: number }>;
+    };
 
     if (!messages || messages.length === 0) {
       return NextResponse.json({ error: 'No messages' }, { status: 400 });

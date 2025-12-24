@@ -42,8 +42,8 @@ export function SessionSidebar({
       if (!response.ok) {
         throw new Error('Failed to fetch sessions');
       }
-      const data = await response.json();
-      setSessions(data);
+      const { sessions } = (await response.json()) as { sessions: SessionItem[] };
+      setSessions(sessions);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load sessions');
     } finally {
