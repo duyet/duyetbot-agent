@@ -73,7 +73,9 @@ async function* streamResponseChunks(response: Response): AsyncGenerator<string>
   try {
     while (true) {
       const { done, value } = await reader.read();
-      if (done) { break; }
+      if (done) {
+        break;
+      }
       yield decoder.decode(value, { stream: true });
     }
   } finally {
@@ -228,7 +230,13 @@ describe('POST /api/chat', () => {
   it('should handle multiple text parts in a single message', async () => {
     const response = await makeChatRequest({
       messages: [
-        { role: 'user', parts: [{ type: 'text', text: 'Hello ' }, { type: 'text', text: 'world!' }] },
+        {
+          role: 'user',
+          parts: [
+            { type: 'text', text: 'Hello ' },
+            { type: 'text', text: 'world!' },
+          ],
+        },
       ],
     });
 
@@ -300,7 +308,12 @@ describe('POST /api/chat', () => {
           role: 'user',
           parts: [
             { type: 'text', text: 'Hello' },
-            { type: 'tool-call', toolCallId: 'call-123', toolName: 'test-tool', args: { input: 'test' } },
+            {
+              type: 'tool-call',
+              toolCallId: 'call-123',
+              toolName: 'test-tool',
+              args: { input: 'test' },
+            },
           ],
         },
       ],

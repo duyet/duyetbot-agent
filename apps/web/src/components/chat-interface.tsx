@@ -3,31 +3,75 @@
 import { useChat } from '@ai-sdk/react';
 import type { UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
-import { LogOut, MessageSquare, Plus, Send, Settings, X } from 'lucide-react';
-import { useCallback, useState } from 'react';
+import { Bot, LogOut, MessageSquare, Plus, Send, Settings, X } from 'lucide-react';
+import { useCallback, useEffect, useState } from 'react';
+import { AVAILABLE_TOOLS, getDefaultSubAgent } from '@/app/api/lib/sub-agents';
+import { DEFAULT_MODEL } from '@/app/api/models/route';
 import type { SessionUser } from '../lib/session';
+import { SettingsModal } from './SettingsModal';
 import { Button } from './ui/button';
 
 interface ChatInterfaceProps {
   user: SessionUser;
 }
 
+// localStorage keys
+const STORAGE_KEYS = {
+  MODEL: 'duyetbot-chat-model',
+  MODE: 'duyetbot-chat-mode',
+  TOOLS: 'duyetbot-enabled-tools',
+  SUB_AGENT: 'duyetbot-sub-agent',
+} as const;
+
 export function ChatInterface({ user }: ChatInterfaceProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [model, setModel] = useState('anthropic/claude-3.5-sonnet');
+
+  // Initialize state from localStorage or defaults
+  const [mode, setMode] = useState<'chat' | 'agent'>(() => {
+    return (localStorage.getItem(STORAGE_KEYS.MODE) as 'chat' | 'agent') || 'chat';
+  });
+
+  const [model, setModel] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.MODEL) || DEFAULT_MODEL;
+  });
+
+  const [enabledTools, setEnabledTools] = useState<string[]>(() => {
+    const saved = localStorage.getItem(STORAGE_KEYS.TOOLS);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        return AVAILABLE_TOOLS.map((t) => t.id);
+      }
+    }
+    return AVAILABLE_TOOLS.map((t) => t.id);
+  });
+
+  const [subAgentId, setSubAgentId] = useState(() => {
+    return localStorage.getItem(STORAGE_KEYS.SUB_AGENT) || getDefaultSubAgent().id;
+  });
+
   const [currentSessionId, setCurrentSessionId] = useState(() => {
     const sessionMatch = window.location.hash.match(/#session=([^&]+)/);
     return sessionMatch ? sessionMatch[1] : crypto.randomUUID();
   });
   const [input, setInput] = useState('');
 
+  // Save mode to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEYS.MODE, mode);
+  }, [mode]);
+
   const { messages, status, sendMessage, setMessages, error } = useChat({
     transport: new DefaultChatTransport({
-      api: '/api/chat',
+      api: mode === 'agent' ? '/api/agent' : '/api/chat',
       body: {
         model,
         userId: user.id,
+        mode,
+        enabledTools: mode === 'agent' ? enabledTools : [],
+        subAgentId: mode === 'agent' ? subAgentId : undefined,
       },
     }),
   });
@@ -51,6 +95,22 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     window.location.hash = `#session=${newSessionId}`;
     setMessages([]);
   }, [setMessages]);
+
+  const handleModeChange = useCallback(
+    (newMode: 'chat' | 'agent') => {
+      if (newMode === mode) {
+        return;
+      }
+
+      // Clear messages and create new session when switching modes
+      setMode(newMode);
+      setMessages([]);
+      const newSessionId = crypto.randomUUID();
+      setCurrentSessionId(newSessionId);
+      window.location.hash = `#session=${newSessionId}`;
+    },
+    [mode, setMessages]
+  );
 
   const handleLogout = useCallback(() => {
     window.location.href = '/api/auth/logout';
@@ -146,10 +206,43 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             >
               <MessageSquare className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-semibold text-gray-900">DuyetBot Chat</h1>
+            <h1 className="text-lg font-semibold text-gray-900">duyetbot</h1>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(!settingsOpen)}>
+            <div className="flex flex-col items-end gap-1">
+              <div className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('chat')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    mode === 'chat'
+                      ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  <MessageSquare className="h-4 w-4" />
+                  Chat
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleModeChange('agent')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    mode === 'agent'
+                      ? 'bg-white dark:bg-gray-700 shadow text-gray-900 dark:text-gray-100'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100'
+                  }`}
+                >
+                  <Bot className="h-4 w-4" />
+                  Agent
+                </button>
+              </div>
+              <div className="text-xs text-gray-500 text-right">
+                {mode === 'chat'
+                  ? 'Dialogue mode - detailed explanations'
+                  : 'Agent mode - proactive task execution'}
+              </div>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setSettingsOpen(true)}>
               <Settings className="h-4 w-4 mr-2" />
               Settings
             </Button>
@@ -168,28 +261,18 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           </div>
         )}
 
-        {/* Settings Panel */}
-        {settingsOpen && (
-          <div className="border-b border-gray-200 bg-white px-4 py-4 lg:px-6">
-            <div className="max-w-xl">
-              <label htmlFor="model" className="block text-sm font-medium text-gray-700 mb-2">
-                Model ID
-              </label>
-              <input
-                id="model"
-                type="text"
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="Enter OpenRouter model ID (e.g., anthropic/claude-3.5-sonnet)"
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
-              />
-              <p className="mt-1 text-xs text-gray-500">
-                Any OpenRouter model ID (e.g., anthropic/claude-3.5-sonnet, openai/gpt-4o,
-                google/gemini-pro)
-              </p>
-            </div>
-          </div>
-        )}
+        {/* Settings Modal */}
+        <SettingsModal
+          model={model}
+          onModelChange={setModel}
+          mode={mode}
+          enabledTools={enabledTools}
+          onEnabledToolsChange={setEnabledTools}
+          subAgentId={subAgentId}
+          onSubAgentIdChange={setSubAgentId}
+          open={settingsOpen}
+          onOpenChange={setSettingsOpen}
+        />
 
         {/* Status Indicator */}
         {!error && (
@@ -243,6 +326,18 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             }}
             className="mx-auto max-w-4xl"
           >
+            {mode === 'agent' && (
+              <div className="flex items-center gap-2 text-xs text-gray-500 mb-2">
+                <span>{enabledTools.length} tools enabled</span>
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="underline hover:text-gray-700"
+                >
+                  Configure
+                </button>
+              </div>
+            )}
             <div className="flex gap-3">
               <div className="flex-1 relative">
                 <textarea

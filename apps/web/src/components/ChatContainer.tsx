@@ -121,10 +121,7 @@ export function ChatContainer({ sessionId, className = '' }: ChatContainerProps)
         <MessageList
           messages={messages.map((msg) => ({
             role: msg.role as 'user' | 'assistant' | 'system',
-            content: msg.parts
-              .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-              .map((part) => part.text)
-              .join(''),
+            parts: msg.parts,
           }))}
         />
 
