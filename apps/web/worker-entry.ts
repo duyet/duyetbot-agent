@@ -10,4 +10,4 @@
 export { default } from './.open-next/worker.js';
 
 // Re-export ChatAgent Durable Object class
-export { ChatAgent } from './src/agent.js';
+export { ChatAgent } from './src/agent';
