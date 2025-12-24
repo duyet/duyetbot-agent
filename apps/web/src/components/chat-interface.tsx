@@ -1,9 +1,10 @@
 'use client';
 
-import type { Message } from '@ai-sdk/react';
 import { useChat } from '@ai-sdk/react';
+import type { UIMessage } from 'ai';
+import { DefaultChatTransport } from 'ai';
 import { LogOut, MessageSquare, Plus, Send, Settings, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import type { SessionUser } from '../lib/session';
 import { Button } from './ui/button';
 
@@ -19,15 +20,16 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     const sessionMatch = window.location.hash.match(/#session=([^&]+)/);
     return sessionMatch ? sessionMatch[1] : crypto.randomUUID();
   });
+  const [input, setInput] = useState('');
 
-  const { messages, input, setInput, stop, status, append, setMessages, error } = useChat({
-    api: '/api/chat',
-    body: {
-      model,
-      userId: user.id,
-      sessionId: currentSessionId,
-    },
-    experimental_throttle: 50,
+  const { messages, status, sendMessage, setMessages, error } = useChat({
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+      body: {
+        model,
+        userId: user.id,
+      },
+    }),
   });
 
   const handleSendMessage = useCallback(
@@ -37,9 +39,10 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         return;
       }
 
-      await append({ content: input.trim(), role: 'user' });
+      sendMessage({ text: input.trim() }, { body: { sessionId: currentSessionId } });
+      setInput('');
     },
-    [input, append, status]
+    [input, sendMessage, status, currentSessionId]
   );
 
   const handleNewChat = useCallback(() => {
@@ -259,7 +262,14 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
               </div>
               <div className="flex gap-2">
                 {status === 'streaming' || status === 'submitted' ? (
-                  <Button type="button" onClick={stop} size="lg">
+                  <Button
+                    type="button"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      // TODO: implement stop
+                    }}
+                    size="lg"
+                  >
                     <X className="h-5 w-5" />
                   </Button>
                 ) : (
@@ -277,7 +287,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
 }
 
 interface MessageItemProps {
-  message: Message;
+  message: UIMessage;
 }
 
 function MessageItem({ message }: MessageItemProps) {
@@ -293,11 +303,21 @@ function MessageItem({ message }: MessageItemProps) {
         }`}
       >
         {/* Message Content */}
-        <div className="whitespace-pre-wrap text-sm leading-relaxed">{message.content}</div>
+        {message.parts.map((part, index) => {
+          if (part.type === 'text') {
+            return (
+              <div key={index} className="whitespace-pre-wrap text-sm leading-relaxed">
+                {part.text}
+              </div>
+            );
+          }
+          return null;
+        })}
 
         {/* Tool Calls (for assistant messages) */}
         {message.parts?.map((part, index) => {
-          if (part.type === 'tool-invocation') {
+          if (part.type.startsWith('tool-')) {
+            const toolPart = part as { toolCallId?: string; toolName?: string; args?: unknown };
             return (
               <div key={index} className="mt-2 rounded-lg bg-blue-50 border border-blue-100 p-3">
                 <div className="flex items-center gap-2 text-xs font-medium text-blue-700 mb-1">
@@ -322,29 +342,18 @@ function MessageItem({ message }: MessageItemProps) {
                       d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
                     />
                   </svg>
-                  {(part as any).toolName}
+                  {toolPart.toolName ?? 'Tool'}
                 </div>
                 <pre className="text-xs text-gray-600 overflow-x-auto">
-                  {typeof (part as any).args === 'string'
-                    ? (part as any).args
-                    : JSON.stringify((part as any).args, null, 2)}
+                  {typeof toolPart.args === 'string'
+                    ? toolPart.args
+                    : JSON.stringify(toolPart.args, null, 2)}
                 </pre>
               </div>
             );
           }
           return null;
         })}
-
-        {/* Usage Display */}
-        {message.annotations && message.annotations.length > 0 && (
-          <div className="mt-2 flex items-center gap-3 text-xs text-gray-500">
-            <span>Prompt: {(message.annotations[0] as any).promptTokens} tokens</span>
-            <span>•</span>
-            <span>Completion: {(message.annotations[0] as any).completionTokens} tokens</span>
-            <span>•</span>
-            <span>Total: {(message.annotations[0] as any).totalTokens} tokens</span>
-          </div>
-        )}
       </div>
     </div>
   );

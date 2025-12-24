@@ -98,10 +98,10 @@ const APPS: Record<string, AppConfig> = {
     workerName: 'duyetbot-web',
     secrets: [
       { name: 'SESSION_SECRET', required: false },
-      { name: 'MCP_DUYET_URL', required: false },
-      { name: 'MCP_DUYET_TOKEN', required: false },
-      { name: 'MCP_GITHUB_URL', required: false },
-      { name: 'MCP_GITHUB_TOKEN', required: false },
+      { name: 'AI_GATEWAY_API_KEY', required: true },
+      { name: 'GITHUB_TOKEN', required: true },
+      { name: 'GITHUB_CLIENT_ID', required: true },
+      { name: 'GITHUB_CLIENT_SECRET', required: true },
     ],
   },
 };

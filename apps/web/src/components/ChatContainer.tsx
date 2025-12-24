@@ -6,8 +6,9 @@
  */
 
 import { useChat } from '@ai-sdk/react';
+import { DefaultChatTransport } from 'ai';
 import { Loader2, Send } from 'lucide-react';
-import { FormEvent, useCallback, useEffect, useRef } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 import { useProgressStream } from '../hooks/useProgressStream';
 import { MessageList } from './MessageList';
 import { ProgressBar } from './ProgressBar';
@@ -18,8 +19,6 @@ import { ProgressBar } from './ProgressBar';
 interface ChatContainerProps {
   /** Current session ID */
   sessionId: string;
-  /** Optional initial messages */
-  initialMessages?: Array<{ role: 'user' | 'assistant'; content: string }>;
   /** Optional CSS class name */
   className?: string;
 }
@@ -34,35 +33,23 @@ interface ChatContainerProps {
  * ```tsx
  * <ChatContainer
  *   sessionId="session-123"
- *   initialMessages={messages}
  * />
  * ```
  */
-export function ChatContainer({
-  sessionId,
-  initialMessages = [],
-  className = '',
-}: ChatContainerProps) {
+export function ChatContainer({ sessionId, className = '' }: ChatContainerProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState('');
 
   // Chat hook from @ai-sdk/react
   const {
     messages,
-    input,
-    handleInputChange,
-    handleSubmit,
-    isLoading: isChatLoading,
+    status,
+    sendMessage,
     error: chatError,
   } = useChat({
-    api: '/api/chat',
-    body: {
-      sessionId,
-    },
-    initialMessages: initialMessages.map((msg) => ({
-      id: crypto.randomUUID(),
-      role: msg.role,
-      content: msg.content,
-    })),
+    transport: new DefaultChatTransport({
+      api: '/api/chat',
+    }),
   });
 
   // Progress stream for execution steps
@@ -85,12 +72,13 @@ export function ChatContainer({
   const onSubmit = useCallback(
     (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      if (!input.trim() || isChatLoading) {
+      if (!input.trim() || status !== 'ready') {
         return;
       }
-      handleSubmit(e);
+      sendMessage({ text: input }, { body: { sessionId } });
+      setInput('');
     },
-    [input, isChatLoading, handleSubmit]
+    [input, status, sendMessage, sessionId]
   );
 
   /**
@@ -124,18 +112,20 @@ export function ChatContainer({
   }, [steps]);
 
   const currentStep = getCurrentStep();
+  const isChatLoading = status === 'streaming' || status === 'submitted';
 
   return (
     <div className={`flex flex-col h-full bg-white dark:bg-gray-950 ${className}`}>
       {/* Messages Area */}
       <div className="flex-1 overflow-y-auto">
         <MessageList
-          messages={messages
-            .filter((msg) => msg.role !== 'data')
-            .map((msg) => ({
-              role: msg.role as 'user' | 'assistant' | 'system',
-              content: msg.content,
-            }))}
+          messages={messages.map((msg) => ({
+            role: msg.role as 'user' | 'assistant' | 'system',
+            content: msg.parts
+              .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+              .map((part) => part.text)
+              .join(''),
+          }))}
         />
 
         {/* Progress indicator during tool execution */}
@@ -162,7 +152,7 @@ export function ChatContainer({
           <input
             type="text"
             value={input}
-            onChange={handleInputChange}
+            onChange={(e) => setInput(e.target.value)}
             placeholder="Type your message..."
             disabled={isChatLoading}
             className="

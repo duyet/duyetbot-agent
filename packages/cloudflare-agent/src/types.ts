@@ -249,6 +249,16 @@ export interface WorkerDebugInfo {
 }
 
 /**
+ * Progress callback for real-time execution updates
+ */
+export interface ProgressCallback {
+  onThinking: (text: string) => Promise<void>;
+  onToolStart: (toolName: string, args: Record<string, unknown>) => Promise<void>;
+  onToolComplete: (toolName: string, result: string, durationMs: number) => Promise<void>;
+  onToolError: (toolName: string, error: string, durationMs?: number) => Promise<void>;
+}
+
+/**
  * Debug context for routing/orchestration tracing
  * Used by admin users to see agent flow and timing
  */
@@ -256,7 +266,7 @@ export interface WorkerDebugInfo {
 /**
  * Base step properties shared by all step types
  */
-interface BaseStep {
+export interface BaseStep {
   /** Step iteration number */
   iteration: number;
   /** Timestamp when step occurred (optional for backwards compat) */
@@ -268,7 +278,7 @@ interface BaseStep {
 /**
  * Thinking step - LLM is reasoning
  */
-interface ThinkingStep extends BaseStep {
+export interface ThinkingStep extends BaseStep {
   type: 'thinking';
   /** Thinking/reasoning text from LLM */
   thinking?: string;
@@ -277,7 +287,7 @@ interface ThinkingStep extends BaseStep {
 /**
  * Tool start step - tool execution beginning
  */
-interface ToolStartStep extends BaseStep {
+export interface ToolStartStep extends BaseStep {
   type: 'tool_start';
   /** Tool name (required for tool steps) */
   toolName: string;
@@ -288,7 +298,7 @@ interface ToolStartStep extends BaseStep {
 /**
  * Tool complete step - tool finished successfully
  */
-interface ToolCompleteStep extends BaseStep {
+export interface ToolCompleteStep extends BaseStep {
   type: 'tool_complete';
   /** Tool name (required for tool steps) */
   toolName: string;
@@ -301,7 +311,7 @@ interface ToolCompleteStep extends BaseStep {
 /**
  * Tool error step - tool execution failed
  */
-interface ToolErrorStep extends BaseStep {
+export interface ToolErrorStep extends BaseStep {
   type: 'tool_error';
   /** Tool name (required for tool steps) */
   toolName: string;
@@ -314,7 +324,7 @@ interface ToolErrorStep extends BaseStep {
 /**
  * Tool execution step - combined start/complete (for display)
  */
-interface ToolExecutionStep extends BaseStep {
+export interface ToolExecutionStep extends BaseStep {
   type: 'tool_execution';
   /** Tool name (required for tool steps) */
   toolName: string;
@@ -327,7 +337,7 @@ interface ToolExecutionStep extends BaseStep {
 /**
  * Routing step - agent handoff
  */
-interface RoutingStep extends BaseStep {
+export interface RoutingStep extends BaseStep {
   type: 'routing';
   /** Agent name (required for routing steps) */
   agentName: string;
@@ -406,14 +416,6 @@ export interface ExecutionChain {
 }
 
 /**
- * Execution step with timestamp for D1 persistence
- */
-export interface ExecutionStepWithTimestamp extends ExecutionStep {
-  /** Timestamp when step occurred */
-  timestamp: number;
-}
-
-/**
  * Execution summary for completing an execution
  */
 export interface ExecutionSummary {
@@ -457,6 +459,8 @@ export interface ExecutionChain {
   model?: string;
 }
 
+// Re-export debug context types
+export type { DebugContext } from './workflow/debug-footer.js';
 // Re-export step progress types for convenience
 export type {
   StepEvent,
@@ -464,3 +468,58 @@ export type {
   StepType,
 } from './workflow/step-tracker.js';
 export { StepProgressTracker } from './workflow/step-tracker.js';
+
+// Execution step union for use across codebase
+export type ExecutionStep =
+  | {
+      iteration: number;
+      type: 'thinking';
+      thinking?: string;
+      timestamp?: number;
+      durationMs?: number;
+    }
+  | {
+      iteration: number;
+      type: 'tool_start';
+      toolName: string;
+      args?: Record<string, unknown>;
+      timestamp?: number;
+      durationMs?: number;
+    }
+  | {
+      iteration: number;
+      type: 'tool_complete';
+      toolName: string;
+      args?: Record<string, unknown>;
+      result: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
+      timestamp?: number;
+      durationMs?: number;
+    }
+  | {
+      iteration: number;
+      type: 'tool_error';
+      toolName: string;
+      args?: Record<string, unknown>;
+      error: string;
+      timestamp?: number;
+      durationMs?: number;
+    }
+  | {
+      iteration: number;
+      type: 'tool_execution';
+      toolName: string;
+      args?: Record<string, unknown>;
+      result?: string | { success?: boolean; output?: string; durationMs?: number; error?: string };
+      timestamp?: number;
+      durationMs?: number;
+    }
+  | {
+      iteration: number;
+      type: 'routing';
+      agentName: string;
+      timestamp?: number;
+      durationMs?: number;
+    }
+  | { iteration: number; type: 'llm_iteration'; timestamp?: number; durationMs?: number }
+  | { iteration: number; type: 'preparing'; timestamp?: number; durationMs?: number }
+  | { iteration: number; type: 'responding'; timestamp?: number; durationMs?: number };

@@ -1,16 +1,16 @@
-import type { ToolInvocation } from 'ai';
+import type { UIToolInvocation } from 'ai';
 import { ChevronDown, ChevronRight, Wrench } from 'lucide-react';
 import { useState } from 'react';
 
 interface ToolCallViewProps {
-  toolInvocation: ToolInvocation;
+  toolInvocation: UIToolInvocation<any>;
 }
 
 export function ToolCallView({ toolInvocation }: ToolCallViewProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const toolName = toolInvocation.toolName;
-  const args = toolInvocation.args;
+  // Extract tool name from title or use a default
+  const toolName = toolInvocation.title ?? 'Tool';
 
   return (
     <div className="border border-blue-200 bg-blue-50 rounded-md overflow-hidden">
@@ -26,9 +26,7 @@ export function ToolCallView({ toolInvocation }: ToolCallViewProps) {
       </button>
       {isExpanded && (
         <div className="px-3 pb-3 pt-0">
-          <pre className="text-xs text-blue-800 whitespace-pre-wrap overflow-x-auto">
-            {JSON.stringify(args, null, 2)}
-          </pre>
+          <p className="text-xs text-blue-800">Tool Call ID: {toolInvocation.toolCallId}</p>
         </div>
       )}
     </div>
