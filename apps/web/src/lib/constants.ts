@@ -2,64 +2,66 @@
  * Chat constants for client-side components
  */
 
-export const COMMON_MODELS = [
+/**
+ * Model configuration for AI providers
+ */
+export interface ModelConfig {
+  /** Unique model identifier (e.g., 'provider/model-name:variant') */
+  id: string;
+  /** Human-readable model name */
+  name: string;
+  /** AI provider name (e.g., 'xiaomi', 'x-ai', 'google', 'minimax') */
+  provider: string;
+}
+
+export const COMMON_MODELS: readonly ModelConfig[] = [
   {
-    id: 'anthropic/claude-3.5-sonnet',
-    name: 'Claude 3.5 Sonnet',
-    provider: 'anthropic',
+    id: 'xiaomi/mimo-v2-flash:free',
+    name: 'MiMo v2 Flash (Free)',
+    provider: 'xiaomi',
   },
   {
-    id: 'anthropic/claude-3.5-haiku',
-    name: 'Claude 3.5 Haiku',
-    provider: 'anthropic',
+    id: 'x-ai/grok-4.1-fast',
+    name: 'Grok 4.1 Fast',
+    provider: 'x-ai',
   },
   {
-    id: 'openai/gpt-4o',
-    name: 'GPT-4o',
-    provider: 'openai',
+    id: 'google/gemini-3-flash-preview',
+    name: 'Gemini 3 Flash',
+    provider: 'google',
   },
   {
-    id: 'openai/gpt-4o-mini',
-    name: 'GPT-4o Mini',
-    provider: 'openai',
+    id: 'minimax/minimax-m2.1',
+    name: 'MiniMax M2.1',
+    provider: 'minimax',
   },
 ] as const;
 
-export const DEFAULT_MODEL = 'anthropic/claude-3.5-sonnet';
+export const DEFAULT_MODEL = 'xiaomi/mimo-v2-flash:free';
 
 export function isFreeModel(modelId: string): boolean {
-  return modelId === 'anthropic/claude-3.5-haiku' || modelId === 'openai/gpt-4o-mini';
+  return modelId.endsWith(':free');
 }
 
 export const AVAILABLE_TOOLS = [
   {
-    id: 'currentTime',
-    name: 'Current Time',
-    description: 'Get the current time in a specific timezone',
+    id: 'plan',
+    name: 'Plan',
+    description: 'Create structured plans for complex tasks',
   },
   {
-    id: 'webSearch',
-    name: 'Web Search',
+    id: 'research',
+    name: 'Research',
     description: 'Search the web for current information',
   },
   {
-    id: 'calculator',
-    name: 'Calculator',
-    description: 'Perform mathematical calculations',
-  },
-  {
-    id: 'dateMath',
-    name: 'Date Math',
-    description: 'Perform date and time calculations',
-  },
-  {
-    id: 'weather',
-    name: 'Weather',
-    description: 'Get current weather information for a location',
+    id: 'scratchpad',
+    name: 'Scratchpad',
+    description: 'Store and retrieve temporary notes',
   },
 ] as const;
 
-export type ToolId = typeof AVAILABLE_TOOLS[number]['id'];
+export type ToolId = (typeof AVAILABLE_TOOLS)[number]['id'];
 
 export const SUB_AGENTS = [
   {
@@ -88,12 +90,66 @@ export const SUB_AGENTS = [
   },
 ] as const;
 
-export type SubAgentId = typeof SUB_AGENTS[number]['id'];
+export type SubAgentId = (typeof SUB_AGENTS)[number]['id'];
 
-export type AgentCategory = typeof SUB_AGENTS[number]['category'];
+export type AgentCategory = (typeof SUB_AGENTS)[number]['category'];
 
-export type SubAgentConfig = typeof SUB_AGENTS[number];
+export type SubAgentConfig = (typeof SUB_AGENTS)[number];
 
 export function getDefaultSubAgent(): SubAgentConfig {
   return SUB_AGENTS[0];
 }
+
+/**
+ * MCP Server configuration
+ */
+export interface McpServerConfig {
+  id: string;
+  name: string;
+  description: string;
+  enabled: boolean;
+}
+
+export const MCP_SERVERS: readonly McpServerConfig[] = [
+  {
+    id: 'github-mcp',
+    name: 'GitHub MCP',
+    description: 'Access GitHub repositories and APIs',
+    enabled: true,
+  },
+] as const;
+
+export type McpServerId = (typeof MCP_SERVERS)[number]['id'];
+
+/**
+ * Thinking mode configuration for agent mode
+ */
+export type ThinkingMode = 'quick' | 'normal' | 'extended';
+
+export interface ThinkingModeConfig {
+  id: ThinkingMode;
+  name: string;
+  description: string;
+  icon: string; // Lucide icon name
+}
+
+export const THINKING_MODES: readonly ThinkingModeConfig[] = [
+  {
+    id: 'quick',
+    name: 'Quick',
+    description: 'Fast responses with minimal reasoning',
+    icon: 'Zap',
+  },
+  {
+    id: 'normal',
+    name: 'Normal',
+    description: 'Balanced thinking and response time',
+    icon: 'Brain',
+  },
+  {
+    id: 'extended',
+    name: 'Extended',
+    description: 'Deep reasoning for complex problems',
+    icon: 'Sparkles',
+  },
+] as const;

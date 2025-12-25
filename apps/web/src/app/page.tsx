@@ -11,6 +11,8 @@
 
 import { useEffect, useState } from 'react';
 import { ChatInterface } from '../components/chat-interface';
+import { DataStreamHandler } from '../components/data-stream-handler';
+import { DataStreamProvider } from '../components/data-stream-provider';
 import { LoginForm } from '../components/login-form';
 import { SessionUser } from '../lib/session';
 
@@ -24,7 +26,7 @@ export default function HomePage() {
       try {
         const response = await fetch('/api/sessions');
         if (response.ok) {
-          const data = await response.json() as { user: SessionUser };
+          const data = (await response.json()) as { user: SessionUser };
           setUser(data.user);
         }
       } catch (error) {
@@ -50,5 +52,10 @@ export default function HomePage() {
   }
 
   // Show chat interface if authenticated
-  return <ChatInterface user={user} />;
+  return (
+    <DataStreamProvider>
+      <DataStreamHandler />
+      <ChatInterface user={user} />
+    </DataStreamProvider>
+  );
 }

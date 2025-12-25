@@ -75,3 +75,4 @@ packages/*/dist/
 .source/
 *.timestamp-*
 results/
+apps/web/logs

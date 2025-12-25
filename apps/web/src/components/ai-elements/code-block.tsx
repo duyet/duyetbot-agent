@@ -39,7 +39,10 @@ export const CodeBlock = ({
 }: CodeBlockProps) => {
   // Format code with line numbers if requested
   const formattedCode = showLineNumbers
-    ? code.split('\n').map((line, i) => `${String(i + 1).padStart(4, ' ')}  ${line}`).join('\n')
+    ? code
+        .split('\n')
+        .map((line, i) => `${String(i + 1).padStart(4, ' ')}  ${line}`)
+        .join('\n')
     : code;
 
   return (

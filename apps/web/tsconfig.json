@@ -19,7 +19,7 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "preserve",
+    "jsx": "react-jsx",
     "strict": true,
     "noUnusedLocals": false,
     "noUnusedParameters": false,
@@ -44,7 +44,8 @@
     "**/*.tsx",
     ".next/dev/types/**/*.ts",
     ".next/types/**/*.ts",
-    "out/types/**/*.ts"
+    "out/types/**/*.ts",
+    "out/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

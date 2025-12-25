@@ -5,8 +5,14 @@
  */
 
 import { Hono } from 'hono';
-import { setCookie, deleteCookie, getCookie } from 'hono/cookie';
-import { createSession, generateState, isSessionValid, SESSION_COOKIE_NAME, STATE_COOKIE_NAME, type Session } from '../lib/auth';
+import { deleteCookie, getCookie, setCookie } from 'hono/cookie';
+import {
+  createSession,
+  generateState,
+  isSessionValid,
+  SESSION_COOKIE_NAME,
+  STATE_COOKIE_NAME,
+} from '../lib/auth';
 
 type Bindings = {
   GITHUB_CLIENT_ID: string;
@@ -60,7 +66,11 @@ authRouter.get('/callback', async (c) => {
   }
 
   try {
-    const session = await createSession(code, c.env.GITHUB_CLIENT_ID || '', c.env.GITHUB_CLIENT_SECRET || '');
+    const session = await createSession(
+      code,
+      c.env.GITHUB_CLIENT_ID || '',
+      c.env.GITHUB_CLIENT_SECRET || ''
+    );
 
     if (!isSessionValid(session)) {
       return c.redirect(`${c.env.APP_URL}/?error=invalid_session`);
