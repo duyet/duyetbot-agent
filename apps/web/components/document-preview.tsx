@@ -37,7 +37,7 @@ export function DocumentPreview({
 
   const { data: documents, isLoading: isDocumentsFetching } = useSWR<
     Document[]
-  >(result ? `/api/document?id=${result.id}` : null, fetcher);
+  >(result ? `/api/document?id=${result.id}` : null, fetcher as (url: string) => Promise<Document[]>);
 
   const previewDocument = useMemo(() => documents?.[0], [documents]);
   const hitboxRef = useRef<HTMLDivElement>(null);
@@ -148,7 +148,7 @@ const PureHitboxLayer = ({
   result,
   setArtifact,
 }: {
-  hitboxRef: React.RefObject<HTMLDivElement>;
+  hitboxRef: React.RefObject<HTMLDivElement | null>;
   result: any;
   setArtifact: (
     updaterFn: UIArtifact | ((currentArtifact: UIArtifact) => UIArtifact)

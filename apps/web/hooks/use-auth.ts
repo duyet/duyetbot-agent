@@ -52,7 +52,7 @@ export function useAuth(): UseAuthReturn {
       })
       .then((session) => {
         if (session) {
-          setState({ data: session, status: "authenticated" });
+          setState({ data: session as Session, status: "authenticated" });
         } else {
           setState({ data: null, status: "unauthenticated" });
         }

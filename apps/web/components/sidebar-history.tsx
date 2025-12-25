@@ -108,7 +108,7 @@ export function SidebarHistory({ user }: { user: AuthUser | undefined }) {
     isValidating,
     isLoading,
     mutate,
-  } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher, {
+  } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher as (url: string) => Promise<ChatHistory>, {
     fallbackData: [],
   });
 

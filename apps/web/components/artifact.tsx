@@ -97,7 +97,7 @@ function PureArtifact({
     artifact.documentId !== "init" && artifact.status !== "streaming"
       ? `/api/document?id=${artifact.documentId}`
       : null,
-    fetcher
+    fetcher as (url: string) => Promise<Document[]>
   );
 
   const [mode, setMode] = useState<"edit" | "diff">("edit");

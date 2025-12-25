@@ -182,7 +182,7 @@ export function Chat({
 
   const { data: votes } = useSWR<Vote[]>(
     messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
-    fetcher
+    fetcher as (url: string) => Promise<Vote[]>
   );
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
