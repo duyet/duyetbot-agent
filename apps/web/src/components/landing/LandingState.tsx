@@ -17,8 +17,8 @@ interface LandingStateProps {
   // Authentication
   isAuthenticated: boolean;
 
-  // Mode change
-  onModeChange: (mode: 'chat' | 'agent') => void;
+  // Mode change (deprecated - now using internal chatMode from useLandingState)
+  onModeChange?: (mode: 'chat' | 'agent') => void;
 
   // Agent mode props
   selectedAgent: SubAgentId;
@@ -37,7 +37,7 @@ export function LandingState({
   userName,
   status,
   isAuthenticated,
-  onModeChange,
+  onModeChange: _onModeChange, // unused but kept for interface compatibility
   selectedAgent,
   onAgentChange,
   onOpenAttachments,
@@ -45,7 +45,7 @@ export function LandingState({
   onInsertPrompt,
   className,
 }: LandingStateProps) {
-  // Landing-specific state (search, deep think, thinking mode, MCP servers)
+  // Landing-specific state (search, deep think, thinking mode, MCP servers, chat mode)
   const {
     webSearchEnabled,
     toggleWebSearch,
@@ -55,6 +55,10 @@ export function LandingState({
     setThinkingMode,
     selectedMcpServers,
     toggleMcpServer,
+    chatMode,
+    setChatMode,
+    detectedMode,
+    confidence,
   } = useLandingState();
 
   return (
@@ -71,7 +75,12 @@ export function LandingState({
 
       {/* Mode Selector */}
       <div className="w-full max-w-2xl mb-3 md:mb-4">
-        <ModeSelector mode={mode} onModeChange={onModeChange} />
+        <ModeSelector
+          mode={chatMode}
+          onModeChange={setChatMode}
+          detectedMode={detectedMode as any}
+          confidence={confidence}
+        />
       </div>
 
       {/* Input Toolbar */}
