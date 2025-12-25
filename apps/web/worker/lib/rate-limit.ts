@@ -1,11 +1,12 @@
 export async function checkRateLimit(
   env: any,
-  userId: string
-): Promise<{ allowed: boolean; remaining: number }> {
+  userId: string,
+  isGuest: boolean = false
+): Promise<{ allowed: boolean; remaining: number; isGuest: boolean }> {
   const DAY_MS = 24 * 60 * 60 * 1000;
   const now = Date.now();
   const dayStart = now - DAY_MS;
-  const LIMIT = 50;
+  const LIMIT = isGuest ? 10 : 50;
 
   const count = (await env.DB.prepare(`
     SELECT COUNT(*) as count FROM executions
@@ -17,5 +18,5 @@ export async function checkRateLimit(
   const used = count?.count || 0;
   const remaining = Math.max(0, LIMIT - used);
 
-  return { allowed: remaining > 0, remaining };
+  return { allowed: remaining > 0, remaining, isGuest };
 }

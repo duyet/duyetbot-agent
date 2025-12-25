@@ -6,11 +6,10 @@ import type { UIMessage } from 'ai';
 import { DefaultChatTransport } from 'ai';
 import {
   ArrowDown,
-  Bot,
   ChevronLeft,
   ChevronRight,
   Copy,
-  MessageSquare,
+  LogIn,
   Plus,
   RefreshCw,
   Settings,
@@ -21,6 +20,7 @@ import type { FormEvent } from 'react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useArtifact } from '@/hooks/use-artifact';
 import { useChatSession } from '@/hooks/use-chat-session';
+import { useGuestRateLimit } from '@/hooks/use-guest-rate-limit';
 import { useLandingState } from '@/hooks/use-landing-state';
 import {
   AVAILABLE_TOOLS,
@@ -59,12 +59,13 @@ import {
   PromptInputTools,
 } from './ai-elements/prompt-input';
 import { LandingState } from './landing';
+import { RateLimitModal } from './RateLimitModal';
 import { SessionSidebar } from './SessionSidebar';
 import { SettingsModal } from './SettingsModal';
 import { Button } from './ui/button';
 
 interface ChatInterfaceProps {
-  user: SessionUser;
+  user?: SessionUser | undefined;
 }
 
 // localStorage keys
@@ -140,6 +141,16 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
   // Landing state for search/deep think/MCP toggles
   const landingState = useLandingState();
 
+  // Guest rate limit tracking
+  const {
+    messageCount,
+    remaining,
+    showLimitModal,
+    limitWarning,
+    incrementMessageCount,
+    setShowLimitModal,
+  } = useGuestRateLimit(!user);
+
   // Save mode to localStorage when it changes
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.MODE, mode);
@@ -150,13 +161,59 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     localStorage.setItem(STORAGE_KEYS.SIDEBAR, String(sidebarOpen));
   }, [sidebarOpen]);
 
+  // Load sessions list function - extracted for reuse in onFinish callback
+  const loadSessionsList = useCallback(async () => {
+    // Skip loading sessions for guests - they get fresh sessions
+    if (!user) {
+      setIsLoadingSessions(false);
+      return;
+    }
+
+    try {
+      setIsLoadingSessions(true);
+      const response = await fetch(`/api/v1/history?limit=50`);
+      if (response.ok) {
+        const data = (await response.json()) as {
+          chats: Array<{
+            sessionId: string;
+            userId: string;
+            chatId: string;
+            title: string;
+            messageCount: number;
+            createdAt: number;
+            updatedAt: number;
+            visibility: string;
+          }>;
+          hasMore: boolean;
+        };
+        // Map backend response to frontend format
+        const formattedSessions = data.chats.map((chat) => ({
+          id: chat.sessionId,
+          chatId: chat.chatId,
+          createdAt: chat.createdAt,
+          updatedAt: chat.updatedAt,
+          messageCount: chat.messageCount,
+          state: 'active' as const,
+          preview: undefined,
+          messages: [],
+          metadata: { title: chat.title },
+        }));
+        setSessions(formattedSessions);
+      }
+    } catch {
+      // Silently fail - sessions list is optional
+    } finally {
+      setIsLoadingSessions(false);
+    }
+  }, [user]);
+
   // Chat hook - must be defined before handlers that use setMessages
   const { messages, status, sendMessage, setMessages, error, regenerate } = useChat({
     transport: new DefaultChatTransport({
       api: '/api/v1/chat',
       body: {
         model,
-        userId: user.id,
+        userId: user?.id,
         enabledTools: mode === 'agent' ? enabledTools : [],
         subAgentId: mode === 'agent' ? selectedAgent : undefined,
         // New landing state parameters
@@ -166,50 +223,17 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         mcpServers: mode === 'agent' ? landingState.selectedMcpServers : undefined,
       },
     }),
+    onFinish: () => {
+      // Refresh sessions list after each message completes
+      // This ensures new conversations appear in the sidebar
+      void loadSessionsList();
+    },
   });
 
   // Load sessions list on mount (for sidebar display)
   useEffect(() => {
-    async function loadSessionsList() {
-      try {
-        setIsLoadingSessions(true);
-        const response = await fetch(`/api/v1/history?limit=50`);
-        if (response.ok) {
-          const data = (await response.json()) as {
-            chats: Array<{
-              sessionId: string;
-              userId: string;
-              chatId: string;
-              title: string;
-              messageCount: number;
-              createdAt: number;
-              updatedAt: number;
-              visibility: string;
-            }>;
-            hasMore: boolean;
-          };
-          // Map backend response to frontend format
-          const formattedSessions = data.chats.map((chat) => ({
-            id: chat.sessionId,
-            chatId: chat.chatId,
-            createdAt: chat.createdAt,
-            updatedAt: chat.updatedAt,
-            messageCount: chat.messageCount,
-            state: 'active' as const,
-            preview: undefined,
-            messages: [],
-            metadata: { title: chat.title },
-          }));
-          setSessions(formattedSessions);
-        }
-      } catch {
-        // Silently fail - sessions list is optional
-      } finally {
-        setIsLoadingSessions(false);
-      }
-    }
     void loadSessionsList();
-  }, [user.id]);
+  }, [loadSessionsList]);
 
   // Sync loaded session messages to useChat
   useEffect(() => {
@@ -239,6 +263,17 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
 
       if (!(hasText || hasAttachments)) {
         return;
+      }
+
+      // Check guest rate limit before sending
+      if (!user && remaining <= 0) {
+        setShowLimitModal(true);
+        return;
+      }
+
+      // Increment message count for guests
+      if (!user) {
+        incrementMessageCount();
       }
 
       // Generate session ID for new chats
@@ -276,7 +311,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         hasUpdatedUrlRef.current = true;
       }
     },
-    [sendMessage, currentSessionId, mode, enabledTools, selectedAgent, landingState]
+    [sendMessage, currentSessionId, mode, enabledTools, selectedAgent, landingState, user, remaining, incrementMessageCount, setShowLimitModal]
   );
 
   const handleNewChat = useCallback(() => {
@@ -302,7 +337,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         // Silently fail
       }
     },
-    [user.id, currentSessionId, handleNewChat]
+    [currentSessionId, handleNewChat]
   );
 
   const handleModeChange = useCallback(
@@ -356,15 +391,34 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           >
             <Plus className="h-5 w-5 text-white" />
           </button>
-          {user.avatarUrl && (
-            <button
-              type="button"
-              style={{ backgroundImage: `url(${user.avatarUrl})` }}
-              className="mt-auto h-9 w-9 rounded-full bg-cover bg-center ring-2 ring-border/50 hover:ring-accent/50 transition-all"
-              aria-label={`${user.name ?? user.login} - Logout`}
-              title={`${user.name ?? user.login} - Logout`}
-              onClick={handleLogout}
-            />
+          {/* User avatar or Sign In button */}
+          {user ? (
+            user.avatarUrl && (
+              <button
+                type="button"
+                style={{ backgroundImage: `url(${user.avatarUrl})` }}
+                className="mt-auto h-9 w-9 rounded-full bg-cover bg-center ring-2 ring-border/50 hover:ring-accent/50 transition-all"
+                aria-label={`${user.name ?? user.login} - Logout`}
+                title={`${user.name ?? user.login} - Logout`}
+                onClick={handleLogout}
+              />
+            )
+          ) : (
+            <div className="mt-auto relative">
+              {/* Remaining messages badge for guests */}
+              {remaining <= 3 && remaining > 0 && (
+                <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-accent text-[10px] font-medium text-white">
+                  {remaining}
+                </span>
+              )}
+              <a
+                href="/api/auth/login"
+                className="flex h-9 w-9 items-center justify-center rounded-full bg-muted hover:bg-muted/80 ring-2 ring-border/50 hover:ring-accent/50 transition-all"
+                title={`Sign in to save your chats${remaining <= 3 ? ` (${remaining} left)` : ''}`}
+              >
+                <LogIn className="h-4 w-4 text-muted-foreground" />
+              </a>
+            </div>
           )}
         </aside>
       )}
@@ -413,69 +467,12 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Mode Toggle */}
-            <div className="hidden sm:flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border/50">
-              <button
-                type="button"
-                onClick={() => handleModeChange('chat')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                  mode === 'chat'
-                    ? 'bg-background shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <MessageSquare className="h-3.5 w-3.5" />
-                <span>Chat</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('agent')}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
-                  mode === 'agent'
-                    ? 'bg-background shadow-sm'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Bot className="h-3.5 w-3.5" />
-                <span>Agent</span>
-              </button>
-            </div>
-
-            {/* Mobile Mode Toggle - Icons only */}
-            <div className="sm:hidden flex items-center gap-1 p-1 rounded-xl bg-muted/40 border border-border/50">
-              <button
-                type="button"
-                onClick={() => handleModeChange('chat')}
-                className={`flex items-center justify-center p-2 rounded-lg transition-all duration-200 ${
-                  mode === 'chat'
-                    ? 'bg-background shadow-sm text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                title="Chat mode"
-              >
-                <MessageSquare className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange('agent')}
-                className={`flex items-center justify-center p-2 rounded-lg transition-all duration-200 ${
-                  mode === 'agent'
-                    ? 'bg-background shadow-sm text-foreground'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
-                title="Agent mode"
-              >
-                <Bot className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="w-px h-6 bg-border/50 mx-1" />
-
             <Button
               variant="ghost"
               size="icon-sm"
               onClick={() => setSettingsOpen(true)}
-              title="Settings"
+              title={user ? "Settings" : "Settings (sign in required)"}
+              disabled={!user}
             >
               <Settings className="h-4 w-4" />
             </Button>
@@ -495,6 +492,14 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
 
         {/* Settings Modal */}
         <SettingsModal open={settingsOpen} onOpenChange={setSettingsOpen} />
+
+        {/* Rate Limit Modal */}
+        <RateLimitModal
+          open={showLimitModal}
+          onOpenChange={setShowLimitModal}
+          remaining={remaining}
+          isWarning={limitWarning}
+        />
 
         {/* Main Content Area - with optional artifact panel */}
         <div className="flex-1 flex overflow-hidden">
@@ -530,8 +535,10 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
                 ) : (
                   <LandingState
                     mode={mode}
-                    userName={user.name ?? user.login ?? 'there'}
+                    userName={user?.name ?? user?.login ?? 'there'}
                     status={status}
+                    isAuthenticated={!!user}
+                    onModeChange={handleModeChange}
                     selectedAgent={selectedAgent}
                     onAgentChange={setSelectedAgent}
                     onOpenAttachments={() => {

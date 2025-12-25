@@ -1,7 +1,8 @@
+import { getCookie, setCookie } from 'hono/cookie';
 import { nanoid } from 'nanoid';
 
 export async function getOrCreateGuestUser(c: any, env: any): Promise<any> {
-  const guestId = c.req.cookie('guest_id');
+  const guestId = getCookie(c, 'guest_id');
 
   if (guestId) {
     const existing = await env.DB.prepare(`SELECT * FROM users WHERE id = ? AND is_guest = 1`)
@@ -23,7 +24,7 @@ export async function getOrCreateGuestUser(c: any, env: any): Promise<any> {
     .bind(userId, `guest_${userId}`, `guest_${userId}`, 'Guest', null, now)
     .run();
 
-  c.req.cookie.set('guest_id', userId, {
+  setCookie(c, 'guest_id', userId, {
     httpOnly: true,
     maxAge: 30 * 24 * 60 * 60,
     path: '/',

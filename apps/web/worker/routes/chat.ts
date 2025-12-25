@@ -145,13 +145,16 @@ chatRouter.post('/', optionalAuth, async (c) => {
 
     // Get userId from auth if available, otherwise create guest user
     let userId = 'anonymous';
+    let isGuest = false;
     try {
       const user = getUser(c);
       userId = user.id;
+      isGuest = false;
     } catch {
       // No auth, create or get guest user
       const guest = await getOrCreateGuestUser(c, env);
       userId = guest.id;
+      isGuest = true;
     }
 
     // Validate messages
@@ -168,15 +171,18 @@ chatRouter.post('/', optionalAuth, async (c) => {
     }
 
     // Check rate limit
-    const rateLimit = await checkRateLimit(env, userId);
+    const rateLimit = await checkRateLimit(env, userId, isGuest);
     if (!rateLimit.allowed) {
-      console.error('[Chat API] Rate limit exceeded for user:', userId);
+      console.error('[Chat API] Rate limit exceeded for user:', userId, 'isGuest:', isGuest);
       return c.json(
         {
           error: 'Too Many Requests',
-          message: 'Rate limit exceeded. Please try again later.',
+          message: isGuest
+            ? 'Guest limit reached. Sign in for unlimited access.'
+            : 'Rate limit exceeded. Please try again later.',
           executionId,
           remaining: rateLimit.remaining,
+          isGuest: rateLimit.isGuest,
         },
         429
       );
