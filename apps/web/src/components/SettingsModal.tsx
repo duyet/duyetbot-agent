@@ -1,12 +1,9 @@
 'use client';
 
 import {
-  BadgeCheck,
   Bell,
-  Bot,
   Code2,
   Cog,
-  Globe,
   Layers,
   MessageSquare,
   Moon,
@@ -17,20 +14,11 @@ import {
   Sparkles,
   Sun,
   Timer,
-  Wand2,
   Zap,
 } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getThemeSync, setTheme } from '@/components/theme-provider';
-import {
-  AVAILABLE_TOOLS,
-  COMMON_MODELS,
-  DEFAULT_MODEL,
-  getDefaultSubAgent,
-  isFreeModel,
-  type ModelConfig,
-  SUB_AGENTS,
-} from '@/lib/constants';
+import { COMMON_MODELS, DEFAULT_MODEL, isFreeModel, type ModelConfig } from '@/lib/constants';
 import { useSettings } from '@/lib/use-settings';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
@@ -46,7 +34,6 @@ import {
 import { Slider } from './ui/slider';
 import { Switch } from './ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Textarea } from './ui/textarea';
 
 interface SettingsModalProps {
   open: boolean;
@@ -64,8 +51,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
 
   // Local state for unsaved changes
   const [localModel, setLocalModel] = useState(DEFAULT_MODEL);
-  const [localEnabledTools, setLocalEnabledTools] = useState<string[]>([]);
-  const [localSubAgentId, setLocalSubAgentId] = useState(getDefaultSubAgent().id);
   const [activeTab, setActiveTab] = useState('general');
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -74,19 +59,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
   useEffect(() => {
     if (settings) {
       setLocalModel(settings.defaultModel || DEFAULT_MODEL);
-      setLocalEnabledTools(settings.enabledTools || []);
-      // Using theme field for sub-agent temporarily - validate the value
-      const validSubAgentIds: Array<'default' | 'researcher' | 'analyst'> = [
-        'default',
-        'researcher',
-        'analyst',
-      ];
-      const subAgentId = validSubAgentIds.includes(
-        settings.theme as 'default' | 'researcher' | 'analyst'
-      )
-        ? (settings.theme as 'default' | 'researcher' | 'analyst')
-        : getDefaultSubAgent().id;
-      setLocalSubAgentId(subAgentId);
     }
   }, [settings]);
 
@@ -103,20 +75,13 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     return groups;
   }, []);
 
-  const currentSubAgent = SUB_AGENTS.find((a) => a.id === localSubAgentId) || getDefaultSubAgent();
-
   // Check if there are unsaved changes
   const hasChanges = useMemo(() => {
     if (!settings) {
       return false;
     }
-    return (
-      localModel !== settings.defaultModel ||
-      JSON.stringify(localEnabledTools.sort()) !==
-        JSON.stringify((settings.enabledTools || []).sort()) ||
-      localSubAgentId !== (settings.theme || getDefaultSubAgent().id)
-    );
-  }, [localModel, localEnabledTools, localSubAgentId, settings]);
+    return localModel !== settings.defaultModel;
+  }, [localModel, settings]);
 
   const handleSave = useCallback(async () => {
     if (!settings || isSaving) {
@@ -129,8 +94,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     try {
       await updateSettings({
         defaultModel: localModel,
-        enabledTools: localEnabledTools,
-        theme: localSubAgentId, // Using theme field for sub-agent temporarily
       });
       onOpenChange(false);
     } catch (err) {
@@ -140,33 +103,12 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
     } finally {
       setIsSaving(false);
     }
-  }, [
-    settings,
-    isSaving,
-    localModel,
-    localEnabledTools,
-    localSubAgentId,
-    updateSettings,
-    onOpenChange,
-  ]);
+  }, [settings, isSaving, localModel, updateSettings, onOpenChange]);
 
   const handleCancel = useCallback(() => {
     // Reset local state to current settings
     if (settings) {
       setLocalModel(settings.defaultModel || DEFAULT_MODEL);
-      setLocalEnabledTools(settings.enabledTools || []);
-      // Validate the subAgentId value
-      const validSubAgentIds: Array<'default' | 'researcher' | 'analyst'> = [
-        'default',
-        'researcher',
-        'analyst',
-      ];
-      const subAgentId = validSubAgentIds.includes(
-        settings.theme as 'default' | 'researcher' | 'analyst'
-      )
-        ? (settings.theme as 'default' | 'researcher' | 'analyst')
-        : getDefaultSubAgent().id;
-      setLocalSubAgentId(subAgentId);
     }
     setSaveError(null);
     onOpenChange(false);
@@ -233,20 +175,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
             >
               <Sliders className="h-4 w-4 mr-2" />
               General
-            </TabsTrigger>
-            <TabsTrigger
-              value="agent"
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-accent rounded-none px-4 py-3 text-sm"
-            >
-              <Bot className="h-4 w-4 mr-2" />
-              Agent
-            </TabsTrigger>
-            <TabsTrigger
-              value="prompts"
-              className="data-[state=active]:bg-transparent data-[state=active]:shadow-none data-[state=active]:border-b-2 data-[state=active]:border-accent rounded-none px-4 py-3 text-sm"
-            >
-              <MessageSquare className="h-4 w-4 mr-2" />
-              Prompts
             </TabsTrigger>
             <TabsTrigger
               value="appearance"
@@ -357,239 +285,6 @@ export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
                     label="Desktop notifications"
                     description="Show system notifications"
                   />
-                </div>
-              </Section>
-            </TabsContent>
-
-            {/* Agent Tab */}
-            <TabsContent value="agent" className="space-y-6 mt-0">
-              <Section
-                title="Sub-Agent Type"
-                description="Choose a specialized agent for specific tasks"
-                icon={<BadgeCheck className="h-4 w-4" />}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {SUB_AGENTS.map((agent) => (
-                    <button
-                      key={agent.id}
-                      type="button"
-                      onClick={() => setLocalSubAgentId(agent.id)}
-                      className={`p-4 rounded-lg border-2 text-left transition-all ${
-                        localSubAgentId === agent.id
-                          ? 'border-accent bg-accent/5'
-                          : 'border-border/50 hover:border-border'
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-1">
-                            <h4 className="text-sm font-medium">{agent.name}</h4>
-                            <Badge variant="secondary" className="text-[10px]">
-                              {agent.category}
-                            </Badge>
-                          </div>
-                          <p className="text-xs text-muted-foreground line-clamp-2">
-                            {agent.description}
-                          </p>
-                          {agent.tools && agent.tools.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {agent.tools.slice(0, 3).map((tool) => (
-                                <Badge key={tool} variant="outline" className="text-[10px]">
-                                  {tool}
-                                </Badge>
-                              ))}
-                              {agent.tools.length > 3 && (
-                                <Badge variant="outline" className="text-[10px]">
-                                  +{agent.tools.length - 3}
-                                </Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </Section>
-
-              <Section
-                title="Available Tools"
-                description="Select which tools the agent can use"
-                icon={<Wand2 className="h-4 w-4" />}
-              >
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {AVAILABLE_TOOLS.map((tool) => {
-                    const isEnabled = localEnabledTools.includes(tool.id);
-                    return (
-                      <button
-                        key={tool.id}
-                        type="button"
-                        onClick={() => {
-                          setLocalEnabledTools((prev) =>
-                            prev.includes(tool.id)
-                              ? prev.filter((t) => t !== tool.id)
-                              : [...prev, tool.id]
-                          );
-                        }}
-                        className={`p-3 rounded-lg border-2 text-left transition-all ${
-                          isEnabled
-                            ? 'border-accent bg-accent/5'
-                            : 'border-border/50 hover:border-border'
-                        }`}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 min-w-0">
-                            <h4 className="text-sm font-medium">{tool.name}</h4>
-                            <p className="text-xs text-muted-foreground truncate">
-                              {tool.description}
-                            </p>
-                          </div>
-                          <div
-                            className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-all ${
-                              isEnabled ? 'border-accent bg-accent text-white' : 'border-border'
-                            }`}
-                          >
-                            {isEnabled && <Zap className="h-3 w-3" />}
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 p-3 rounded-lg bg-muted/50 border border-border/50">
-                  <p className="text-xs text-muted-foreground">
-                    <strong>{localEnabledTools.length}</strong> of{' '}
-                    <strong>{AVAILABLE_TOOLS.length}</strong> tools enabled
-                  </p>
-                </div>
-              </Section>
-
-              <Section
-                title="Tool Parameters"
-                description="Configure default behavior for tools"
-                icon={<Cog className="h-4 w-4" />}
-              >
-                <div className="space-y-4">
-                  <SettingRow
-                    label="Max tool iterations"
-                    description="Limit tool calls per request"
-                  >
-                    <Select defaultValue="5">
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="3">3</SelectItem>
-                        <SelectItem value="5">5</SelectItem>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="15">15</SelectItem>
-                        <SelectItem value="unlimited">Unlimited</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingRow>
-                  <SettingRow label="Tool timeout" description="Max wait time for tools">
-                    <Select defaultValue="30">
-                      <SelectTrigger className="w-[120px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="15">15s</SelectItem>
-                        <SelectItem value="30">30s</SelectItem>
-                        <SelectItem value="60">60s</SelectItem>
-                        <SelectItem value="120">2m</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingRow>
-                </div>
-              </Section>
-            </TabsContent>
-
-            {/* Prompts Tab */}
-            <TabsContent value="prompts" className="space-y-6 mt-0">
-              <Section
-                title="System Prompt"
-                description="Custom instructions for the AI"
-                icon={<Code2 className="h-4 w-4" />}
-              >
-                <div className="space-y-4">
-                  <Textarea
-                    placeholder="Enter custom system instructions..."
-                    className="min-h-[120px] resize-none font-mono text-sm"
-                    defaultValue={currentSubAgent.systemPrompt}
-                  />
-                  <div className="flex justify-between items-center">
-                    <p className="text-xs text-muted-foreground">
-                      This overrides the default system prompt for the selected agent type.
-                    </p>
-                    <Button variant="outline" size="sm">
-                      Reset to Default
-                    </Button>
-                  </div>
-                </div>
-              </Section>
-
-              <Section
-                title="Response Format"
-                description="Control output structure and style"
-                icon={<Layers className="h-4 w-4" />}
-              >
-                <div className="space-y-4">
-                  <SettingRow label="Format" description="Output format preference">
-                    <Select defaultValue="auto">
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="auto">Auto</SelectItem>
-                        <SelectItem value="markdown">Markdown</SelectItem>
-                        <SelectItem value="plain">Plain Text</SelectItem>
-                        <SelectItem value="json">JSON</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingRow>
-                  <SettingRow label="Code blocks" description="Syntax highlighting style">
-                    <Select defaultValue="github">
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="github">GitHub Dark</SelectItem>
-                        <SelectItem value="monokai">Monokai</SelectItem>
-                        <SelectItem value="nord">Nord</SelectItem>
-                        <SelectItem value="dracula">Dracula</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingRow>
-                </div>
-              </Section>
-
-              <Section
-                title="Knowledge & Context"
-                description="Additional context for responses"
-                icon={<Globe className="h-4 w-4" />}
-              >
-                <div className="space-y-4">
-                  <SwitchRow
-                    label="Web search"
-                    description="Allow agent to search the web for current information"
-                  />
-                  <SwitchRow
-                    label="Use previous context"
-                    description="Include conversation history in prompts"
-                  />
-                  <SettingRow label="Context window" description="Amount of history to include">
-                    <Select defaultValue="medium">
-                      <SelectTrigger className="w-[180px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="short">Short (last 5)</SelectItem>
-                        <SelectItem value="medium">Medium (last 10)</SelectItem>
-                        <SelectItem value="long">Long (last 20)</SelectItem>
-                        <SelectItem value="full">Full session</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </SettingRow>
                 </div>
               </Section>
             </TabsContent>

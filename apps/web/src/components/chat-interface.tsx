@@ -21,7 +21,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useArtifact } from '@/hooks/use-artifact';
 import { useChatSession } from '@/hooks/use-chat-session';
 import { useGuestRateLimit } from '@/hooks/use-guest-rate-limit';
-import { useLandingState } from '@/hooks/use-landing-state';
 import {
   AVAILABLE_TOOLS,
   DEFAULT_MODEL,
@@ -58,10 +57,10 @@ import {
   PromptInputTextarea,
   PromptInputTools,
 } from './ai-elements/prompt-input';
-import { LandingState } from './landing';
 import { RateLimitModal } from './RateLimitModal';
 import { SessionSidebar } from './SessionSidebar';
 import { SettingsModal } from './SettingsModal';
+import { SuggestedActions } from './suggested-actions';
 import { Button } from './ui/button';
 
 interface ChatInterfaceProps {
@@ -86,7 +85,6 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
     sessionId: currentSessionId,
     isLoadingSession,
     sessionMessages,
-    sessionTitle,
     setSessionId,
     createNewSession,
     error: sessionError,
@@ -99,13 +97,15 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
 
   // UI state
   const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
     const saved = localStorage.getItem(STORAGE_KEYS.SIDEBAR);
     return saved !== 'false';
   });
   const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Initialize mode from localStorage or defaults
-  const [mode, setMode] = useState<'chat' | 'agent'>(() => {
+  const [mode, _setMode] = useState<'chat' | 'agent'>(() => {
+    if (typeof window === 'undefined') return 'chat';
     return (localStorage.getItem(STORAGE_KEYS.MODE) as 'chat' | 'agent') || 'chat';
   });
 
@@ -131,34 +131,38 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
   const enabledTools = settings?.enabledTools ?? AVAILABLE_TOOLS.map((t) => t.id);
 
   // Selected agent state (controlled locally, syncs with settings)
-  const [selectedAgent, setSelectedAgent] = useState<SubAgentId>(
+  const [selectedAgent, _setSelectedAgent] = useState<SubAgentId>(
     () => (settings?.theme as SubAgentId) ?? getDefaultSubAgent().id
   );
 
   // Ref for prompt input to support prompt insertion from quick actions
-  const [pendingPrompt, setPendingPrompt] = useState<string>('');
+  const [_pendingPrompt, _setPendingPrompt] = useState<string>('');
 
-  // Landing state for search/deep think/MCP toggles
-  const landingState = useLandingState();
+  // Landing state for search/deep think/MCP toggles (local state)
+  const [webSearchEnabled, _setWebSearchEnabled] = useState(false);
+  const [deepThinkEnabled, _setDeepThinkEnabled] = useState(false);
+  const [thinkingMode, _setThinkingMode] = useState<'auto' | 'always' | 'never'>('auto');
+  const [selectedMcpServers, _setSelectedMcpServers] = useState<string[]>([]);
+  const _chatMode = 'chat';
+  const _detectedMode: 'chat' | 'agent' | null = null;
+  const _confidence: number | null = null;
 
   // Guest rate limit tracking
-  const {
-    messageCount,
-    remaining,
-    showLimitModal,
-    limitWarning,
-    incrementMessageCount,
-    setShowLimitModal,
-  } = useGuestRateLimit(!user);
+  const { remaining, showLimitModal, limitWarning, incrementMessageCount, setShowLimitModal } =
+    useGuestRateLimit(!user);
 
   // Save mode to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.MODE, mode);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.MODE, mode);
+    }
   }, [mode]);
 
   // Save sidebar state to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SIDEBAR, String(sidebarOpen));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEYS.SIDEBAR, String(sidebarOpen));
+    }
   }, [sidebarOpen]);
 
   // Load sessions list function - extracted for reuse in onFinish callback
@@ -217,10 +221,10 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         enabledTools: mode === 'agent' ? enabledTools : [],
         subAgentId: mode === 'agent' ? selectedAgent : undefined,
         // New landing state parameters
-        webSearchEnabled: mode === 'chat' ? landingState.webSearchEnabled : false,
-        deepThinkEnabled: mode === 'chat' ? landingState.deepThinkEnabled : false,
-        thinkingMode: mode === 'agent' ? landingState.thinkingMode : undefined,
-        mcpServers: mode === 'agent' ? landingState.selectedMcpServers : undefined,
+        webSearchEnabled: mode === 'chat' ? webSearchEnabled : false,
+        deepThinkEnabled: mode === 'chat' ? deepThinkEnabled : false,
+        thinkingMode: mode === 'agent' ? thinkingMode : undefined,
+        mcpServers: mode === 'agent' ? selectedMcpServers : undefined,
       },
     }),
     onFinish: () => {
@@ -293,10 +297,10 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
             sessionId: sessionIdToUse,
             enabledTools: mode === 'agent' ? enabledTools : [],
             subAgentId: mode === 'agent' ? selectedAgent : undefined,
-            webSearchEnabled: mode === 'chat' ? landingState.webSearchEnabled : false,
-            deepThinkEnabled: mode === 'chat' ? landingState.deepThinkEnabled : false,
-            thinkingMode: mode === 'agent' ? landingState.thinkingMode : undefined,
-            mcpServers: mode === 'agent' ? landingState.selectedMcpServers : undefined,
+            webSearchEnabled: mode === 'chat' ? webSearchEnabled : false,
+            deepThinkEnabled: mode === 'chat' ? deepThinkEnabled : false,
+            thinkingMode: mode === 'agent' ? thinkingMode : undefined,
+            mcpServers: mode === 'agent' ? selectedMcpServers : undefined,
           },
         }
       );
@@ -311,7 +315,21 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
         hasUpdatedUrlRef.current = true;
       }
     },
-    [sendMessage, currentSessionId, mode, enabledTools, selectedAgent, landingState, user, remaining, incrementMessageCount, setShowLimitModal]
+    [
+      sendMessage,
+      currentSessionId,
+      mode,
+      enabledTools,
+      selectedAgent,
+      webSearchEnabled,
+      deepThinkEnabled,
+      thinkingMode,
+      selectedMcpServers,
+      user,
+      remaining,
+      incrementMessageCount,
+      setShowLimitModal,
+    ]
   );
 
   const handleNewChat = useCallback(() => {
@@ -338,22 +356,6 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
       }
     },
     [currentSessionId, handleNewChat]
-  );
-
-  const handleModeChange = useCallback(
-    (newMode: 'chat' | 'agent') => {
-      if (newMode === mode) {
-        return;
-      }
-
-      // Clear messages and create new session when switching modes
-      setMode(newMode);
-      setMessages([]);
-      createNewSession();
-      hasUpdatedUrlRef.current = false;
-      pendingSessionIdRef.current = null;
-    },
-    [mode, setMessages, createNewSession]
   );
 
   const handleLogout = useCallback(() => {
@@ -471,7 +473,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
               variant="ghost"
               size="icon-sm"
               onClick={() => setSettingsOpen(true)}
-              title={user ? "Settings" : "Settings (sign in required)"}
+              title={user ? 'Settings' : 'Settings (sign in required)'}
               disabled={!user}
             >
               <Settings className="h-4 w-4" />
@@ -507,7 +509,7 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
           <div
             className={`flex-1 overflow-hidden ${artifact.isVisible ? 'max-w-[60%] border-r border-border/50' : ''}`}
           >
-            <Conversation className="h-full">
+            <Conversation className="h-full min-h-0">
               <ConversationContent>
                 {isLoadingSession ? (
                   <div className="flex h-full flex-col items-center justify-center p-8">
@@ -533,21 +535,21 @@ export function ChatInterface({ user }: ChatInterfaceProps) {
                     />
                   ))
                 ) : (
-                  <LandingState
-                    mode={mode}
-                    userName={user?.name ?? user?.login ?? 'there'}
-                    status={status}
-                    isAuthenticated={!!user}
-                    onModeChange={handleModeChange}
-                    selectedAgent={selectedAgent}
-                    onAgentChange={setSelectedAgent}
-                    onOpenAttachments={() => {
-                      // Trigger the attachment file dialog
-                      // This will be handled by the PromptInput ref
-                    }}
-                    onOpenSettings={() => setSettingsOpen(true)}
-                    onInsertPrompt={setPendingPrompt}
-                  />
+                  <div className="flex flex-col items-center justify-center py-12">
+                    <div className="w-full max-w-2xl space-y-4 px-4">
+                      <div className="text-center">
+                        <h2 className="text-2xl font-semibold tracking-tight">
+                          Welcome, {user?.name ?? user?.login ?? 'there'}
+                        </h2>
+                        <p className="text-muted-foreground mt-2">
+                          {mode === 'chat'
+                            ? 'Start a conversation or ask me anything.'
+                            : 'Describe a task and I will help you complete it.'}
+                        </p>
+                      </div>
+                      <SuggestedActions sendMessage={sendMessage} />
+                    </div>
+                  </div>
                 )}
               </ConversationContent>
               <ConversationScrollButton />

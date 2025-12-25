@@ -5,12 +5,20 @@
  */
 
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { convertToModelMessages, stepCountIs, streamText, type UIMessage } from 'ai';
+import {
+  convertToModelMessages,
+  createUIMessageStream,
+  stepCountIs,
+  streamText,
+  type UIMessage,
+} from 'ai';
 import { Hono } from 'hono';
 import { agentTools } from '../lib/agent-tools';
 import { getUser, optionalAuth } from '../lib/auth-middleware';
+import { ChatSDKError } from '../lib/errors';
 import { getOrCreateGuestUser } from '../lib/guest-auth';
 import { getWebChatPrompt } from '../lib/prompts';
+import { type ChatMode, classifyQuery, type QueryClassification } from '../lib/query-classifier';
 import { checkRateLimit } from '../lib/rate-limit';
 import { generateTitleFromMessage } from '../lib/title-generator';
 
@@ -35,11 +43,18 @@ chatRouter.options('/', (c) => {
 });
 
 interface ChatRequest {
-  messages: UIMessage[];
+  // Normal mode: single message for starting a new conversation
+  message?: string;
+  // Tool approval mode: full messages array for tool approval flow
+  messages?: UIMessage[];
+
   sessionId?: string;
   model?: string;
   enabledTools?: string[];
   subAgentId?: string;
+
+  // Chat mode selection
+  mode?: ChatMode | 'auto'; // 'auto' triggers automatic detection
 
   // Chat mode parameters
   webSearchEnabled?: boolean;
@@ -130,18 +145,47 @@ chatRouter.post('/', optionalAuth, async (c) => {
 
   try {
     const body = (await c.req.json()) as ChatRequest;
+
+    // Detect tool approval flow: if messages array is provided, it's a tool approval flow
+    const isToolApprovalFlow = Boolean(
+      body.messages && Array.isArray(body.messages) && body.messages.length > 0
+    );
+
+    let messages: UIMessage[];
+    if (isToolApprovalFlow) {
+      // Tool approval flow: use the provided messages array
+      messages = body.messages!;
+    } else {
+      // Normal flow: convert single message to UIMessage format
+      if (!body.message) {
+        const error = new ChatSDKError(
+          'bad_request:chat',
+          'Either message or messages field is required'
+        );
+        return error.toResponse();
+      }
+      messages = [
+        { id: crypto.randomUUID(), role: 'user', parts: [{ type: 'text', text: body.message }] },
+      ];
+    }
+
     const {
-      messages,
       sessionId = crypto.randomUUID(),
       model = 'anthropic/claude-3.5-sonnet',
-      enabledTools,
+      enabledTools: requestedEnabledTools,
+      mode = 'auto',
       // Chat mode parameters
-      webSearchEnabled = false,
-      deepThinkEnabled = false,
+      webSearchEnabled: requestedWebSearchEnabled = false,
+      deepThinkEnabled: requestedDeepThinkEnabled = false,
       // Agent mode parameters
       thinkingMode = 'normal',
       mcpServers = [],
     } = body;
+
+    // Mutable variables that may be modified by auto-detection
+    let enabledTools = requestedEnabledTools;
+    let webSearchEnabled = requestedWebSearchEnabled;
+    let deepThinkEnabled = requestedDeepThinkEnabled;
 
     // Get userId from auth if available, otherwise create guest user
     let userId = 'anonymous';
@@ -157,35 +201,17 @@ chatRouter.post('/', optionalAuth, async (c) => {
       isGuest = true;
     }
 
-    // Validate messages
-    if (!messages || !Array.isArray(messages)) {
-      console.error('[Chat API] Missing or invalid messages field');
-      return c.json(
-        {
-          error: 'Bad Request',
-          message: 'Messages field is required and must be an array',
-          executionId,
-        },
-        400
-      );
-    }
-
     // Check rate limit
     const rateLimit = await checkRateLimit(env, userId, isGuest);
     if (!rateLimit.allowed) {
       console.error('[Chat API] Rate limit exceeded for user:', userId, 'isGuest:', isGuest);
-      return c.json(
-        {
-          error: 'Too Many Requests',
-          message: isGuest
-            ? 'Guest limit reached. Sign in for unlimited access.'
-            : 'Rate limit exceeded. Please try again later.',
-          executionId,
-          remaining: rateLimit.remaining,
-          isGuest: rateLimit.isGuest,
-        },
-        429
+      const error = new ChatSDKError(
+        'rate_limit:chat',
+        isGuest
+          ? 'Guest limit reached. Sign in for unlimited access.'
+          : 'Rate limit exceeded. Please try again later.'
       );
+      return error.toResponse();
     }
 
     console.log('[Chat API] Request body:', {
@@ -194,34 +220,64 @@ chatRouter.post('/', optionalAuth, async (c) => {
       sessionId,
       userId,
       enabledTools,
+      mode,
       webSearchEnabled,
       deepThinkEnabled,
       thinkingMode,
       mcpServers,
     });
 
+    // Auto-detect mode if mode is 'auto'
+    let classification: QueryClassification | null = null;
+    let effectiveMode: ChatMode = 'web_search'; // Default fallback
+
+    if (mode === 'auto') {
+      classification = classifyQuery(messages);
+      effectiveMode = classification.mode;
+
+      console.log('[Chat API] Auto-detected mode:', {
+        detectedMode: effectiveMode,
+        confidence: classification.confidence,
+        intent: classification.detectedIntent,
+        keywords: classification.keywords,
+      });
+
+      // Set mode-specific parameters based on classification
+      if (effectiveMode === 'duyet_mcp') {
+        // Duyet MCP mode uses agent tools with specific configuration
+        webSearchEnabled = false;
+        deepThinkEnabled = false;
+        // Enable duyet_mcp_client and telegram_forward tools
+        enabledTools = ['duyet_mcp_client', 'telegram_forward'];
+      } else if (effectiveMode === 'web_search') {
+        // Web search mode
+        webSearchEnabled = true;
+        deepThinkEnabled = false;
+      } else if (effectiveMode === 'agent') {
+        // Agent mode with tools
+        webSearchEnabled = false;
+        deepThinkEnabled = thinkingMode === 'extended';
+      }
+    } else {
+      effectiveMode = mode;
+    }
+
     if (!env?.AI) {
       console.error('[Chat API] AI Gateway binding not available');
-      return c.json(
-        { error: 'Service Unavailable', message: 'AI Gateway binding not available', executionId },
-        503
-      );
+      const error = new ChatSDKError('offline:chat', 'AI Gateway binding not available');
+      return error.toResponse();
     }
 
     if (!env.AI_GATEWAY_NAME) {
       console.error('[Chat API] AI_GATEWAY_NAME not configured');
-      return c.json(
-        { error: 'Service Unavailable', message: 'AI Gateway name not configured', executionId },
-        503
-      );
+      const error = new ChatSDKError('offline:chat', 'AI Gateway name not configured');
+      return error.toResponse();
     }
 
     if (!env.AI_GATEWAY_API_KEY) {
       console.error('[Chat API] AI_GATEWAY_API_KEY not configured');
-      return c.json(
-        { error: 'Service Unavailable', message: 'AI Gateway API key not configured', executionId },
-        503
-      );
+      const error = new ChatSDKError('offline:chat', 'AI Gateway API key not configured');
+      return error.toResponse();
     }
 
     const db = env.DB;
@@ -255,7 +311,8 @@ chatRouter.post('/', optionalAuth, async (c) => {
 
     if (coreMessages.length === 0) {
       console.error('[Chat API] No messages provided after conversion');
-      return c.json({ error: 'Bad Request', message: 'No messages provided', executionId }, 400);
+      const error = new ChatSDKError('bad_request:chat', 'No messages provided');
+      return error.toResponse();
     }
 
     console.log('[Chat API] Core messages:', coreMessages);
@@ -351,18 +408,31 @@ chatRouter.post('/', optionalAuth, async (c) => {
       headers: {
         'X-Execution-ID': executionId,
         'X-Session-ID': sessionId,
+        // Add classification headers
+        'X-Detected-Mode': effectiveMode,
+        'X-Mode-Confidence': classification?.confidence.toString() ?? '',
+        'X-Detected-Intent': classification?.detectedIntent ?? '',
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
         'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Execution-ID, X-Session-ID',
-        'Access-Control-Expose-Headers': 'X-Execution-ID, X-Session-ID',
+        'Access-Control-Expose-Headers':
+          'X-Execution-ID, X-Session-ID, X-Detected-Mode, X-Mode-Confidence, X-Detected-Intent',
       },
     });
 
     return response;
   } catch (error) {
     console.error('[Chat API] Error:', error);
+
+    // Handle known error types
+    if (error instanceof ChatSDKError) {
+      return error.toResponse();
+    }
+
+    // Handle generic errors
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    return c.json({ error: 'Internal Server Error', message: errorMessage, executionId }, 500);
+    const sdkError = new ChatSDKError('offline:chat', errorMessage);
+    return sdkError.toResponse();
   }
 });
 

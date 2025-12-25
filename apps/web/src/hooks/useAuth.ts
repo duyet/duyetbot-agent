@@ -79,22 +79,32 @@ export function useAuth(): UseAuthResult {
    * Store auth data in localStorage
    */
   const storeAuth = useCallback((token: string, userData: AuthUser) => {
-    localStorage.setItem(AUTH_TOKEN_KEY, token);
-    localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(AUTH_TOKEN_KEY, token);
+      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+    }
   }, []);
 
   /**
    * Clear auth data from localStorage
    */
   const clearAuth = useCallback(() => {
-    localStorage.removeItem(AUTH_TOKEN_KEY);
-    localStorage.removeItem(AUTH_USER_KEY);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(AUTH_TOKEN_KEY);
+      localStorage.removeItem(AUTH_USER_KEY);
+    }
   }, []);
 
   /**
    * Load auth state from localStorage on mount
    */
   useEffect(() => {
+    // Skip during SSR
+    if (typeof window === 'undefined') {
+      setAuthState('unauthenticated');
+      return;
+    }
+
     try {
       const token = localStorage.getItem(AUTH_TOKEN_KEY);
       const userJson = localStorage.getItem(AUTH_USER_KEY);
@@ -165,7 +175,7 @@ export function useAuth(): UseAuthResult {
     setError(null);
 
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_KEY) : null;
 
       await fetch('/api/auth/logout', {
         method: 'POST',
@@ -191,7 +201,7 @@ export function useAuth(): UseAuthResult {
     setError(null);
 
     try {
-      const token = localStorage.getItem(AUTH_TOKEN_KEY);
+      const token = typeof window !== 'undefined' ? localStorage.getItem(AUTH_TOKEN_KEY) : null;
 
       if (!token) {
         setAuthState('unauthenticated');
@@ -219,7 +229,9 @@ export function useAuth(): UseAuthResult {
         role: data.user.role,
       };
 
-      localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(AUTH_USER_KEY, JSON.stringify(userData));
+      }
       setUser(userData);
       setAuthState('authenticated');
     } catch (err) {
@@ -246,7 +258,9 @@ export function useAuthToken(): string | null {
   const [token, setToken] = useState<string | null>(null);
 
   useEffect(() => {
-    setToken(localStorage.getItem(AUTH_TOKEN_KEY) || null);
+    if (typeof window !== 'undefined') {
+      setToken(localStorage.getItem(AUTH_TOKEN_KEY) || null);
+    }
   }, []);
 
   return token;

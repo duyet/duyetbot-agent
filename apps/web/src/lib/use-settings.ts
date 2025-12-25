@@ -70,17 +70,19 @@ export function useSettings(): UseSettingsResult {
     setError(null);
 
     try {
-      // Check cache first
-      const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
-      if (cached) {
-        const { data, timestamp } = JSON.parse(cached) as {
-          data: UserSettings;
-          timestamp: number;
-        };
-        if (Date.now() - timestamp < SETTINGS_CACHE_TTL) {
-          setSettings(data);
-          setIsLoading(false);
-          return;
+      // Check cache first (skip during SSR)
+      if (typeof window !== 'undefined') {
+        const cached = localStorage.getItem(SETTINGS_CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached) as {
+            data: UserSettings;
+            timestamp: number;
+          };
+          if (Date.now() - timestamp < SETTINGS_CACHE_TTL) {
+            setSettings(data);
+            setIsLoading(false);
+            return;
+          }
         }
       }
 
@@ -92,8 +94,10 @@ export function useSettings(): UseSettingsResult {
 
       const data = (await response.json()) as UserSettings;
 
-      // Cache the response
-      localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+      // Cache the response (skip during SSR)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+      }
 
       setSettings(data);
     } catch (err) {
@@ -124,8 +128,10 @@ export function useSettings(): UseSettingsResult {
 
       const data = (await response.json()) as UserSettings;
 
-      // Update cache
-      localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+      // Update cache (skip during SSR)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+      }
 
       setSettings(data);
     } catch (err) {
@@ -140,7 +146,9 @@ export function useSettings(): UseSettingsResult {
    * Refresh settings from server (bypass cache)
    */
   const refresh = useCallback(async () => {
-    localStorage.removeItem(SETTINGS_CACHE_KEY);
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem(SETTINGS_CACHE_KEY);
+    }
     await loadSettings();
   }, [loadSettings]);
 

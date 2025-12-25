@@ -14,6 +14,7 @@ export function useGuestRateLimit(isAuthenticated: boolean) {
   // Load count from localStorage on mount
   useEffect(() => {
     if (isAuthenticated) return; // Only track for guests
+    if (typeof window === 'undefined') return; // Skip SSR
 
     const storedDate = localStorage.getItem(STORAGE_DATE_KEY);
     const today = new Date().toDateString();
@@ -36,6 +37,7 @@ export function useGuestRateLimit(isAuthenticated: boolean) {
 
   const incrementMessageCount = useCallback(() => {
     if (isAuthenticated) return;
+    if (typeof window === 'undefined') return; // Skip SSR
 
     const newCount = messageCount + 1;
     localStorage.setItem(STORAGE_KEY, String(newCount));
