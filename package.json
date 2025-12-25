@@ -30,7 +30,7 @@
     "deploy": "turbo run deploy config",
     "deploy:safety-kernel": "turbo run deploy config --filter=@duyetbot/safety-kernel",
     "deploy:shared-agents": "turbo run deploy config --filter=@duyetbot/shared-agents",
-    "deploy:web": "bun run --filter @duyetbot/web deploy && bun run config:web",
+    "deploy:web": "turbo run deploy --filter=@duyetbot/web... && bun run config:web",
     "deploy:telegram": "turbo run deploy config --filter=@duyetbot/telegram-bot...",
     "deploy:github": "turbo run deploy config --filter=@duyetbot/github-bot...",
     "deploy:memory-mcp": "bun run --filter @duyetbot/memory-mcp deploy && bun run config:memory-mcp",
