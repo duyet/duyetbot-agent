@@ -3,10 +3,11 @@ import { verifyPassword } from "@/lib/auth/crypto";
 import { setSessionCookie } from "@/lib/auth/middleware";
 import { createSessionToken } from "@/lib/auth/jwt";
 import { getUser } from "@/lib/db/queries";
+import type { LoginRequestBody } from "@/lib/auth/types";
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json() as LoginRequestBody;
     const { email, password } = body;
 
     if (!email || !password) {

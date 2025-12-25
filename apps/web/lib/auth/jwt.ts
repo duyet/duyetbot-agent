@@ -101,7 +101,7 @@ async function verify(
   return await crypto.subtle.verify(
     "HMAC",
     key,
-    signatureBuffer,
+    signatureBuffer as BufferSource,
     encoder.encode(data)
   );
 }
@@ -163,7 +163,7 @@ export async function createSessionToken(
   };
 
   const tokenData = encodeToken(payload);
-  const signature = await sign(tokenData, SESSION_SECRET);
+  const signature = await sign(tokenData, SESSION_SECRET as string);
 
   return `${tokenData}.${signature}`;
 }
@@ -184,7 +184,7 @@ export async function verifySessionToken(
     const tokenData = `${encodedHeader}.${encodedPayload}`;
 
     // Verify signature
-    const isValid = await verify(tokenData, signature, SESSION_SECRET);
+    const isValid = await verify(tokenData, signature, SESSION_SECRET as string);
     if (!isValid) {
       return null;
     }

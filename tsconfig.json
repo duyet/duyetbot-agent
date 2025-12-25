@@ -19,6 +19,6 @@
       "@duyetbot/progress/*": ["packages/progress/src/*"]
     }
   },
-  "include": ["packages/**/*", "apps/**/*", "tests/**/*"],
-  "exclude": ["node_modules", "**/node_modules", "**/dist", "coverage"]
+  "include": ["packages/**/*", "tests/**/*"],
+  "exclude": ["node_modules", "**/node_modules", "**/dist", "apps/**", "coverage"]
 }
