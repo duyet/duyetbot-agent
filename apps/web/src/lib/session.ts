@@ -32,7 +32,9 @@ export interface SessionItem {
 export async function getSession(): Promise<Session | null> {
   try {
     const response = await fetch('/api/sessions');
-    if (!response.ok) return null;
+    if (!response.ok) {
+      return null;
+    }
     return await response.json();
   } catch {
     return null;

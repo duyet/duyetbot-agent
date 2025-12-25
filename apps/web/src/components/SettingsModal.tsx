@@ -1,8 +1,5 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { COMMON_MODELS, DEFAULT_MODEL, isFreeModel } from '@/lib/constants';
-import { AVAILABLE_TOOLS, SUB_AGENTS, getDefaultSubAgent } from '@/lib/constants';
 import {
   BadgeCheck,
   Bell,
@@ -12,25 +9,32 @@ import {
   Globe,
   Layers,
   MessageSquare,
+  Moon,
   Palette,
   Settings2,
   Shield,
   Sliders,
   Sparkles,
+  Sun,
   Timer,
   Wand2,
   Zap,
 } from 'lucide-react';
-import { Button } from './ui/button';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getThemeSync, setTheme } from '@/components/theme-provider';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from './ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+  AVAILABLE_TOOLS,
+  COMMON_MODELS,
+  DEFAULT_MODEL,
+  getDefaultSubAgent,
+  isFreeModel,
+  type ModelConfig,
+  SUB_AGENTS,
+} from '@/lib/constants';
+import { useSettings } from '@/lib/use-settings';
 import { Badge } from './ui/badge';
+import { Button } from './ui/button';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './ui/dialog';
 import {
   Select,
   SelectContent,
@@ -39,79 +43,169 @@ import {
   SelectTrigger,
   SelectValue,
 } from './ui/select';
-import { Label } from './ui/label';
-import { Switch } from './ui/switch';
 import { Slider } from './ui/slider';
+import { Switch } from './ui/switch';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { Textarea } from './ui/textarea';
 
 interface SettingsModalProps {
-  model: string;
-  onModelChange: (model: string) => void;
-  mode: 'chat' | 'agent';
-  enabledTools: string[];
-  onEnabledToolsChange: (tools: string[]) => void;
-  subAgentId: string;
-  onSubAgentIdChange: (subAgentId: string) => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }
 
-export function SettingsModal({
-  model,
-  onModelChange,
-  mode,
-  enabledTools,
-  onEnabledToolsChange,
-  subAgentId,
-  onSubAgentIdChange,
-  open,
-  onOpenChange,
-}: SettingsModalProps) {
+export function SettingsModal({ open, onOpenChange }: SettingsModalProps) {
+  // Settings from API
+  const {
+    settings,
+    isLoading: isLoadingSettings,
+    error: settingsError,
+    updateSettings,
+  } = useSettings();
+
   // Local state for unsaved changes
-  const [localModel, setLocalModel] = useState(model);
-  const [localEnabledTools, setLocalEnabledTools] = useState(enabledTools);
-  const [localSubAgentId, setLocalSubAgentId] = useState(subAgentId);
+  const [localModel, setLocalModel] = useState(DEFAULT_MODEL);
+  const [localEnabledTools, setLocalEnabledTools] = useState<string[]>([]);
+  const [localSubAgentId, setLocalSubAgentId] = useState(getDefaultSubAgent().id);
   const [activeTab, setActiveTab] = useState('general');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  // Sync local state when settings are loaded
+  useEffect(() => {
+    if (settings) {
+      setLocalModel(settings.defaultModel || DEFAULT_MODEL);
+      setLocalEnabledTools(settings.enabledTools || []);
+      // Using theme field for sub-agent temporarily - validate the value
+      const validSubAgentIds: Array<'default' | 'researcher' | 'analyst'> = [
+        'default',
+        'researcher',
+        'analyst',
+      ];
+      const subAgentId = validSubAgentIds.includes(
+        settings.theme as 'default' | 'researcher' | 'analyst'
+      )
+        ? (settings.theme as 'default' | 'researcher' | 'analyst')
+        : getDefaultSubAgent().id;
+      setLocalSubAgentId(subAgentId);
+    }
+  }, [settings]);
 
   // Group models by provider
   const groupedModels = useMemo(() => {
-    const groups: Record<string, typeof COMMON_MODELS[number][]> = {};
+    const groups: Record<string, ModelConfig[]> = {};
     COMMON_MODELS.forEach((model) => {
-      if (!groups[model.provider]) {
-        groups[model.provider] = [];
+      const provider = model.provider;
+      if (!groups[provider]) {
+        groups[provider] = [];
       }
-      groups[model.provider].push(model);
+      groups[provider].push(model);
     });
     return groups;
   }, []);
 
   const currentSubAgent = SUB_AGENTS.find((a) => a.id === localSubAgentId) || getDefaultSubAgent();
 
-  const hasChanges =
-    localModel !== model ||
-    JSON.stringify(localEnabledTools.sort()) !== JSON.stringify(enabledTools.sort()) ||
-    localSubAgentId !== subAgentId;
+  // Check if there are unsaved changes
+  const hasChanges = useMemo(() => {
+    if (!settings) {
+      return false;
+    }
+    return (
+      localModel !== settings.defaultModel ||
+      JSON.stringify(localEnabledTools.sort()) !==
+        JSON.stringify((settings.enabledTools || []).sort()) ||
+      localSubAgentId !== (settings.theme || getDefaultSubAgent().id)
+    );
+  }, [localModel, localEnabledTools, localSubAgentId, settings]);
 
-  const handleSave = () => {
-    onModelChange(localModel);
-    onEnabledToolsChange(localEnabledTools);
-    onSubAgentIdChange(localSubAgentId);
+  const handleSave = useCallback(async () => {
+    if (!settings || isSaving) {
+      return;
+    }
 
-    // Save to localStorage
-    localStorage.setItem('duyetbot-chat-model', localModel);
-    localStorage.setItem('duyetbot-enabled-tools', JSON.stringify(localEnabledTools));
-    localStorage.setItem('duyetbot-sub-agent', localSubAgentId);
+    setIsSaving(true);
+    setSaveError(null);
 
+    try {
+      await updateSettings({
+        defaultModel: localModel,
+        enabledTools: localEnabledTools,
+        theme: localSubAgentId, // Using theme field for sub-agent temporarily
+      });
+      onOpenChange(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to save settings';
+      setSaveError(errorMessage);
+      console.error('[SettingsModal] Save error:', err);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    settings,
+    isSaving,
+    localModel,
+    localEnabledTools,
+    localSubAgentId,
+    updateSettings,
+    onOpenChange,
+  ]);
+
+  const handleCancel = useCallback(() => {
+    // Reset local state to current settings
+    if (settings) {
+      setLocalModel(settings.defaultModel || DEFAULT_MODEL);
+      setLocalEnabledTools(settings.enabledTools || []);
+      // Validate the subAgentId value
+      const validSubAgentIds: Array<'default' | 'researcher' | 'analyst'> = [
+        'default',
+        'researcher',
+        'analyst',
+      ];
+      const subAgentId = validSubAgentIds.includes(
+        settings.theme as 'default' | 'researcher' | 'analyst'
+      )
+        ? (settings.theme as 'default' | 'researcher' | 'analyst')
+        : getDefaultSubAgent().id;
+      setLocalSubAgentId(subAgentId);
+    }
+    setSaveError(null);
     onOpenChange(false);
-  };
+  }, [settings, onOpenChange]);
 
-  const handleCancel = () => {
-    // Reset local state
-    setLocalModel(model);
-    setLocalEnabledTools(enabledTools);
-    setLocalSubAgentId(subAgentId);
-    onOpenChange(false);
-  };
+  // Show loading state
+  if (isLoadingSettings) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="h-8 w-8 border-2 border-accent border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-sm text-muted-foreground">Loading settings...</p>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
+  // Show error state
+  if (settingsError) {
+    return (
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[600px] p-6">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center max-w-md">
+              <p className="text-sm text-destructive mb-2">Failed to load settings</p>
+              <p className="text-xs text-muted-foreground mb-4">{settingsError}</p>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                Retry
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -187,28 +281,30 @@ export function SettingsModal({
                     {Object.entries(groupedModels).map(([provider, models]) => (
                       <div key={provider}>
                         {provider !== Object.keys(groupedModels)[0] && <SelectSeparator />}
-                        {models.map((m) => (
-                          <SelectItem key={m.id} value={m.id}>
-                            <div className="flex items-center justify-between gap-2 w-full">
-                              <div className="flex flex-col">
-                                <span className="font-medium text-sm">{m.name}</span>
-                                <span className="text-xs text-muted-foreground">{m.provider}</span>
+                        {models.map((model) => {
+                          return (
+                            <SelectItem key={model.id} value={model.id}>
+                              <div className="flex items-center justify-between gap-2 w-full">
+                                <div className="flex flex-col">
+                                  <span className="font-medium text-sm">{model.name}</span>
+                                  <span className="text-xs text-muted-foreground">{provider}</span>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {model.id === DEFAULT_MODEL && (
+                                    <Badge variant="secondary" className="text-xs">
+                                      Default
+                                    </Badge>
+                                  )}
+                                  {isFreeModel(model.id) && (
+                                    <Badge variant="outline" className="text-xs">
+                                      Free
+                                    </Badge>
+                                  )}
+                                </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {m.id === DEFAULT_MODEL && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    Default
-                                  </Badge>
-                                )}
-                                {isFreeModel(m.id) && (
-                                  <Badge variant="outline" className="text-xs">
-                                    Free
-                                  </Badge>
-                                )}
-                              </div>
-                            </div>
-                          </SelectItem>
-                        ))}
+                            </SelectItem>
+                          );
+                        })}
                       </div>
                     ))}
                   </SelectContent>
@@ -257,7 +353,10 @@ export function SettingsModal({
               >
                 <div className="space-y-3">
                   <SwitchRow label="Sound alerts" description="Play sounds for events" />
-                  <SwitchRow label="Desktop notifications" description="Show system notifications" />
+                  <SwitchRow
+                    label="Desktop notifications"
+                    description="Show system notifications"
+                  />
                 </div>
               </Section>
             </TabsContent>
@@ -347,9 +446,7 @@ export function SettingsModal({
                           </div>
                           <div
                             className={`h-5 w-5 rounded border-2 flex items-center justify-center transition-all ${
-                              isEnabled
-                                ? 'border-accent bg-accent text-white'
-                                : 'border-border'
+                              isEnabled ? 'border-accent bg-accent text-white' : 'border-border'
                             }`}
                           >
                             {isEnabled && <Zap className="h-3 w-3" />}
@@ -373,7 +470,10 @@ export function SettingsModal({
                 icon={<Cog className="h-4 w-4" />}
               >
                 <div className="space-y-4">
-                  <SettingRow label="Max tool iterations" description="Limit tool calls per request">
+                  <SettingRow
+                    label="Max tool iterations"
+                    description="Limit tool calls per request"
+                  >
                     <Select defaultValue="5">
                       <SelectTrigger className="w-[120px]">
                         <SelectValue />
@@ -503,14 +603,34 @@ export function SettingsModal({
               >
                 <div className="space-y-4">
                   <SettingRow label="Color scheme" description="App appearance">
-                    <Select defaultValue="auto">
+                    <Select
+                      value={getThemeSync()}
+                      onValueChange={(value: 'light' | 'dark' | 'system') => {
+                        setTheme(value);
+                      }}
+                    >
                       <SelectTrigger className="w-[180px]">
-                        <SelectValue />
+                        <SelectValue placeholder="Select theme" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="auto">System</SelectItem>
-                        <SelectItem value="light">Light</SelectItem>
-                        <SelectItem value="dark">Dark</SelectItem>
+                        <SelectItem value="system">
+                          <div className="flex items-center gap-2">
+                            <Settings2 className="h-4 w-4" />
+                            <span>System</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="light">
+                          <div className="flex items-center gap-2">
+                            <Sun className="h-4 w-4" />
+                            <span>Light</span>
+                          </div>
+                        </SelectItem>
+                        <SelectItem value="dark">
+                          <div className="flex items-center gap-2">
+                            <Moon className="h-4 w-4" />
+                            <span>Dark</span>
+                          </div>
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </SettingRow>
@@ -537,10 +657,7 @@ export function SettingsModal({
                 icon={<MessageSquare className="h-4 w-4" />}
               >
                 <div className="space-y-4">
-                  <SwitchRow
-                    label="Show timestamps"
-                    description="Display time on each message"
-                  />
+                  <SwitchRow label="Show timestamps" description="Display time on each message" />
                   <SwitchRow
                     label="Animate messages"
                     description="Smooth animations for new messages"
@@ -630,12 +747,7 @@ export function SettingsModal({
               >
                 <div className="space-y-4">
                   <SettingRow label="Streaming speed" description="Token streaming rate">
-                    <Slider
-                      defaultValue={[50]}
-                      max={100}
-                      step={10}
-                      className="w-[180px]"
-                    />
+                    <Slider defaultValue={[50]} max={100} step={10} className="w-[180px]" />
                   </SettingRow>
                   <SwitchRow
                     label="Parallel tool execution"
@@ -654,21 +766,13 @@ export function SettingsModal({
                 icon={<Code2 className="h-4 w-4" />}
               >
                 <div className="space-y-4">
-                  <SwitchRow
-                    label="Debug mode"
-                    description="Show detailed logging and metadata"
-                  />
+                  <SwitchRow label="Debug mode" description="Show detailed logging and metadata" />
                   <SwitchRow
                     label="Show tool results"
                     description="Display raw tool outputs in chat"
                   />
                   <SettingRow label="Temperature" description="Response creativity (0.0-1.0)">
-                    <Slider
-                      defaultValue={[70]}
-                      max={100}
-                      step={5}
-                      className="w-[180px]"
-                    />
+                    <Slider defaultValue={[70]} max={100} step={5} className="w-[180px]" />
                   </SettingRow>
                 </div>
               </Section>
@@ -696,13 +800,32 @@ export function SettingsModal({
         </Tabs>
 
         {/* Footer */}
-        <div className="flex items-center justify-between px-6 py-4 border-t border-border/50 bg-muted/30">
-          <Button variant="ghost" onClick={handleCancel}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave} disabled={!hasChanges} className="min-w-[100px]">
-            Save Changes
-          </Button>
+        <div className="flex flex-col gap-3 px-6 py-4 border-t border-border/50 bg-muted/30">
+          {saveError && (
+            <div className="flex items-center gap-2 text-sm text-destructive">
+              <Zap className="h-4 w-4" />
+              <span>{saveError}</span>
+            </div>
+          )}
+          <div className="flex items-center justify-between">
+            <Button variant="ghost" onClick={handleCancel} disabled={isSaving}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || isSaving}
+              className="min-w-[100px]"
+            >
+              {isSaving ? (
+                <>
+                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
+              )}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -757,13 +880,7 @@ function SettingRow({
   );
 }
 
-function SwitchRow({
-  label,
-  description,
-}: {
-  label: string;
-  description: string;
-}) {
+function SwitchRow({ label, description }: { label: string; description: string }) {
   return (
     <div className="flex items-center justify-between py-2">
       <div>

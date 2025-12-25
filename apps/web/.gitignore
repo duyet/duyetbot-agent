@@ -37,3 +37,5 @@ cloudflare-env.d.ts
 
 # turbo
 .turbo
+logs
+out/dev

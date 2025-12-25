@@ -10,9 +10,14 @@
 
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
-import { chatRouter } from './routes/chat';
 import { authRouter } from './routes/auth';
+import { chatRouter } from './routes/chat';
+import { documentsRouter } from './routes/documents';
+import { filesUploadRouter } from './routes/files-upload';
+import { historyRouter } from './routes/history';
 import { sessionsRouter } from './routes/sessions';
+import { settingsRouter } from './routes/settings';
+import { voteRouter } from './routes/vote';
 
 type Bindings = {
   AI: any;
@@ -30,26 +35,124 @@ type Bindings = {
 const app = new Hono<{ Bindings: Bindings }>();
 
 // CORS configuration - exclude chat route to handle streaming properly
-app.use('/api/auth/*', cors({
-  origin: '*',
-  credentials: true,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
-  exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
-}));
+app.use(
+  '/api/auth/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
 
-app.use('/api/sessions/*', cors({
-  origin: '*',
-  credentials: true,
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
-  exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
-}));
+app.use(
+  '/api/sessions/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
 
-// API routes - chat route handles its own CORS for streaming
+app.use(
+  '/api/v1/auth/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
+app.use(
+  '/api/v1/sessions/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
+app.use(
+  '/api/v1/history/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
+app.use(
+  '/api/v1/settings/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
+app.use(
+  '/api/v1/documents/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
+app.use(
+  '/api/v1/files/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['POST', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
+app.use(
+  '/api/v1/vote/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'PATCH', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
+// API v1 routes
+app.route('/api/v1/chat', chatRouter);
+app.route('/api/v1/auth', authRouter);
+app.route('/api/v1/sessions', sessionsRouter);
+app.route('/api/v1/history', historyRouter);
+app.route('/api/v1/settings', settingsRouter);
+app.route('/api/v1/documents', documentsRouter);
+app.route('/api/v1/files', filesUploadRouter);
+app.route('/api/v1/vote', voteRouter);
+
+// Legacy routes (backward compatibility - redirect to v1)
 app.route('/api/chat', chatRouter);
 app.route('/api/auth', authRouter);
 app.route('/api/sessions', sessionsRouter);
+app.route('/api/history', historyRouter);
+app.route('/api/settings', settingsRouter);
+app.route('/api/documents', documentsRouter);
+app.route('/api/files', filesUploadRouter);
+app.route('/api/vote', voteRouter);
 
 // Serve static assets from Assets binding
 app.get('/*', async (c) => {

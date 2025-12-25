@@ -40,7 +40,7 @@ export async function createSession(
   const tokenResponse = await fetch('https://github.com/login/oauth/access_token', {
     method: 'POST',
     headers: {
-      'Accept': 'application/json',
+      Accept: 'application/json',
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -54,7 +54,7 @@ export async function createSession(
     throw new Error(`Failed to exchange token: ${tokenResponse.statusText}`);
   }
 
-  const tokenData = await tokenResponse.json() as { access_token: string };
+  const tokenData = (await tokenResponse.json()) as { access_token: string };
   const accessToken = tokenData.access_token;
 
   // Fetch user info from GitHub
