@@ -13,7 +13,6 @@ import { useEffect, useState } from 'react';
 import { ChatInterface } from '../components/chat-interface';
 import { DataStreamHandler } from '../components/data-stream-handler';
 import { DataStreamProvider } from '../components/data-stream-provider';
-import { LoginForm } from '../components/login-form';
 import { SessionUser } from '../lib/session';
 
 export default function HomePage() {
@@ -46,16 +45,12 @@ export default function HomePage() {
     );
   }
 
-  // Show login form if not authenticated
-  if (!user) {
-    return <LoginForm />;
-  }
-
-  // Show chat interface if authenticated
+  // Show chat interface (supports both authenticated users and guests)
+  // Pass user if authenticated, undefined for guests
   return (
     <DataStreamProvider>
       <DataStreamHandler />
-      <ChatInterface user={user} />
+      <ChatInterface user={user ?? undefined} />
     </DataStreamProvider>
   );
 }

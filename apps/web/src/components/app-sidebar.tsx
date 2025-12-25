@@ -33,7 +33,6 @@ interface AppSidebarProps {
   user: SessionUser;
   sessions: SessionItem[];
   currentSessionId: string;
-  isLoadingSessions?: boolean;
   onNewChat: () => void;
   onSessionSelect: (sessionId: string) => void;
   onDeleteSession: (sessionId: string) => void;
@@ -72,7 +71,6 @@ export function AppSidebar({
   user,
   sessions,
   currentSessionId,
-  isLoadingSessions = false,
   onNewChat,
   onSessionSelect,
   onDeleteSession,

@@ -15,6 +15,9 @@ interface InputToolbarProps {
   mode: 'chat' | 'agent';
   status: ChatStatus;
 
+  // User authentication
+  isAuthenticated: boolean;
+
   // Chat mode state
   webSearchEnabled: boolean;
   onToggleWebSearch: () => void;
@@ -39,6 +42,7 @@ interface InputToolbarProps {
 export function InputToolbar({
   mode,
   status,
+  isAuthenticated,
   webSearchEnabled,
   onToggleWebSearch,
   deepThinkEnabled,
@@ -128,7 +132,8 @@ export function InputToolbar({
           variant="ghost"
           size="icon-sm"
           onClick={onOpenSettings}
-          disabled={isStreaming}
+          disabled={isStreaming || !isAuthenticated}
+          title={isAuthenticated ? "Settings" : "Settings (sign in required)"}
           className="text-muted-foreground hover:text-foreground"
         >
           <Settings className="h-4 w-4" />

@@ -6,12 +6,19 @@ import type { SubAgentId } from '@/lib/constants';
 import { cn } from '@/lib/utils';
 import { InputToolbar } from './InputToolbar';
 import { LandingHero } from './LandingHero';
+import { ModeSelector } from './ModeSelector';
 import { QuickActions } from './QuickActions';
 
 interface LandingStateProps {
   mode: 'chat' | 'agent';
   userName: string;
   status: ChatStatus;
+
+  // Authentication
+  isAuthenticated: boolean;
+
+  // Mode change
+  onModeChange: (mode: 'chat' | 'agent') => void;
 
   // Agent mode props
   selectedAgent: SubAgentId;
@@ -29,6 +36,8 @@ export function LandingState({
   mode,
   userName,
   status,
+  isAuthenticated,
+  onModeChange,
   selectedAgent,
   onAgentChange,
   onOpenAttachments,
@@ -56,15 +65,21 @@ export function LandingState({
       )}
     >
       {/* Hero Section */}
-      <div className="mb-8 md:mb-12">
+      <div className="mb-4 md:mb-6">
         <LandingHero userName={userName} mode={mode} />
       </div>
 
+      {/* Mode Selector */}
+      <div className="w-full max-w-2xl mb-3 md:mb-4">
+        <ModeSelector mode={mode} onModeChange={onModeChange} />
+      </div>
+
       {/* Input Toolbar */}
-      <div className="w-full max-w-2xl mb-6">
+      <div className="w-full max-w-2xl mb-4">
         <InputToolbar
           mode={mode}
           status={status}
+          isAuthenticated={isAuthenticated}
           // Chat mode
           webSearchEnabled={webSearchEnabled}
           onToggleWebSearch={toggleWebSearch}
