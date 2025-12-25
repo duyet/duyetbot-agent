@@ -1,34 +1,19 @@
 #:schema node_modules/wrangler/config-schema.json
-
 name = "duyetbot-web"
-main = "worker/index.ts"
+main = ".open-next/worker.js"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
+[ai]
+binding = "AI"
+
 [assets]
-directory = "out"
+directory = ".open-next/assets"
 binding = "ASSETS"
 
 [vars]
 ENVIRONMENT = "production"
-MODEL = "@preset/duyetbot"
 AI_GATEWAY_NAME = "duyetbot"
-APP_URL = "https://duyetbot-web.duyet.workers.dev"
-
-# Secrets (set via: wrangler secret put <NAME>)
-# - AI_GATEWAY_API_KEY
-# - GITHUB_CLIENT_ID
-# - GITHUB_CLIENT_SECRET
-
-# AI binding for Cloudflare AI Gateway
-[ai]
-binding = "AI"
-
-# D1 Database binding
-[[d1_databases]]
-binding = "DB"
-database_name = "duyetbot"
-database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
 
 [observability]
 enabled = true
@@ -38,9 +23,15 @@ enabled = true
 invocation_logs = true
 head_sampling_rate = 1
 
-[observability.traces]
-enabled = true
-head_sampling_rate = 1
-
 [placement]
 mode = "smart"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+migrations_dir = "lib/db/migrations"
+
+[[r2_buckets]]
+binding = "UPLOADS_BUCKET"
+bucket_name = "duyetbot-web-uploads"
