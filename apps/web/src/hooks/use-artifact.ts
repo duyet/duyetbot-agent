@@ -202,6 +202,8 @@ export function useArtifact(): UseArtifactResult {
 
   // Clear metadata when documentId changes
   useEffect(() => {
+    if (typeof window === 'undefined') return; // Skip SSR
+
     if (artifact.documentId !== 'init') {
       try {
         const key = `${ARTIFACT_METADATA_KEY_PREFIX}${artifact.documentId}`;

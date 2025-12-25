@@ -42,6 +42,8 @@ interface AppSidebarProps {
 
 export function useSidebar() {
   const [isOpen, setIsOpen] = useState(() => {
+    // Default to open during SSR
+    if (typeof window === 'undefined') return true;
     const saved = localStorage.getItem(STORAGE_KEY);
     return saved !== 'false';
   });
@@ -49,19 +51,25 @@ export function useSidebar() {
   const toggle = useCallback(() => {
     setIsOpen((prev) => {
       const newValue = !prev;
-      localStorage.setItem(STORAGE_KEY, String(newValue));
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(STORAGE_KEY, String(newValue));
+      }
       return newValue;
     });
   }, []);
 
   const open = useCallback(() => {
     setIsOpen(true);
-    localStorage.setItem(STORAGE_KEY, 'true');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, 'true');
+    }
   }, []);
 
   const close = useCallback(() => {
     setIsOpen(false);
-    localStorage.setItem(STORAGE_KEY, 'false');
+    if (typeof window !== 'undefined') {
+      localStorage.setItem(STORAGE_KEY, 'false');
+    }
   }, []);
 
   return { isOpen, toggle, open, close };

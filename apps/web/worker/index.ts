@@ -15,6 +15,7 @@ import { chatRouter } from './routes/chat';
 import { documentsRouter } from './routes/documents';
 import { filesUploadRouter } from './routes/files-upload';
 import { historyRouter } from './routes/history';
+import { mcpAuthRouter } from './routes/mcp-auth';
 import { sessionsRouter } from './routes/sessions';
 import { settingsRouter } from './routes/settings';
 import { voteRouter } from './routes/vote';
@@ -29,6 +30,8 @@ type Bindings = {
   APP_URL: string;
   GITHUB_CLIENT_ID: string;
   GITHUB_CLIENT_SECRET: string;
+  GOOGLE_CLIENT_ID: string;
+  GOOGLE_CLIENT_SECRET: string;
   ASSETS: Fetcher;
 };
 
@@ -134,6 +137,17 @@ app.use(
   })
 );
 
+app.use(
+  '/api/mcp/*',
+  cors({
+    origin: '*',
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'X-Execution-ID', 'X-Session-ID'],
+    exposeHeaders: ['X-Execution-ID', 'X-Session-ID'],
+  })
+);
+
 // API v1 routes
 app.route('/api/v1/chat', chatRouter);
 app.route('/api/v1/auth', authRouter);
@@ -143,6 +157,9 @@ app.route('/api/v1/settings', settingsRouter);
 app.route('/api/v1/documents', documentsRouter);
 app.route('/api/v1/files', filesUploadRouter);
 app.route('/api/v1/vote', voteRouter);
+
+// MCP OAuth routes
+app.route('/api/mcp', mcpAuthRouter);
 
 // Legacy routes (backward compatibility - redirect to v1)
 app.route('/api/chat', chatRouter);

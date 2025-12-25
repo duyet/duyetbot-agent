@@ -8,8 +8,12 @@ const THEME_KEY = 'duyetbot-theme';
 
 /**
  * Get the current theme from localStorage or system preference
+ * Returns 'system' during SSR (localStorage not available)
  */
 function getTheme(): Theme {
+  if (typeof window === 'undefined') {
+    return 'system';
+  }
   const stored = localStorage.getItem(THEME_KEY);
   if (stored === 'light' || stored === 'dark' || stored === 'system') {
     return stored;

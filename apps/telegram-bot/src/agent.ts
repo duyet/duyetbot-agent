@@ -39,6 +39,9 @@ interface BaseEnv extends ProviderEnv {
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
   ROUTER_DEBUG?: string;
+  // Internal forward endpoint (for web app integration)
+  FORWARD_SECRET?: string;
+  TELEGRAM_FORWARD_CHAT_ID?: string;
 }
 
 /**

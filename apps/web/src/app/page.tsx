@@ -1,52 +1,36 @@
 /**
- * Home Page (Client Component)
+ * Home Page
  *
- * Main chat interface with client-side authentication check.
- * Shows login button if not authenticated, chat interface if authenticated.
- *
- * Converted to client component for static export compatibility.
+ * Main entry point for the app. Uses query params for session ID (?id=...)
+ * to support static export. The ChatInterface component handles client-side
+ * session loading from URL params.
  */
 
-'use client';
+import { ChatInterface } from '@/components/chat-interface';
+import { DataStreamHandler } from '@/components/data-stream-handler';
+import { DataStreamProvider } from '@/components/data-stream-provider';
+import type { SessionUser } from '@/lib/session';
 
-import { useEffect, useState } from 'react';
-import { ChatInterface } from '../components/chat-interface';
-import { DataStreamHandler } from '../components/data-stream-handler';
-import { DataStreamProvider } from '../components/data-stream-provider';
-import { SessionUser } from '../lib/session';
+interface HomePageProps {
+  searchParams: Promise<{ id?: string }>;
+}
 
-export default function HomePage() {
-  const [user, setUser] = useState<SessionUser | null>(null);
-  const [loading, setLoading] = useState(true);
+/**
+ * Get session user from cookie
+ * This runs on the server in development, but for static export
+ * the page will be pre-rendered and session check happens client-side
+ */
+async function getSessionUser(): Promise<SessionUser | null> {
+  // In static export mode, we can't do server-side data fetching
+  // The client component will handle session checking
+  return null;
+}
 
-  useEffect(() => {
-    // Check session on mount
-    async function checkSession() {
-      try {
-        const response = await fetch('/api/sessions');
-        if (response.ok) {
-          const data = (await response.json()) as { user: SessionUser };
-          setUser(data.user);
-        }
-      } catch (error) {
-        console.error('Failed to check session:', error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    checkSession();
-  }, []);
+export default async function HomePage({ searchParams }: HomePageProps) {
+  // For static export, we render without server-side data
+  // The ChatInterface component handles all the logic client-side
+  const user = await getSessionUser();
 
-  if (loading) {
-    return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-muted-foreground">Loading...</div>
-      </div>
-    );
-  }
-
-  // Show chat interface (supports both authenticated users and guests)
-  // Pass user if authenticated, undefined for guests
   return (
     <DataStreamProvider>
       <DataStreamHandler />

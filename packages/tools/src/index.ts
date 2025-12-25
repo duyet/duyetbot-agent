@@ -8,17 +8,21 @@
  * - plan: Task planning
  * - sleep: Delay execution
  * - scratchpad: Temporary note storage
+ * - duyet_mcp_client: Access duyet profile info via MCP server
  */
 
 import type { Tool } from '@duyetbot/types';
 import { bashTool } from './bash.js';
+import { duyetMCPClientTool } from './duyet-mcp-client.js';
 import { gitTool } from './git.js';
 import { planTool } from './plan.js';
 import { researchTool } from './research.js';
 import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
+import { telegramForwardTool } from './telegram-forward.js';
 
 export * from './bash.js';
+export * from './duyet-mcp-client.js';
 export * from './git.js';
 export * from './github.js';
 export * from './plan.js';
@@ -26,6 +30,7 @@ export * from './registry.js';
 export * from './research.js';
 export * from './scratchpad.js';
 export * from './sleep.js';
+export * from './telegram-forward.js';
 
 /**
  * Agent platform types
@@ -39,7 +44,15 @@ export type AgentPlatform = 'cli' | 'server' | 'telegram' | 'github';
  * Note: github tool requires Octokit instance, use createGitHubTool() separately.
  */
 export function getAllBuiltinTools(): Tool[] {
-  return [bashTool, gitTool, planTool, researchTool, scratchpadTool, sleepTool];
+  return [
+    bashTool,
+    gitTool,
+    planTool,
+    researchTool,
+    scratchpadTool,
+    sleepTool,
+    telegramForwardTool,
+  ];
 }
 
 /**
@@ -51,7 +64,7 @@ export function getAllBuiltinTools(): Tool[] {
  * - Long-running processes (sleep)
  */
 export function getCloudflareTools(): Tool[] {
-  return [planTool, researchTool, scratchpadTool];
+  return [planTool, duyetMCPClientTool, researchTool, scratchpadTool, telegramForwardTool];
 }
 
 /**
