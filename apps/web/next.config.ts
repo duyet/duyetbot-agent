@@ -2,6 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   cacheComponents: true,
+  experimental: {
+    optimizeCss: false,
+  },
   images: {
     remotePatterns: [
       {
@@ -9,11 +12,10 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        // R2 bucket public URL - configure with your custom domain
-        // Replace with your actual R2 public URL or custom domain
         hostname: "*.r2.dev",
       },
     ],
+    unoptimized: true,
   },
 };
 

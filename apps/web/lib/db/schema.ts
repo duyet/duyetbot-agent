@@ -25,7 +25,7 @@ export const chat = sqliteTable("Chat", {
   title: text("title").notNull(),
   userId: text("userId")
     .notNull()
-    .references(() => user.id),
+    .references(() => user.id, { onDelete: "no action", onUpdate: "no action" }),
   visibility: text("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
@@ -41,7 +41,7 @@ export const messageDeprecated = sqliteTable("Message", {
     .$defaultFn(() => crypto.randomUUID()),
   chatId: text("chatId")
     .notNull()
-    .references(() => chat.id),
+    .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
   role: text("role").notNull(),
   content: text("content", { mode: "json" }).notNull(),
   createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
@@ -55,7 +55,7 @@ export const message = sqliteTable("Message_v2", {
     .$defaultFn(() => crypto.randomUUID()),
   chatId: text("chatId")
     .notNull()
-    .references(() => chat.id),
+    .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
   role: text("role").notNull(),
   parts: text("parts", { mode: "json" }).notNull(),
   attachments: text("attachments", { mode: "json" }).notNull(),
@@ -71,10 +71,10 @@ export const voteDeprecated = sqliteTable(
   {
     chatId: text("chatId")
       .notNull()
-      .references(() => chat.id),
+      .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
     messageId: text("messageId")
       .notNull()
-      .references(() => messageDeprecated.id),
+      .references(() => messageDeprecated.id, { onDelete: "no action", onUpdate: "no action" }),
     isUpvoted: integer("isUpvoted", { mode: "boolean" }).notNull(),
   },
   (table) => {
@@ -91,10 +91,10 @@ export const vote = sqliteTable(
   {
     chatId: text("chatId")
       .notNull()
-      .references(() => chat.id),
+      .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
     messageId: text("messageId")
       .notNull()
-      .references(() => message.id),
+      .references(() => message.id, { onDelete: "no action", onUpdate: "no action" }),
     isUpvoted: integer("isUpvoted", { mode: "boolean" }).notNull(),
   },
   (table) => {
@@ -118,7 +118,7 @@ export const document = sqliteTable(
       .default("text"),
     userId: text("userId")
       .notNull()
-      .references(() => user.id),
+      .references(() => user.id, { onDelete: "no action", onUpdate: "no action" }),
   },
   (table) => {
     return {
@@ -144,7 +144,7 @@ export const suggestion = sqliteTable(
       .default(false),
     userId: text("userId")
       .notNull()
-      .references(() => user.id),
+      .references(() => user.id, { onDelete: "no action", onUpdate: "no action" }),
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
   },
   (table) => ({
