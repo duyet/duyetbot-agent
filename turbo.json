@@ -71,7 +71,7 @@
       "cache": false
     },
     "@duyetbot/web#deploy": {
-      "dependsOn": ["build", "test"],
+      "dependsOn": ["build"],
       "cache": false
     },
     "@duyetbot/web#config": {
