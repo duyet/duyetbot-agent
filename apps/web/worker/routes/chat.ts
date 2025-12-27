@@ -6,6 +6,7 @@
  * PATCH /api/chat/visibility - Update chat visibility
  * DELETE /api/chat/messages/trailing - Delete trailing messages after timestamp
  * POST /api/chat/title - Generate title from message (requires AI)
+ * POST /api/chat/branch - Create a branch from an existing chat
  */
 
 import { zValidator } from "@hono/zod-validator";
@@ -541,4 +542,88 @@ chatRoutes.post("/title", zValidator("json", titleRequestSchema), async (c) => {
     // Fallback to "New chat" if AI fails
     return c.json({ title: "New chat" });
   }
+});
+
+/**
+ * POST /api/chat/branch
+ * Create a branch from an existing chat at a specific message
+ */
+const branchRequestSchema = z.object({
+  chatId: z.string().min(1),
+  messageId: z.string().optional(), // Branch point message ID
+});
+
+chatRoutes.post("/branch", zValidator("json", branchRequestSchema), async (c) => {
+  const { chatId, messageId } = c.req.valid("json");
+
+  const session = await getSessionFromRequest(c);
+  if (!session?.user) {
+    throw new WorkerError("unauthorized:chat", "Must be logged in to branch chat");
+  }
+
+  const db = getDb(c);
+
+  // Get the original chat
+  const [originalChat] = await db
+    .select()
+    .from(chat)
+    .where(eq(chat.id, chatId))
+    .limit(1);
+
+  if (!originalChat) {
+    throw new WorkerError("not_found:database", `Chat ${chatId} not found`);
+  }
+
+  // Verify user owns the chat
+  if (originalChat.userId !== session.user.id) {
+    throw new WorkerError("unauthorized:chat", "Cannot branch another user's chat");
+  }
+
+  // Get messages to copy (all messages up to branchPoint if provided)
+  let messagesToCopy = await db
+    .select()
+    .from(messageTable)
+    .where(eq(messageTable.chatId, chatId))
+    .orderBy(messageTable.createdAt);
+
+  // If messageId is provided, only copy messages up to and including that message
+  if (messageId) {
+    const branchIndex = messagesToCopy.findIndex((m) => m.id === messageId);
+    if (branchIndex !== -1) {
+      messagesToCopy = messagesToCopy.slice(0, branchIndex + 1);
+    }
+  }
+
+  // Create the new branched chat
+  const newChatId = generateUUID();
+  const now = new Date();
+
+  await db.insert(chat).values({
+    id: newChatId,
+    userId: session.user.id,
+    title: `${originalChat.title} (Branch)`,
+    visibility: originalChat.visibility,
+    parentChatId: chatId,
+    branchPoint: messageId ? now : null,
+    createdAt: now,
+  });
+
+  // Copy messages to the new chat with new IDs
+  if (messagesToCopy.length > 0) {
+    const newMessages = messagesToCopy.map((msg) => ({
+      id: generateUUID(),
+      chatId: newChatId,
+      role: msg.role,
+      parts: msg.parts,
+      attachments: msg.attachments,
+      createdAt: msg.createdAt,
+    }));
+
+    await db.insert(messageTable).values(newMessages);
+  }
+
+  return c.json({
+    newChatId,
+    messageCount: messagesToCopy.length,
+  });
 });

@@ -1,10 +1,12 @@
 import equal from "fast-deep-equal";
+import { GitBranch } from "lucide-react";
 import { memo } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { useCopyToClipboard } from "usehooks-ts";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
+import { ChatBranch } from "./chat-branch";
 import { Action, Actions } from "./elements/actions";
 import { CopyIcon, PencilEditIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
 
@@ -170,6 +172,8 @@ export function PureMessageActions({
       >
         <ThumbDownIcon />
       </Action>
+
+      <ChatBranch chatId={chatId} messageId={message.id} />
     </Actions>
   );
 }
