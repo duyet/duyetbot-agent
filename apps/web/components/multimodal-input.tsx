@@ -462,6 +462,43 @@ function PureAttachmentsButton({
 
 const AttachmentsButton = memo(PureAttachmentsButton);
 
+// Provider metadata for display
+const providerInfo: Record<
+  string,
+  { name: string; icon: string; description: string }
+> = {
+  anthropic: {
+    name: "Anthropic",
+    icon: "anthropic",
+    description: "Claude models - safe and capable",
+  },
+  openai: {
+    name: "OpenAI",
+    icon: "openai",
+    description: "GPT and o1 models",
+  },
+  google: {
+    name: "Google",
+    icon: "google",
+    description: "Gemini multimodal models",
+  },
+  xai: {
+    name: "xAI",
+    icon: "xai",
+    description: "Grok models",
+  },
+  deepseek: {
+    name: "DeepSeek",
+    icon: "deepseek",
+    description: "Open-weight models from China",
+  },
+  reasoning: {
+    name: "🧠 Reasoning",
+    icon: "",
+    description: "Extended thinking models",
+  },
+};
+
 function PureModelSelectorCompact({
   selectedModelId,
   onModelChange,
@@ -477,55 +514,65 @@ function PureModelSelectorCompact({
     chatModels[0];
   const [provider] = selectedModel.id.split("/");
 
-  // Provider display names
-  const providerNames: Record<string, string> = {
-    anthropic: "Anthropic",
-    openai: "OpenAI",
-    google: "Google",
-    xai: "xAI",
-    deepseek: "DeepSeek",
-    reasoning: "Reasoning",
-  };
-
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
       <ModelSelectorTrigger asChild>
-        <Button className="h-8 w-[200px] justify-between px-2" variant="ghost">
+        <Button
+          className="h-8 w-[200px] justify-between gap-2 px-2"
+          data-testid="model-selector-button"
+          variant="ghost"
+        >
           {provider && <ModelSelectorLogo provider={provider} />}
           <ModelSelectorName>{selectedModel.name}</ModelSelectorName>
         </Button>
       </ModelSelectorTrigger>
-      <ModelSelectorContent>
-        <ModelSelectorInput placeholder="Search models..." />
-        <ModelSelectorList>
+      <ModelSelectorContent className="w-[360px]">
+        <ModelSelectorInput placeholder="Search models by name or provider..." />
+        <ModelSelectorList className="max-h-[400px]">
           {Object.entries(modelsByProvider).map(
-            ([providerKey, providerModels]) => (
-              <ModelSelectorGroup
-                heading={providerNames[providerKey] ?? providerKey}
-                key={providerKey}
-              >
-                {providerModels.map((model) => {
-                  const logoProvider = model.id.split("/")[0];
-                  return (
-                    <ModelSelectorItem
-                      key={model.id}
-                      onSelect={() => {
-                        onModelChange?.(model.id);
-                        setCookie("chat-model", model.id);
-                        setOpen(false);
-                      }}
-                      value={model.id}
-                    >
-                      <ModelSelectorLogo provider={logoProvider} />
-                      <ModelSelectorName>{model.name}</ModelSelectorName>
-                      {model.id === selectedModel.id && (
-                        <CheckIcon className="ml-auto size-4" />
-                      )}
-                    </ModelSelectorItem>
-                  );
-                })}
-              </ModelSelectorGroup>
-            )
+            ([providerKey, providerModels]) => {
+              const info = providerInfo[providerKey] ?? {
+                name: providerKey,
+                icon: providerKey,
+                description: "",
+              };
+              return (
+                <ModelSelectorGroup
+                  heading={info.name}
+                  key={providerKey}
+                >
+                  {providerModels.map((model) => {
+                    const logoProvider = model.id.split("/")[0];
+                    const isSelected = model.id === selectedModel.id;
+                    return (
+                      <ModelSelectorItem
+                        className="flex flex-col items-start gap-0.5 py-2"
+                        key={model.id}
+                        onSelect={() => {
+                          onModelChange?.(model.id);
+                          setCookie("chat-model", model.id);
+                          setOpen(false);
+                        }}
+                        value={`${model.id} ${model.name} ${model.description}`}
+                      >
+                        <div className="flex w-full items-center gap-2">
+                          <ModelSelectorLogo provider={logoProvider} />
+                          <ModelSelectorName className="font-medium">
+                            {model.name}
+                          </ModelSelectorName>
+                          {isSelected && (
+                            <CheckIcon className="ml-auto size-4 shrink-0 text-primary" />
+                          )}
+                        </div>
+                        <span className="pl-5 text-xs text-muted-foreground">
+                          {model.description}
+                        </span>
+                      </ModelSelectorItem>
+                    );
+                  })}
+                </ModelSelectorGroup>
+              );
+            }
           )}
         </ModelSelectorList>
       </ModelSelectorContent>
