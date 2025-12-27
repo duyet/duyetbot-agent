@@ -53,14 +53,24 @@
 
 ---
 
+## ✅ Completed (Phase 3 - Dec 28, 2025)
+
+### Core Chat Features
+- [x] **Message persistence** - Messages saved to D1 database via `saveMessages()`
+- [x] **Chat history sidebar** - SWR infinite pagination with date grouping (Today/Yesterday/Last 7 days)
+- [x] **Title auto-generation** - AI-powered title generation after first response via `/api/chat/title`
+- [x] **Custom model parameters** - Temperature, maxTokens, topP, frequency/presence penalty via settings UI
+
+---
+
 ## 🚧 Next Phase (Priority Order)
 
 ### 1. Core Chat Features Completion
-**Goal:** Complete essential chat functionality
+**Goal:** Complete remaining chat functionality
 
-- [ ] **Message persistence** - Ensure messages are saved to database
-- [ ] **Chat history** - Session sidebar with previous conversations
-- [ ] **Title auto-generation** - Generate conversation titles from first message
+- [x] **Message persistence** - Messages saved to database ✅
+- [x] **Chat history** - Sidebar with previous conversations ✅
+- [x] **Title auto-generation** - Generate titles from first message ✅
 - [ ] **Chat branching** - Create parallel conversation branches
 - [ ] **Chat export** - Export conversations (Markdown, JSON)
 - [ ] **Message editing** - Allow users to edit sent messages
@@ -71,7 +81,7 @@
 
 - [x] **OpenRouter integration** - Full API integration with all models ✅
 - [x] **Model selector UI** - Enhanced model picker with search and categories ✅
-- [ ] **Custom model parameters** - Allow users to configure temperature, max tokens
+- [x] **Custom model parameters** - Temperature, max tokens, topP via settings UI ✅
 - [ ] **Model comparison** - Compare responses from different models
 - [ ] **Provider fallback** - Graceful degradation when provider fails
 
@@ -108,11 +118,11 @@
 ### 7. UI/UX Polish
 **Goal:** Beautiful, intuitive interface
 
-- [ ] **Dark mode** - Full dark theme support
+- [x] **Dark mode** - Full theme support with Sun/Moon toggle ✅
 - [ ] **Responsive design** - Mobile, tablet, desktop optimization
 - [ ] **Loading states** - Skeleton screens, progress indicators
 - [ ] **Error handling** - Graceful error messages with recovery
-- [ ] **Keyboard shortcuts** - Power user keyboard navigation
+- [x] **Keyboard shortcuts** - Power user navigation (?, Ctrl+N, Ctrl+B, /) ✅
 - [ ] **Accessibility** - WCAG 2.1 AA compliance
 - [ ] **Animations** - Smooth transitions and micro-interactions
 - [ ] **Toast notifications** - Context-aware feedback messages
@@ -149,13 +159,16 @@
 
 ---
 
-## 🎯 Immediate Next Steps (This Session)
+## 🎯 Immediate Next Steps
 
-1. **Commit and push** the production test configuration
-2. **Deploy to production** (`bun run deploy`)
-3. **Run production tests** (`bun run test:production`)
-4. **Address any failures** discovered in production
-5. **Create first production issue** for the next priority feature
+### Priority 1: Chat Branching
+Allow users to create parallel conversation branches from any message.
+
+### Priority 2: Chat Export
+Export conversations in Markdown or JSON format.
+
+### Priority 3: Message Editing/Deletion
+Allow users to edit or delete sent messages.
 
 ---
 
@@ -208,4 +221,4 @@ PRODUCTION_URL=https://duyetbot-web.duyet.workers.dev
 
 ---
 
-*Last Updated: 2025-12-27*
+*Last Updated: 2025-12-28*
