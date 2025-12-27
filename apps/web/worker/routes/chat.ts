@@ -155,8 +155,28 @@ const chatMessageSchema = z.object({
 
 const filePartSchema = z.object({
 	type: z.enum(["file"]),
-	mediaType: z.enum(["image/jpeg", "image/png"]),
-	name: z.string().min(1).max(100),
+	mediaType: z.enum([
+		// Images
+		"image/jpeg",
+		"image/png",
+		"image/gif",
+		"image/webp",
+		"image/svg+xml",
+		// Documents
+		"application/pdf",
+		"text/plain",
+		"text/markdown",
+		"text/csv",
+		// Code files
+		"text/javascript",
+		"text/typescript",
+		"application/json",
+		"text/html",
+		"text/css",
+		"text/xml",
+		"application/xml",
+	]),
+	name: z.string().min(1).max(255),
 	url: z.string().url(),
 });
 

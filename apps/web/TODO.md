@@ -96,7 +96,7 @@
 - [x] **Web search tool** - DuckDuckGo search with credibility scoring ✅
 - [x] **Tool approval UI** - User confirmation for url_fetch and getWeather ✅
 - [x] **Tool visualizers** - Rich components for search, URL fetch, scratchpad, plan, weather ✅
-- [ ] **File upload tool** - Support for documents, images, code files
+- [x] **File upload tool** - Support for images (JPEG/PNG/GIF/WebP/SVG), documents (PDF/text/markdown/CSV), and code files (JS/TS/JSON/HTML/CSS/XML) ✅
 - [ ] **Code execution tool** - Safe code execution with Pyodide
 - [ ] **Custom tool builder** - UI for users to create custom tools
 
@@ -114,11 +114,11 @@
 **Goal:** Seamless user experience with proper auth
 
 - [x] **Guest user support** - Temporary sessions with rate limiting (10 msgs/day, auto-session, usage indicator) ✅
-- [ ] **Email/password auth** - Complete registration/login flow
-- [ ] **GitHub OAuth** - Social login integration
+- [x] **Email/password auth** - Complete registration/login flow with PBKDF2 hashing, rate limiting, JWT sessions ✅
+- [x] **GitHub OAuth** - Social login integration with CSRF protection ✅
 - [x] **Session persistence** - 30-day guest sessions via cookie Max-Age ✅
-- [ ] **User settings** - Preferences, default model, custom instructions
-- [ ] **Privacy controls** - Data export, deletion, consent
+- [x] **User settings** - Custom instructions, AI settings (temperature, maxTokens, topP, penalties), instruction templates ✅
+- [x] **Privacy controls** - GDPR-compliant data export (JSON/HTML), deletion, consent, retention policies ✅
 
 ### 7. UI/UX Polish
 **Goal:** Beautiful, intuitive interface

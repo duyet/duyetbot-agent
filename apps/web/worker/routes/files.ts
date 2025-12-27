@@ -28,15 +28,40 @@ filesRoutes.post("/upload", async (c) => {
 			return c.json({ error: "No file uploaded" }, 400);
 		}
 
-		// Validate file size (5MB max)
-		if (file.size > 5 * 1024 * 1024) {
-			return c.json({ error: "File size should be less than 5MB" }, 400);
+		// Validate file size (10MB max)
+		if (file.size > 10 * 1024 * 1024) {
+			return c.json({ error: "File size should be less than 10MB" }, 400);
 		}
 
-		// Validate file type
-		const allowedTypes = ["image/jpeg", "image/png"];
+		// Validate file type - support images, documents, and code files
+		const allowedTypes = [
+			// Images
+			"image/jpeg",
+			"image/png",
+			"image/gif",
+			"image/webp",
+			"image/svg+xml",
+			// Documents
+			"application/pdf",
+			"text/plain",
+			"text/markdown",
+			"text/csv",
+			// Code files
+			"text/javascript",
+			"text/typescript",
+			"application/json",
+			"text/html",
+			"text/css",
+			"text/xml",
+			"application/xml",
+		];
 		if (!allowedTypes.includes(file.type)) {
-			return c.json({ error: "File type should be JPEG or PNG" }, 400);
+			return c.json(
+				{
+					error: `Unsupported file type: ${file.type}. Allowed: images, PDF, text, and code files.`,
+				},
+				400,
+			);
 		}
 
 		const bucket = c.env.UPLOADS_BUCKET;
@@ -59,6 +84,8 @@ filesRoutes.post("/upload", async (c) => {
 		return c.json({
 			url: publicUrl,
 			downloadUrl: publicUrl,
+			pathname: file.name, // For frontend compatibility
+			contentType: file.type, // For frontend compatibility
 			key,
 			size: file.size,
 			uploadedAt: new Date().toISOString(),
