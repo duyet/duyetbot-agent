@@ -1,23 +1,25 @@
 "use client";
 
 import { GitBranch, Loader2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type ChatBranchProps = {
   chatId: string;
+  messageId?: string; // Optional: branch from specific message
   onBranch?: (newChatId: string) => void;
 };
 
-export function ChatBranch({ chatId, onBranch }: ChatBranchProps) {
+export function ChatBranch({ chatId, messageId, onBranch }: ChatBranchProps) {
   const [isBranching, setIsBranching] = useState(false);
+  const router = useRouter();
 
   const handleBranch = async () => {
     setIsBranching(true);
@@ -25,18 +27,28 @@ export function ChatBranch({ chatId, onBranch }: ChatBranchProps) {
       const response = await fetch("/api/chat/branch", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId }),
+        body: JSON.stringify({ chatId, messageId }),
       });
 
       if (!response.ok) {
-        throw new Error("Failed to branch chat");
+        const errorData = (await response.json()) as { message?: string };
+        throw new Error(errorData.message || "Failed to branch chat");
       }
 
-      const data = (await response.json()) as { newChatId: string };
-      toast.success("Chat branched successfully");
+      const data = (await response.json()) as {
+        newChatId: string;
+        messageCount: number;
+      };
+
+      toast.success(`Branch created with ${data.messageCount} messages`);
       onBranch?.(data.newChatId);
+
+      // Navigate to the new branched chat
+      router.push(`/chat/${data.newChatId}`);
     } catch (error) {
-      toast.error("Failed to branch chat");
+      toast.error(
+        error instanceof Error ? error.message : "Failed to branch chat"
+      );
       console.error(error);
     } finally {
       setIsBranching(false);
@@ -44,21 +56,26 @@ export function ChatBranch({ chatId, onBranch }: ChatBranchProps) {
   };
 
   return (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button disabled={isBranching} size="icon" variant="ghost">
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          disabled={isBranching}
+          onClick={handleBranch}
+          size="icon"
+          variant="ghost"
+          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity"
+          data-testid="branch-button"
+        >
           {isBranching ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
             <GitBranch className="h-4 w-4" />
           )}
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuItem disabled={isBranching} onClick={handleBranch}>
-          {isBranching ? "Creating branch..." : "Branch from here"}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </TooltipTrigger>
+      <TooltipContent>
+        {messageId ? "Branch from this message" : "Branch entire chat"}
+      </TooltipContent>
+    </Tooltip>
   );
 }
