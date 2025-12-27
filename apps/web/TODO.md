@@ -30,17 +30,32 @@
 
 ---
 
+## ✅ Completed (Phase 2 - Dec 28, 2025)
+
+### Production Testing & Deployment
+- [x] Production health test suite (13 tests, ~7s execution)
+- [x] Fixed Playwright config to skip dev server for production tests
+- [x] Separate test scripts: `bun run test` (local) vs `bun run test:production`
+- [x] Deployed to https://duyetbot-web.duyet.workers.dev
+
+### Model Selector Enhancement
+- [x] Enhanced model selector with descriptions for each model
+- [x] Wider selector (360px) for better readability
+- [x] Fuzzy search across model ID, name, and description
+- [x] 16 models across 5 providers (Anthropic, OpenAI, Google, xAI, DeepSeek)
+- [x] Provider metadata with descriptions
+
+### UI/UX Improvements
+- [x] Dark mode toggle with Sun/Moon icons in user nav
+- [x] Keyboard shortcuts dialog (press ? to open)
+- [x] Shortcuts: Ctrl+N (new chat), Ctrl+B (sidebar), / (focus input)
+- [x] Shortcuts: Ctrl+M (model selector), Ctrl+Shift+T (theme toggle)
+
+---
+
 ## 🚧 Next Phase (Priority Order)
 
-### 1. Deploy & Production Validation
-**Goal:** Ensure production is stable before adding features
-
-- [ ] Deploy current code to production
-- [ ] Run production E2E tests: `bun run test:production`
-- [ ] Fix any production-specific issues discovered
-- [ ] Set up CI/CD for automated production testing
-
-### 2. Core Chat Features Completion
+### 1. Core Chat Features Completion
 **Goal:** Complete essential chat functionality
 
 - [ ] **Message persistence** - Ensure messages are saved to database
@@ -51,11 +66,11 @@
 - [ ] **Message editing** - Allow users to edit sent messages
 - [ ] **Message deletion** - Allow users to delete messages
 
-### 3. Model & Provider Integration
+### 2. Model & Provider Integration
 **Goal:** Seamless model switching and provider management
 
-- [ ] **OpenRouter integration** - Full API integration with all models
-- [ ] **Model selector UI** - Enhanced model picker with search and categories
+- [x] **OpenRouter integration** - Full API integration with all models ✅
+- [x] **Model selector UI** - Enhanced model picker with search and categories ✅
 - [ ] **Custom model parameters** - Allow users to configure temperature, max tokens
 - [ ] **Model comparison** - Compare responses from different models
 - [ ] **Provider fallback** - Graceful degradation when provider fails
