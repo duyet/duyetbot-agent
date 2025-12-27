@@ -142,7 +142,7 @@
 **Goal:** Fast, reliable, scalable
 
 - [x] **Performance monitoring** - Web Vitals tracking (LCP, INP, CLS, FCP, TTFB) with sessionStorage metrics and optional beacon analytics ✅
-- [ ] **Error tracking** - Sentry integration for error monitoring
+- [x] **Error tracking** - Sentry integration with client/edge configs, replay, and filtered errors ✅
 - [x] **Rate limiting** - KV-based token bucket for guests (10/day) and users (60/min) ✅
 - [ ] **Caching strategy** - Cache static assets, API responses
 - [x] **CDN deployment** - Cloudflare Workers Assets for global distribution ✅
