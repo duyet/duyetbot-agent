@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronUp } from "lucide-react";
+import { ChevronUp, Moon, Sun } from "lucide-react";
 import Image from "next/image";
 import { useTheme } from "next-themes";
 import { useState } from "react";
@@ -78,13 +78,18 @@ export function SidebarUserNav({ user }: { user: AuthUser }) {
             side="top"
           >
             <DropdownMenuItem
-              className="cursor-pointer"
+              className="cursor-pointer gap-2"
               data-testid="user-nav-item-theme"
               onSelect={() =>
                 setTheme(resolvedTheme === "dark" ? "light" : "dark")
               }
             >
-              {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
+              {resolvedTheme === "dark" ? (
+                <Sun className="size-4" />
+              ) : (
+                <Moon className="size-4" />
+              )}
+              {resolvedTheme === "dark" ? "Light mode" : "Dark mode"}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem

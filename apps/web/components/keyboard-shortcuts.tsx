@@ -27,96 +27,92 @@ export interface KeyboardShortcut {
  * Available keyboard shortcuts in the application
  */
 export const APP_SHORTCUTS: KeyboardShortcut[] = [
-  // Panel Controls
+  // Navigation
   {
-    key: "[",
+    key: "n",
     ctrl: true,
-    description: "Toggle panel collapse",
-    category: "Panels",
+    description: "New chat",
+    category: "Navigation",
   },
   {
-    key: "\\",
+    key: "b",
     ctrl: true,
-    description: "Reset panel width",
-    category: "Panels",
-  },
-
-  // View Modes
-  {
-    key: "p",
-    ctrl: true,
-    description: "Preview mode",
-    category: "View",
+    description: "Toggle sidebar",
+    category: "Navigation",
   },
   {
-    key: "s",
-    ctrl: true,
-    description: "Source mode",
-    category: "View",
+    key: "/",
+    description: "Focus chat input",
+    category: "Navigation",
   },
 
-  // Artifact Actions
+  // Chat Controls
+  {
+    key: "Enter",
+    ctrl: true,
+    description: "Send message",
+    category: "Chat",
+  },
+  {
+    key: "Escape",
+    description: "Stop generation / Cancel",
+    category: "Chat",
+  },
+  {
+    key: "m",
+    ctrl: true,
+    description: "Open model selector",
+    category: "Chat",
+  },
+  {
+    key: "e",
+    ctrl: true,
+    description: "Edit last message",
+    category: "Chat",
+  },
+  {
+    key: "c",
+    ctrl: true,
+    shift: true,
+    description: "Copy last response",
+    category: "Chat",
+  },
+
+  // Artifacts
   {
     key: "d",
     ctrl: true,
     shift: true,
     description: "Download artifact",
-    category: "Artifact",
+    category: "Artifacts",
   },
   {
     key: "f",
     ctrl: true,
     shift: true,
     description: "Toggle fullscreen",
-    category: "Artifact",
+    category: "Artifacts",
+  },
+  {
+    key: "p",
+    ctrl: true,
+    description: "Preview mode",
+    category: "Artifacts",
+  },
+  {
+    key: "s",
+    ctrl: true,
+    description: "Source mode",
+    category: "Artifacts",
   },
 
-  // Image Controls
+  // Theme
   {
-    key: "=",
-    ctrl: true,
-    description: "Zoom in",
-    category: "Image",
-  },
-  {
-    key: "-",
-    ctrl: true,
-    description: "Zoom out",
-    category: "Image",
-  },
-  {
-    key: "0",
-    ctrl: true,
-    description: "Reset zoom/rotation",
-    category: "Image",
-  },
-  {
-    key: "r",
+    key: "t",
     ctrl: true,
     shift: true,
-    description: "Rotate image",
-    category: "Image",
-  },
-
-  // Chat Controls
-  {
-    key: "k",
-    ctrl: true,
-    description: "Focus chat input",
-    category: "Chat",
-  },
-  {
-    key: "e",
-    ctrl: true,
-    description: "Toggle edit mode",
-    category: "Chat",
-  },
-  {
-    key: "l",
-    ctrl: true,
-    shift: true,
-    description: "Clear chat",
-    category: "Chat",
+    description: "Toggle dark/light mode",
+    category: "Theme",
   },
 
   // Help
