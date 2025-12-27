@@ -14,10 +14,22 @@ config({
 const PORT = process.env.PORT || 3000;
 
 /**
+ * Determine if we're running production tests
+ * Set via: PLAYWRIGHT_PROJECT=production or --project=production
+ */
+const isProductionTest = process.env.PLAYWRIGHT_PROJECT === "production";
+
+/**
+ * Production URL for remote testing
+ */
+const PRODUCTION_URL =
+  process.env.PRODUCTION_URL || "https://duyetbot-web.duyet.workers.dev";
+
+/**
  * Set webServer.url and use.baseURL with the location
  * of the WebServer respecting the correct set port
  */
-const baseURL = `http://localhost:${PORT}`;
+const baseURL = isProductionTest ? PRODUCTION_URL : `http://localhost:${PORT}`;
 
 /**
  * See https://playwright.dev/docs/test-configuration.
@@ -44,7 +56,7 @@ export default defineConfig({
   },
 
   /* Configure global timeout for each test */
-  timeout: 240 * 1000, // 120 seconds
+  timeout: 240 * 1000, // 4 minutes
   expect: {
     timeout: 240 * 1000,
   },
@@ -62,50 +74,21 @@ export default defineConfig({
     // Production testing project - runs against deployed production URL
     {
       name: "production",
-      testMatch: /e2e\/.*.test.ts/,
+      testMatch: /e2e\/production-health\.test\.ts/,
       use: {
         ...devices["Desktop Chrome"],
-        baseURL: process.env.PRODUCTION_URL || "https://duyetbot-web.duyet.workers.dev",
+        baseURL: PRODUCTION_URL,
       },
-      // No webServer for production tests - assume server is already running
     },
-
-    // {
-    //   name: 'firefox',
-    //   use: { ...devices['Desktop Firefox'] },
-    // },
-
-    // {
-    //   name: 'webkit',
-    //   use: { ...devices['Desktop Safari'] },
-    // },
-
-    /* Test against mobile viewports. */
-    // {
-    //   name: 'Mobile Chrome',
-    //   use: { ...devices['Pixel 5'] },
-    // },
-    // {
-    //   name: 'Mobile Safari',
-    //   use: { ...devices['iPhone 12'] },
-    // },
-
-    /* Test against branded browsers. */
-    // {
-    //   name: 'Microsoft Edge',
-    //   use: { ...devices['Desktop Edge'], channel: 'msedge' },
-    // },
-    // {
-    //   name: 'Google Chrome',
-    //   use: { ...devices['Desktop Chrome'], channel: 'chrome' },
-    // },
   ],
 
-  /* Run your local dev server before starting the tests */
-  webServer: {
-    command: "bun dev",
-    url: baseURL,
-    timeout: 120 * 1000,
-    reuseExistingServer: !process.env.CI,
-  },
+  /* Run your local dev server before starting the tests - ONLY for local e2e tests */
+  webServer: isProductionTest
+    ? undefined
+    : {
+        command: "bun dev",
+        url: `http://localhost:${PORT}`,
+        timeout: 120 * 1000,
+        reuseExistingServer: !process.env.CI,
+      },
 });
