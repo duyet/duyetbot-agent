@@ -1,5 +1,6 @@
 "use client";
 
+import type React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -99,7 +100,18 @@ export function MessagesListSkeleton({ count = 3 }: { count?: number }) {
 	return (
 		<div className="flex flex-col gap-6 p-4">
 			{Array.from({ length: count }).map((_, i) => (
-				<MessageSkeleton key={`skeleton-${i}`} isUser={i % 2 === 0} />
+				<div
+					key={`skeleton-${i}`}
+					className="animate-stagger-fade-in"
+					style={
+						{
+							"--stagger-index": i,
+							animationDelay: `${i * 100}ms`,
+						} as React.CSSProperties
+					}
+				>
+					<MessageSkeleton isUser={i % 2 === 0} />
+				</div>
 			))}
 		</div>
 	);
@@ -112,17 +124,25 @@ export function SidebarSkeleton() {
 	return (
 		<div className="flex flex-col gap-4 p-4">
 			{/* New chat button */}
-			<Skeleton className="h-10 w-full rounded-lg" />
+			<Skeleton className="h-10 w-full rounded-lg animate-stagger-fade-in" />
 
 			{/* Section header */}
-			<Skeleton className="h-4 w-16" />
+			<Skeleton
+				className="h-4 w-16 animate-stagger-fade-in"
+				style={{ animationDelay: "50ms" } as React.CSSProperties}
+			/>
 
 			{/* Chat history items */}
 			{Array.from({ length: 5 }).map((_, i) => (
 				<Skeleton
 					key={`sidebar-skeleton-${i}`}
-					className="h-10 rounded-md"
-					style={{ width: `${60 + Math.random() * 40}%` }}
+					className="h-10 rounded-md animate-stagger-fade-in"
+					style={
+						{
+							width: `${60 + Math.random() * 40}%`,
+							animationDelay: `${(i + 2) * 50}ms`,
+						} as React.CSSProperties
+					}
 				/>
 			))}
 		</div>

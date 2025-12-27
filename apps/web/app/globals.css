@@ -300,6 +300,120 @@
 	scrollbar-color: var(--border) transparent;
 }
 
+/* ==========================================================================
+   Animation Keyframes - Micro-interactions and UX polish
+   ========================================================================== */
+
+/* Shake animation for form validation errors */
+@keyframes shake {
+	0%, 100% { transform: translateX(0); }
+	10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+	20%, 40%, 60%, 80% { transform: translateX(4px); }
+}
+
+/* Slide up with fade for new content */
+@keyframes slide-up-fade {
+	from {
+		opacity: 0;
+		transform: translateY(8px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Bounce in for emphasis */
+@keyframes bounce-in {
+	0% {
+		opacity: 0;
+		transform: scale(0.95);
+	}
+	50% {
+		transform: scale(1.02);
+	}
+	100% {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+/* Glow pulse for focus states */
+@keyframes glow-pulse {
+	0%, 100% {
+		box-shadow: 0 0 0 2px var(--ring);
+	}
+	50% {
+		box-shadow: 0 0 0 4px var(--ring), 0 0 12px 2px var(--ring);
+	}
+}
+
+/* Subtle pulse for loading states */
+@keyframes subtle-pulse {
+	0%, 100% { opacity: 1; }
+	50% { opacity: 0.6; }
+}
+
+/* Stagger fade in for lists */
+@keyframes stagger-fade-in {
+	from {
+		opacity: 0;
+		transform: translateY(4px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+/* Animation utility classes */
+@layer utilities {
+	.animate-shake {
+		animation: shake 0.5s ease-in-out;
+	}
+
+	.animate-slide-up-fade {
+		animation: slide-up-fade 0.3s ease-out forwards;
+	}
+
+	.animate-bounce-in {
+		animation: bounce-in 0.4s ease-out forwards;
+	}
+
+	.animate-glow-pulse {
+		animation: glow-pulse 2s ease-in-out infinite;
+	}
+
+	.animate-subtle-pulse {
+		animation: subtle-pulse 1.5s ease-in-out infinite;
+	}
+
+	.animate-stagger-fade-in {
+		animation: stagger-fade-in 0.3s ease-out forwards;
+		animation-delay: calc(var(--stagger-index, 0) * 50ms);
+		opacity: 0;
+	}
+
+	/* Button micro-interactions */
+	.btn-interactive {
+		transition: transform 0.15s ease, box-shadow 0.15s ease;
+	}
+
+	.btn-interactive:hover:not(:disabled) {
+		transform: translateY(-1px);
+	}
+
+	.btn-interactive:active:not(:disabled) {
+		transform: translateY(0) scale(0.98);
+	}
+
+	/* Focus ring with glow effect */
+	.focus-glow:focus-within {
+		box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+		transition: box-shadow 0.2s ease;
+	}
+}
+
 @theme inline {
 	--color-sidebar: var(--sidebar);
 	--color-sidebar-foreground: var(--sidebar-foreground);

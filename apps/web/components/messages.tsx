@@ -55,26 +55,36 @@ function PureMessages({
 					{messages.length === 0 && <Greeting />}
 
 					{messages.map((message, index) => (
-						<PreviewMessage
-							addToolApprovalResponse={addToolApprovalResponse}
-							chatId={chatId}
-							isLoading={
-								status === "streaming" && messages.length - 1 === index
-							}
-							isReadonly={isReadonly}
+						<div
+							className="animate-slide-up-fade"
 							key={message.id}
-							message={message}
-							regenerate={regenerate}
-							requiresScrollPadding={
-								hasSentMessage && index === messages.length - 1
+							style={
+								{
+									"--stagger-index": Math.min(index, 5),
+									animationDelay: `${Math.min(index, 5) * 50}ms`,
+								} as React.CSSProperties
 							}
-							setMessages={setMessages}
-							vote={
-								votes
-									? votes.find((vote) => vote.messageId === message.id)
-									: undefined
-							}
-						/>
+						>
+							<PreviewMessage
+								addToolApprovalResponse={addToolApprovalResponse}
+								chatId={chatId}
+								isLoading={
+									status === "streaming" && messages.length - 1 === index
+								}
+								isReadonly={isReadonly}
+								message={message}
+								regenerate={regenerate}
+								requiresScrollPadding={
+									hasSentMessage && index === messages.length - 1
+								}
+								setMessages={setMessages}
+								vote={
+									votes
+										? votes.find((vote) => vote.messageId === message.id)
+										: undefined
+								}
+							/>
+						</div>
 					))}
 
 					{status === "submitted" &&

@@ -130,8 +130,8 @@
 - [x] **Error handling** - ErrorBoundary component, Next.js error.tsx pages, stream error recovery, graceful fallback UI ✅
 - [x] **Keyboard shortcuts** - Power user navigation (?, Ctrl+N, Ctrl+B, /) ✅
 - [x] **Toast notifications** - Context-aware feedback for file uploads, settings, tags, visibility changes ✅
-- [ ] **Accessibility** - WCAG 2.1 AA compliance
-- [ ] **Animations** - Smooth transitions and micro-interactions
+- [x] **Accessibility** - WCAG 2.1 AA compliance (aria-labels for icon buttons, alt text fallbacks, role attributes for tool approval UI) ✅
+- [x] **Animations** - CSS keyframes (shake, slide-up-fade, bounce-in, glow-pulse), button micro-interactions, message stagger, input focus glow, skeleton stagger ✅
 
 ### 8. Performance & Reliability
 **Goal:** Fast, reliable, scalable
