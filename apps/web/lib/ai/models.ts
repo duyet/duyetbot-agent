@@ -7,7 +7,27 @@ export type ChatModel = {
 	name: string;
 	provider: string;
 	description: string;
+	contextWindow?: number; // Max context size in tokens
 };
+
+// Default context windows by provider (in tokens)
+export const DEFAULT_CONTEXT_WINDOWS: Record<string, number> = {
+	anthropic: 200_000, // Claude 3+ models
+	openai: 128_000, // GPT-4o and newer
+	google: 1_000_000, // Gemini 1.5+
+	xai: 131_072, // Grok
+	deepseek: 64_000, // DeepSeek
+};
+
+// Get context window for a model
+export function getContextWindow(modelId: string): number {
+	const model = chatModels.find((m) => m.id === modelId);
+	if (model?.contextWindow) return model.contextWindow;
+
+	// Fallback to provider defaults
+	const provider = modelId.split("/")[0];
+	return DEFAULT_CONTEXT_WINDOWS[provider] || 128_000;
+}
 
 export const chatModels: ChatModel[] = [
 	// Anthropic - Claude family

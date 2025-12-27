@@ -256,6 +256,7 @@ export function Chat({
 					isOnline={isOnline}
 					isReadonly={isReadonly}
 					messages={messages}
+					selectedChatModel={initialChatModel}
 					selectedVisibilityType={initialVisibilityType}
 					status={status}
 				/>

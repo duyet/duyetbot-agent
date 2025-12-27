@@ -8,6 +8,7 @@ import {
 	ConnectionStatusIndicator,
 	mapStatusToConnectionStatus,
 } from "@/components/connection-status";
+import { ContextWindowIndicator } from "@/components/context-window-indicator";
 import { GuestUsageIndicator } from "@/components/guest-usage-indicator";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
@@ -30,6 +31,7 @@ function PureChatHeader({
 	chatTitle,
 	messages,
 	selectedVisibilityType,
+	selectedChatModel,
 	isReadonly,
 	status,
 	isOnline,
@@ -38,6 +40,7 @@ function PureChatHeader({
 	chatTitle?: string;
 	messages?: ChatMessage[];
 	selectedVisibilityType: VisibilityType;
+	selectedChatModel?: string;
 	isReadonly: boolean;
 	status?: ChatStatus;
 	isOnline?: boolean;
@@ -89,13 +92,24 @@ function PureChatHeader({
 				</div>
 			)}
 
+			{/* Context window indicator - shows conversation size */}
+			{messages && messages.length > 0 && selectedChatModel && (
+				<div className="order-4">
+					<ContextWindowIndicator
+						messages={messages}
+						modelId={selectedChatModel}
+						variant="compact"
+					/>
+				</div>
+			)}
+
 			{/* Guest usage indicator - shows remaining messages for guests */}
-			<div className="order-4 ml-auto md:ml-2">
+			<div className="order-5 ml-auto md:ml-2">
 				<GuestUsageIndicator variant="compact" />
 			</div>
 
 			{/* Connection status indicator */}
-			<div className="order-5 md:ml-2">
+			<div className="order-6 md:ml-2">
 				<ConnectionStatusIndicator
 					status={connectionStatus}
 					variant="compact"
@@ -111,6 +125,7 @@ export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
 		prevProps.chatTitle === nextProps.chatTitle &&
 		prevProps.messages?.length === nextProps.messages?.length &&
 		prevProps.selectedVisibilityType === nextProps.selectedVisibilityType &&
+		prevProps.selectedChatModel === nextProps.selectedChatModel &&
 		prevProps.isReadonly === nextProps.isReadonly &&
 		prevProps.status === nextProps.status &&
 		prevProps.isOnline === nextProps.isOnline
