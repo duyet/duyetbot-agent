@@ -12,6 +12,16 @@ type MessageReasoningProps = {
   reasoning: string;
 };
 
+/**
+ * Enhanced reasoning display component with collapsible functionality
+ * and insight highlighting support.
+ *
+ * Features:
+ * - Auto-open during streaming, auto-close after completion
+ * - Insight detection from reasoning text
+ * - Smooth animations for open/close transitions
+ * - Streaming state tracking with duration display
+ */
 export function MessageReasoning({
   isLoading,
   reasoning,

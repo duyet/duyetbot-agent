@@ -22,7 +22,15 @@ import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
 import { PreviewAttachment } from "./preview-attachment";
+import { PlanDisplay } from "./plan-display";
+import { SourcesDisplay } from "./sources-display";
+import {
+  ChainOfThought,
+  ChainOfThoughtContent,
+  ChainOfThoughtStep,
+} from "./chain-of-thought";
 import { Weather } from "./weather";
+import { ToolRenderer } from "./tool-renderer";
 
 const PurePreviewMessage = ({
   addToolApprovalResponse,
@@ -336,6 +344,91 @@ const PurePreviewMessage = ({
                     )}
                   </ToolContent>
                 </Tool>
+              );
+            }
+
+            // Handle tool-plan parts with special PlanDisplay component
+            if (type === "tool-plan") {
+              const { toolCallId, state, output } = part;
+
+              // Parse plan output if available
+              let planData: { title: string; description?: string; steps: never[] } = { title: "Plan", steps: [] };
+              if (state === "output-available" && output) {
+                try {
+                  if (typeof output === "object" && "steps" in output) {
+                    planData = {
+                      title: (output as any).title || "Plan",
+                      description: (output as any).description,
+                      steps: (output as any).steps || [],
+                    } as { title: string; description?: string; steps: never[] };
+                  }
+                } catch (e) {
+                  console.error("Failed to parse plan output:", e);
+                }
+              }
+
+              const isStreaming = state === "input-available" || state === "approval-requested";
+
+              return (
+                <div className="w-[min(100%,600px)]" key={toolCallId}>
+                  <PlanDisplay plan={planData as any} isStreaming={isStreaming} />
+                </div>
+              );
+            }
+
+            // Handle tool-web_search parts with special SourcesDisplay component
+            if (type === "tool-web_search") {
+              const { toolCallId, state, output } = part;
+
+              // Parse search results if available
+              let sources: any[] = [];
+              if (state === "output-available" && output) {
+                try {
+                  if (typeof output === "object" && "results" in output) {
+                    sources = (output as any).results || [];
+                  } else if (Array.isArray(output)) {
+                    sources = output;
+                  }
+                } catch (e) {
+                  console.error("Failed to parse web_search output:", e);
+                }
+              }
+
+              const isStreaming = state === "input-available" || state === "approval-requested";
+
+              return (
+                <div className="w-[min(100%,600px)]" key={toolCallId}>
+                  <SourcesDisplay
+                    sources={sources}
+                    isStreaming={isStreaming}
+                    defaultOpen={sources.length > 0 && sources.length <= 5}
+                  />
+                </div>
+              );
+            }
+
+            // Generic handler for all other tool-* parts (urlFetch, duyet_mcp, etc.)
+            if (type.startsWith("tool-")) {
+              return (
+                <ToolRenderer
+                  addToolApprovalResponse={addToolApprovalResponse}
+                  key={key}
+                  part={part as any}
+                />
+              );
+            }
+
+            // Debug: Render any unknown parts to see what we're getting
+            if (process.env.NODE_ENV === "development") {
+              return (
+                <div key={key} className="rounded border border-yellow-500 bg-yellow-50 p-2 text-xs">
+                  <div className="font-mono font-bold text-yellow-800">
+                    Unknown part type: {type}
+                  </div>
+                  <pre className="mt-1 overflow-auto text-yellow-900">
+                    {JSON.stringify(part, null, 2)}
+                  </pre>
+                </div>
               );
             }
 
