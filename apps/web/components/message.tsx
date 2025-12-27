@@ -21,7 +21,10 @@ import { SparklesIcon } from "./icons";
 import { MessageActions } from "./message-actions";
 import { MessageEditor } from "./message-editor";
 import { MessageReasoning } from "./message-reasoning";
+import { PlanVisualizer } from "./plan-visualizer";
 import { PreviewAttachment } from "./preview-attachment";
+import { SearchResults } from "./search-results";
+import { TypingIndicator } from "./typing-indicator";
 import { Weather } from "./weather";
 
 const PurePreviewMessage = ({
@@ -258,6 +261,54 @@ const PurePreviewMessage = ({
               );
             }
 
+            if (type === "tool-plan") {
+              const { toolCallId, state } = part;
+              const widthClass = "w-[min(100%,600px)]";
+
+              if (state === "output-available") {
+                return (
+                  <div className={widthClass} key={toolCallId}>
+                    <PlanVisualizer data={part.output as any} />
+                  </div>
+                );
+              }
+
+              return (
+                <div className={widthClass} key={toolCallId}>
+                  <Tool className="w-full" defaultOpen={true}>
+                    <ToolHeader state={state} type="tool-plan" />
+                    <ToolContent>
+                      {state === "input-available" && <ToolInput input={part.input} />}
+                    </ToolContent>
+                  </Tool>
+                </div>
+              );
+            }
+
+            if (type === "tool-web_search") {
+              const { toolCallId, state } = part;
+              const widthClass = "w-[min(100%,600px)]";
+
+              if (state === "output-available") {
+                return (
+                  <div className={widthClass} key={toolCallId}>
+                    <SearchResults data={part.output as any} />
+                  </div>
+                );
+              }
+
+              return (
+                <div className={widthClass} key={toolCallId}>
+                  <Tool className="w-full" defaultOpen={true}>
+                    <ToolHeader state={state} type="tool-web_search" />
+                    <ToolContent>
+                      {state === "input-available" && <ToolInput input={part.input} />}
+                    </ToolContent>
+                  </Tool>
+                </div>
+              );
+            }
+
             if (type === "tool-createDocument") {
               const { toolCallId } = part;
 
@@ -389,13 +440,9 @@ export const ThinkingMessage = () => {
         </div>
 
         <div className="flex w-full flex-col gap-2 md:gap-4">
-          <div className="flex items-center gap-1 p-0 text-muted-foreground text-sm">
-            <span className="animate-pulse">Thinking</span>
-            <span className="inline-flex">
-              <span className="animate-bounce [animation-delay:0ms]">.</span>
-              <span className="animate-bounce [animation-delay:150ms]">.</span>
-              <span className="animate-bounce [animation-delay:300ms]">.</span>
-            </span>
+          <div className="flex items-center gap-2 p-0 text-muted-foreground text-sm">
+            <span>Thinking</span>
+            <TypingIndicator variant="dots" className="scale-75" />
           </div>
         </div>
       </div>
