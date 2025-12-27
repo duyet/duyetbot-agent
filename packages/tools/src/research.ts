@@ -70,10 +70,14 @@ function getDomain(url: string): string | null {
 // Check if source is credible
 function isCredibleSource(url: string): boolean {
   const domain = getDomain(url);
-  if (!domain) return false;
+  if (!domain) {
+    return false;
+  }
 
   // Check exact match
-  if (CREDIBLE_DOMAINS.has(domain)) return true;
+  if (CREDIBLE_DOMAINS.has(domain)) {
+    return true;
+  }
 
   // Check TLD match for gov/edu
   const tld = domain.split('.').pop();
@@ -412,7 +416,6 @@ export class ResearchTool implements Tool {
         startDate = new Date(now.setMonth(now.getMonth() - 1));
         dateFilter = `after:${startDate.toISOString().split('T')[0]}`;
         break;
-      case 'all':
       default:
         return query;
     }

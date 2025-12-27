@@ -185,9 +185,7 @@ Available actions:
 
     // Parse and validate input
     const parsedInput = duyetMCPInputSchema.parse(
-      typeof input.content === 'string'
-        ? JSON.parse(input.content)
-        : input.content
+      typeof input.content === 'string' ? JSON.parse(input.content) : input.content
     );
 
     const { action, ...params } = parsedInput;

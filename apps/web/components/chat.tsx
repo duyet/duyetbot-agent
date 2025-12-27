@@ -20,10 +20,13 @@ import {
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
+import { useOnlineStatus } from "@/hooks/use-online-status";
+import { generateTitleFromUserMessage } from "@/lib/api-client";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
+import { getEffectiveInstructions, getAISettings } from "@/lib/custom-instructions";
 import { Artifact } from "./artifact";
 import { useDataStream } from "./data-stream-provider";
 import { Messages } from "./messages";
@@ -126,6 +129,10 @@ export function Chat({
             })
           );
 
+        // Get custom instructions and AI settings
+        const customInstructions = getEffectiveInstructions(id);
+        const aiSettings = getAISettings();
+
         return {
           body: {
             id: request.id,
@@ -135,6 +142,17 @@ export function Chat({
               : { message: lastMessage }),
             selectedChatModel: currentModelIdRef.current,
             selectedVisibilityType: visibilityType,
+            // Include custom instructions and AI settings
+            ...(customInstructions && { customInstructions }),
+            ...(aiSettings && {
+              aiSettings: {
+                ...(aiSettings.temperature !== 0.7 && { temperature: aiSettings.temperature }),
+                ...(aiSettings.maxTokens && { maxTokens: aiSettings.maxTokens }),
+                ...(aiSettings.topP !== undefined && { topP: aiSettings.topP }),
+                ...(aiSettings.frequencyPenalty !== undefined && { frequencyPenalty: aiSettings.frequencyPenalty }),
+                ...(aiSettings.presencePenalty !== undefined && { presencePenalty: aiSettings.presencePenalty }),
+              },
+            }),
             ...request.body,
           },
         };
@@ -143,8 +161,30 @@ export function Chat({
     onData: (dataPart) => {
       setDataStream((ds) => (ds ? [...ds, dataPart] : []));
     },
-    onFinish: () => {
+    onFinish: async () => {
       mutate(unstable_serialize(getChatHistoryPaginationKey));
+
+      // Generate title after first message completion for new chats
+      // Only generate if we have exactly 2 messages (1 user + 1 assistant response)
+      // and this is the first time we're completing a response
+      if (messages.length === 2 && !isReadonly) {
+        const firstUserMessage = messages.find((m) => m.role === "user");
+        const messageText =
+          firstUserMessage?.parts?.find((p) => p.type === "text")?.text || "";
+
+        if (messageText) {
+          try {
+            await generateTitleFromUserMessage({
+              chatId: id,
+              message: messageText,
+            });
+            // Refresh the sidebar to show updated title
+            router.refresh();
+          } catch (error) {
+            console.warn("[Chat] Failed to generate title:", error);
+          }
+        }
+      }
     },
     onError: (error) => {
       if (error instanceof ChatSDKError) {
@@ -187,6 +227,7 @@ export function Chat({
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const isArtifactVisible = useArtifactSelector((state) => state.isVisible);
+  const isOnline = useOnlineStatus();
 
   useAutoResume({
     autoResume,
@@ -200,8 +241,10 @@ export function Chat({
       <div className="overscroll-behavior-contain flex h-dvh min-w-0 touch-pan-y flex-col bg-background">
         <ChatHeader
           chatId={id}
+          isOnline={isOnline}
           isReadonly={isReadonly}
           selectedVisibilityType={initialVisibilityType}
+          status={status}
         />
 
         <Messages

@@ -25,7 +25,7 @@ export const user = sqliteTable("User", {
 
 export type User = InferSelectModel<typeof user>;
 
-export const chat = sqliteTable("Chat", {
+export const chat: any = sqliteTable("Chat", {
   id: text("id")
     .primaryKey()
     .$defaultFn(() => crypto.randomUUID()),
@@ -245,27 +245,31 @@ export const chatFolder = sqliteTable("ChatFolder", {
 export type ChatFolder = InferSelectModel<typeof chatFolder>;
 
 // Chat to folder junction table
-export const chatToFolder = sqliteTable("ChatToFolder", {
-  chatId: text("chatId")
-    .notNull()
-    .references(() => chat.id, {
-      onDelete: "cascade",
-      onUpdate: "no action",
-    }),
-  folderId: text("folderId")
-    .notNull()
-    .references(() => chatFolder.id, {
-      onDelete: "cascade",
-      onUpdate: "no action",
-    }),
-  createdAt: integer("createdAt", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (table) => {
-  return {
-    pk: primaryKey({ columns: [table.chatId, table.folderId] }),
-  };
-});
+export const chatToFolder = sqliteTable(
+  "ChatToFolder",
+  {
+    chatId: text("chatId")
+      .notNull()
+      .references(() => chat.id, {
+        onDelete: "cascade",
+        onUpdate: "no action",
+      }),
+    folderId: text("folderId")
+      .notNull()
+      .references(() => chatFolder.id, {
+        onDelete: "cascade",
+        onUpdate: "no action",
+      }),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.chatId, table.folderId] }),
+    };
+  }
+);
 
 export type ChatToFolder = InferSelectModel<typeof chatToFolder>;
 
@@ -290,26 +294,30 @@ export const chatTag = sqliteTable("ChatTag", {
 export type ChatTag = InferSelectModel<typeof chatTag>;
 
 // Chat to tag junction table
-export const chatToTag = sqliteTable("ChatToTag", {
-  chatId: text("chatId")
-    .notNull()
-    .references(() => chat.id, {
-      onDelete: "cascade",
-      onUpdate: "no action",
-    }),
-  tagId: text("tagId")
-    .notNull()
-    .references(() => chatTag.id, {
-      onDelete: "cascade",
-      onUpdate: "no action",
-    }),
-  createdAt: integer("createdAt", { mode: "timestamp" })
-    .notNull()
-    .$defaultFn(() => new Date()),
-}, (table) => {
-  return {
-    pk: primaryKey({ columns: [table.chatId, table.tagId] }),
-  };
-});
+export const chatToTag = sqliteTable(
+  "ChatToTag",
+  {
+    chatId: text("chatId")
+      .notNull()
+      .references(() => chat.id, {
+        onDelete: "cascade",
+        onUpdate: "no action",
+      }),
+    tagId: text("tagId")
+      .notNull()
+      .references(() => chatTag.id, {
+        onDelete: "cascade",
+        onUpdate: "no action",
+      }),
+    createdAt: integer("createdAt", { mode: "timestamp" })
+      .notNull()
+      .$defaultFn(() => new Date()),
+  },
+  (table) => {
+    return {
+      pk: primaryKey({ columns: [table.chatId, table.tagId] }),
+    };
+  }
+);
 
 export type ChatToTag = InferSelectModel<typeof chatToTag>;

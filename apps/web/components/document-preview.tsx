@@ -37,7 +37,10 @@ export function DocumentPreview({
 
   const { data: documents, isLoading: isDocumentsFetching } = useSWR<
     Document[]
-  >(result ? `/api/document?id=${result.id}` : null, fetcher as (url: string) => Promise<Document[]>);
+  >(
+    result ? `/api/document?id=${result.id}` : null,
+    fetcher as (url: string) => Promise<Document[]>
+  );
 
   const previewDocument = useMemo(() => documents?.[0], [documents]);
   const hitboxRef = useRef<HTMLDivElement>(null);

@@ -1,5 +1,6 @@
-// Curated list of top models from Vercel AI Gateway
-export const DEFAULT_CHAT_MODEL = "google/gemini-2.5-flash-lite";
+// Curated list of top models from OpenRouter
+// See: https://openrouter.ai/models for full list
+export const DEFAULT_CHAT_MODEL = "google/gemini-2.5-flash-preview";
 
 export type ChatModel = {
   id: string;
@@ -9,70 +10,89 @@ export type ChatModel = {
 };
 
 export const chatModels: ChatModel[] = [
-  // Anthropic
+  // Anthropic - Claude family
   {
-    id: "anthropic/claude-haiku-4.5",
-    name: "Claude Haiku 4.5",
+    id: "anthropic/claude-3.5-haiku",
+    name: "Claude 3.5 Haiku",
     provider: "anthropic",
     description: "Fast and affordable, great for everyday tasks",
   },
   {
-    id: "anthropic/claude-sonnet-4.5",
-    name: "Claude Sonnet 4.5",
+    id: "anthropic/claude-sonnet-4",
+    name: "Claude Sonnet 4",
     provider: "anthropic",
     description: "Best balance of speed, intelligence, and cost",
   },
   {
-    id: "anthropic/claude-opus-4.5",
-    name: "Claude Opus 4.5",
+    id: "anthropic/claude-opus-4",
+    name: "Claude Opus 4",
     provider: "anthropic",
     description: "Most capable Anthropic model",
   },
-  // OpenAI
+  // OpenAI - GPT family
   {
-    id: "openai/gpt-4.1-mini",
-    name: "GPT-4.1 Mini",
+    id: "openai/gpt-4o-mini",
+    name: "GPT-4o Mini",
     provider: "openai",
     description: "Fast and cost-effective for simple tasks",
   },
   {
-    id: "openai/gpt-5.2",
-    name: "GPT-5.2",
+    id: "openai/gpt-4o",
+    name: "GPT-4o",
     provider: "openai",
-    description: "Most capable OpenAI model",
+    description: "Multimodal flagship model",
   },
-  // Google
   {
-    id: "google/gemini-2.5-flash-lite",
-    name: "Gemini 2.5 Flash Lite",
+    id: "openai/o1",
+    name: "o1",
+    provider: "openai",
+    description: "Advanced reasoning model",
+  },
+  // Google - Gemini family
+  {
+    id: "google/gemini-2.5-flash-preview",
+    name: "Gemini 2.5 Flash",
     provider: "google",
     description: "Ultra fast and affordable",
   },
   {
-    id: "google/gemini-3-pro-preview",
-    name: "Gemini 3 Pro",
+    id: "google/gemini-2.5-pro-preview",
+    name: "Gemini 2.5 Pro",
     provider: "google",
     description: "Most capable Google model",
   },
-  // xAI
+  // xAI - Grok family
   {
-    id: "xai/grok-4.1-fast-non-reasoning",
-    name: "Grok 4.1 Fast",
+    id: "x-ai/grok-3-beta",
+    name: "Grok 3",
     provider: "xai",
-    description: "Fast with 30K context",
+    description: "xAI's latest flagship model",
+  },
+  // DeepSeek
+  {
+    id: "deepseek/deepseek-chat-v3-0324",
+    name: "DeepSeek V3",
+    provider: "deepseek",
+    description: "Powerful open-weight model",
   },
   // Reasoning models (extended thinking)
   {
-    id: "anthropic/claude-3.7-sonnet-thinking",
-    name: "Claude 3.7 Sonnet",
+    id: "anthropic/claude-sonnet-4-thinking",
+    name: "Claude Sonnet 4 Thinking",
     provider: "reasoning",
     description: "Extended thinking for complex problems",
   },
   {
-    id: "xai/grok-code-fast-1-thinking",
-    name: "Grok Code Fast",
+    id: "openai/o1-thinking",
+    name: "o1 Reasoning",
     provider: "reasoning",
-    description: "Reasoning optimized for code",
+    description: "OpenAI's best reasoning model",
+  },
+  {
+    id: "deepseek/deepseek-reasoner-thinking",
+    name: "DeepSeek R1",
+    provider: "reasoning",
+    description: "Open-weight reasoning model",
   },
 ];
 

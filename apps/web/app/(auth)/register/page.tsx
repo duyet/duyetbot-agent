@@ -2,49 +2,61 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useActionState, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthForm } from "@/components/auth-form";
 import { SubmitButton } from "@/components/submit-button";
 import { toast } from "@/components/toast";
-import { type RegisterActionState, register } from "../actions";
+import { register } from "@/lib/api-client";
 
 export default function Page() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [isSuccessful, setIsSuccessful] = useState(false);
+  const [status, setStatus] = useState<
+    | "idle"
+    | "in_progress"
+    | "success"
+    | "failed"
+    | "user_exists"
+    | "invalid_data"
+  >("idle");
+  const [error, setError] = useState<string | undefined>();
 
-  const [state, formAction] = useActionState<RegisterActionState, FormData>(
-    register,
-    {
-      status: "idle",
+  const handleSubmit = async (formData: FormData) => {
+    setEmail(formData.get("email") as string);
+    setStatus("in_progress");
+
+    const result = await register(formData);
+    setStatus(result.status);
+    setError(result.error);
+
+    if (result.status === "success") {
+      toast({ type: "success", description: "Account created successfully!" });
+      setIsSuccessful(true);
+
+      // Fix race condition: Wait for router.refresh() to complete before navigation
+      // This ensures the session cookie is properly set before page transition
+      await router.refresh();
+      router.push("/");
     }
-  );
+  };
 
-  // biome-ignore lint/correctness/useExhaustiveDependencies: router is stable ref
   useEffect(() => {
-    if (state.status === "user_exists") {
-      toast({ type: "error", description: state.error || "Account already exists!" });
-    } else if (state.status === "failed") {
-      toast({ type: "error", description: state.error || "Failed to create account!" });
-    } else if (state.status === "invalid_data") {
+    if (status === "user_exists") {
+      toast({ type: "error", description: error || "Account already exists!" });
+    } else if (status === "failed") {
+      toast({
+        type: "error",
+        description: error || "Failed to create account!",
+      });
+    } else if (status === "invalid_data") {
       toast({
         type: "error",
         description: "Failed validating your submission!",
       });
-    } else if (state.status === "success") {
-      toast({ type: "success", description: "Account created successfully!" });
-
-      setIsSuccessful(true);
-      router.refresh();
-      router.push("/");
     }
-  }, [state.status, state.error, router]);
-
-  const handleSubmit = (formData: FormData) => {
-    setEmail(formData.get("email") as string);
-    formAction(formData);
-  };
+  }, [status, error]);
 
   return (
     <div className="flex h-dvh w-screen items-start justify-center bg-background pt-12 md:items-center md:pt-0">

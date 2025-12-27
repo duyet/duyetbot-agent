@@ -1,0 +1,544 @@
+/**
+ * Chat routes for Hono worker
+ * GET /api/chat/:id - Fetch chat with messages by ID
+ * POST /api/chat - Main chat endpoint with streaming
+ * DELETE /api/chat?id={id} - Delete chat
+ * PATCH /api/chat/visibility - Update chat visibility
+ * DELETE /api/chat/messages/trailing - Delete trailing messages after timestamp
+ * POST /api/chat/title - Generate title from message (requires AI)
+ */
+
+import { zValidator } from "@hono/zod-validator";
+import { generateText, streamText } from "ai";
+import { and, eq, gt } from "drizzle-orm";
+import { Hono } from "hono";
+import { z } from "zod";
+import { convertToCoreMessages } from "../../lib/ai/message-converter";
+import {
+  artifactsPrompt,
+  regularPrompt,
+  titlePrompt,
+} from "../../lib/ai/prompts";
+import {
+  chat,
+  message as messageTable,
+  stream,
+  vote,
+} from "../../lib/db/schema";
+import { getLanguageModelForWorker, getTitleModelForWorker } from "../lib/ai";
+import { createGuestSession, getSessionFromRequest } from "../lib/auth-helpers";
+import { getDb } from "../lib/context";
+import { WorkerError } from "../lib/errors";
+import { getWebWorkerTools } from "../lib/tools";
+import { generateUUID } from "../lib/utils";
+import type { Env } from "../types";
+
+/**
+ * Enhanced system prompt combining base prompts with tool descriptions
+ *
+ * Combines:
+ * - Base prompt from existing web UI prompts
+ * - Artifact-specific instructions for the web UI
+ * - Tool descriptions
+ */
+function createWebChatSystemPrompt(
+  selectedChatModel: string,
+  requestHints: {
+    latitude: string;
+    longitude: string;
+    city: string;
+    country: string;
+  }
+) {
+  // Build tool descriptions
+  const toolDescriptions = `
+Available Tools:
+- web_search: Web search with DuckDuckGo, date filtering, source credibility scoring
+- url_fetch: Fetch and extract text content from URLs
+- duyet_mcp: Access information about Duyet (profile, CV, blog posts, GitHub activity)
+- plan: Break down complex tasks into steps
+- scratchpad: Store and retrieve temporary notes during conversation
+- getWeather: Get current weather information for a location (city name or coordinates)
+
+Use these tools when helpful to provide better responses.
+`;
+
+  // Request location context
+  const locationContext = `
+About the user's location:
+- lat: ${requestHints.latitude}
+- lon: ${requestHints.longitude}
+- city: ${requestHints.city}
+- country: ${requestHints.country}
+`;
+
+  // reasoning models don't need artifacts prompt (they can't use tools)
+  if (
+    selectedChatModel.includes("reasoning") ||
+    selectedChatModel.includes("thinking")
+  ) {
+    return `${regularPrompt}\n\n${toolDescriptions}\n\n${locationContext}`;
+  }
+
+  return `${regularPrompt}\n\n${toolDescriptions}\n\n${locationContext}\n\n${artifactsPrompt}`;
+}
+
+export const chatRoutes = new Hono<{ Bindings: Env }>();
+
+/**
+ * GET /api/chat/:id
+ * Fetch chat with messages by ID
+ */
+chatRoutes.get("/:id", async (c) => {
+  const id = c.req.param("id");
+
+  if (!id) {
+    throw new WorkerError("bad_request:api", "Parameter id is required");
+  }
+
+  const session = await getSessionFromRequest(c);
+
+  if (!session) {
+    throw new WorkerError("unauthorized:chat");
+  }
+
+  const db = getDb(c);
+
+  // Get chat
+  const chats = await db.select().from(chat).where(eq(chat.id, id));
+  const chatRecord = chats[0];
+
+  if (!chatRecord) {
+    throw new WorkerError("not_found:chat");
+  }
+
+  // Check visibility permissions
+  if (chatRecord.visibility === "private") {
+    if (!session.user) {
+      throw new WorkerError("unauthorized:chat");
+    }
+    if (session.user.id !== chatRecord.userId) {
+      throw new WorkerError("forbidden:chat");
+    }
+  }
+
+  // Get messages
+  const messages = await db
+    .select()
+    .from(messageTable)
+    .where(eq(messageTable.chatId, id))
+    .orderBy(messageTable.createdAt);
+
+  return c.json({
+    id: chatRecord.id,
+    title: chatRecord.title,
+    visibility: chatRecord.visibility,
+    createdAt: chatRecord.createdAt,
+    messages,
+    isReadonly: session?.user?.id !== chatRecord.userId,
+  });
+});
+
+// Schema for chat request
+const chatMessageSchema = z.object({
+  type: z.enum(["text"]),
+  text: z.string().min(1).max(2000),
+});
+
+const filePartSchema = z.object({
+  type: z.enum(["file"]),
+  mediaType: z.enum(["image/jpeg", "image/png"]),
+  name: z.string().min(1).max(100),
+  url: z.string().url(),
+});
+
+const partSchema = z.union([chatMessageSchema, filePartSchema]);
+
+const userMessageSchema = z.object({
+  id: z.string().uuid(),
+  role: z.enum(["user"]),
+  parts: z.array(partSchema),
+});
+
+const messageSchema = z.object({
+  id: z.string(),
+  role: z.string(),
+  parts: z.array(z.any()),
+});
+
+const postRequestBodySchema = z.object({
+  id: z.string().uuid(),
+  message: userMessageSchema.optional(),
+  messages: z.array(messageSchema).optional(),
+  selectedChatModel: z.string(),
+  selectedVisibilityType: z.enum(["public", "private"]),
+  customInstructions: z.string().optional(),
+  aiSettings: z.object({
+    temperature: z.number().min(0).max(2).optional(),
+    maxTokens: z.number().optional(),
+    topP: z.number().min(0).max(1).optional(),
+    frequencyPenalty: z.number().min(-2).max(2).optional(),
+    presencePenalty: z.number().min(-2).max(2).optional(),
+  }).optional(),
+});
+
+/**
+ * POST /api/chat
+ * Main chat endpoint with streaming AI response
+ * Supports guest users - auto-creates guest session if none exists
+ */
+chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
+  const startTime = Date.now();
+  const requestId = generateUUID().slice(0, 8);
+
+  console.log(`[${requestId}] POST /api/chat started`);
+
+  const {
+    id,
+    message,
+    messages: historyMessages,
+    selectedChatModel,
+    selectedVisibilityType,
+    customInstructions,
+    aiSettings,
+  } = c.req.valid("json");
+
+  console.log(`[${requestId}] Request: chatId=${id}, model=${selectedChatModel}, hasMessage=${!!message}`);
+
+  let session = await getSessionFromRequest(c);
+  let sessionToken: string | undefined;
+
+  // Auto-create guest session if not authenticated
+  if (!session?.user) {
+    console.log(`[${requestId}] No auth - creating guest session`);
+    const guestData = await createGuestSession(c);
+    session = guestData.session;
+    sessionToken = guestData.token;
+    console.log(`[${requestId}] Guest session created: userId=${session.user.id}`);
+  } else {
+    console.log(`[${requestId}] Authenticated: userId=${session.user.id}`);
+  }
+
+  const db = getDb(c);
+
+  // Check if chat exists
+  console.log(`[${requestId}] Checking if chat exists: ${id}`);
+  const existingChats = await db.select().from(chat).where(eq(chat.id, id));
+  const existingChat = existingChats[0];
+
+  if (existingChat) {
+    console.log(`[${requestId}] Chat exists: title="${existingChat.title}", userId=${existingChat.userId}`);
+    if (existingChat.userId !== session.user.id) {
+      console.log(`[${requestId}] Forbidden: chat userId=${existingChat.userId} != session userId=${session.user.id}`);
+      throw new WorkerError("forbidden:chat");
+    }
+  } else if (message?.role === "user") {
+    // Create new chat
+    console.log(`[${requestId}] Creating new chat: ${id} with visibility=${selectedVisibilityType}`);
+    await db.insert(chat).values({
+      id,
+      createdAt: new Date(),
+      userId: session.user.id,
+      title: "New chat",
+      visibility: selectedVisibilityType,
+    });
+    console.log(`[${requestId}] New chat created successfully`);
+  }
+
+  // Save user message to database
+  const userMessageId = message?.id ?? generateUUID();
+  if (message?.role === "user") {
+    console.log(`[${requestId}] Saving user message: ${userMessageId}`);
+    await db.insert(messageTable).values({
+      chatId: id,
+      id: userMessageId,
+      role: "user",
+      parts: message.parts,
+      attachments: [],
+      createdAt: new Date(),
+    });
+    console.log(`[${requestId}] User message saved`);
+  }
+
+  // Get chat history for context
+  console.log(`[${requestId}] Fetching chat history for context`);
+  const allMessages = await db
+    .select()
+    .from(messageTable)
+    .where(eq(messageTable.chatId, id))
+    .orderBy(messageTable.createdAt);
+
+  console.log(`[${requestId}] Found ${allMessages.length} messages in history`);
+
+  // Convert messages to AI SDK format
+  const coreMessages = convertToCoreMessages(allMessages);
+
+  // Get the model
+  console.log(`[${requestId}] Getting model: ${selectedChatModel}`);
+  const model = await getLanguageModelForWorker(c.env, selectedChatModel);
+  console.log(`[${requestId}] Model initialized`);
+
+  // Generate system prompt with packages/prompts
+  // Extract location from Cloudflare request.cf object
+  const cf = c.req.raw.cf as
+    | {
+        latitude?: string;
+        longitude?: string;
+        city?: string;
+        country?: string;
+        region?: string;
+      }
+    | undefined;
+
+  const requestHints = {
+    latitude: cf?.latitude || "0",
+    longitude: cf?.longitude || "0",
+    city: cf?.city || "Unknown",
+    country: cf?.country || "Unknown",
+  };
+
+  console.log(`[${requestId}] Location: ${requestHints.city}, ${requestHints.country} (${requestHints.latitude},${requestHints.longitude})`);
+
+  let system = createWebChatSystemPrompt(selectedChatModel, requestHints);
+
+  // Append custom instructions if provided
+  if (customInstructions?.trim()) {
+    system = `${system}\n\nUser's Custom Instructions:\n${customInstructions.trim()}`;
+    console.log(`[${requestId}] Custom instructions applied (${customInstructions.length} chars)`);
+  }
+
+  // Get tools for this session
+  const tools = getWebWorkerTools();
+  console.log(`[${requestId}] Loaded ${Object.keys(tools).length} tools`);
+
+  // Build AI settings with defaults
+  const temperature = aiSettings?.temperature ?? 0.7;
+
+  // Create streaming response with AI SDK format and tools
+  console.log(`[${requestId}] Starting AI stream...`);
+  const result = streamText({
+    model,
+    system,
+    messages: coreMessages,
+    tools,
+    temperature,
+    ...(aiSettings?.maxTokens && { maxTokens: aiSettings.maxTokens }),
+    ...(aiSettings?.topP !== undefined && { topP: aiSettings.topP }),
+    ...(aiSettings?.frequencyPenalty !== undefined && { frequencyPenalty: aiSettings.frequencyPenalty }),
+    ...(aiSettings?.presencePenalty !== undefined && { presencePenalty: aiSettings.presencePenalty }),
+  });
+
+  // Get the response using toUIMessageStreamResponse for @ai-sdk/react compatibility
+  const response = result.toUIMessageStreamResponse();
+
+  // Set session cookie if we created a guest session
+  if (sessionToken) {
+    response.headers.set(
+      "Set-Cookie",
+      `session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`
+    );
+    console.log(`[${requestId}] Set guest session cookie`);
+  }
+
+  const duration = Date.now() - startTime;
+  console.log(`[${requestId}] POST /api/chat completed in ${duration}ms`);
+
+  return response;
+});
+
+/**
+ * DELETE /api/chat?id={id}
+ * Delete chat
+ */
+chatRoutes.delete("/", async (c) => {
+  const id = c.req.query("id");
+
+  if (!id) {
+    throw new WorkerError("bad_request:api", "Parameter id is required");
+  }
+
+  const session = await getSessionFromRequest(c);
+
+  if (!session?.user) {
+    throw new WorkerError("unauthorized:chat");
+  }
+
+  const db = getDb(c);
+
+  // Get chat
+  const chats = await db.select().from(chat).where(eq(chat.id, id));
+  const chatRecord = chats[0];
+
+  if (!chatRecord) {
+    throw new WorkerError("not_found:chat");
+  }
+
+  if (chatRecord.userId !== session.user.id) {
+    throw new WorkerError("forbidden:chat");
+  }
+
+  // Delete votes, messages, stream, and chat
+  await db.delete(vote).where(eq(vote.chatId, id));
+  await db.delete(messageTable).where(eq(messageTable.chatId, id));
+  await db.delete(stream).where(eq(stream.chatId, id));
+
+  const deletedChats = await db.delete(chat).where(eq(chat.id, id)).returning();
+
+  return c.json(deletedChats[0] || { success: true });
+});
+
+/**
+ * PATCH /api/chat/visibility
+ * Update chat visibility
+ */
+const visibilitySchema = z.object({
+  chatId: z.string().uuid(),
+  visibility: z.enum(["public", "private"]),
+});
+
+chatRoutes.patch(
+  "/visibility",
+  zValidator("json", visibilitySchema),
+  async (c) => {
+    const { chatId, visibility } = c.req.valid("json");
+
+    const session = await getSessionFromRequest(c);
+
+    if (!session?.user) {
+      throw new WorkerError("unauthorized:chat");
+    }
+
+    const db = getDb(c);
+
+    // Verify ownership
+    const chats = await db.select().from(chat).where(eq(chat.id, chatId));
+    const chatRecord = chats[0];
+
+    if (!chatRecord) {
+      throw new WorkerError("not_found:chat");
+    }
+
+    if (chatRecord.userId !== session.user.id) {
+      throw new WorkerError("forbidden:chat");
+    }
+
+    // Update visibility
+    const updated = await db
+      .update(chat)
+      .set({ visibility })
+      .where(eq(chat.id, chatId))
+      .returning();
+
+    return c.json(updated[0]);
+  }
+);
+
+/**
+ * DELETE /api/chat/messages/trailing
+ * Delete all messages after a specific timestamp in a chat
+ */
+const trailingMessagesSchema = z.object({
+  messageId: z.string().uuid(),
+});
+
+chatRoutes.delete(
+  "/messages/trailing",
+  zValidator("json", trailingMessagesSchema),
+  async (c) => {
+    const { messageId } = c.req.valid("json");
+
+    const session = await getSessionFromRequest(c);
+
+    if (!session?.user) {
+      throw new WorkerError("unauthorized:chat");
+    }
+
+    const db = getDb(c);
+
+    // Get the message to find its timestamp and chatId
+    const messages = await db
+      .select()
+      .from(messageTable)
+      .where(eq(messageTable.id, messageId));
+    const targetMessage = messages[0];
+
+    if (!targetMessage) {
+      throw new WorkerError("not_found:message");
+    }
+
+    // Verify ownership through chat
+    const chats = await db
+      .select()
+      .from(chat)
+      .where(eq(chat.id, targetMessage.chatId));
+    const chatRecord = chats[0];
+
+    if (!chatRecord || chatRecord.userId !== session.user.id) {
+      throw new WorkerError("forbidden:chat");
+    }
+
+    // Delete messages after the target message's timestamp
+    await db
+      .delete(messageTable)
+      .where(
+        and(
+          eq(messageTable.chatId, targetMessage.chatId),
+          gt(messageTable.createdAt, targetMessage.createdAt)
+        )
+      );
+
+    return c.json({ success: true });
+  }
+);
+
+/**
+ * POST /api/chat/title
+ * Generate title from message using AI and update the chat
+ */
+const titleRequestSchema = z.object({
+  chatId: z.string().uuid(),
+  message: z.string(),
+});
+
+chatRoutes.post("/title", zValidator("json", titleRequestSchema), async (c) => {
+  const { chatId, message } = c.req.valid("json");
+
+  const session = await getSessionFromRequest(c);
+
+  if (!session?.user) {
+    throw new WorkerError("unauthorized:chat");
+  }
+
+  const db = getDb(c);
+
+  // Verify chat ownership
+  const chats = await db.select().from(chat).where(eq(chat.id, chatId));
+  const chatRecord = chats[0];
+
+  if (!chatRecord) {
+    throw new WorkerError("not_found:chat");
+  }
+
+  if (chatRecord.userId !== session.user.id) {
+    throw new WorkerError("forbidden:chat");
+  }
+
+  try {
+    const model = await getTitleModelForWorker(c.env);
+    const { text } = await generateText({
+      model,
+      prompt: `${titlePrompt}\n\nUser message: ${message}`,
+    });
+
+    const title = text.trim() || "New chat";
+
+    // Update the chat title in database
+    await db.update(chat).set({ title }).where(eq(chat.id, chatId));
+
+    return c.json({ title });
+  } catch (error) {
+    console.error("[Title Generation] Error:", error);
+    // Fallback to "New chat" if AI fails
+    return c.json({ title: "New chat" });
+  }
+});

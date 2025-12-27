@@ -1,23 +1,29 @@
 "use client";
 
-import { ExternalLinkIcon, FileTextIcon, GlobeIcon, TrendingUpIcon } from "lucide-react";
+import { ExternalLinkIcon, FileTextIcon, GlobeIcon } from "lucide-react";
 import type { ComponentProps } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { cn } from "@/lib/utils";
 
-export interface SearchResult {
+export type SearchResult = {
   title: string;
   url: string;
   snippet: string;
   credibility: number;
   domain: string;
   publishedAt?: string;
-}
+};
 
-export interface SearchResultsData {
+export type SearchResultsData = {
   query: string;
   dateRange?: string;
   results: SearchResult[];
@@ -27,29 +33,53 @@ export interface SearchResultsData {
     highCredibilityCount: number;
     searchedAt: string;
   };
-}
+};
 
 export interface SearchResultsProps extends ComponentProps<"div"> {
   data: SearchResultsData;
 }
 
-const getCredibilityLevel = (score: number): { level: string; color: string; bg: string } => {
+const getCredibilityLevel = (
+  score: number
+): { level: string; color: string; bg: string } => {
   if (score >= 0.8) {
-    return { level: "High", color: "text-green-500", bg: "bg-green-500/10 border-green-500/20" };
+    return {
+      level: "High",
+      color: "text-green-500",
+      bg: "bg-green-500/10 border-green-500/20",
+    };
   }
   if (score >= 0.6) {
-    return { level: "Medium", color: "text-yellow-500", bg: "bg-yellow-500/10 border-yellow-500/20" };
+    return {
+      level: "Medium",
+      color: "text-yellow-500",
+      bg: "bg-yellow-500/10 border-yellow-500/20",
+    };
   }
-  return { level: "Low", color: "text-red-500", bg: "bg-red-500/10 border-red-500/20" };
+  return {
+    level: "Low",
+    color: "text-red-500",
+    bg: "bg-red-500/10 border-red-500/20",
+  };
 };
 
 const formatDate = (dateString?: string) => {
-  if (!dateString) return "Unknown";
+  if (!dateString) {
+    return "Unknown";
+  }
   const date = new Date(dateString);
-  return date.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  return date.toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+  });
 };
 
-export function SearchResults({ data, className, ...props }: SearchResultsProps) {
+export function SearchResults({
+  data,
+  className,
+  ...props
+}: SearchResultsProps) {
   const { results, count, query, dateRange, metadata } = data;
 
   return (
@@ -58,7 +88,7 @@ export function SearchResults({ data, className, ...props }: SearchResultsProps)
         <CardHeader className="space-y-3">
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-1">
-              <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <CardTitle className="flex items-center gap-2 font-semibold text-base">
                 <GlobeIcon className="size-4" />
                 Search Results
               </CardTitle>
@@ -71,7 +101,7 @@ export function SearchResults({ data, className, ...props }: SearchResultsProps)
                 )}
               </CardDescription>
             </div>
-            <Badge variant="outline" className="shrink-0">
+            <Badge className="shrink-0" variant="outline">
               {count} results
             </Badge>
           </div>
@@ -80,15 +110,15 @@ export function SearchResults({ data, className, ...props }: SearchResultsProps)
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">Avg credibility:</span>
               <Badge
-                variant="outline"
                 className={cn(
                   "font-medium",
                   metadata.averageCredibility >= 0.7
-                    ? "text-green-500 border-green-500/20"
+                    ? "border-green-500/20 text-green-500"
                     : metadata.averageCredibility >= 0.5
-                    ? "text-yellow-500 border-yellow-500/20"
-                    : "text-red-500 border-red-500/20"
+                      ? "border-yellow-500/20 text-yellow-500"
+                      : "border-red-500/20 text-red-500"
                 )}
+                variant="outline"
               >
                 {Math.round(metadata.averageCredibility * 100)}%
               </Badge>
@@ -96,7 +126,9 @@ export function SearchResults({ data, className, ...props }: SearchResultsProps)
 
             <div className="flex items-center gap-2">
               <span className="text-muted-foreground">High credibility:</span>
-              <span className="font-medium text-green-500">{metadata.highCredibilityCount}</span>
+              <span className="font-medium text-green-500">
+                {metadata.highCredibilityCount}
+              </span>
             </div>
 
             <div className="ml-auto text-muted-foreground">
@@ -109,7 +141,11 @@ export function SearchResults({ data, className, ...props }: SearchResultsProps)
           <ScrollArea className="h-[500px] pr-4">
             <div className="space-y-3">
               {results.map((result, index) => (
-                <ResultCard key={`${result.url}-${index}`} result={result} index={index} />
+                <ResultCard
+                  index={index}
+                  key={`${result.url}-${index}`}
+                  result={result}
+                />
               ))}
             </div>
           </ScrollArea>
@@ -119,14 +155,16 @@ export function SearchResults({ data, className, ...props }: SearchResultsProps)
   );
 }
 
-interface ResultCardProps {
+type ResultCardProps = {
   result: SearchResult;
   index: number;
-}
+};
 
 function ResultCard({ result, index }: ResultCardProps) {
   const credibility = getCredibilityLevel(result.credibility);
-  const domainUrl = result.domain.startsWith("http") ? result.domain : `https://${result.domain}`;
+  const _domainUrl = result.domain.startsWith("http")
+    ? result.domain
+    : `https://${result.domain}`;
 
   return (
     <div className="group rounded-lg border border-border/50 bg-muted/30 p-4 transition-all hover:border-border hover:bg-muted/50 hover:shadow-md">
@@ -139,13 +177,15 @@ function ResultCard({ result, index }: ResultCardProps) {
           <div className="flex items-start justify-between gap-2">
             <div className="flex-1 space-y-1">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-mono text-muted-foreground">
+                <span className="font-mono text-muted-foreground text-xs">
                   {String(index + 1).padStart(2, "0")}
                 </span>
-                <h3 className="text-sm font-semibold text-foreground">{result.title}</h3>
+                <h3 className="font-semibold text-foreground text-sm">
+                  {result.title}
+                </h3>
               </div>
 
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs">
                 <span className="font-medium">{result.domain}</span>
                 <span>•</span>
                 <span>{formatDate(result.publishedAt)}</span>
@@ -154,26 +194,26 @@ function ResultCard({ result, index }: ResultCardProps) {
 
             <div className="flex items-center gap-2">
               <Badge
-                variant="outline"
                 className={cn(
-                  "shrink-0 text-xs font-medium",
+                  "shrink-0 font-medium text-xs",
                   credibility.color,
                   credibility.bg
                 )}
+                variant="outline"
               >
                 {credibility.level} credibility
               </Badge>
               <Button
-                variant="ghost"
-                size="icon-sm"
-                className="shrink-0"
                 asChild
+                className="shrink-0"
+                size="icon-sm"
+                variant="ghost"
               >
                 <a
-                  href={result.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
                   aria-label="Open external link"
+                  href={result.url}
+                  rel="noopener noreferrer"
+                  target="_blank"
                 >
                   <ExternalLinkIcon className="size-3" />
                 </a>
@@ -181,7 +221,7 @@ function ResultCard({ result, index }: ResultCardProps) {
             </div>
           </div>
 
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-xs leading-relaxed">
             {result.snippet}
           </p>
 
@@ -196,13 +236,13 @@ function ResultCard({ result, index }: ResultCardProps) {
                   result.credibility >= 0.8
                     ? "bg-green-500"
                     : result.credibility >= 0.6
-                    ? "bg-yellow-500"
-                    : "bg-red-500"
+                      ? "bg-yellow-500"
+                      : "bg-red-500"
                 )}
                 style={{ width: `${result.credibility * 100}%` }}
               />
             </div>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-muted-foreground text-xs">
               {Math.round(result.credibility * 100)}%
             </span>
           </div>

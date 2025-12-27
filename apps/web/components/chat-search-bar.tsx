@@ -1,9 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { Search, X, Clock } from "lucide-react";
-import { Input } from "@/components/ui/input";
-import { Button } from "@/components/ui/button";
+import { Clock, Search, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -11,17 +10,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { cn } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
 import type { SearchResult } from "@/lib/chat-search";
-import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
-interface ChatSearchBarProps {
+type ChatSearchBarProps = {
   userId: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-}
+};
 
-export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps) {
+export function ChatSearchBar({
+  userId,
+  open,
+  onOpenChange,
+}: ChatSearchBarProps) {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
@@ -36,7 +39,9 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
 
     setIsSearching(true);
     try {
-      const response = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+      const response = await fetch(
+        `/api/search?q=${encodeURIComponent(searchQuery)}`
+      );
       if (!response.ok) {
         throw new Error("Search failed");
       }
@@ -61,19 +66,23 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
     }, 300);
 
     return () => clearTimeout(timeout);
-  }, [query]);
+  }, [query, searchChats]);
 
   // Keyboard navigation
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (results.length === 0) return;
+      if (results.length === 0) {
+        return;
+      }
 
       if (e.key === "ArrowDown") {
         e.preventDefault();
         setSelectedIndex((prev) => (prev + 1) % results.length);
       } else if (e.key === "ArrowUp") {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + results.length) % results.length);
+        setSelectedIndex(
+          (prev) => (prev - 1 + results.length) % results.length
+        );
       } else if (e.key === "Enter" && results[selectedIndex]) {
         e.preventDefault();
         router.push(`/chat/${results[selectedIndex].id}`);
@@ -93,7 +102,7 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog onOpenChange={onOpenChange} open={open}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Search Chats</DialogTitle>
@@ -104,22 +113,22 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
 
         <div className="space-y-4">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Search className="-translate-y-1/2 absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
             <Input
-              value={query}
+              autoFocus
+              className="pr-10 pl-10"
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={handleKeyDown}
               placeholder="Search chats..."
-              className="pl-10 pr-10"
-              autoFocus
+              value={query}
             />
             {query && (
               <button
+                className="-translate-y-1/2 absolute top-1/2 right-3"
                 onClick={() => {
                   setQuery("");
                   setResults([]);
                 }}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
               >
                 <X className="h-4 w-4 text-muted-foreground hover:text-foreground" />
               </button>
@@ -135,12 +144,13 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
               <div className="space-y-2">
                 {results.map((result, index) => (
                   <button
-                    key={result.id}
-                    onClick={() => handleResultClick(result.id)}
                     className={cn(
                       "w-full rounded-lg border p-3 text-left transition-all hover:bg-accent",
-                      selectedIndex === index && "bg-accent ring-1 ring-foreground"
+                      selectedIndex === index &&
+                        "bg-accent ring-1 ring-foreground"
                     )}
+                    key={result.id}
+                    onClick={() => handleResultClick(result.id)}
                   >
                     <div className="flex items-start justify-between gap-2">
                       <div className="flex-1 space-y-1">
@@ -149,9 +159,12 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
                           <div className="flex gap-1">
                             {result.tags.map((tag) => (
                               <span
-                                key={tag.id}
                                 className="rounded px-1.5 py-0.5 text-xs"
-                                style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
+                                key={tag.id}
+                                style={{
+                                  backgroundColor: `${tag.color}20`,
+                                  color: tag.color,
+                                }}
                               >
                                 {tag.name}
                               </span>
@@ -159,11 +172,11 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
                           </div>
                         </div>
                         {result.snippet && (
-                          <p className="line-clamp-2 text-sm text-muted-foreground">
+                          <p className="line-clamp-2 text-muted-foreground text-sm">
                             {result.snippet}
                           </p>
                         )}
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 text-muted-foreground text-xs">
                           <Clock className="h-3 w-3" />
                           <span>
                             {new Date(result.createdAt).toLocaleDateString()}
@@ -171,7 +184,9 @@ export function ChatSearchBar({ userId, open, onOpenChange }: ChatSearchBarProps
                           {result.matchedMessages > 0 && (
                             <>
                               <span>•</span>
-                              <span>{result.matchedMessages} matching messages</span>
+                              <span>
+                                {result.matchedMessages} matching messages
+                              </span>
                             </>
                           )}
                         </div>

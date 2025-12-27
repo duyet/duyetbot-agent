@@ -5,22 +5,22 @@
 
 export type UserType = "guest" | "regular";
 
-export interface SessionPayload {
+export type SessionPayload = {
   id: string;
   email?: string;
   type: UserType;
   exp: number;
   iat: number;
-}
+};
 
-export interface Session {
+export type Session = {
   user: {
     id: string;
     email?: string;
     type: UserType;
   };
   expires: string;
-}
+};
 
 // biome-ignore lint/complexity/useLiteralKeys: Needed for dynamic access
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.AUTH_SECRET;
@@ -44,7 +44,10 @@ function base64UrlEncode(buffer: Uint8Array): string {
  */
 function base64UrlDecode(str: string): Uint8Array {
   const base64 = str.replace(/-/g, "+").replace(/_/g, "/");
-  const padded = base64.padEnd(base64.length + ((4 - (base64.length % 4)) % 4), "=");
+  const padded = base64.padEnd(
+    base64.length + ((4 - (base64.length % 4)) % 4),
+    "="
+  );
   const binary = atob(padded);
   const bytes = new Uint8Array(binary.length);
   for (let i = 0; i < binary.length; i++) {
@@ -68,11 +71,7 @@ async function sign(data: string, secret: string): Promise<string> {
     ["sign"]
   );
 
-  const signature = await crypto.subtle.sign(
-    "HMAC",
-    key,
-    encoder.encode(data)
-  );
+  const signature = await crypto.subtle.sign("HMAC", key, encoder.encode(data));
 
   return base64UrlEncode(new Uint8Array(signature));
 }
@@ -184,7 +183,11 @@ export async function verifySessionToken(
     const tokenData = `${encodedHeader}.${encodedPayload}`;
 
     // Verify signature
-    const isValid = await verify(tokenData, signature, SESSION_SECRET as string);
+    const isValid = await verify(
+      tokenData,
+      signature,
+      SESSION_SECRET as string
+    );
     if (!isValid) {
       return null;
     }
@@ -210,9 +213,7 @@ export async function verifySessionToken(
 /**
  * Create a session object from a payload
  */
-export function createSessionFromPayload(
-  payload: SessionPayload
-): Session {
+export function createSessionFromPayload(payload: SessionPayload): Session {
   return {
     user: {
       id: payload.id,

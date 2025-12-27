@@ -2,8 +2,8 @@
 
 import { ChevronUp } from "lucide-react";
 import Image from "next/image";
-import { useRouter } from "next/navigation";
 import { useTheme } from "next-themes";
+import { useState } from "react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -16,23 +16,25 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
+import { useAuth } from "@/hooks/use-auth";
 import { guestRegex } from "@/lib/constants";
 import { LoaderIcon } from "./icons";
+import { LoginModal } from "./login-modal";
 import { toast } from "./toast";
-import { useAuth } from "@/hooks/use-auth";
 
-export interface AuthUser {
+export type AuthUser = {
   id: string;
   email?: string;
   type: "guest" | "regular";
-}
+};
 
 export function SidebarUserNav({ user }: { user: AuthUser }) {
-  const router = useRouter();
   const { data, status, signOut } = useAuth();
   const { setTheme, resolvedTheme } = useTheme();
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
 
-  const isGuest = guestRegex.test(data?.user?.email ?? "") || user?.type === "guest";
+  const isGuest =
+    guestRegex.test(data?.user?.email ?? "") || user?.type === "guest";
 
   return (
     <SidebarMenu>
@@ -85,34 +87,39 @@ export function SidebarUserNav({ user }: { user: AuthUser }) {
               {`Toggle ${resolvedTheme === "light" ? "dark" : "light"} mode`}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem asChild data-testid="user-nav-item-auth">
-              <button
-                className="w-full cursor-pointer"
-                onClick={() => {
-                  if (status === "loading") {
-                    toast({
-                      type: "error",
-                      description:
-                        "Checking authentication status, please try again!",
-                    });
+            <DropdownMenuItem
+              data-testid="user-nav-item-auth"
+              onSelect={(e) => {
+                e.preventDefault();
+                if (status === "loading") {
+                  toast({
+                    type: "error",
+                    description:
+                      "Checking authentication status, please try again!",
+                  });
+                  return;
+                }
 
-                    return;
-                  }
-
-                  if (isGuest) {
-                    router.push("/login");
-                  } else {
-                    signOut();
-                  }
-                }}
-                type="button"
-              >
-                {isGuest ? "Login to your account" : "Sign out"}
-              </button>
+                if (isGuest) {
+                  setIsLoginModalOpen(true);
+                } else {
+                  signOut();
+                }
+              }}
+            >
+              {isGuest ? "Login to your account" : "Sign out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarMenuItem>
+
+      {/* Login Modal */}
+      {isGuest && (
+        <LoginModal
+          open={isLoginModalOpen}
+          onOpenChange={setIsLoginModalOpen}
+        />
+      )}
     </SidebarMenu>
   );
 }

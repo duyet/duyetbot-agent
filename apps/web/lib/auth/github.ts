@@ -3,24 +3,24 @@
  */
 
 import { kv } from "@vercel/kv";
-import { setSessionCookie } from "@/lib/auth/middleware";
 import { createSessionToken } from "@/lib/auth/jwt";
-import { getUser, createUser } from "@/lib/db/queries";
+import { setSessionCookie } from "@/lib/auth/middleware";
+import { createUser, getUser } from "@/lib/db/queries";
 import { hashPassword } from "./crypto";
 
-export interface GitHubUser {
+export type GitHubUser = {
   id: number;
   login: string;
   email: string;
   name?: string;
   avatar_url?: string;
-}
+};
 
-export interface GitHubTokenResponse {
+export type GitHubTokenResponse = {
   access_token: string;
   token_type: string;
   scope: string;
-}
+};
 
 /**
  * Generate a random state token for OAuth
@@ -28,7 +28,9 @@ export interface GitHubTokenResponse {
 function generateStateToken(): string {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join("");
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, "0")).join(
+    ""
+  );
 }
 
 /**
@@ -82,9 +84,7 @@ export async function exchangeCodeForToken(
 /**
  * Fetch user profile from GitHub API
  */
-export async function getGitHubUser(
-  accessToken: string
-): Promise<GitHubUser> {
+export async function getGitHubUser(accessToken: string): Promise<GitHubUser> {
   const response = await fetch("https://api.github.com/user", {
     headers: {
       Authorization: `Bearer ${accessToken}`,
