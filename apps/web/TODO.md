@@ -62,6 +62,8 @@
 - [x] **Custom model parameters** - Temperature, maxTokens, topP, frequency/presence penalty via settings UI
 - [x] **Chat branching** - Create parallel conversation branches via `/api/chat/branch`
 - [x] **Chat export** - Export conversations as Markdown, JSON, or PDF with clipboard copy
+- [x] **Message editing** - Edit user messages with inline editor, regenerates AI response
+- [x] **Message deletion** - Delete individual messages via `/api/chat/messages/:id`
 
 ---
 
@@ -75,8 +77,8 @@
 - [x] **Title auto-generation** - Generate titles from first message ✅
 - [x] **Chat branching** - Create parallel conversation branches ✅
 - [x] **Chat export** - Export conversations (Markdown, JSON, PDF) ✅
-- [ ] **Message editing** - Allow users to edit sent messages
-- [ ] **Message deletion** - Allow users to delete messages
+- [x] **Message editing** - Edit user messages and regenerate response ✅
+- [x] **Message deletion** - Delete messages via `/api/chat/messages/:id` ✅
 
 ### 2. Model & Provider Integration
 **Goal:** Seamless model switching and provider management
@@ -163,14 +165,14 @@
 
 ## 🎯 Immediate Next Steps
 
-### Priority 1: Message Editing/Deletion
-Allow users to edit or delete sent messages.
-
-### Priority 2: Tool System Enhancement
+### Priority 1: Tool System Enhancement
 Integrate DuyetMCP, web search, and tool approval UI.
 
-### Priority 3: Guest User Flow
+### Priority 2: Guest User Flow
 Complete rate limiting and guest session management.
+
+### Priority 3: Model Comparison
+Allow comparing responses from different models side-by-side.
 
 ---
 

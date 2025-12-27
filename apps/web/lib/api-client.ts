@@ -238,6 +238,19 @@ export async function deleteTrailingMessages({
 }
 
 /**
+ * Delete a single message by ID
+ */
+export async function deleteMessage({ id }: { id: string }): Promise<void> {
+  const result = await safeFetch(`/api/chat/messages/${id}`, {
+    method: "DELETE",
+  });
+
+  if (result.error) {
+    throw new Error(result.error);
+  }
+}
+
+/**
  * Generate title from message and update chat
  * With proper error handling and logging
  */

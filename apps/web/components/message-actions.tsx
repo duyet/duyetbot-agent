@@ -1,14 +1,23 @@
+import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
-import { GitBranch } from "lucide-react";
-import { memo } from "react";
+import { memo, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
+import { unstable_serialize } from "swr/infinite";
 import { useCopyToClipboard } from "usehooks-ts";
+import { deleteMessage } from "@/lib/api-client";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
 import { ChatBranch } from "./chat-branch";
 import { Action, Actions } from "./elements/actions";
-import { CopyIcon, PencilEditIcon, ThumbDownIcon, ThumbUpIcon } from "./icons";
+import {
+  CopyIcon,
+  PencilEditIcon,
+  ThumbDownIcon,
+  ThumbUpIcon,
+  TrashIcon,
+} from "./icons";
+import { getChatHistoryPaginationKey } from "./sidebar-history";
 
 export function PureMessageActions({
   chatId,
@@ -16,19 +25,47 @@ export function PureMessageActions({
   vote,
   isLoading,
   setMode,
+  setMessages,
 }: {
   chatId: string;
   message: ChatMessage;
   vote: Vote | undefined;
   isLoading: boolean;
   setMode?: (mode: "view" | "edit") => void;
+  setMessages?: UseChatHelpers<ChatMessage>["setMessages"];
 }) {
   const { mutate } = useSWRConfig();
   const [_, copyToClipboard] = useCopyToClipboard();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   if (isLoading) {
     return null;
   }
+
+  const handleDelete = async () => {
+    if (!setMessages) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await deleteMessage({ id: message.id });
+
+      // Remove the message from local state
+      setMessages((messages) => messages.filter((m) => m.id !== message.id));
+
+      // Refresh sidebar in case this was the last message
+      mutate(unstable_serialize(getChatHistoryPaginationKey));
+
+      toast.success("Message deleted");
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to delete message"
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const textFromParts = message.parts
     ?.filter((part) => part.type === "text")
@@ -46,11 +83,11 @@ export function PureMessageActions({
     toast.success("Copied to clipboard!");
   };
 
-  // User messages get edit (on hover) and copy actions
+  // User messages get edit, delete (on hover) and copy actions
   if (message.role === "user") {
     return (
       <Actions className="-mr-0.5 justify-end">
-        <div className="relative">
+        <div className="relative flex items-center gap-1">
           {setMode && (
             <Action
               className="-left-10 absolute top-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover/message:opacity-100"
@@ -59,6 +96,17 @@ export function PureMessageActions({
               tooltip="Edit"
             >
               <PencilEditIcon />
+            </Action>
+          )}
+          {setMessages && (
+            <Action
+              className="-left-[72px] absolute top-0 opacity-0 transition-opacity focus-visible:opacity-100 group-hover/message:opacity-100"
+              data-testid="message-delete-button"
+              disabled={isDeleting}
+              onClick={handleDelete}
+              tooltip="Delete"
+            >
+              <TrashIcon size={14} />
             </Action>
           )}
           <Action onClick={handleCopy} tooltip="Copy">

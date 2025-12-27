@@ -5,6 +5,7 @@
  * DELETE /api/chat?id={id} - Delete chat
  * PATCH /api/chat/visibility - Update chat visibility
  * DELETE /api/chat/messages/trailing - Delete trailing messages after timestamp
+ * DELETE /api/chat/messages/:id - Delete a single message
  * POST /api/chat/title - Generate title from message (requires AI)
  * POST /api/chat/branch - Create a branch from an existing chat
  */
@@ -174,13 +175,15 @@ const postRequestBodySchema = z.object({
   selectedChatModel: z.string(),
   selectedVisibilityType: z.enum(["public", "private"]),
   customInstructions: z.string().optional(),
-  aiSettings: z.object({
-    temperature: z.number().min(0).max(2).optional(),
-    maxTokens: z.number().optional(),
-    topP: z.number().min(0).max(1).optional(),
-    frequencyPenalty: z.number().min(-2).max(2).optional(),
-    presencePenalty: z.number().min(-2).max(2).optional(),
-  }).optional(),
+  aiSettings: z
+    .object({
+      temperature: z.number().min(0).max(2).optional(),
+      maxTokens: z.number().optional(),
+      topP: z.number().min(0).max(1).optional(),
+      frequencyPenalty: z.number().min(-2).max(2).optional(),
+      presencePenalty: z.number().min(-2).max(2).optional(),
+    })
+    .optional(),
 });
 
 /**
@@ -204,20 +207,24 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
     aiSettings,
   } = c.req.valid("json");
 
-  console.log(`[${requestId}] Request: chatId=${id}, model=${selectedChatModel}, hasMessage=${!!message}`);
+  console.log(
+    `[${requestId}] Request: chatId=${id}, model=${selectedChatModel}, hasMessage=${!!message}`
+  );
 
   let session = await getSessionFromRequest(c);
   let sessionToken: string | undefined;
 
   // Auto-create guest session if not authenticated
-  if (!session?.user) {
+  if (session?.user) {
+    console.log(`[${requestId}] Authenticated: userId=${session.user.id}`);
+  } else {
     console.log(`[${requestId}] No auth - creating guest session`);
     const guestData = await createGuestSession(c);
     session = guestData.session;
     sessionToken = guestData.token;
-    console.log(`[${requestId}] Guest session created: userId=${session.user.id}`);
-  } else {
-    console.log(`[${requestId}] Authenticated: userId=${session.user.id}`);
+    console.log(
+      `[${requestId}] Guest session created: userId=${session.user.id}`
+    );
   }
 
   const db = getDb(c);
@@ -228,14 +235,20 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
   const existingChat = existingChats[0];
 
   if (existingChat) {
-    console.log(`[${requestId}] Chat exists: title="${existingChat.title}", userId=${existingChat.userId}`);
+    console.log(
+      `[${requestId}] Chat exists: title="${existingChat.title}", userId=${existingChat.userId}`
+    );
     if (existingChat.userId !== session.user.id) {
-      console.log(`[${requestId}] Forbidden: chat userId=${existingChat.userId} != session userId=${session.user.id}`);
+      console.log(
+        `[${requestId}] Forbidden: chat userId=${existingChat.userId} != session userId=${session.user.id}`
+      );
       throw new WorkerError("forbidden:chat");
     }
   } else if (message?.role === "user") {
     // Create new chat
-    console.log(`[${requestId}] Creating new chat: ${id} with visibility=${selectedVisibilityType}`);
+    console.log(
+      `[${requestId}] Creating new chat: ${id} with visibility=${selectedVisibilityType}`
+    );
     await db.insert(chat).values({
       id,
       createdAt: new Date(),
@@ -298,14 +311,18 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
     country: cf?.country || "Unknown",
   };
 
-  console.log(`[${requestId}] Location: ${requestHints.city}, ${requestHints.country} (${requestHints.latitude},${requestHints.longitude})`);
+  console.log(
+    `[${requestId}] Location: ${requestHints.city}, ${requestHints.country} (${requestHints.latitude},${requestHints.longitude})`
+  );
 
   let system = createWebChatSystemPrompt(selectedChatModel, requestHints);
 
   // Append custom instructions if provided
   if (customInstructions?.trim()) {
     system = `${system}\n\nUser's Custom Instructions:\n${customInstructions.trim()}`;
-    console.log(`[${requestId}] Custom instructions applied (${customInstructions.length} chars)`);
+    console.log(
+      `[${requestId}] Custom instructions applied (${customInstructions.length} chars)`
+    );
   }
 
   // Get tools for this session
@@ -325,8 +342,12 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
     temperature,
     ...(aiSettings?.maxTokens && { maxTokens: aiSettings.maxTokens }),
     ...(aiSettings?.topP !== undefined && { topP: aiSettings.topP }),
-    ...(aiSettings?.frequencyPenalty !== undefined && { frequencyPenalty: aiSettings.frequencyPenalty }),
-    ...(aiSettings?.presencePenalty !== undefined && { presencePenalty: aiSettings.presencePenalty }),
+    ...(aiSettings?.frequencyPenalty !== undefined && {
+      frequencyPenalty: aiSettings.frequencyPenalty,
+    }),
+    ...(aiSettings?.presencePenalty !== undefined && {
+      presencePenalty: aiSettings.presencePenalty,
+    }),
   });
 
   // Get the response using toUIMessageStreamResponse for @ai-sdk/react compatibility
@@ -493,6 +514,53 @@ chatRoutes.delete(
 );
 
 /**
+ * DELETE /api/chat/messages/:id
+ * Delete a single message by ID
+ */
+chatRoutes.delete("/messages/:id", async (c) => {
+  const messageId = c.req.param("id");
+
+  if (!messageId) {
+    throw new WorkerError("validation:missing_message_id");
+  }
+
+  const session = await getSessionFromRequest(c);
+
+  if (!session?.user) {
+    throw new WorkerError("unauthorized:chat");
+  }
+
+  const db = getDb(c);
+
+  // Get the message to verify ownership
+  const messages = await db
+    .select()
+    .from(messageTable)
+    .where(eq(messageTable.id, messageId));
+  const targetMessage = messages[0];
+
+  if (!targetMessage) {
+    throw new WorkerError("not_found:message");
+  }
+
+  // Verify ownership through chat
+  const chats = await db
+    .select()
+    .from(chat)
+    .where(eq(chat.id, targetMessage.chatId));
+  const chatRecord = chats[0];
+
+  if (!chatRecord || chatRecord.userId !== session.user.id) {
+    throw new WorkerError("forbidden:chat");
+  }
+
+  // Delete the message
+  await db.delete(messageTable).where(eq(messageTable.id, messageId));
+
+  return c.json({ success: true });
+});
+
+/**
  * POST /api/chat/title
  * Generate title from message using AI and update the chat
  */
@@ -553,77 +621,87 @@ const branchRequestSchema = z.object({
   messageId: z.string().optional(), // Branch point message ID
 });
 
-chatRoutes.post("/branch", zValidator("json", branchRequestSchema), async (c) => {
-  const { chatId, messageId } = c.req.valid("json");
+chatRoutes.post(
+  "/branch",
+  zValidator("json", branchRequestSchema),
+  async (c) => {
+    const { chatId, messageId } = c.req.valid("json");
 
-  const session = await getSessionFromRequest(c);
-  if (!session?.user) {
-    throw new WorkerError("unauthorized:chat", "Must be logged in to branch chat");
-  }
-
-  const db = getDb(c);
-
-  // Get the original chat
-  const [originalChat] = await db
-    .select()
-    .from(chat)
-    .where(eq(chat.id, chatId))
-    .limit(1);
-
-  if (!originalChat) {
-    throw new WorkerError("not_found:database", `Chat ${chatId} not found`);
-  }
-
-  // Verify user owns the chat
-  if (originalChat.userId !== session.user.id) {
-    throw new WorkerError("unauthorized:chat", "Cannot branch another user's chat");
-  }
-
-  // Get messages to copy (all messages up to branchPoint if provided)
-  let messagesToCopy = await db
-    .select()
-    .from(messageTable)
-    .where(eq(messageTable.chatId, chatId))
-    .orderBy(messageTable.createdAt);
-
-  // If messageId is provided, only copy messages up to and including that message
-  if (messageId) {
-    const branchIndex = messagesToCopy.findIndex((m) => m.id === messageId);
-    if (branchIndex !== -1) {
-      messagesToCopy = messagesToCopy.slice(0, branchIndex + 1);
+    const session = await getSessionFromRequest(c);
+    if (!session?.user) {
+      throw new WorkerError(
+        "unauthorized:chat",
+        "Must be logged in to branch chat"
+      );
     }
+
+    const db = getDb(c);
+
+    // Get the original chat
+    const [originalChat] = await db
+      .select()
+      .from(chat)
+      .where(eq(chat.id, chatId))
+      .limit(1);
+
+    if (!originalChat) {
+      throw new WorkerError("not_found:database", `Chat ${chatId} not found`);
+    }
+
+    // Verify user owns the chat
+    if (originalChat.userId !== session.user.id) {
+      throw new WorkerError(
+        "unauthorized:chat",
+        "Cannot branch another user's chat"
+      );
+    }
+
+    // Get messages to copy (all messages up to branchPoint if provided)
+    let messagesToCopy = await db
+      .select()
+      .from(messageTable)
+      .where(eq(messageTable.chatId, chatId))
+      .orderBy(messageTable.createdAt);
+
+    // If messageId is provided, only copy messages up to and including that message
+    if (messageId) {
+      const branchIndex = messagesToCopy.findIndex((m) => m.id === messageId);
+      if (branchIndex !== -1) {
+        messagesToCopy = messagesToCopy.slice(0, branchIndex + 1);
+      }
+    }
+
+    // Create the new branched chat
+    const newChatId = generateUUID();
+    const now = new Date();
+
+    await db.insert(chat).values({
+      id: newChatId,
+      userId: session.user.id,
+      title: `${originalChat.title} (Branch)`,
+      visibility: originalChat.visibility,
+      parentChatId: chatId,
+      branchPoint: messageId ? now : null,
+      createdAt: now,
+    });
+
+    // Copy messages to the new chat with new IDs
+    if (messagesToCopy.length > 0) {
+      const newMessages = messagesToCopy.map((msg) => ({
+        id: generateUUID(),
+        chatId: newChatId,
+        role: msg.role,
+        parts: msg.parts,
+        attachments: msg.attachments,
+        createdAt: msg.createdAt,
+      }));
+
+      await db.insert(messageTable).values(newMessages);
+    }
+
+    return c.json({
+      newChatId,
+      messageCount: messagesToCopy.length,
+    });
   }
-
-  // Create the new branched chat
-  const newChatId = generateUUID();
-  const now = new Date();
-
-  await db.insert(chat).values({
-    id: newChatId,
-    userId: session.user.id,
-    title: `${originalChat.title} (Branch)`,
-    visibility: originalChat.visibility,
-    parentChatId: chatId,
-    branchPoint: messageId ? now : null,
-    createdAt: now,
-  });
-
-  // Copy messages to the new chat with new IDs
-  if (messagesToCopy.length > 0) {
-    const newMessages = messagesToCopy.map((msg) => ({
-      id: generateUUID(),
-      chatId: newChatId,
-      role: msg.role,
-      parts: msg.parts,
-      attachments: msg.attachments,
-      createdAt: msg.createdAt,
-    }));
-
-    await db.insert(messageTable).values(newMessages);
-  }
-
-  return c.json({
-    newChatId,
-    messageCount: messagesToCopy.length,
-  });
-});
+);
