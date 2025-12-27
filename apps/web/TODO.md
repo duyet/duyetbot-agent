@@ -129,9 +129,9 @@
 - [x] **Loading states** - ChatSkeleton, MessageSkeleton, SidebarSkeleton with full layout mimicking ✅
 - [x] **Error handling** - ErrorBoundary component, Next.js error.tsx pages, stream error recovery, graceful fallback UI ✅
 - [x] **Keyboard shortcuts** - Power user navigation (?, Ctrl+N, Ctrl+B, /) ✅
+- [x] **Toast notifications** - Context-aware feedback for file uploads, settings, tags, visibility changes ✅
 - [ ] **Accessibility** - WCAG 2.1 AA compliance
 - [ ] **Animations** - Smooth transitions and micro-interactions
-- [ ] **Toast notifications** - Context-aware feedback messages
 
 ### 8. Performance & Reliability
 **Goal:** Fast, reliable, scalable
