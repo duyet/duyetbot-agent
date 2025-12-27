@@ -14,6 +14,7 @@ const VALID_ARTIFACT_KINDS: Set<string> = new Set([
 	"image",
 	"text",
 	"sheet",
+	"chart",
 ]);
 
 function isValidArtifactKind(value: unknown): value is ArtifactKind {

@@ -151,7 +151,7 @@ export const document = sqliteTable(
 		createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
 		title: text("title").notNull(),
 		content: text("content"),
-		kind: text("text", { enum: ["text", "code", "image", "sheet"] })
+		kind: text("text", { enum: ["text", "code", "image", "sheet", "chart"] })
 			.notNull()
 			.default("text"),
 		userId: text("userId")
