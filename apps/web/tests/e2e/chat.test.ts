@@ -417,8 +417,9 @@ test.describe("Error Handling", () => {
     // Try to click disabled button (should do nothing)
     await sendButton.click({ timeout: 5000 }).catch(() => {});
 
-    // Should remain on home page
-    expect(page.url()).toBe("http://localhost:3000/");
+    // Should remain on home page (use flexible URL check for all environments)
+    expect(page.url()).toMatch(/\/$/);
+    expect(page.url()).not.toContain("/chat/");
   });
 
   test("handles whitespace-only message", async ({ page }) => {
