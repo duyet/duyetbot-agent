@@ -144,7 +144,7 @@
 - [x] **Performance monitoring** - Web Vitals tracking (LCP, INP, CLS, FCP, TTFB) with sessionStorage metrics and optional beacon analytics ✅
 - [x] **Error tracking** - Sentry integration with client/edge configs, replay, and filtered errors ✅
 - [x] **Rate limiting** - KV-based token bucket for guests (10/day) and users (60/min) ✅
-- [ ] **Caching strategy** - Cache static assets, API responses
+- [x] **Caching strategy** - Cloudflare Cache API for API responses, immutable headers for hashed assets, SWR for HTML ✅
 - [x] **CDN deployment** - Cloudflare Workers Assets for global distribution ✅
 - [ ] **Database optimization** - Query optimization, indexing
 
