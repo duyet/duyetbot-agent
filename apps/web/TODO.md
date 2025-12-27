@@ -86,8 +86,8 @@
 - [x] **OpenRouter integration** - Full API integration with all models ✅
 - [x] **Model selector UI** - Enhanced model picker with search and categories ✅
 - [x] **Custom model parameters** - Temperature, max tokens, topP via settings UI ✅
+- [x] **Provider fallback** - Graceful degradation when provider fails (streamWithFallback, executeWithFallback with fallback chains) ✅
 - [ ] **Model comparison** - Compare responses from different models
-- [ ] **Provider fallback** - Graceful degradation when provider fails
 
 ### 4. Tool System Enhancement
 **Goal:** Rich tool ecosystem for AI capabilities
@@ -113,10 +113,10 @@
 ### 6. User Management & Authentication
 **Goal:** Seamless user experience with proper auth
 
-- [ ] **Guest user support** - Temporary sessions with rate limiting
+- [x] **Guest user support** - Temporary sessions with rate limiting (10 msgs/day, auto-session, usage indicator) ✅
 - [ ] **Email/password auth** - Complete registration/login flow
 - [ ] **GitHub OAuth** - Social login integration
-- [ ] **Session persistence** - Remember user across sessions
+- [x] **Session persistence** - 30-day guest sessions via cookie Max-Age ✅
 - [ ] **User settings** - Preferences, default model, custom instructions
 - [ ] **Privacy controls** - Data export, deletion, consent
 
@@ -137,9 +137,9 @@
 
 - [ ] **Performance monitoring** - Track page load, interaction metrics
 - [ ] **Error tracking** - Sentry integration for error monitoring
-- [ ] **Rate limiting** - Per-user and per-IP rate limits
+- [x] **Rate limiting** - KV-based token bucket for guests (10/day) and users (60/min) ✅
 - [ ] **Caching strategy** - Cache static assets, API responses
-- [ ] **CDN deployment** - Cloudflare Workers Assets for global distribution
+- [x] **CDN deployment** - Cloudflare Workers Assets for global distribution ✅
 - [ ] **Database optimization** - Query optimization, indexing
 
 ### 9. Testing & Quality Assurance

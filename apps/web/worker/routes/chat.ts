@@ -27,7 +27,12 @@ import {
 	stream,
 	vote,
 } from "../../lib/db/schema";
-import { getLanguageModelForWorker, getTitleModelForWorker } from "../lib/ai";
+import {
+	executeWithFallback,
+	getLanguageModelForWorker,
+	getTitleModelForWorker,
+	streamWithFallback,
+} from "../lib/ai";
 import { createGuestSession, getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
 import { WorkerError } from "../lib/errors";
@@ -353,11 +358,6 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 	// Convert messages to AI SDK format
 	const coreMessages = convertToCoreMessages(allMessages);
 
-	// Get the model
-	console.log(`[${requestId}] Getting model: ${selectedChatModel}`);
-	const model = await getLanguageModelForWorker(c.env, selectedChatModel);
-	console.log(`[${requestId}] Model initialized`);
-
 	// Generate system prompt with packages/prompts
 	// Extract location from Cloudflare request.cf object
 	const cf = c.req.raw.cf as
@@ -398,23 +398,37 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 	// Build AI settings with defaults
 	const temperature = aiSettings?.temperature ?? 0.7;
 
-	// Create streaming response with AI SDK format and tools
-	console.log(`[${requestId}] Starting AI stream...`);
-	const result = streamText({
-		model,
-		system,
-		messages: coreMessages,
-		tools,
-		temperature,
-		...(aiSettings?.maxTokens && { maxTokens: aiSettings.maxTokens }),
-		...(aiSettings?.topP !== undefined && { topP: aiSettings.topP }),
-		...(aiSettings?.frequencyPenalty !== undefined && {
-			frequencyPenalty: aiSettings.frequencyPenalty,
-		}),
-		...(aiSettings?.presencePenalty !== undefined && {
-			presencePenalty: aiSettings.presencePenalty,
-		}),
-	});
+	// Create streaming response with fallback support
+	// If the primary model fails (rate limit, unavailable), falls back to alternative models
+	console.log(`[${requestId}] Starting AI stream with fallback support...`);
+	const { stream: result, modelUsed, usedFallback, fallbacksAttempted } = await streamWithFallback(
+		c.env,
+		selectedChatModel,
+		(model) =>
+			streamText({
+				model,
+				system,
+				messages: coreMessages,
+				tools,
+				temperature,
+				...(aiSettings?.maxTokens && { maxTokens: aiSettings.maxTokens }),
+				...(aiSettings?.topP !== undefined && { topP: aiSettings.topP }),
+				...(aiSettings?.frequencyPenalty !== undefined && {
+					frequencyPenalty: aiSettings.frequencyPenalty,
+				}),
+				...(aiSettings?.presencePenalty !== undefined && {
+					presencePenalty: aiSettings.presencePenalty,
+				}),
+			}),
+	);
+
+	if (usedFallback) {
+		console.log(
+			`[${requestId}] Used fallback model: ${modelUsed} (attempted: ${fallbacksAttempted.join(", ")})`,
+		);
+	} else {
+		console.log(`[${requestId}] Using primary model: ${modelUsed}`);
+	}
 
 	// Get the response using toUIMessageStreamResponse for @ai-sdk/react compatibility
 	const response = result.toUIMessageStreamResponse();
@@ -436,6 +450,13 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 			String(rateLimitInfo.remaining),
 		);
 		response.headers.set("X-RateLimit-Reset", rateLimitInfo.resetAt);
+	}
+
+	// Add fallback information headers
+	response.headers.set("X-Model-Used", modelUsed);
+	if (usedFallback) {
+		response.headers.set("X-Model-Fallback", "true");
+		response.headers.set("X-Model-Requested", selectedChatModel);
 	}
 
 	const duration = Date.now() - startTime;
@@ -669,13 +690,31 @@ chatRoutes.post("/title", zValidator("json", titleRequestSchema), async (c) => {
 	}
 
 	try {
-		const model = await getTitleModelForWorker(c.env);
-		const { text } = await generateText({
-			model,
-			prompt: `${titlePrompt}\n\nUser message: ${message}`,
-		});
+		// Use executeWithFallback for title generation with graceful degradation
+		const result = await executeWithFallback(
+			c.env,
+			"anthropic/claude-3.5-haiku", // Primary title model
+			async (model) => {
+				const { text } = await generateText({
+					model,
+					prompt: `${titlePrompt}\n\nUser message: ${message}`,
+				});
+				return text;
+			},
+		);
 
-		const title = text.trim() || "New chat";
+		if (!result.success) {
+			console.error("[Title Generation] All models failed:", result.error);
+			return c.json({ title: "New chat" });
+		}
+
+		const title = result.result?.trim() || "New chat";
+
+		if (result.fallbacksAttempted.length > 0) {
+			console.log(
+				`[Title Generation] Used fallback: ${result.modelUsed} (tried: ${result.fallbacksAttempted.join(", ")})`,
+			);
+		}
 
 		// Update the chat title in database
 		await db.update(chat).set({ title }).where(eq(chat.id, chatId));
