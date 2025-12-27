@@ -7,6 +7,7 @@ import { Hono } from "hono";
 import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
+import { addStaticCacheHeaders, cacheMiddleware } from "./lib/cache";
 import { WorkerError } from "./lib/errors";
 // Import route handlers
 import { authRoutes } from "./routes/auth";
@@ -33,6 +34,10 @@ app.use(
 		allowHeaders: ["Authorization", "Content-Type", "Cookie"],
 	}),
 );
+
+// Caching middleware for API responses (after CORS to ensure headers are set)
+app.use("/api/*", cacheMiddleware());
+app.use("/health", cacheMiddleware());
 
 // Global error handler - catches WorkerError and returns proper HTTP status
 app.onError((err, c) => {
@@ -113,7 +118,8 @@ app.get("*", async (c) => {
 		);
 
 		if (asset && asset.status !== 404) {
-			return asset;
+			// Add cache headers for static assets
+			return addStaticCacheHeaders(asset, path);
 		}
 
 		// For non-API routes, serve index.html (SPA fallback)
@@ -121,7 +127,11 @@ app.get("*", async (c) => {
 			new Request(new URL("/index.html", c.req.url)),
 		);
 
-		return indexAsset || c.json({ error: "Not found" }, 404);
+		if (indexAsset) {
+			return addStaticCacheHeaders(indexAsset, "/index.html");
+		}
+
+		return c.json({ error: "Not found" }, 404);
 	} catch {
 		return c.json({ error: "Not found" }, 404);
 	}
