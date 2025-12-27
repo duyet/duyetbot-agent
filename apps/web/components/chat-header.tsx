@@ -3,12 +3,14 @@
 import { useRouter } from "next/navigation";
 import { memo } from "react";
 import { useWindowSize } from "usehooks-ts";
+import { ChatExport } from "@/components/chat-export";
 import {
   ConnectionStatusIndicator,
   mapStatusToConnectionStatus,
 } from "@/components/connection-status";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
+import type { ChatMessage } from "@/lib/types";
 import { PlusIcon } from "./icons";
 import { useSidebar } from "./ui/sidebar";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
@@ -24,12 +26,16 @@ type ChatStatus =
 
 function PureChatHeader({
   chatId,
+  chatTitle,
+  messages,
   selectedVisibilityType,
   isReadonly,
   status,
   isOnline,
 }: {
   chatId: string;
+  chatTitle?: string;
+  messages?: ChatMessage[];
   selectedVisibilityType: VisibilityType;
   isReadonly: boolean;
   status?: ChatStatus;
@@ -71,8 +77,19 @@ function PureChatHeader({
         />
       )}
 
+      {/* Export button - only show when there are messages */}
+      {messages && messages.length > 0 && (
+        <div className="order-3">
+          <ChatExport
+            chatId={chatId}
+            chatTitle={chatTitle || "Chat"}
+            messages={messages}
+          />
+        </div>
+      )}
+
       {/* Connection status indicator */}
-      <div className="order-3 ml-auto md:ml-2">
+      <div className="order-4 ml-auto md:ml-2">
         <ConnectionStatusIndicator
           status={connectionStatus}
           variant="compact"
@@ -85,6 +102,8 @@ function PureChatHeader({
 export const ChatHeader = memo(PureChatHeader, (prevProps, nextProps) => {
   return (
     prevProps.chatId === nextProps.chatId &&
+    prevProps.chatTitle === nextProps.chatTitle &&
+    prevProps.messages?.length === nextProps.messages?.length &&
     prevProps.selectedVisibilityType === nextProps.selectedVisibilityType &&
     prevProps.isReadonly === nextProps.isReadonly &&
     prevProps.status === nextProps.status &&
