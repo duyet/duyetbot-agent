@@ -60,6 +60,8 @@
 - [x] **Chat history sidebar** - SWR infinite pagination with date grouping (Today/Yesterday/Last 7 days)
 - [x] **Title auto-generation** - AI-powered title generation after first response via `/api/chat/title`
 - [x] **Custom model parameters** - Temperature, maxTokens, topP, frequency/presence penalty via settings UI
+- [x] **Chat branching** - Create parallel conversation branches via `/api/chat/branch`
+- [x] **Chat export** - Export conversations as Markdown, JSON, or PDF with clipboard copy
 
 ---
 
@@ -71,8 +73,8 @@
 - [x] **Message persistence** - Messages saved to database ✅
 - [x] **Chat history** - Sidebar with previous conversations ✅
 - [x] **Title auto-generation** - Generate titles from first message ✅
-- [ ] **Chat branching** - Create parallel conversation branches
-- [ ] **Chat export** - Export conversations (Markdown, JSON)
+- [x] **Chat branching** - Create parallel conversation branches ✅
+- [x] **Chat export** - Export conversations (Markdown, JSON, PDF) ✅
 - [ ] **Message editing** - Allow users to edit sent messages
 - [ ] **Message deletion** - Allow users to delete messages
 
@@ -161,14 +163,14 @@
 
 ## 🎯 Immediate Next Steps
 
-### Priority 1: Chat Branching
-Allow users to create parallel conversation branches from any message.
-
-### Priority 2: Chat Export
-Export conversations in Markdown or JSON format.
-
-### Priority 3: Message Editing/Deletion
+### Priority 1: Message Editing/Deletion
 Allow users to edit or delete sent messages.
+
+### Priority 2: Tool System Enhancement
+Integrate DuyetMCP, web search, and tool approval UI.
+
+### Priority 3: Guest User Flow
+Complete rate limiting and guest session management.
 
 ---
 
