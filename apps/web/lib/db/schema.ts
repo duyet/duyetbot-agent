@@ -13,6 +13,14 @@ export const user = sqliteTable("User", {
     .$defaultFn(() => crypto.randomUUID()),
   email: text("email").notNull(),
   password: text("password"),
+  name: text("name"),
+  githubId: text("githubId").unique(),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
 });
 
 export type User = InferSelectModel<typeof user>;
@@ -25,10 +33,22 @@ export const chat = sqliteTable("Chat", {
   title: text("title").notNull(),
   userId: text("userId")
     .notNull()
-    .references(() => user.id, { onDelete: "no action", onUpdate: "no action" }),
+    .references(() => user.id, {
+      onDelete: "no action",
+      onUpdate: "no action",
+    }),
   visibility: text("visibility", { enum: ["public", "private"] })
     .notNull()
     .default("private"),
+  // Chat branching fields
+  parentChatId: text("parentChatId").references(() => chat.id, {
+    onDelete: "set null",
+    onUpdate: "no action",
+  }),
+  branchPoint: integer("branchPoint", { mode: "timestamp" }),
+  // Chat sharing fields
+  shareId: text("shareId").unique(),
+  shareToken: text("shareToken"),
 });
 
 export type Chat = InferSelectModel<typeof chat>;
@@ -41,7 +61,10 @@ export const messageDeprecated = sqliteTable("Message", {
     .$defaultFn(() => crypto.randomUUID()),
   chatId: text("chatId")
     .notNull()
-    .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
+    .references(() => chat.id, {
+      onDelete: "no action",
+      onUpdate: "no action",
+    }),
   role: text("role").notNull(),
   content: text("content", { mode: "json" }).notNull(),
   createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
@@ -55,7 +78,10 @@ export const message = sqliteTable("Message_v2", {
     .$defaultFn(() => crypto.randomUUID()),
   chatId: text("chatId")
     .notNull()
-    .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
+    .references(() => chat.id, {
+      onDelete: "no action",
+      onUpdate: "no action",
+    }),
   role: text("role").notNull(),
   parts: text("parts", { mode: "json" }).notNull(),
   attachments: text("attachments", { mode: "json" }).notNull(),
@@ -71,10 +97,16 @@ export const voteDeprecated = sqliteTable(
   {
     chatId: text("chatId")
       .notNull()
-      .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
+      .references(() => chat.id, {
+        onDelete: "no action",
+        onUpdate: "no action",
+      }),
     messageId: text("messageId")
       .notNull()
-      .references(() => messageDeprecated.id, { onDelete: "no action", onUpdate: "no action" }),
+      .references(() => messageDeprecated.id, {
+        onDelete: "no action",
+        onUpdate: "no action",
+      }),
     isUpvoted: integer("isUpvoted", { mode: "boolean" }).notNull(),
   },
   (table) => {
@@ -91,10 +123,16 @@ export const vote = sqliteTable(
   {
     chatId: text("chatId")
       .notNull()
-      .references(() => chat.id, { onDelete: "no action", onUpdate: "no action" }),
+      .references(() => chat.id, {
+        onDelete: "no action",
+        onUpdate: "no action",
+      }),
     messageId: text("messageId")
       .notNull()
-      .references(() => message.id, { onDelete: "no action", onUpdate: "no action" }),
+      .references(() => message.id, {
+        onDelete: "no action",
+        onUpdate: "no action",
+      }),
     isUpvoted: integer("isUpvoted", { mode: "boolean" }).notNull(),
   },
   (table) => {
@@ -118,7 +156,10 @@ export const document = sqliteTable(
       .default("text"),
     userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "no action", onUpdate: "no action" }),
+      .references(() => user.id, {
+        onDelete: "no action",
+        onUpdate: "no action",
+      }),
   },
   (table) => {
     return {
@@ -134,8 +175,9 @@ export const suggestion = sqliteTable(
   {
     id: text("id").$defaultFn(() => crypto.randomUUID()),
     documentId: text("documentId").notNull(),
-    documentCreatedAt: integer("documentCreatedAt", { mode: "timestamp" })
-      .notNull(),
+    documentCreatedAt: integer("documentCreatedAt", {
+      mode: "timestamp",
+    }).notNull(),
     originalText: text("originalText").notNull(),
     suggestedText: text("suggestedText").notNull(),
     description: text("description"),
@@ -144,7 +186,10 @@ export const suggestion = sqliteTable(
       .default(false),
     userId: text("userId")
       .notNull()
-      .references(() => user.id, { onDelete: "no action", onUpdate: "no action" }),
+      .references(() => user.id, {
+        onDelete: "no action",
+        onUpdate: "no action",
+      }),
     createdAt: integer("createdAt", { mode: "timestamp" }).notNull(),
   },
   (table) => ({
@@ -175,3 +220,96 @@ export const stream = sqliteTable(
 );
 
 export type Stream = InferSelectModel<typeof stream>;
+
+// Chat folders for organizing conversations
+export const chatFolder = sqliteTable("ChatFolder", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull(),
+  userId: text("userId")
+    .notNull()
+    .references(() => user.id, {
+      onDelete: "cascade",
+      onUpdate: "no action",
+    }),
+  color: text("color").notNull().default("#3b82f6"),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+  updatedAt: integer("updatedAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export type ChatFolder = InferSelectModel<typeof chatFolder>;
+
+// Chat to folder junction table
+export const chatToFolder = sqliteTable("ChatToFolder", {
+  chatId: text("chatId")
+    .notNull()
+    .references(() => chat.id, {
+      onDelete: "cascade",
+      onUpdate: "no action",
+    }),
+  folderId: text("folderId")
+    .notNull()
+    .references(() => chatFolder.id, {
+      onDelete: "cascade",
+      onUpdate: "no action",
+    }),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.chatId, table.folderId] }),
+  };
+});
+
+export type ChatToFolder = InferSelectModel<typeof chatToFolder>;
+
+// Chat tags for labeling conversations
+export const chatTag = sqliteTable("ChatTag", {
+  id: text("id")
+    .primaryKey()
+    .$defaultFn(() => crypto.randomUUID()),
+  name: text("name").notNull().unique(),
+  userId: text("userId")
+    .notNull()
+    .references(() => user.id, {
+      onDelete: "cascade",
+      onUpdate: "no action",
+    }),
+  color: text("color").notNull().default("#10b981"),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+});
+
+export type ChatTag = InferSelectModel<typeof chatTag>;
+
+// Chat to tag junction table
+export const chatToTag = sqliteTable("ChatToTag", {
+  chatId: text("chatId")
+    .notNull()
+    .references(() => chat.id, {
+      onDelete: "cascade",
+      onUpdate: "no action",
+    }),
+  tagId: text("tagId")
+    .notNull()
+    .references(() => chatTag.id, {
+      onDelete: "cascade",
+      onUpdate: "no action",
+    }),
+  createdAt: integer("createdAt", { mode: "timestamp" })
+    .notNull()
+    .$defaultFn(() => new Date()),
+}, (table) => {
+  return {
+    pk: primaryKey({ columns: [table.chatId, table.tagId] }),
+  };
+});
+
+export type ChatToTag = InferSelectModel<typeof chatToTag>;
