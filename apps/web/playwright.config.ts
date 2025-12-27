@@ -59,6 +59,17 @@ export default defineConfig({
       },
     },
 
+    // Production testing project - runs against deployed production URL
+    {
+      name: "production",
+      testMatch: /e2e\/.*.test.ts/,
+      use: {
+        ...devices["Desktop Chrome"],
+        baseURL: process.env.PRODUCTION_URL || "https://duyetbot-web.duyet.workers.dev",
+      },
+      // No webServer for production tests - assume server is already running
+    },
+
     // {
     //   name: 'firefox',
     //   use: { ...devices['Desktop Firefox'] },
