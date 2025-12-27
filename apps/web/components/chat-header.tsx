@@ -2,7 +2,6 @@
 
 import { useRouter } from "next/navigation";
 import { memo } from "react";
-import { useWindowSize } from "usehooks-ts";
 import { ChatExport } from "@/components/chat-export";
 import {
 	ConnectionStatusIndicator,
@@ -12,6 +11,7 @@ import { ContextWindowIndicator } from "@/components/context-window-indicator";
 import { GuestUsageIndicator } from "@/components/guest-usage-indicator";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
+import { useIsMobile } from "@/hooks/use-responsive";
 import type { ChatMessage } from "@/lib/types";
 import { PlusIcon } from "./icons";
 import { useSidebar } from "./ui/sidebar";
@@ -47,19 +47,23 @@ function PureChatHeader({
 }) {
 	const router = useRouter();
 	const { open } = useSidebar();
-
-	const { width: windowWidth } = useWindowSize();
+	const isMobile = useIsMobile();
 
 	const connectionStatus = mapStatusToConnectionStatus(
 		status,
 		isOnline ?? true,
 	);
 
+	// Show new chat button when:
+	// 1. Sidebar is closed (on desktop), OR
+	// 2. On mobile (sidebar is always a drawer, so always show button)
+	const showNewChatButton = !open || isMobile;
+
 	return (
-		<header className="sticky top-0 z-10 flex items-center gap-2 bg-background/95 px-2 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:px-2">
+		<header className="sticky top-0 z-10 flex items-center gap-1.5 bg-background/95 px-2 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-background/60 md:gap-2 md:px-3 lg:px-4">
 			<SidebarToggle />
 
-			{(!open || windowWidth < 768) && (
+			{showNewChatButton && (
 				<Button
 					className="order-2 ml-auto h-8 px-2 md:order-1 md:ml-0 md:h-fit md:px-2"
 					onClick={() => {
@@ -83,7 +87,7 @@ function PureChatHeader({
 
 			{/* Export button - only show when there are messages */}
 			{messages && messages.length > 0 && (
-				<div className="order-3">
+				<div className="order-3 hidden sm:block">
 					<ChatExport
 						chatId={chatId}
 						chatTitle={chatTitle || "Chat"}
@@ -94,7 +98,7 @@ function PureChatHeader({
 
 			{/* Context window indicator - shows conversation size */}
 			{messages && messages.length > 0 && selectedChatModel && (
-				<div className="order-4">
+				<div className="order-4 hidden sm:block">
 					<ContextWindowIndicator
 						messages={messages}
 						modelId={selectedChatModel}

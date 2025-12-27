@@ -15,7 +15,8 @@ import {
 	useState,
 } from "react";
 import { toast } from "sonner";
-import { useLocalStorage, useWindowSize } from "usehooks-ts";
+import { useLocalStorage } from "usehooks-ts";
+import { useIsDesktop } from "@/hooks/use-responsive";
 import {
 	ModelSelector,
 	ModelSelectorContent,
@@ -85,7 +86,7 @@ function PureMultimodalInput({
 	onModelChange?: (modelId: string) => void;
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
-	const { width } = useWindowSize();
+	const isDesktop = useIsDesktop();
 
 	const adjustHeight = useCallback(() => {
 		if (textareaRef.current) {
@@ -99,16 +100,17 @@ function PureMultimodalInput({
 		}
 	}, [adjustHeight]);
 
+	// Auto-focus the textarea on desktop after initial render
 	const hasAutoFocused = useRef(false);
 	useEffect(() => {
-		if (!hasAutoFocused.current && width) {
+		if (!hasAutoFocused.current && isDesktop) {
 			const timer = setTimeout(() => {
 				textareaRef.current?.focus();
 				hasAutoFocused.current = true;
 			}, 100);
 			return () => clearTimeout(timer);
 		}
-	}, [width]);
+	}, [isDesktop]);
 
 	const resetHeight = useCallback(() => {
 		if (textareaRef.current) {
@@ -168,7 +170,8 @@ function PureMultimodalInput({
 		resetHeight();
 		setInput("");
 
-		if (width && width > 768) {
+		// Auto-focus on desktop/tablet (not mobile) for better UX
+		if (isDesktop) {
 			textareaRef.current?.focus();
 		}
 	}, [
@@ -178,7 +181,7 @@ function PureMultimodalInput({
 		sendMessage,
 		setAttachments,
 		setLocalStorageInput,
-		width,
+		isDesktop,
 		chatId,
 		resetHeight,
 	]);
