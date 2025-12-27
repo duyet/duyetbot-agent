@@ -43,6 +43,10 @@ import {
 	PromptInputTools,
 } from "./elements/prompt-input";
 import { ArrowUpIcon, PaperclipIcon, StopIcon } from "./icons";
+import {
+	MentionAutocomplete,
+	useMentionAutocomplete,
+} from "./mention-autocomplete";
 import { PreviewAttachment } from "./preview-attachment";
 import { SuggestedActions } from "./suggested-actions";
 import { Button } from "./ui/button";
@@ -87,6 +91,11 @@ function PureMultimodalInput({
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const isDesktop = useIsDesktop();
+	const {
+		cursorPosition,
+		updateCursorPosition,
+		setCursorPosition,
+	} = useMentionAutocomplete();
 
 	const adjustHeight = useCallback(() => {
 		if (textareaRef.current) {
@@ -141,7 +150,33 @@ function PureMultimodalInput({
 
 	const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setInput(event.target.value);
+		updateCursorPosition(event);
 	};
+
+	// Handle mention selection from autocomplete
+	const handleMentionSelect = useCallback(
+		(newText: string, newCursorPosition: number) => {
+			setInput(newText);
+			setCursorPosition(newCursorPosition);
+			// Set cursor position in textarea after React updates the value
+			requestAnimationFrame(() => {
+				if (textareaRef.current) {
+					textareaRef.current.selectionStart = newCursorPosition;
+					textareaRef.current.selectionEnd = newCursorPosition;
+					textareaRef.current.focus();
+				}
+			});
+		},
+		[setInput, setCursorPosition],
+	);
+
+	// Dismiss mention autocomplete
+	const handleMentionDismiss = useCallback(() => {
+		// Reset cursor tracking - the autocomplete will hide itself
+		if (textareaRef.current) {
+			textareaRef.current.focus();
+		}
+	}, []);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
 	const [uploadQueue, setUploadQueue] = useState<string[]>([]);
@@ -379,7 +414,13 @@ function PureMultimodalInput({
 						))}
 					</div>
 				)}
-				<div className="flex flex-row items-start gap-1 sm:gap-2">
+				<div className="relative flex flex-row items-start gap-1 sm:gap-2">
+					<MentionAutocomplete
+						cursorPosition={cursorPosition}
+						inputValue={input}
+						onDismiss={handleMentionDismiss}
+						onSelect={handleMentionSelect}
+					/>
 					<PromptInputTextarea
 						className="grow resize-none border-0! border-none! bg-transparent p-2 text-base outline-none ring-0 [-ms-overflow-style:none] [scrollbar-width:none] placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-0 focus-visible:ring-offset-0 [&::-webkit-scrollbar]:hidden"
 						data-testid="multimodal-input"
@@ -387,7 +428,9 @@ function PureMultimodalInput({
 						maxHeight={200}
 						minHeight={44}
 						onChange={handleInput}
-						placeholder="Send a message..."
+						onKeyUp={updateCursorPosition}
+						onClick={(e) => setCursorPosition((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+						placeholder="Send a message... (type @ to mention tools)"
 						ref={textareaRef}
 						rows={1}
 						value={input}
