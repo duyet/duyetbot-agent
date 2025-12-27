@@ -451,7 +451,31 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 	}
 
 	// Get the response using toUIMessageStreamResponse for @ai-sdk/react compatibility
-	const response = result.toUIMessageStreamResponse();
+	// Include message metadata with token usage and model information
+	const response = result.toUIMessageStreamResponse({
+		messageMetadata: ({ part }) => {
+			// Attach metadata when the stream finishes with usage stats
+			if (part.type === "finish") {
+				return {
+					usage: {
+						promptTokens: part.totalUsage?.inputTokens ?? 0,
+						completionTokens: part.totalUsage?.outputTokens ?? 0,
+						totalTokens: part.totalUsage?.totalTokens ?? 0,
+					},
+					model: modelUsed,
+					usedFallback,
+				};
+			}
+			// Attach model info at stream start
+			if (part.type === "start") {
+				return {
+					model: modelUsed,
+					startedAt: Date.now(),
+				};
+			}
+			return undefined;
+		},
+	});
 
 	// Set session cookie if we created a guest session
 	if (sessionToken) {

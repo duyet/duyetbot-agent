@@ -103,10 +103,11 @@
 ### 5. Advanced Chat Features
 **Goal:** Advanced AI chat capabilities
 
-- [ ] **Streaming responses** - Real-time token streaming
+- [x] **Streaming responses** - Real-time token streaming with @ai-sdk/react ✅
+- [x] **Token usage display** - Show prompt/completion tokens per message with metadata streaming ✅
 - [ ] **Artifact rendering** - Rich content rendering (code, images, charts)
-- [ ] **Thinking display** - Show AI reasoning process (when available)
-- [ ] **Multi-turn conversations** - Context awareness across turns
+- [x] **Thinking display** - Show AI reasoning process via extractReasoningMiddleware (partial) ✅
+- [x] **Multi-turn conversations** - Full history loaded with branching and editing support ✅
 - [ ] **Conversation context** - Threaded/branching conversations
 - [ ] **Mention parsing** - @ mentions for tools and resources
 

@@ -26,6 +26,10 @@ import { PlanVisualizer } from "./plan-visualizer";
 import { PreviewAttachment } from "./preview-attachment";
 import { ScratchpadViewer } from "./scratchpad-viewer";
 import { SearchResults } from "./search-results";
+import {
+	TokenUsageDisplay,
+	type TokenUsage,
+} from "./token-usage-display";
 import { TypingIndicator } from "./typing-indicator";
 import { UrlFetchPreview } from "./url-fetch-preview";
 import { Weather } from "./weather";
@@ -543,6 +547,18 @@ const PurePreviewMessage = ({
 						return null;
 					})}
 
+					{/* Token usage display for assistant messages when not loading */}
+					{message.role === "assistant" &&
+						!isLoading &&
+						message.metadata?.usage && (
+							<TokenUsageDisplay
+								className="mt-2 opacity-60 transition-opacity hover:opacity-100"
+								showCost={false}
+								usage={message.metadata.usage as TokenUsage}
+								variant="compact"
+							/>
+						)}
+
 					{!isReadonly && (
 						<MessageActions
 							chatId={chatId}
@@ -568,6 +584,7 @@ export const PreviewMessage = memo(
 			prevProps.message.id === nextProps.message.id &&
 			prevProps.requiresScrollPadding === nextProps.requiresScrollPadding &&
 			equal(prevProps.message.parts, nextProps.message.parts) &&
+			equal(prevProps.message.metadata, nextProps.message.metadata) &&
 			equal(prevProps.vote, nextProps.vote)
 		) {
 			return true;

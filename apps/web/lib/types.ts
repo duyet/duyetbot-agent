@@ -9,8 +9,25 @@ import type { Suggestion } from "./db/schema";
 
 export type DataPart = { type: "append-message"; message: string };
 
+// Token usage statistics from AI model
+export const usageSchema = z.object({
+	promptTokens: z.number(),
+	completionTokens: z.number(),
+	totalTokens: z.number(),
+});
+
+export type Usage = z.infer<typeof usageSchema>;
+
 export const messageMetadataSchema = z.object({
-	createdAt: z.string(),
+	createdAt: z.string().optional(),
+	// Token usage (present on assistant messages after completion)
+	usage: usageSchema.optional(),
+	// Model used for this message
+	model: z.string().optional(),
+	// Whether a fallback model was used
+	usedFallback: z.boolean().optional(),
+	// When streaming started
+	startedAt: z.number().optional(),
 });
 
 export type MessageMetadata = z.infer<typeof messageMetadataSchema>;
