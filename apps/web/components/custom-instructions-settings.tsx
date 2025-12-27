@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import {
 	BrainIcon,
 	Code2Icon,
@@ -79,6 +80,7 @@ export function CustomInstructionsSettings({ chatId }: { chatId?: string }) {
 		}
 		setActiveTemplate(selectedTemplate);
 		setOpen(false);
+		toast.success("Settings saved successfully");
 	};
 
 	const handleTemplateSelect = (template: InstructionTemplate) => {

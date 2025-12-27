@@ -234,8 +234,19 @@ function PureMultimodalInput({
 					...currentAttachments,
 					...successfullyUploadedAttachments,
 				]);
+
+				// Show success toast for uploaded files
+				if (successfullyUploadedAttachments.length > 0) {
+					const count = successfullyUploadedAttachments.length;
+					toast.success(
+						count === 1
+							? "File uploaded successfully"
+							: `${count} files uploaded successfully`,
+					);
+				}
 			} catch (error) {
 				console.error("Error uploading files!", error);
+				toast.error("Failed to upload files");
 			} finally {
 				setUploadQueue([]);
 			}

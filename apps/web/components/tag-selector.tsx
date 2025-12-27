@@ -57,6 +57,9 @@ export function TagSelector({
 
 	const handleToggleTag = async (tagId: string) => {
 		const isSelected = selectedTags.some((t) => t.id === tagId);
+		const tag = availableTags.find((t) => t.id === tagId);
+		const tagName = tag?.name || "Tag";
+
 		try {
 			const response = await fetch(`/api/chats/${chatId}/tags`, {
 				method: isSelected ? "DELETE" : "POST",
@@ -68,6 +71,9 @@ export function TagSelector({
 				throw new Error(`Failed to ${isSelected ? "remove" : "add"} tag`);
 			}
 
+			toast.success(
+				isSelected ? `"${tagName}" tag removed` : `"${tagName}" tag added`,
+			);
 			onTagsChange();
 		} catch (error) {
 			toast.error(`Failed to ${isSelected ? "remove" : "add"} tag`);

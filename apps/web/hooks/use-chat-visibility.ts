@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import { toast } from "sonner";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import {
@@ -39,14 +40,30 @@ export function useChatVisibility({
 		return chat.visibility;
 	}, [history, chatId, localVisibility]);
 
-	const setVisibilityType = (updatedVisibilityType: VisibilityType) => {
+	const setVisibilityType = async (updatedVisibilityType: VisibilityType) => {
+		const previousVisibility = localVisibility;
+
+		// Optimistic update
 		setLocalVisibility(updatedVisibilityType);
 		mutate(unstable_serialize(getChatHistoryPaginationKey));
 
-		updateChatVisibility({
-			chatId,
-			visibility: updatedVisibilityType,
-		});
+		try {
+			await updateChatVisibility({
+				chatId,
+				visibility: updatedVisibilityType,
+			});
+
+			const visibilityLabel =
+				updatedVisibilityType === "public" ? "Public" : "Private";
+			toast.success(`Chat visibility set to ${visibilityLabel}`);
+		} catch (error) {
+			// Rollback on error
+			setLocalVisibility(previousVisibility);
+			mutate(unstable_serialize(getChatHistoryPaginationKey));
+
+			toast.error("Failed to update chat visibility");
+			console.error("Failed to update visibility:", error);
+		}
 	};
 
 	return { visibilityType, setVisibilityType };
