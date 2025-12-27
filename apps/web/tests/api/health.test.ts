@@ -25,7 +25,7 @@ describe("Health Check API", () => {
 
 	it("health returns valid ISO timestamp", async () => {
 		const response = await fetch(`${API_URL}/health`);
-		const data = await response.json();
+		const data = (await response.json()) as { timestamp: string };
 
 		const timestamp = new Date(data.timestamp);
 		expect(timestamp.toISOString()).toBe(data.timestamp);

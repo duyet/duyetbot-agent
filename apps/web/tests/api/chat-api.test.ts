@@ -119,13 +119,16 @@ describe("Chat API - With Session", () => {
 	it("GET /api/chat/:id returns chat with messages", async () => {
 		const response = await fetch(`${API_URL}/api/chat/${testChatId}`, {
 			headers: {
-				Cookie: sessionCookie,
+				Cookie: sessionCookie ?? "",
 			},
 		});
 
 		expect(response.status).toBe(200);
 
-		const data = await response.json();
+		const data = (await response.json()) as {
+			id: string;
+			messages: unknown[];
+		};
 		expect(data).toHaveProperty("id", testChatId);
 		expect(data).toHaveProperty("messages");
 		expect(Array.isArray(data.messages)).toBe(true);
@@ -146,7 +149,7 @@ describe("Chat API - With Session", () => {
 
 		expect(response.status).toBe(200);
 
-		const data = await response.json();
+		const data = (await response.json()) as { title: string };
 		expect(data).toHaveProperty("title");
 		expect(typeof data.title).toBe("string");
 	});

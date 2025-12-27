@@ -1,15 +1,16 @@
 import { defineConfig } from "vitest/config";
 
 /**
- * Vitest configuration for API tests
+ * Vitest configuration for API and unit tests
  *
- * Tests run directly against the production Workers API or local development server
+ * - API tests: Run directly against production Workers API or local dev server
+ * - Unit tests: Run in isolation with mocked dependencies
  */
 export default defineConfig({
 	test: {
 		globals: true,
 		environment: "node",
-		include: ["tests/api/**/*.test.ts"],
+		include: ["tests/api/**/*.test.ts", "lib/**/*.test.ts"],
 		testTimeout: 60_000, // 60 seconds for API calls
 		hookTimeout: 60_000,
 		teardownTimeout: 30_000,

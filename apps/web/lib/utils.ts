@@ -150,7 +150,7 @@ export function getTrailingMessageId({
 }
 
 export function sanitizeText(text: string) {
-  return text.replace('<has_function_call>', '');
+  return text.replaceAll('<has_function_call>', '');
 }
 
 export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {

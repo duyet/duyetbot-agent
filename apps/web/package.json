@@ -18,7 +18,9 @@
 		"test:api": "vitest run",
 		"test:api:watch": "vitest",
 		"test:api:coverage": "vitest run --coverage",
-		"test:api:manual": "bun tests/manual/manual-api-test.ts"
+		"test:api:manual": "bun tests/manual/manual-api-test.ts",
+		"test:unit": "SESSION_SECRET=test-secret vitest run lib/",
+		"test:unit:watch": "SESSION_SECRET=test-secret vitest lib/"
 	},
 	"dependencies": {
 		"@ai-sdk/openai": "^3.0.1",
