@@ -2,6 +2,7 @@
 
 import { Suspense, useState } from "react";
 import { Chat } from "@/components/chat";
+import { ChatSkeleton } from "@/components/chat-skeleton";
 import { DataStreamHandler } from "@/components/data-stream-handler";
 import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
 import { generateUUID } from "@/lib/utils";
@@ -11,13 +12,7 @@ export default function Page() {
 
 	return (
 		<>
-			<Suspense
-				fallback={
-					<div className="flex h-dvh items-center justify-center">
-						Loading...
-					</div>
-				}
-			>
+			<Suspense fallback={<ChatSkeleton />}>
 				<Chat
 					autoResume={false}
 					id={chatId}
