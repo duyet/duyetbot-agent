@@ -22,10 +22,6 @@
 				/* Needs more work to fix */
 				"noNestedTernary": "off"
 			},
-			"nursery": {
-				/* Allowing magic numbers */
-				"noMagicNumbers": "off"
-			},
 			"complexity": {
 				/* Needs more work to fix */
 				"noExcessiveCognitiveComplexity": "off",

@@ -202,6 +202,8 @@ Examples:
 	inputSchema: z.object({
 		url: z.string().url().describe("The URL to fetch content from"),
 	}),
+	// Require user approval before fetching external content (security/privacy)
+	needsApproval: true,
 	execute: async ({ url }) => {
 		// Fetch content from specific URL
 		try {
@@ -656,6 +658,8 @@ Examples:
 			.optional()
 			.describe("Longitude (-180 to 180)"),
 	}),
+	// Require user approval before fetching location weather
+	needsApproval: true,
 	execute: async ({ location, latitude, longitude }) => {
 		try {
 			let lat: number;
