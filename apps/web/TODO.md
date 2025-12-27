@@ -92,12 +92,13 @@
 ### 4. Tool System Enhancement
 **Goal:** Rich tool ecosystem for AI capabilities
 
-- [ ] **Duyet MCP integration** - Connect to memory MCP server
-- [ ] **Web search tool** - Tavily API integration for real-time search
+- [x] **Duyet MCP integration** - Connected via duyetMCPTool with rich visualization ✅
+- [x] **Web search tool** - DuckDuckGo search with credibility scoring ✅
+- [x] **Tool approval UI** - User confirmation for url_fetch and getWeather ✅
+- [x] **Tool visualizers** - Rich components for search, URL fetch, scratchpad, plan, weather ✅
 - [ ] **File upload tool** - Support for documents, images, code files
 - [ ] **Code execution tool** - Safe code execution with Pyodide
 - [ ] **Custom tool builder** - UI for users to create custom tools
-- [ ] **Tool approval UI** - User confirmation before running tools
 
 ### 5. Advanced Chat Features
 **Goal:** Advanced AI chat capabilities
@@ -165,11 +166,18 @@
 
 ## 🎯 Immediate Next Steps
 
-### Priority 1: Tool System Enhancement
-Integrate DuyetMCP, web search, and tool approval UI.
+### ✅ Priority 1: Tool System Enhancement (COMPLETED)
+- DuyetMCP integration with rich visualization
+- Web search via DuckDuckGo with credibility scoring
+- Tool approval UI for url_fetch and getWeather
+- Rich tool visualizers for all tools
 
-### Priority 2: Guest User Flow
-Complete rate limiting and guest session management.
+### Priority 2: Guest User Flow (IN PROGRESS)
+Complete rate limiting and guest session management:
+- [x] Add per-IP rate limiting for guest users (10 messages/day via KV-based token bucket)
+- [x] Implement session expiry (30-day guest sessions via cookie Max-Age)
+- [x] Add request throttling middleware (integrated into chat route with 429 responses)
+- [ ] Guest user usage dashboard (show remaining messages)
 
 ### Priority 3: Model Comparison
 Allow comparing responses from different models side-by-side.

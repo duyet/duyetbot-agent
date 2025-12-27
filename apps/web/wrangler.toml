@@ -35,3 +35,7 @@ migrations_dir = "lib/db/migrations"
 [[r2_buckets]]
 binding = "UPLOADS_BUCKET"
 bucket_name = "duyetbot-web-uploads"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "39e4c4b5055d47adbaf79cf3579d02aa"

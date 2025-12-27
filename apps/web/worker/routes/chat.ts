@@ -31,6 +31,10 @@ import { getLanguageModelForWorker, getTitleModelForWorker } from "../lib/ai";
 import { createGuestSession, getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
 import { WorkerError } from "../lib/errors";
+import {
+	createRateLimiters,
+	getRateLimitIdentifier,
+} from "../lib/rate-limit";
 import { getWebWorkerTools } from "../lib/tools";
 import { generateUUID } from "../lib/utils";
 import type { Env } from "../types";
@@ -213,6 +217,7 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 
 	let session = await getSessionFromRequest(c);
 	let sessionToken: string | undefined;
+	let isGuest = false;
 
 	// Auto-create guest session if not authenticated
 	if (session?.user) {
@@ -222,9 +227,68 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 		const guestData = await createGuestSession(c);
 		session = guestData.session;
 		sessionToken = guestData.token;
+		isGuest = true;
 		console.log(
 			`[${requestId}] Guest session created: userId=${session.user.id}`,
 		);
+	}
+
+	// Apply rate limiting (stricter for guests)
+	// Only apply if RATE_LIMIT_KV binding exists
+	let rateLimitInfo: { limit: number; remaining: number; resetAt: string } | undefined;
+
+	if (c.env.RATE_LIMIT_KV) {
+		const rateLimiters = createRateLimiters(c.env);
+		const clientIp = c.req.header("cf-connecting-ip") || c.req.header("x-forwarded-for") || "unknown";
+		const identifier = getRateLimitIdentifier(
+			isGuest ? undefined : session.user.id,
+			isGuest ? session.user.id : undefined, // Guest userId as session token
+			clientIp,
+		);
+
+		// Guests: 10 messages per day, Authenticated: 60 messages per minute
+		const rateLimitResult = isGuest
+			? await rateLimiters.guest(identifier)
+			: await rateLimiters.chat(identifier);
+
+		console.log(
+			`[${requestId}] Rate limit check: identifier=${identifier}, allowed=${rateLimitResult.allowed}, remaining=${rateLimitResult.remaining}`,
+		);
+
+		// Store rate limit info for response headers
+		rateLimitInfo = {
+			limit: rateLimitResult.limit,
+			remaining: rateLimitResult.remaining,
+			resetAt: rateLimitResult.resetAt.toISOString(),
+		};
+
+		if (!rateLimitResult.allowed) {
+			console.log(`[${requestId}] Rate limit exceeded for ${identifier}`);
+			const retryAfter = Math.ceil(
+				(rateLimitResult.resetAt.getTime() - Date.now()) / 1000,
+			);
+
+			return new Response(
+				JSON.stringify({
+					error: "rate_limit_exceeded",
+					message: isGuest
+						? `Guest users are limited to ${rateLimitResult.limit} messages per day. Please sign up for unlimited access.`
+						: `Rate limit exceeded. Please try again later.`,
+					resetAt: rateLimitInfo.resetAt,
+					retryAfter,
+				}),
+				{
+					status: 429,
+					headers: {
+						"Content-Type": "application/json",
+						"X-RateLimit-Limit": String(rateLimitResult.limit),
+						"X-RateLimit-Remaining": "0",
+						"X-RateLimit-Reset": rateLimitInfo.resetAt,
+						"Retry-After": String(retryAfter),
+					},
+				},
+			);
+		}
 	}
 
 	const db = getDb(c);
@@ -360,6 +424,13 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 			`session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`,
 		);
 		console.log(`[${requestId}] Set guest session cookie`);
+	}
+
+	// Add rate limit headers to successful response
+	if (rateLimitInfo) {
+		response.headers.set("X-RateLimit-Limit", String(rateLimitInfo.limit));
+		response.headers.set("X-RateLimit-Remaining", String(rateLimitInfo.remaining));
+		response.headers.set("X-RateLimit-Reset", rateLimitInfo.resetAt);
 	}
 
 	const duration = Date.now() - startTime;
