@@ -306,9 +306,23 @@
 
 /* Shake animation for form validation errors */
 @keyframes shake {
-	0%, 100% { transform: translateX(0); }
-	10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
-	20%, 40%, 60%, 80% { transform: translateX(4px); }
+	0%,
+	100% {
+		transform: translateX(0);
+	}
+	10%,
+	30%,
+	50%,
+	70%,
+	90% {
+		transform: translateX(-4px);
+	}
+	20%,
+	40%,
+	60%,
+	80% {
+		transform: translateX(4px);
+	}
 }
 
 /* Slide up with fade for new content */
@@ -340,18 +354,26 @@
 
 /* Glow pulse for focus states */
 @keyframes glow-pulse {
-	0%, 100% {
+	0%,
+	100% {
 		box-shadow: 0 0 0 2px var(--ring);
 	}
 	50% {
-		box-shadow: 0 0 0 4px var(--ring), 0 0 12px 2px var(--ring);
+		box-shadow:
+			0 0 0 4px var(--ring),
+			0 0 12px 2px var(--ring);
 	}
 }
 
 /* Subtle pulse for loading states */
 @keyframes subtle-pulse {
-	0%, 100% { opacity: 1; }
-	50% { opacity: 0.6; }
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0.6;
+	}
 }
 
 /* Stagger fade in for lists */
@@ -396,7 +418,9 @@
 
 	/* Button micro-interactions */
 	.btn-interactive {
-		transition: transform 0.15s ease, box-shadow 0.15s ease;
+		transition:
+			transform 0.15s ease,
+			box-shadow 0.15s ease;
 	}
 
 	.btn-interactive:hover:not(:disabled) {
@@ -409,7 +433,9 @@
 
 	/* Focus ring with glow effect */
 	.focus-glow:focus-within {
-		box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ring);
+		box-shadow:
+			0 0 0 2px var(--background),
+			0 0 0 4px var(--ring);
 		transition: box-shadow 0.2s ease;
 	}
 }
