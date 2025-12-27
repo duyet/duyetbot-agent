@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
 import { ThemeProvider } from "@/components/theme-provider";
+import { WebVitals } from "@/components/web-vitals";
 
 import "./globals.css";
 
@@ -78,6 +79,7 @@ export default function RootLayout({
 					enableSystem
 				>
 					<Toaster position="top-center" />
+					<WebVitals />
 					{children}
 				</ThemeProvider>
 			</body>
