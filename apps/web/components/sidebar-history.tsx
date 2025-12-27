@@ -48,32 +48,31 @@ const groupChatsByDate = (chats: Chat[]): GroupedChats => {
   const oneWeekAgo = subWeeks(now, 1);
   const oneMonthAgo = subMonths(now, 1);
 
-  return chats.reduce(
-    (groups, chat) => {
-      const chatDate = new Date(chat.createdAt);
+  const initial: GroupedChats = {
+    today: [],
+    yesterday: [],
+    lastWeek: [],
+    lastMonth: [],
+    older: [],
+  };
 
-      if (isToday(chatDate)) {
-        groups.today.push(chat);
-      } else if (isYesterday(chatDate)) {
-        groups.yesterday.push(chat);
-      } else if (chatDate > oneWeekAgo) {
-        groups.lastWeek.push(chat);
-      } else if (chatDate > oneMonthAgo) {
-        groups.lastMonth.push(chat);
-      } else {
-        groups.older.push(chat);
-      }
+  return chats.reduce<GroupedChats>((groups, chat) => {
+    const chatDate = new Date(chat.createdAt);
 
-      return groups;
-    },
-    {
-      today: [],
-      yesterday: [],
-      lastWeek: [],
-      lastMonth: [],
-      older: [],
-    } as GroupedChats
-  );
+    if (isToday(chatDate)) {
+      groups.today.push(chat);
+    } else if (isYesterday(chatDate)) {
+      groups.yesterday.push(chat);
+    } else if (chatDate > oneWeekAgo) {
+      groups.lastWeek.push(chat);
+    } else if (chatDate > oneMonthAgo) {
+      groups.lastMonth.push(chat);
+    } else {
+      groups.older.push(chat);
+    }
+
+    return groups;
+  }, initial);
 };
 
 export function getChatHistoryPaginationKey(
@@ -108,9 +107,13 @@ export function SidebarHistory({ user }: { user: AuthUser | undefined }) {
     isValidating,
     isLoading,
     mutate,
-  } = useSWRInfinite<ChatHistory>(getChatHistoryPaginationKey, fetcher as (url: string) => Promise<ChatHistory>, {
-    fallbackData: [],
-  });
+  } = useSWRInfinite<ChatHistory>(
+    getChatHistoryPaginationKey,
+    fetcher as (url: string) => Promise<ChatHistory>,
+    {
+      fallbackData: [],
+    }
+  );
 
   const router = useRouter();
   const [deleteId, setDeleteId] = useState<string | null>(null);

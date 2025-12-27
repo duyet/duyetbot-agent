@@ -3,14 +3,14 @@
  * Uses PBKDF2-HMAC-SHA256 for password hashing (Workers compatible)
  */
 
-const PBKDF2_ITERATIONS = 100000;
+const PBKDF2_ITERATIONS = 100_000;
 const SALT_LENGTH = 16;
 const KEY_LENGTH = 32;
 
 /**
  * Generate a cryptographically secure random salt
  */
-function generateSalt(): string {
+function _generateSalt(): string {
   const salt = new Uint8Array(SALT_LENGTH);
   crypto.getRandomValues(salt);
   return bufferToBase64(salt);
@@ -63,7 +63,7 @@ export async function hashPassword(password: string): Promise<string> {
   const derivedBits = await crypto.subtle.deriveBits(
     {
       name: "PBKDF2",
-      salt: salt,
+      salt,
       iterations: PBKDF2_ITERATIONS,
       hash: "SHA-256",
     },

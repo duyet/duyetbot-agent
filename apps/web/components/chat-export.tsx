@@ -1,7 +1,8 @@
 "use client";
 
+import { Copy, Download, Loader2 } from "lucide-react";
 import { useState } from "react";
-import { Download, Copy, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,18 +10,21 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
-import { exportChat, copyToClipboard, type ExportFormat } from "@/lib/export/chat-exporter";
+import {
+  copyToClipboard,
+  type ExportFormat,
+  exportChat,
+} from "@/lib/export/chat-exporter";
 
-interface ChatExportProps {
+type ChatExportProps = {
   chatId: string;
   chatTitle: string;
   messages: any[];
-}
+};
 
 export function ChatExport({ chatId, chatTitle, messages }: ChatExportProps) {
   const [isExporting, setIsExporting] = useState(false);
-  const [format, setFormat] = useState<ExportFormat | null>(null);
+  const [_format, setFormat] = useState<ExportFormat | null>(null);
 
   const handleExport = async (selectedFormat: ExportFormat) => {
     setIsExporting(true);
@@ -70,7 +74,7 @@ export function ChatExport({ chatId, chatTitle, messages }: ChatExportProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" disabled={isExporting}>
+        <Button disabled={isExporting} size="icon" variant="ghost">
           {isExporting ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -79,19 +83,31 @@ export function ChatExport({ chatId, chatTitle, messages }: ChatExportProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => handleExport("markdown")} disabled={isExporting}>
+        <DropdownMenuItem
+          disabled={isExporting}
+          onClick={() => handleExport("markdown")}
+        >
           <Download className="mr-2 h-4 w-4" />
           Export as Markdown
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleExport("json")} disabled={isExporting}>
+        <DropdownMenuItem
+          disabled={isExporting}
+          onClick={() => handleExport("json")}
+        >
           <Download className="mr-2 h-4 w-4" />
           Export as JSON
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => handleExport("pdf")} disabled={isExporting}>
+        <DropdownMenuItem
+          disabled={isExporting}
+          onClick={() => handleExport("pdf")}
+        >
           <Download className="mr-2 h-4 w-4" />
           Export as PDF
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={handleCopyToClipboard} disabled={isExporting}>
+        <DropdownMenuItem
+          disabled={isExporting}
+          onClick={handleCopyToClipboard}
+        >
           <Copy className="mr-2 h-4 w-4" />
           Copy as Markdown
         </DropdownMenuItem>

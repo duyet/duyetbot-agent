@@ -1,1 +1,1 @@
-export type { UserType, Session } from "@/lib/auth/jwt";
+export type { Session, UserType } from "@/lib/auth/jwt";

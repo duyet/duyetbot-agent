@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
 import { GitBranch, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -9,12 +10,11 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
 
-interface ChatBranchProps {
+type ChatBranchProps = {
   chatId: string;
   onBranch?: (newChatId: string) => void;
-}
+};
 
 export function ChatBranch({ chatId, onBranch }: ChatBranchProps) {
   const [isBranching, setIsBranching] = useState(false);
@@ -46,7 +46,7 @@ export function ChatBranch({ chatId, onBranch }: ChatBranchProps) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" size="icon" disabled={isBranching}>
+        <Button disabled={isBranching} size="icon" variant="ghost">
           {isBranching ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
@@ -55,7 +55,7 @@ export function ChatBranch({ chatId, onBranch }: ChatBranchProps) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={handleBranch} disabled={isBranching}>
+        <DropdownMenuItem disabled={isBranching} onClick={handleBranch}>
           {isBranching ? "Creating branch..." : "Branch from here"}
         </DropdownMenuItem>
       </DropdownMenuContent>

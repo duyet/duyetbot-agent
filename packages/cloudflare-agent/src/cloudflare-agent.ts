@@ -1869,9 +1869,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         try {
           if (transport.edit) {
-            await transport.edit(ctx, execution.messageRef, response);
+            await transport.edit(ctxWithDebug as TContext, execution.messageRef, response);
           } else {
-            await transport.send(ctx, response);
+            await transport.send(ctxWithDebug as TContext, response);
           }
         } catch (err) {
           logger.error(`[CloudflareAgent][CHATLOOP] Failed to send response: ${err}`);

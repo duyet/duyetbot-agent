@@ -1,7 +1,15 @@
 "use client";
 
+import {
+  Edit2,
+  Folder,
+  FolderOpen,
+  FolderPlus,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
-import { Folder, FolderOpen, Plus, Trash2, Edit2, FolderPlus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -12,30 +20,29 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { toast } from "sonner";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-interface ChatFolder {
+type ChatFolder = {
   id: string;
   name: string;
   color: string;
   _count?: { chats: number };
-}
+};
 
-interface FoldersSidebarProps {
+type FoldersSidebarProps = {
   folders: ChatFolder[];
   selectedFolderId?: string;
   onSelectFolder: (folderId: string | undefined) => void;
   onFolderChange: () => void;
-}
+};
 
 export function FoldersSidebar({
   folders,
@@ -126,10 +133,12 @@ export function FoldersSidebar({
   return (
     <div className="flex flex-col gap-2 p-2">
       <div className="flex items-center justify-between px-2 py-1">
-        <h2 className="text-xs font-semibold uppercase text-muted-foreground">Folders</h2>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+        <h2 className="font-semibold text-muted-foreground text-xs uppercase">
+          Folders
+        </h2>
+        <Dialog onOpenChange={setIsCreateDialogOpen} open={isCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-6 w-6">
+            <Button className="h-6 w-6" size="icon" variant="ghost">
               <Plus className="h-3 w-3" />
             </Button>
           </DialogTrigger>
@@ -145,24 +154,33 @@ export function FoldersSidebar({
                 <Label htmlFor="folder-name">Folder Name</Label>
                 <Input
                   id="folder-name"
-                  value={newFolderName}
                   onChange={(e) => setNewFolderName(e.target.value)}
                   placeholder="My Folder"
+                  value={newFolderName}
                 />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="folder-color">Color</Label>
                 <div className="flex gap-2">
-                  {["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"].map((color) => (
+                  {[
+                    "#3b82f6",
+                    "#10b981",
+                    "#f59e0b",
+                    "#ef4444",
+                    "#8b5cf6",
+                    "#ec4899",
+                  ].map((color) => (
                     <button
-                      key={color}
-                      type="button"
                       className={cn(
                         "h-8 w-8 rounded-full border-2 transition-all",
-                        newFolderColor === color ? "border-foreground scale-110" : "border-transparent"
+                        newFolderColor === color
+                          ? "scale-110 border-foreground"
+                          : "border-transparent"
                       )}
-                      style={{ backgroundColor: color }}
+                      key={color}
                       onClick={() => setNewFolderColor(color)}
+                      style={{ backgroundColor: color }}
+                      type="button"
                     />
                   ))}
                 </div>
@@ -170,8 +188,8 @@ export function FoldersSidebar({
             </div>
             <DialogFooter>
               <Button
-                onClick={handleCreateFolder}
                 disabled={isLoading || !newFolderName.trim()}
+                onClick={handleCreateFolder}
               >
                 {isLoading ? "Creating..." : "Create Folder"}
               </Button>
@@ -181,9 +199,9 @@ export function FoldersSidebar({
       </div>
 
       <Button
-        variant={selectedFolderId === undefined ? "secondary" : "ghost"}
         className="justify-start gap-2"
         onClick={() => onSelectFolder(undefined)}
+        variant={selectedFolderId === undefined ? "secondary" : "ghost"}
       >
         <FolderPlus className="h-4 w-4" />
         All Chats
@@ -193,33 +211,38 @@ export function FoldersSidebar({
         <DropdownMenu key={folder.id}>
           <DropdownMenuTrigger asChild>
             <Button
-              variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
               className="w-full justify-start gap-2"
+              variant={selectedFolderId === folder.id ? "secondary" : "ghost"}
             >
               {selectedFolderId === folder.id ? (
-                <FolderOpen className="h-4 w-4" style={{ color: folder.color }} />
+                <FolderOpen
+                  className="h-4 w-4"
+                  style={{ color: folder.color }}
+                />
               ) : (
                 <Folder className="h-4 w-4" style={{ color: folder.color }} />
               )}
-              <span className="flex-1 text-left truncate">{folder.name}</span>
-              <span className="text-xs text-muted-foreground">
+              <span className="flex-1 truncate text-left">{folder.name}</span>
+              <span className="text-muted-foreground text-xs">
                 {folder._count?.chats || 0}
               </span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => {
-              const newName = prompt("Enter new folder name:", folder.name);
-              if (newName && newName !== folder.name) {
-                handleRenameFolder(folder.id, newName);
-              }
-            }}>
+            <DropdownMenuItem
+              onClick={() => {
+                const newName = prompt("Enter new folder name:", folder.name);
+                if (newName && newName !== folder.name) {
+                  handleRenameFolder(folder.id, newName);
+                }
+              }}
+            >
               <Edit2 className="mr-2 h-4 w-4" />
               Rename
             </DropdownMenuItem>
             <DropdownMenuItem
-              onClick={() => handleDeleteFolder(folder.id)}
               className="text-destructive"
+              onClick={() => handleDeleteFolder(folder.id)}
             >
               <Trash2 className="mr-2 h-4 w-4" />
               Delete

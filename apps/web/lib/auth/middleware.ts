@@ -82,7 +82,10 @@ export async function clearSessionCookie(): Promise<void> {
  * Custom error class for authentication failures
  */
 export class AuthError extends Error {
-  constructor(message: string, public statusCode: number = 401) {
+  constructor(
+    message: string,
+    public statusCode = 401
+  ) {
     super(message);
     this.name = "AuthError";
   }

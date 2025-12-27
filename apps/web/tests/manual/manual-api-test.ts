@@ -6,7 +6,7 @@
 const API_URL = process.env.API_URL || "https://duyetbot-web.duyet.workers.dev";
 
 // Colors for console output
-const colors = {
+const colors: Record<string, string> = {
   reset: "\x1b[0m",
   green: "\x1b[32m",
   red: "\x1b[31m",
@@ -15,7 +15,9 @@ const colors = {
   cyan: "\x1b[36m",
 };
 
-function log(message: string, color = "reset") {
+type ColorName = keyof typeof colors;
+
+function log(message: string, color: ColorName = "reset") {
   console.log(`${colors[color]}${message}${colors.reset}`);
 }
 

@@ -278,7 +278,9 @@ const PurePreviewMessage = ({
                   <Tool className="w-full" defaultOpen={true}>
                     <ToolHeader state={state} type="tool-plan" />
                     <ToolContent>
-                      {state === "input-available" && <ToolInput input={part.input} />}
+                      {state === "input-available" && (
+                        <ToolInput input={part.input} />
+                      )}
                     </ToolContent>
                   </Tool>
                 </div>
@@ -302,7 +304,9 @@ const PurePreviewMessage = ({
                   <Tool className="w-full" defaultOpen={true}>
                     <ToolHeader state={state} type="tool-web_search" />
                     <ToolContent>
-                      {state === "input-available" && <ToolInput input={part.input} />}
+                      {state === "input-available" && (
+                        <ToolInput input={part.input} />
+                      )}
                     </ToolContent>
                   </Tool>
                 </div>
@@ -442,7 +446,7 @@ export const ThinkingMessage = () => {
         <div className="flex w-full flex-col gap-2 md:gap-4">
           <div className="flex items-center gap-2 p-0 text-muted-foreground text-sm">
             <span>Thinking</span>
-            <TypingIndicator variant="dots" className="scale-75" />
+            <TypingIndicator className="scale-75" variant="dots" />
           </div>
         </div>
       </div>

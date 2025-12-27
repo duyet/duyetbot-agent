@@ -1,6 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "duyetbot-web"
-main = ".open-next/worker.js"
+main = "worker/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "AI"
 
 [assets]
-directory = ".open-next/assets"
+directory = "out"
 binding = "ASSETS"
 
 [vars]

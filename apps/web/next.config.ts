@@ -1,20 +1,11 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  cacheComponents: true,
-  experimental: {
-    optimizeCss: false,
-  },
+  // Static export for Cloudflare Workers Assets
+  output: "export",
+
+  // Disable image optimization (not supported in static export)
   images: {
-    remotePatterns: [
-      {
-        hostname: "avatar.vercel.sh",
-      },
-      {
-        protocol: "https",
-        hostname: "*.r2.dev",
-      },
-    ],
     unoptimized: true,
   },
 };

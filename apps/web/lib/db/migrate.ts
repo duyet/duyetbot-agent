@@ -1,7 +1,4 @@
 import { config } from "dotenv";
-import { migrate } from "drizzle-orm/d1/migrator";
-import { drizzle } from "drizzle-orm/d1";
-import * as schema from "./schema";
 
 config({
   path: ".env.local",

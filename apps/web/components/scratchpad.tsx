@@ -6,32 +6,38 @@ import {
   PlusIcon,
   SaveIcon,
   Trash2Icon,
-  XIcon,
 } from "lucide-react";
 import type { ComponentProps } from "react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
-export interface ScratchpadNote {
+export type ScratchpadNote = {
   key: string;
   value: string;
   createdAt: string;
-}
+};
 
-export interface ScratchpadData {
+export type ScratchpadData = {
   action: string;
   notes?: ScratchpadNote[];
   count?: number;
   data?: string;
-}
+};
 
 export interface ScratchpadProps extends ComponentProps<"div"> {
   notes: ScratchpadNote[];
@@ -40,12 +46,19 @@ export interface ScratchpadProps extends ComponentProps<"div"> {
   onExport: () => Promise<ScratchpadData>;
 }
 
-export function Scratchpad({ notes, onSave, onDelete, onExport, className, ...props }: ScratchpadProps) {
+export function Scratchpad({
+  notes,
+  onSave,
+  onDelete,
+  onExport,
+  className,
+  ...props
+}: ScratchpadProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ key: "", value: "" });
-  const [exportData, setExportData] = useState<string | null>(null);
+  const [_exportData, _setExportData] = useState<string | null>(null);
 
   const handleSave = async () => {
     if (!editForm.key.trim() || !editForm.value.trim()) {
@@ -107,13 +120,13 @@ export function Scratchpad({ notes, onSave, onDelete, onExport, className, ...pr
   };
 
   return (
-    <Sheet open={isOpen} onOpenChange={setIsOpen}>
+    <Sheet onOpenChange={setIsOpen} open={isOpen}>
       <SheetTrigger asChild>
-        <Button variant="outline" size="sm" className={cn("gap-2", className)} {...props}>
+        <Button className={cn("gap-2", className)} size="sm" variant="outline">
           <FileTextIcon className="size-4" />
           Scratchpad
           {notes.length > 0 && (
-            <Badge variant="secondary" className="ml-auto">
+            <Badge className="ml-auto" variant="secondary">
               {notes.length}
             </Badge>
           )}
@@ -131,20 +144,20 @@ export function Scratchpad({ notes, onSave, onDelete, onExport, className, ...pr
         <div className="flex flex-1 flex-col gap-4 overflow-hidden">
           <div className="flex items-center gap-2">
             <Button
-              variant="outline"
-              size="sm"
               className="flex-1 gap-2"
               onClick={handleNew}
+              size="sm"
+              variant="outline"
             >
               <PlusIcon className="size-4" />
               New Note
             </Button>
             {notes.length > 0 && (
               <Button
-                variant="outline"
-                size="sm"
                 className="gap-2"
                 onClick={handleExport}
+                size="sm"
+                variant="outline"
               >
                 <DownloadIcon className="size-4" />
                 Export
@@ -155,7 +168,7 @@ export function Scratchpad({ notes, onSave, onDelete, onExport, className, ...pr
           {isEditing && (
             <Card className="border-primary/50">
               <CardHeader className="space-y-2 pb-3">
-                <CardTitle className="text-sm font-semibold">
+                <CardTitle className="font-semibold text-sm">
                   {editingKey ? "Edit Note" : "New Note"}
                 </CardTitle>
               </CardHeader>
@@ -163,37 +176,45 @@ export function Scratchpad({ notes, onSave, onDelete, onExport, className, ...pr
                 <div className="space-y-1">
                   <Label htmlFor="note-key">Key</Label>
                   <Input
+                    disabled={!!editingKey}
                     id="note-key"
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, key: e.target.value })
+                    }
                     placeholder="Note key (e.g., research-notes)"
                     value={editForm.key}
-                    onChange={(e) => setEditForm({ ...editForm, key: e.target.value })}
-                    disabled={!!editingKey}
                   />
                 </div>
                 <div className="space-y-1">
                   <Label htmlFor="note-value">Value</Label>
                   <Textarea
-                    id="note-value"
-                    placeholder="Enter your note content..."
-                    value={editForm.value}
-                    onChange={(e) => setEditForm({ ...editForm, value: e.target.value })}
-                    rows={6}
                     className="resize-none"
+                    id="note-value"
+                    onChange={(e) =>
+                      setEditForm({ ...editForm, value: e.target.value })
+                    }
+                    placeholder="Enter your note content..."
+                    rows={6}
+                    value={editForm.value}
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button size="sm" className="flex-1 gap-2" onClick={handleSave}>
+                  <Button
+                    className="flex-1 gap-2"
+                    onClick={handleSave}
+                    size="sm"
+                  >
                     <SaveIcon className="size-4" />
                     Save
                   </Button>
                   <Button
-                    size="sm"
-                    variant="outline"
                     onClick={() => {
                       setIsEditing(false);
                       setEditingKey(null);
                       setEditForm({ key: "", value: "" });
                     }}
+                    size="sm"
+                    variant="outline"
                   >
                     Cancel
                   </Button>
@@ -207,46 +228,46 @@ export function Scratchpad({ notes, onSave, onDelete, onExport, className, ...pr
               {notes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
                   <FileTextIcon className="mb-2 size-8 text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">No notes yet</p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">No notes yet</p>
+                  <p className="text-muted-foreground text-xs">
                     Create a note to start storing information
                   </p>
                 </div>
               ) : (
                 notes.map((note) => (
                   <Card
-                    key={note.key}
                     className="group border-border/50 transition-all hover:border-border hover:shadow-md"
+                    key={note.key}
                   >
                     <CardContent className="flex items-start gap-3 p-3">
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <h4 className="text-sm font-semibold">{note.key}</h4>
-                          <Badge variant="outline" className="text-xs">
+                          <h4 className="font-semibold text-sm">{note.key}</h4>
+                          <Badge className="text-xs" variant="outline">
                             {note.value.length} chars
                           </Badge>
                         </div>
-                        <p className="line-clamp-2 text-xs text-muted-foreground">
+                        <p className="line-clamp-2 text-muted-foreground text-xs">
                           {note.value}
                         </p>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-muted-foreground text-xs">
                           {formatDate(note.createdAt)}
                         </p>
                       </div>
 
                       <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                         <Button
-                          variant="ghost"
-                          size="icon-sm"
                           onClick={() => handleEdit(note)}
+                          size="icon-sm"
+                          variant="ghost"
                         >
                           <FileTextIcon className="size-3" />
                         </Button>
                         <Button
-                          variant="ghost"
-                          size="icon-sm"
                           className="text-destructive"
                           onClick={() => handleDelete(note.key)}
+                          size="icon-sm"
+                          variant="ghost"
                         >
                           <Trash2Icon className="size-3" />
                         </Button>

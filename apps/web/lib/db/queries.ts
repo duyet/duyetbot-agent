@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import {
   and,
   asc,
@@ -14,8 +15,10 @@ import {
 } from "drizzle-orm";
 import type { ArtifactKind } from "@/components/artifact";
 import type { VisibilityType } from "@/components/visibility-selector";
+import { hashPassword } from "@/lib/auth/crypto";
 import { ChatSDKError } from "../errors";
 import { generateUUID } from "../utils";
+import { createDb } from ".";
 import {
   type Chat,
   chat,
@@ -29,9 +32,6 @@ import {
   user,
   vote,
 } from "./schema";
-import { hashPassword } from "@/lib/auth/crypto";
-import { createDb } from ".";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 async function getDb() {
   const { env } = await getCloudflareContext({ async: true });
@@ -111,11 +111,14 @@ export async function deleteChatById({ id }: { id: string }) {
     await db.delete(message).where(eq(message.chatId, id));
     await db.delete(stream).where(eq(stream.chatId, id));
 
-    const [chatsDeleted] = await db
+    const chatsDeleted = await db
       .delete(chat)
       .where(eq(chat.id, id))
       .returning();
-    return chatsDeleted;
+    // Handle both array and D1Result return types
+    return Array.isArray(chatsDeleted)
+      ? chatsDeleted[0]
+      : (chatsDeleted as any).results?.[0];
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",
@@ -147,7 +150,11 @@ export async function deleteAllChatsByUserId({ userId }: { userId: string }) {
       .where(eq(chat.userId, userId))
       .returning();
 
-    return { deletedCount: deletedChats.length };
+    // Handle both array and D1Result return types
+    const results = Array.isArray(deletedChats)
+      ? deletedChats
+      : (deletedChats as any).results || [];
+    return { deletedCount: results.length };
   } catch (_error) {
     throw new ChatSDKError(
       "bad_request:database",

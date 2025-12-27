@@ -1,5 +1,5 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createOpenAI } from "@ai-sdk/openai";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import {
   customProvider,
   extractReasoningMiddleware,
@@ -67,7 +67,7 @@ export async function getTitleModel() {
   }
 
   const openai = await getOpenAIClient();
-  return openai("anthropic/claude-haiku-4.5");
+  return openai("anthropic/claude-3.5-haiku");
 }
 
 export async function getArtifactModel() {
@@ -76,5 +76,5 @@ export async function getArtifactModel() {
   }
 
   const openai = await getOpenAIClient();
-  return openai("anthropic/claude-haiku-4.5");
+  return openai("anthropic/claude-3.5-haiku");
 }

@@ -1,8 +1,17 @@
 "use client";
 
+import { Plus, Tag, X } from "lucide-react";
 import { useState } from "react";
-import { Tag, Plus, X } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -14,29 +23,20 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-interface ChatTag {
+type ChatTag = {
   id: string;
   name: string;
   color: string;
-}
+};
 
-interface TagSelectorProps {
+type TagSelectorProps = {
   chatId: string;
   selectedTags: ChatTag[];
   availableTags: ChatTag[];
   onTagsChange: () => void;
-}
+};
 
 export function TagSelector({
   chatId,
@@ -96,7 +96,8 @@ export function TagSelector({
         throw new Error("Failed to create tag");
       }
 
-      const { tag } = await response.json();
+      const data = (await response.json()) as { tag: { id: string } };
+      const { tag } = data;
 
       // Auto-assign the new tag to this chat
       await fetch(`/api/chats/${chatId}/tags`, {
@@ -119,13 +120,13 @@ export function TagSelector({
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog onOpenChange={setIsOpen} open={isOpen}>
       <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1">
+        <Button className="gap-1" size="sm" variant="ghost">
           <Tag className="h-4 w-4" />
           <span>Tags</span>
           {selectedTags.length > 0 && (
-            <span className="ml-1 rounded-full bg-primary px-1.5 text-xs text-primary-foreground">
+            <span className="ml-1 rounded-full bg-primary px-1.5 text-primary-foreground text-xs">
               {selectedTags.length}
             </span>
           )}
@@ -142,21 +143,21 @@ export function TagSelector({
         <div className="flex flex-wrap gap-2 py-4">
           {selectedTags.map((tag) => (
             <div
-              key={tag.id}
               className="flex items-center gap-1 rounded-full px-3 py-1 text-sm"
+              key={tag.id}
               style={{ backgroundColor: `${tag.color}20`, color: tag.color }}
             >
               <span>{tag.name}</span>
               <button
-                onClick={() => handleToggleTag(tag.id)}
                 className="ml-1 rounded-full hover:bg-black/10"
+                onClick={() => handleToggleTag(tag.id)}
               >
                 <X className="h-3 w-3" />
               </button>
             </div>
           ))}
           {selectedTags.length === 0 && (
-            <p className="text-sm text-muted-foreground">No tags assigned</p>
+            <p className="text-muted-foreground text-sm">No tags assigned</p>
           )}
         </div>
 
@@ -164,20 +165,22 @@ export function TagSelector({
           <div className="flex items-center gap-2">
             <Command className="flex-1">
               <CommandInput
+                onValueChange={setSearchQuery}
                 placeholder="Search tags..."
                 value={searchQuery}
-                onValueChange={setSearchQuery}
               />
               <CommandList>
                 <CommandEmpty>No tags found</CommandEmpty>
                 <CommandGroup>
                   {filteredTags.map((tag) => {
-                    const isSelected = selectedTags.some((t) => t.id === tag.id);
+                    const isSelected = selectedTags.some(
+                      (t) => t.id === tag.id
+                    );
                     return (
                       <CommandItem
+                        className="flex items-center gap-2"
                         key={tag.id}
                         onSelect={() => handleToggleTag(tag.id)}
-                        className="flex items-center gap-2"
                       >
                         <div
                           className="h-3 w-3 rounded-full"
@@ -195,75 +198,84 @@ export function TagSelector({
             </Command>
           </div>
 
-          {!isCreating ? (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setIsCreating(true)}
-            >
-              <Plus className="mr-2 h-4 w-4" />
-              Create New Tag
-            </Button>
-          ) : (
+          {isCreating ? (
             <div className="space-y-3 rounded-lg border p-3">
               <div className="space-y-2">
                 <Label htmlFor="tag-name">Tag Name</Label>
                 <Input
                   id="tag-name"
-                  value={newTagName}
                   onChange={(e) => setNewTagName(e.target.value)}
-                  placeholder="My Tag"
                   onKeyDown={(e) => {
                     if (e.key === "Enter") {
                       e.preventDefault();
                       handleCreateTag();
                     }
                   }}
+                  placeholder="My Tag"
+                  value={newTagName}
                 />
               </div>
               <div className="space-y-2">
                 <Label>Color</Label>
                 <div className="flex gap-2">
-                  {["#10b981", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"].map((color) => (
+                  {[
+                    "#10b981",
+                    "#3b82f6",
+                    "#f59e0b",
+                    "#ef4444",
+                    "#8b5cf6",
+                    "#ec4899",
+                  ].map((color) => (
                     <button
-                      key={color}
-                      type="button"
                       className={cn(
                         "h-6 w-6 rounded-full border-2 transition-all",
-                        newTagColor === color ? "border-foreground scale-110" : "border-transparent"
+                        newTagColor === color
+                          ? "scale-110 border-foreground"
+                          : "border-transparent"
                       )}
-                      style={{ backgroundColor: color }}
+                      key={color}
                       onClick={() => setNewTagColor(color)}
+                      style={{ backgroundColor: color }}
+                      type="button"
                     />
                   ))}
                 </div>
               </div>
               <div className="flex gap-2">
                 <Button
-                  size="sm"
-                  onClick={handleCreateTag}
-                  disabled={isLoading || !newTagName.trim()}
                   className="flex-1"
+                  disabled={isLoading || !newTagName.trim()}
+                  onClick={handleCreateTag}
+                  size="sm"
                 >
                   {isLoading ? "Creating..." : "Create"}
                 </Button>
                 <Button
-                  size="sm"
-                  variant="outline"
                   onClick={() => {
                     setIsCreating(false);
                     setNewTagName("");
                   }}
+                  size="sm"
+                  variant="outline"
                 >
                   Cancel
                 </Button>
               </div>
             </div>
+          ) : (
+            <Button
+              className="w-full"
+              onClick={() => setIsCreating(true)}
+              variant="outline"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Tag
+            </Button>
           )}
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => setIsOpen(false)}>
+          <Button onClick={() => setIsOpen(false)} variant="outline">
             Done
           </Button>
         </DialogFooter>

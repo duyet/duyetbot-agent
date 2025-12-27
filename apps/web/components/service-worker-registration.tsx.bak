@@ -1,0 +1,117 @@
+"use client";
+
+import { useEffect, useState } from "react";
+
+type ServiceWorkerState = {
+  registration: ServiceWorkerRegistration | null;
+  updateAvailable: boolean;
+  error: Error | null;
+};
+
+export function ServiceWorkerRegistration() {
+  const [swState, setSwState] = useState<ServiceWorkerState>({
+    registration: null,
+    updateAvailable: false,
+    error: null,
+  });
+
+  useEffect(() => {
+    // Only register service worker in production and when supported
+    if (
+      typeof window === "undefined" ||
+      !("serviceWorker" in navigator) ||
+      process.env.NODE_ENV !== "production"
+    ) {
+      return;
+    }
+
+    // Register the service worker
+    registerSW();
+
+    // Listen for controller changes (new service worker)
+    const handleControllerChange = () => {
+      // When the new service worker takes control, reload the page
+      window.location.reload();
+    };
+
+    navigator.serviceWorker.addEventListener(
+      "controllerchange",
+      handleControllerChange
+    );
+
+    return () => {
+      navigator.serviceWorker.removeEventListener(
+        "controllerchange",
+        handleControllerChange
+      );
+    };
+  }, []);
+
+  const registerSW = async () => {
+    try {
+      const registration = await navigator.serviceWorker.register("/sw.ts", {
+        type: "module",
+      });
+
+      // Check for updates
+      registration.addEventListener("updatefound", () => {
+        const newWorker = registration.installing;
+
+        if (newWorker) {
+          newWorker.addEventListener("statechange", () => {
+            if (
+              newWorker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              // New service worker is available, current one is still active
+              setSwState((prev) => ({ ...prev, updateAvailable: true }));
+            }
+          });
+        }
+      });
+
+      setSwState((prev) => ({ ...prev, registration }));
+    } catch (error) {
+      console.error("Service worker registration failed:", error);
+      setSwState((prev) => ({
+        ...prev,
+        error: error as Error,
+      }));
+    }
+  };
+
+  const updateSW = () => {
+    if (swState.registration?.waiting) {
+      // Tell the waiting service worker to skip waiting and become active
+      swState.registration.waiting.postMessage({ type: "SKIP_WAITING" });
+    }
+  };
+
+  if (!("serviceWorker" in navigator) || process.env.NODE_ENV !== "production") {
+    return null;
+  }
+
+  if (swState.error) {
+    console.error("Service worker error:", swState.error);
+    return null;
+  }
+
+  if (swState.updateAvailable) {
+    return (
+      <div className="fixed bottom-4 right-4 z-50 rounded-lg border bg-background p-4 shadow-lg">
+        <p className="mb-2 text-sm font-medium">Update Available</p>
+        <p className="mb-3 text-xs text-muted-foreground">
+          A new version of the app is ready to install.
+        </p>
+        <button
+          onClick={updateSW}
+          className="rounded bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+        >
+          Update Now
+        </button>
+      </div>
+    );
+  }
+
+  return null;
+}

@@ -1,4 +1,4 @@
-interface CloudflareEnv {
+type CloudflareEnv = {
   AI: Ai;
   DB: D1Database;
   UPLOADS_BUCKET: R2Bucket;
@@ -9,4 +9,4 @@ interface CloudflareEnv {
   GITHUB_CLIENT_ID?: string;
   GITHUB_CLIENT_SECRET?: string;
   AUTH_KV?: KVNamespace;
-}
+};

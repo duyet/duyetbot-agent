@@ -1,12 +1,12 @@
-import type { ChatMessage } from "@/lib/types";
 import type { Chat } from "@/lib/db/schema";
+import type { ChatMessage } from "@/lib/types";
 
 export type ExportFormat = "markdown" | "json" | "pdf";
 
-interface ChatExportData {
+type ChatExportData = {
   chat: Chat;
   messages: ChatMessage[];
-}
+};
 
 /**
  * Export chat to markdown format
@@ -16,7 +16,7 @@ export function exportToMarkdown(data: ChatExportData): string {
   let markdown = `# ${chat.title}\n\n`;
   markdown += `**Created:** ${new Date(chat.createdAt).toLocaleString()}\n`;
   markdown += `**Visibility:** ${chat.visibility}\n\n`;
-  markdown += `---\n\n`;
+  markdown += "---\n\n";
 
   for (const message of messages) {
     const role = message.role === "user" ? "User" : "Assistant";
@@ -37,7 +37,7 @@ export function exportToMarkdown(data: ChatExportData): string {
         }
       }
     }
-    markdown += `---\n\n`;
+    markdown += "---\n\n";
   }
 
   return markdown;
@@ -61,7 +61,11 @@ export function exportToPDF(data: ChatExportData): string {
 /**
  * Download exported content as file
  */
-export function downloadExport(content: string, filename: string, format: ExportFormat): void {
+export function downloadExport(
+  content: string,
+  filename: string,
+  format: ExportFormat
+): void {
   const mimeTypes: Record<ExportFormat, string> = {
     markdown: "text/markdown",
     json: "application/json",

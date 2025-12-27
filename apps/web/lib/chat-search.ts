@@ -1,19 +1,26 @@
 import "server-only";
 
 import { getCloudflareContext } from "@opennextjs/cloudflare";
-import { eq, like, and, desc, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 import { createDb } from "@/lib/db";
-import { chat, message, chatTag, chatToTag, chatFolder, chatToFolder } from "@/lib/db/schema";
+import {
+  chat,
+  chatFolder,
+  chatTag,
+  chatToFolder,
+  chatToTag,
+  message,
+} from "@/lib/db/schema";
 
-export interface SearchOptions {
+export type SearchOptions = {
   userId: string;
   query: string;
   folderId?: string;
   tagIds?: string[];
   limit?: number;
-}
+};
 
-export interface SearchResult {
+export type SearchResult = {
   id: string;
   title: string;
   createdAt: Date;
@@ -23,7 +30,7 @@ export interface SearchResult {
   matchedMessages: number;
   tags: Array<{ id: string; name: string; color: string }>;
   folders: Array<{ id: string; name: string; color: string }>;
-}
+};
 
 async function getDb() {
   const { env } = await getCloudflareContext({ async: true });
@@ -34,7 +41,9 @@ async function getDb() {
  * Search chats using full-text search across title and messages
  * Uses SQLite LIKE operator for text matching
  */
-export async function searchChats(options: SearchOptions): Promise<SearchResult[]> {
+export async function searchChats(
+  options: SearchOptions
+): Promise<SearchResult[]> {
   const { userId, query, folderId, tagIds, limit = 20 } = options;
   const db = await getDb();
 
@@ -83,12 +92,10 @@ export async function searchChats(options: SearchOptions): Promise<SearchResult[
 
   // Get messages for all found chats
   const chatIds = chats.map((c) => c.id);
-  const allMessages = chatIds.length > 0
-    ? await db
-        .select()
-        .from(message)
-        .where(inArray(message.chatId, chatIds))
-    : [];
+  const allMessages =
+    chatIds.length > 0
+      ? await db.select().from(message).where(inArray(message.chatId, chatIds))
+      : [];
 
   // Search in message content too
   const messageMatches = await db
@@ -109,10 +116,9 @@ export async function searchChats(options: SearchOptions): Promise<SearchResult[
     additionalChats = await db
       .select()
       .from(chat)
-      .where(and(
-        eq(chat.userId, userId),
-        inArray(chat.id, messageMatchChatIds)
-      ));
+      .where(
+        and(eq(chat.userId, userId), inArray(chat.id, messageMatchChatIds))
+      );
 
     // Get messages for additional chats
     if (additionalChats.length > 0) {
@@ -162,13 +168,18 @@ export async function searchChats(options: SearchOptions): Promise<SearchResult[
       const parts = msg.parts as any;
       if (Array.isArray(parts)) {
         return parts.some((part) =>
-          part.text && part.text.toLowerCase().includes(query.toLowerCase())
+          part.text?.toLowerCase().includes(query.toLowerCase())
         );
       }
       return false;
     });
 
-    const snippet = matchingMessages[0]?.parts?.[0]?.text?.slice(0, 150);
+    const firstMatchingMessage = matchingMessages[0];
+    const parts = firstMatchingMessage?.parts as any;
+    const snippet =
+      Array.isArray(parts) && parts[0]?.text
+        ? parts[0].text.slice(0, 150)
+        : undefined;
 
     results.push({
       id: chatRecord.id,
@@ -176,7 +187,9 @@ export async function searchChats(options: SearchOptions): Promise<SearchResult[
       createdAt: chatRecord.createdAt,
       updatedAt: chatRecord.updatedAt,
       visibility: chatRecord.visibility,
-      snippet: snippet ? `${snippet}${snippet.length >= 150 ? "..." : ""}` : undefined,
+      snippet: snippet
+        ? `${snippet}${snippet.length >= 150 ? "..." : ""}`
+        : undefined,
       matchedMessages: matchingMessages.length,
       tags,
       folders,
@@ -204,10 +217,7 @@ export async function getSearchSuggestions(
       title: chat.title,
     })
     .from(chat)
-    .where(and(
-      eq(chat.userId, userId),
-      like(chat.title, `%${partialQuery}%`)
-    ))
+    .where(and(eq(chat.userId, userId), like(chat.title, `%${partialQuery}%`)))
     .limit(limit);
 
   return chats.map((c) => c.title);
