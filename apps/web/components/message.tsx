@@ -403,6 +403,7 @@ const PurePreviewMessage = ({
               isLoading={isLoading}
               key={`action-${message.id}`}
               message={message}
+              setMessages={setMessages}
               setMode={setMode}
               vote={vote}
             />
