@@ -17,10 +17,10 @@ const TOKEN_KEY = "auth_token";
  * Returns null if running on server side or no token exists
  */
 export function getStoredToken(): string | null {
-  if (typeof window === "undefined") {
-    return null;
-  }
-  return localStorage.getItem(TOKEN_KEY);
+	if (typeof window === "undefined") {
+		return null;
+	}
+	return localStorage.getItem(TOKEN_KEY);
 }
 
 /**
@@ -28,10 +28,10 @@ export function getStoredToken(): string | null {
  * No-op if running on server side
  */
 export function setStoredToken(token: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.setItem(TOKEN_KEY, token);
+	if (typeof window === "undefined") {
+		return;
+	}
+	localStorage.setItem(TOKEN_KEY, token);
 }
 
 /**
@@ -39,10 +39,10 @@ export function setStoredToken(token: string): void {
  * No-op if running on server side
  */
 export function removeStoredToken(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-  localStorage.removeItem(TOKEN_KEY);
+	if (typeof window === "undefined") {
+		return;
+	}
+	localStorage.removeItem(TOKEN_KEY);
 }
 
 /**
@@ -51,16 +51,16 @@ export function removeStoredToken(): void {
  * Call this once on app initialization
  */
 export function initTokenSync(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
+	if (typeof window === "undefined") {
+		return;
+	}
 
-  window.addEventListener("storage", (e) => {
-    if (e.key === TOKEN_KEY) {
-      // Token changed in another tab - reload to get fresh auth state
-      window.location.reload();
-    }
-  });
+	window.addEventListener("storage", (e) => {
+		if (e.key === TOKEN_KEY) {
+			// Token changed in another tab - reload to get fresh auth state
+			window.location.reload();
+		}
+	});
 }
 
 /**
@@ -69,5 +69,5 @@ export function initTokenSync(): void {
  * Use the session endpoint for full validation
  */
 export function hasStoredToken(): boolean {
-  return getStoredToken() !== null;
+	return getStoredToken() !== null;
 }

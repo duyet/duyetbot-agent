@@ -18,36 +18,36 @@ export const suggestionsRoutes = new Hono<{ Bindings: Env }>();
  * Get suggestions for document
  */
 suggestionsRoutes.get("/", async (c) => {
-  const documentId = c.req.query("documentId");
+	const documentId = c.req.query("documentId");
 
-  if (!documentId) {
-    throw new WorkerError(
-      "bad_request:api",
-      "Parameter documentId is required."
-    );
-  }
+	if (!documentId) {
+		throw new WorkerError(
+			"bad_request:api",
+			"Parameter documentId is required.",
+		);
+	}
 
-  const session = await getSessionFromRequest(c);
+	const session = await getSessionFromRequest(c);
 
-  if (!session?.user) {
-    throw new WorkerError("unauthorized:suggestions");
-  }
+	if (!session?.user) {
+		throw new WorkerError("unauthorized:suggestions");
+	}
 
-  const db = getDb(c);
-  const suggestions = await db
-    .select()
-    .from(suggestion)
-    .where(eq(suggestion.documentId, documentId));
+	const db = getDb(c);
+	const suggestions = await db
+		.select()
+		.from(suggestion)
+		.where(eq(suggestion.documentId, documentId));
 
-  const [suggestionRecord] = suggestions;
+	const [suggestionRecord] = suggestions;
 
-  if (!suggestionRecord) {
-    return c.json([]);
-  }
+	if (!suggestionRecord) {
+		return c.json([]);
+	}
 
-  if (suggestionRecord.userId !== session.user.id) {
-    throw new WorkerError("forbidden:api");
-  }
+	if (suggestionRecord.userId !== session.user.id) {
+		throw new WorkerError("forbidden:api");
+	}
 
-  return c.json(suggestions);
+	return c.json(suggestions);
 });

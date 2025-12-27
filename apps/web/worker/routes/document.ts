@@ -22,36 +22,36 @@ type ArtifactKind = "text" | "code" | "image" | "sheet";
  * Get document
  */
 documentRoutes.get("/", async (c) => {
-  const id = c.req.query("id");
+	const id = c.req.query("id");
 
-  if (!id) {
-    throw new WorkerError("bad_request:api", "Parameter id is missing");
-  }
+	if (!id) {
+		throw new WorkerError("bad_request:api", "Parameter id is missing");
+	}
 
-  const session = await getSessionFromRequest(c);
+	const session = await getSessionFromRequest(c);
 
-  if (!session?.user) {
-    throw new WorkerError("unauthorized:document");
-  }
+	if (!session?.user) {
+		throw new WorkerError("unauthorized:document");
+	}
 
-  const db = getDb(c);
-  const documents = await db
-    .select()
-    .from(document)
-    .where(eq(document.id, id))
-    .orderBy(document.createdAt);
+	const db = getDb(c);
+	const documents = await db
+		.select()
+		.from(document)
+		.where(eq(document.id, id))
+		.orderBy(document.createdAt);
 
-  const [doc] = documents;
+	const [doc] = documents;
 
-  if (!doc) {
-    throw new WorkerError("not_found:document");
-  }
+	if (!doc) {
+		throw new WorkerError("not_found:document");
+	}
 
-  if (doc.userId !== session.user.id) {
-    throw new WorkerError("forbidden:document");
-  }
+	if (doc.userId !== session.user.id) {
+		throw new WorkerError("forbidden:document");
+	}
 
-  return c.json(documents);
+	return c.json(documents);
 });
 
 /**
@@ -59,49 +59,49 @@ documentRoutes.get("/", async (c) => {
  * Save document
  */
 documentRoutes.post("/", async (c) => {
-  const id = c.req.query("id");
+	const id = c.req.query("id");
 
-  if (!id) {
-    throw new WorkerError("bad_request:api", "Parameter id is required.");
-  }
+	if (!id) {
+		throw new WorkerError("bad_request:api", "Parameter id is required.");
+	}
 
-  const session = await getSessionFromRequest(c);
+	const session = await getSessionFromRequest(c);
 
-  if (!session?.user) {
-    throw new WorkerError("not_found:document");
-  }
+	if (!session?.user) {
+		throw new WorkerError("not_found:document");
+	}
 
-  const {
-    content,
-    title,
-    kind,
-  }: { content: string; title: string; kind: ArtifactKind } =
-    await c.req.json();
+	const {
+		content,
+		title,
+		kind,
+	}: { content: string; title: string; kind: ArtifactKind } =
+		await c.req.json();
 
-  const db = getDb(c);
-  const documents = await db.select().from(document).where(eq(document.id, id));
+	const db = getDb(c);
+	const documents = await db.select().from(document).where(eq(document.id, id));
 
-  if (documents.length > 0) {
-    const [doc] = documents;
+	if (documents.length > 0) {
+		const [doc] = documents;
 
-    if (doc.userId !== session.user.id) {
-      throw new WorkerError("forbidden:document");
-    }
-  }
+		if (doc.userId !== session.user.id) {
+			throw new WorkerError("forbidden:document");
+		}
+	}
 
-  const [savedDocument] = await db
-    .insert(document)
-    .values({
-      id,
-      content,
-      title,
-      kind,
-      userId: session.user.id,
-      createdAt: new Date(),
-    })
-    .returning();
+	const [savedDocument] = await db
+		.insert(document)
+		.values({
+			id,
+			content,
+			title,
+			kind,
+			userId: session.user.id,
+			createdAt: new Date(),
+		})
+		.returning();
 
-  return c.json(savedDocument);
+	return c.json(savedDocument);
 });
 
 /**
@@ -109,41 +109,41 @@ documentRoutes.post("/", async (c) => {
  * Delete document after timestamp
  */
 documentRoutes.delete("/", async (c) => {
-  const id = c.req.query("id");
-  const timestamp = c.req.query("timestamp");
+	const id = c.req.query("id");
+	const timestamp = c.req.query("timestamp");
 
-  if (!id) {
-    throw new WorkerError("bad_request:api", "Parameter id is required.");
-  }
+	if (!id) {
+		throw new WorkerError("bad_request:api", "Parameter id is required.");
+	}
 
-  if (!timestamp) {
-    throw new WorkerError(
-      "bad_request:api",
-      "Parameter timestamp is required."
-    );
-  }
+	if (!timestamp) {
+		throw new WorkerError(
+			"bad_request:api",
+			"Parameter timestamp is required.",
+		);
+	}
 
-  const session = await getSessionFromRequest(c);
+	const session = await getSessionFromRequest(c);
 
-  if (!session?.user) {
-    throw new WorkerError("unauthorized:document");
-  }
+	if (!session?.user) {
+		throw new WorkerError("unauthorized:document");
+	}
 
-  const db = getDb(c);
-  const documents = await db.select().from(document).where(eq(document.id, id));
+	const db = getDb(c);
+	const documents = await db.select().from(document).where(eq(document.id, id));
 
-  const [doc] = documents;
+	const [doc] = documents;
 
-  if (!doc || doc.userId !== session.user.id) {
-    throw new WorkerError("forbidden:document");
-  }
+	if (!doc || doc.userId !== session.user.id) {
+		throw new WorkerError("forbidden:document");
+	}
 
-  const deleted = await db
-    .delete(document)
-    .where(
-      and(eq(document.id, id), gt(document.createdAt, new Date(timestamp)))
-    )
-    .returning();
+	const deleted = await db
+		.delete(document)
+		.where(
+			and(eq(document.id, id), gt(document.createdAt, new Date(timestamp))),
+		)
+		.returning();
 
-  return c.json(deleted);
+	return c.json(deleted);
 });

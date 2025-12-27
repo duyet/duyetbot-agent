@@ -4,16 +4,16 @@ import { KeyboardShortcutsDialog } from "@/components/keyboard-shortcuts";
 import { SidebarWrapper } from "@/components/sidebar-wrapper";
 
 export default function Layout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <Script
-        src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
-        strategy="beforeInteractive"
-      />
-      <DataStreamProvider>
-        <SidebarWrapper>{children}</SidebarWrapper>
-        <KeyboardShortcutsDialog />
-      </DataStreamProvider>
-    </>
-  );
+	return (
+		<>
+			<Script
+				src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"
+				strategy="beforeInteractive"
+			/>
+			<DataStreamProvider>
+				<SidebarWrapper>{children}</SidebarWrapper>
+				<KeyboardShortcutsDialog />
+			</DataStreamProvider>
+		</>
+	);
 }

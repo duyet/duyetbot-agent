@@ -1,76 +1,76 @@
 "use client";
 
-import type { SessionHistoryEntry } from "./session-persistence";
 import type { MemoryEntry } from "./chat-memory";
+import type { SessionHistoryEntry } from "./session-persistence";
 
 /**
  * Complete user data export structure
  */
 export interface UserDataExport {
-  version: string;
-  exportDate: string;
-  profile?: UserProfile;
-  sessions: SessionExport[];
-  memories: MemoryExport[];
-  metadata: ExportMetadata;
+	version: string;
+	exportDate: string;
+	profile?: UserProfile;
+	sessions: SessionExport[];
+	memories: MemoryExport[];
+	metadata: ExportMetadata;
 }
 
 /**
  * User profile data
  */
 export interface UserProfile {
-  email?: string;
-  createdAt: string;
-  lastActive: string;
-  preferences: UserPreferences;
+	email?: string;
+	createdAt: string;
+	lastActive: string;
+	preferences: UserPreferences;
 }
 
 /**
  * User preferences
  */
 export interface UserPreferences {
-  theme?: "light" | "dark" | "system";
-  language?: string;
-  notifications?: boolean;
-  dataRetention?: "30d" | "90d" | "1y" | "forever";
-  analytics?: boolean;
+	theme?: "light" | "dark" | "system";
+	language?: string;
+	notifications?: boolean;
+	dataRetention?: "30d" | "90d" | "1y" | "forever";
+	analytics?: boolean;
 }
 
 /**
  * Session export format
  */
 export interface SessionExport {
-  chatId: string;
-  title: string;
-  messageCount: number;
-  createdAt: string;
-  updatedAt: string;
-  tags?: string[];
-  folderId?: string;
-  visibilityType?: string;
+	chatId: string;
+	title: string;
+	messageCount: number;
+	createdAt: string;
+	updatedAt: string;
+	tags?: string[];
+	folderId?: string;
+	visibilityType?: string;
 }
 
 /**
  * Memory export format
  */
 export interface MemoryExport {
-  id: string;
-  chatId: string;
-  type: string;
-  content: string;
-  importance: number;
-  timestamp: string;
-  accessCount: number;
+	id: string;
+	chatId: string;
+	type: string;
+	content: string;
+	importance: number;
+	timestamp: string;
+	accessCount: number;
 }
 
 /**
  * Export metadata
  */
 export interface ExportMetadata {
-  totalSessions: number;
-  totalMemories: number;
-  dataRetentionDays: number;
-  estimatedSizeBytes: number;
+	totalSessions: number;
+	totalMemories: number;
+	dataRetentionDays: number;
+	estimatedSizeBytes: number;
 }
 
 /**
@@ -83,121 +83,124 @@ export interface ExportMetadata {
  * - Tags and folder organization
  */
 export async function collectUserData(): Promise<UserDataExport> {
-  const profile = collectUserProfile();
-  const sessions = collectSessions();
-  const memories = collectMemories();
+	const profile = collectUserProfile();
+	const sessions = collectSessions();
+	const memories = collectMemories();
 
-  const totalSize = JSON.stringify({ profile, sessions, memories }).length;
+	const totalSize = JSON.stringify({ profile, sessions, memories }).length;
 
-  return {
-    version: "1.0",
-    exportDate: new Date().toISOString(),
-    profile,
-    sessions,
-    memories,
-    metadata: {
-      totalSessions: sessions.length,
-      totalMemories: memories.length,
-      dataRetentionDays: 90, // Default retention
-      estimatedSizeBytes: totalSize,
-    },
-  };
+	return {
+		version: "1.0",
+		exportDate: new Date().toISOString(),
+		profile,
+		sessions,
+		memories,
+		metadata: {
+			totalSessions: sessions.length,
+			totalMemories: memories.length,
+			dataRetentionDays: 90, // Default retention
+			estimatedSizeBytes: totalSize,
+		},
+	};
 }
 
 /**
  * Collect user profile data
  */
 function collectUserProfile(): UserProfile | undefined {
-  try {
-    const preferences = localStorage.getItem("user-preferences");
-    const createdAt = localStorage.getItem("user-created-at") || new Date().toISOString();
-    const lastActive = new Date().toISOString();
+	try {
+		const preferences = localStorage.getItem("user-preferences");
+		const createdAt =
+			localStorage.getItem("user-created-at") || new Date().toISOString();
+		const lastActive = new Date().toISOString();
 
-    return {
-      email: undefined, // Email is stored server-side
-      createdAt,
-      lastActive,
-      preferences: preferences ? JSON.parse(preferences) : {},
-    };
-  } catch (error) {
-    console.error("[PrivacyExport] Failed to collect profile:", error);
-    return undefined;
-  }
+		return {
+			email: undefined, // Email is stored server-side
+			createdAt,
+			lastActive,
+			preferences: preferences ? JSON.parse(preferences) : {},
+		};
+	} catch (error) {
+		console.error("[PrivacyExport] Failed to collect profile:", error);
+		return;
+	}
 }
 
 /**
  * Collect all session data
  */
 function collectSessions(): SessionExport[] {
-  try {
-    const history = getSessionHistory();
-    const sessions: SessionExport[] = [];
+	try {
+		const history = getSessionHistory();
+		const sessions: SessionExport[] = [];
 
-    for (const entry of history) {
-      // Get session state for each chat
-      const sessionKey = `chat-active-session:${entry.chatId}`;
-      const sessionData = localStorage.getItem(sessionKey);
+		for (const entry of history) {
+			// Get session state for each chat
+			const sessionKey = `chat-active-session:${entry.chatId}`;
+			const sessionData = localStorage.getItem(sessionKey);
 
-      // Get metadata
-      const metadataKey = `chat-session-metadata:${entry.chatId}`;
-      const metadata = JSON.parse(localStorage.getItem(metadataKey) || "{}");
+			// Get metadata
+			const metadataKey = `chat-session-metadata:${entry.chatId}`;
+			const metadata = JSON.parse(localStorage.getItem(metadataKey) || "{}");
 
-      sessions.push({
-        chatId: entry.chatId,
-        title: entry.title,
-        messageCount: entry.messageCount,
-        createdAt: entry.timestamp,
-        updatedAt: sessionData ? JSON.parse(sessionData).timestamp : entry.timestamp,
-        tags: metadata.tags,
-        folderId: metadata.folderId,
-        visibilityType: metadata.visibilityType,
-      });
-    }
+			sessions.push({
+				chatId: entry.chatId,
+				title: entry.title,
+				messageCount: entry.messageCount,
+				createdAt: entry.timestamp,
+				updatedAt: sessionData
+					? JSON.parse(sessionData).timestamp
+					: entry.timestamp,
+				tags: metadata.tags,
+				folderId: metadata.folderId,
+				visibilityType: metadata.visibilityType,
+			});
+		}
 
-    return sessions;
-  } catch (error) {
-    console.error("[PrivacyExport] Failed to collect sessions:", error);
-    return [];
-  }
+		return sessions;
+	} catch (error) {
+		console.error("[PrivacyExport] Failed to collect sessions:", error);
+		return [];
+	}
 }
 
 /**
  * Collect all memory data
  */
 function collectMemories(): MemoryExport[] {
-  try {
-    const memoryKey = "chat-memory-store";
-    const stored = localStorage.getItem(memoryKey);
+	try {
+		const memoryKey = "chat-memory-store";
+		const stored = localStorage.getItem(memoryKey);
 
-    if (!stored) return [];
+		if (!stored) return [];
 
-    const memories: MemoryEntry[] = JSON.parse(stored);
+		const memories: MemoryEntry[] = JSON.parse(stored);
 
-    return memories.map((mem) => ({
-      id: mem.id,
-      chatId: mem.chatId,
-      type: mem.type,
-      content: mem.content,
-      importance: mem.importance,
-      timestamp: mem.timestamp,
-      accessCount: mem.accessCount,
-    }));
-  } catch (error) {
-    console.error("[PrivacyExport] Failed to collect memories:", error);
-    return [];
-  }
+		return memories.map((mem) => ({
+			id: mem.id,
+			chatId: mem.chatId,
+			type: mem.type,
+			content: mem.content,
+			importance: mem.importance,
+			timestamp: mem.timestamp,
+			accessCount: mem.accessCount,
+		}));
+	} catch (error) {
+		console.error("[PrivacyExport] Failed to collect memories:", error);
+		return [];
+	}
 }
 
 /**
  * Get session history from localStorage
  */
 function getSessionHistory(): SessionHistoryEntry[] {
-  try {
-    const stored = localStorage.getItem("chat-session-history");
-    return stored ? JSON.parse(stored) : [];
-  } catch {
-    return [];
-  }
+	try {
+		const stored = localStorage.getItem("chat-session-history");
+		return stored ? JSON.parse(stored) : [];
+	} catch {
+		return [];
+	}
 }
 
 /**
@@ -207,24 +210,24 @@ function getSessionHistory(): SessionHistoryEntry[] {
  * Users can download all their personal data in a machine-readable format
  */
 export async function exportUserData(): Promise<void> {
-  try {
-    const data = await collectUserData();
-    const json = JSON.stringify(data, null, 2);
+	try {
+		const data = await collectUserData();
+		const json = JSON.stringify(data, null, 2);
 
-    // Create blob and download
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `my-data-${new Date().toISOString().split("T")[0]}.json`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("[PrivacyExport] Failed to export data:", error);
-    throw new Error("Failed to export data. Please try again.");
-  }
+		// Create blob and download
+		const blob = new Blob([json], { type: "application/json" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `my-data-${new Date().toISOString().split("T")[0]}.json`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	} catch (error) {
+		console.error("[PrivacyExport] Failed to export data:", error);
+		throw new Error("Failed to export data. Please try again.");
+	}
 }
 
 /**
@@ -234,32 +237,32 @@ export async function exportUserData(): Promise<void> {
  * This creates a formatted HTML report that users can easily read
  */
 export async function exportUserDataAsHTML(): Promise<void> {
-  try {
-    const data = await collectUserData();
+	try {
+		const data = await collectUserData();
 
-    const html = generateHTMLReport(data);
+		const html = generateHTMLReport(data);
 
-    // Create blob and download
-    const blob = new Blob([html], { type: "text/html" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `my-data-report-${new Date().toISOString().split("T")[0]}.html`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  } catch (error) {
-    console.error("[PrivacyExport] Failed to export HTML:", error);
-    throw new Error("Failed to export report. Please try again.");
-  }
+		// Create blob and download
+		const blob = new Blob([html], { type: "text/html" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = `my-data-report-${new Date().toISOString().split("T")[0]}.html`;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+	} catch (error) {
+		console.error("[PrivacyExport] Failed to export HTML:", error);
+		throw new Error("Failed to export report. Please try again.");
+	}
 }
 
 /**
  * Generate HTML report from user data
  */
 function generateHTMLReport(data: UserDataExport): string {
-  return `<!DOCTYPE html>
+	return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -288,32 +291,44 @@ function generateHTMLReport(data: UserDataExport): string {
     <p><strong>Estimated Size:</strong> ${(data.metadata.estimatedSizeBytes / 1024).toFixed(2)} KB</p>
   </div>
 
-  ${data.profile ? `
+  ${
+		data.profile
+			? `
   <h2>Profile Information</h2>
   <div class="section">
     <p><strong>Account Created:</strong> ${new Date(data.profile.createdAt).toLocaleString()}</p>
     <p><strong>Last Active:</strong> ${new Date(data.profile.lastActive).toLocaleString()}</p>
-    <p><strong>Theme:</strong> ${data.profile.preferences.theme || 'Not set'}</p>
-    <p><strong>Language:</strong> ${data.profile.preferences.language || 'Not set'}</p>
+    <p><strong>Theme:</strong> ${data.profile.preferences.theme || "Not set"}</p>
+    <p><strong>Language:</strong> ${data.profile.preferences.language || "Not set"}</p>
   </div>
-  ` : ''}
+  `
+			: ""
+	}
 
   <h2>Chat Sessions (${data.sessions.length})</h2>
-  ${data.sessions.map(session => `
+  ${data.sessions
+		.map(
+			(session) => `
     <div class="session-item">
       <p><strong>${session.title}</strong></p>
       <p class="timestamp">${session.messageCount} messages • Created ${new Date(session.createdAt).toLocaleDateString()}</p>
-      ${session.tags?.length ? `<p>${session.tags.map(t => `<span class="tag">${t}</span>`).join('')}</p>` : ''}
+      ${session.tags?.length ? `<p>${session.tags.map((t) => `<span class="tag">${t}</span>`).join("")}</p>` : ""}
     </div>
-  `).join('')}
+  `,
+		)
+		.join("")}
 
   <h2>Saved Memories (${data.memories.length})</h2>
-  ${data.memories.map(memory => `
+  ${data.memories
+		.map(
+			(memory) => `
     <div class="memory-item">
-      <p><strong>${memory.type}</strong>: ${memory.content.substring(0, 100)}${memory.content.length > 100 ? '...' : ''}</p>
+      <p><strong>${memory.type}</strong>: ${memory.content.substring(0, 100)}${memory.content.length > 100 ? "..." : ""}</p>
       <p class="timestamp">Importance: ${(memory.importance * 100).toFixed(0)}% • Accessed ${memory.accessCount} times</p>
     </div>
-  `).join('')}
+  `,
+		)
+		.join("")}
 
 </body>
 </html>`;
@@ -325,34 +340,46 @@ function generateHTMLReport(data: UserDataExport): string {
  * GDPR Requirement: Data portability includes the right to import data
  * This validates imported data before applying it
  */
-export function validateDataImport(json: string): { valid: boolean; error?: string } {
-  try {
-    const data = JSON.parse(json);
+export function validateDataImport(json: string): {
+	valid: boolean;
+	error?: string;
+} {
+	try {
+		const data = JSON.parse(json);
 
-    // Basic structure validation
-    if (!data.version || typeof data.version !== "string") {
-      return { valid: false, error: "Invalid data format: missing version" };
-    }
+		// Basic structure validation
+		if (!data.version || typeof data.version !== "string") {
+			return { valid: false, error: "Invalid data format: missing version" };
+		}
 
-    if (!Array.isArray(data.sessions)) {
-      return { valid: false, error: "Invalid data format: sessions must be an array" };
-    }
+		if (!Array.isArray(data.sessions)) {
+			return {
+				valid: false,
+				error: "Invalid data format: sessions must be an array",
+			};
+		}
 
-    if (!Array.isArray(data.memories)) {
-      return { valid: false, error: "Invalid data format: memories must be an array" };
-    }
+		if (!Array.isArray(data.memories)) {
+			return {
+				valid: false,
+				error: "Invalid data format: memories must be an array",
+			};
+		}
 
-    // Validate session structure
-    for (const session of data.sessions) {
-      if (!session.chatId || !session.title) {
-        return { valid: false, error: "Invalid session format: missing required fields" };
-      }
-    }
+		// Validate session structure
+		for (const session of data.sessions) {
+			if (!session.chatId || !session.title) {
+				return {
+					valid: false,
+					error: "Invalid session format: missing required fields",
+				};
+			}
+		}
 
-    return { valid: true };
-  } catch (error) {
-    return { valid: false, error: "Invalid JSON format" };
-  }
+		return { valid: true };
+	} catch (error) {
+		return { valid: false, error: "Invalid JSON format" };
+	}
 }
 
 /**
@@ -361,58 +388,68 @@ export function validateDataImport(json: string): { valid: boolean; error?: stri
  * GDPR Requirement: Right to data portability
  * Allows users to import data they've previously exported
  */
-export async function importUserData(json: string): Promise<{ success: boolean; error?: string }> {
-  // Validate first
-  const validation = validateDataImport(json);
-  if (!validation.valid) {
-    return { success: false, error: validation.error };
-  }
+export async function importUserData(
+	json: string,
+): Promise<{ success: boolean; error?: string }> {
+	// Validate first
+	const validation = validateDataImport(json);
+	if (!validation.valid) {
+		return { success: false, error: validation.error };
+	}
 
-  try {
-    const data: UserDataExport = JSON.parse(json);
+	try {
+		const data: UserDataExport = JSON.parse(json);
 
-    // Ask for confirmation before overwriting
-    const confirmed = await confirmImportAction(data);
-    if (!confirmed) {
-      return { success: false, error: "Import cancelled by user" };
-    }
+		// Ask for confirmation before overwriting
+		const confirmed = await confirmImportAction(data);
+		if (!confirmed) {
+			return { success: false, error: "Import cancelled by user" };
+		}
 
-    // Import sessions
-    const sessionHistoryKey = "chat-session-history";
-    const existingHistory = JSON.parse(localStorage.getItem(sessionHistoryKey) || "[]");
-    const mergedHistory = [...existingHistory, ...data.sessions]
-      .reduce((acc, session) => {
-        if (!acc.find((s: any) => s.chatId === session.chatId)) {
-          acc.push(session);
-        }
-        return acc;
-      }, [] as any[])
-      .slice(-100); // Keep last 100
-    localStorage.setItem(sessionHistoryKey, JSON.stringify(mergedHistory));
+		// Import sessions
+		const sessionHistoryKey = "chat-session-history";
+		const existingHistory = JSON.parse(
+			localStorage.getItem(sessionHistoryKey) || "[]",
+		);
+		const mergedHistory = [...existingHistory, ...data.sessions]
+			.reduce((acc, session) => {
+				if (!acc.find((s: any) => s.chatId === session.chatId)) {
+					acc.push(session);
+				}
+				return acc;
+			}, [] as any[])
+			.slice(-100); // Keep last 100
+		localStorage.setItem(sessionHistoryKey, JSON.stringify(mergedHistory));
 
-    // Import memories
-    if (data.memories.length > 0) {
-      localStorage.setItem("chat-memory-store", JSON.stringify(data.memories));
-    }
+		// Import memories
+		if (data.memories.length > 0) {
+			localStorage.setItem("chat-memory-store", JSON.stringify(data.memories));
+		}
 
-    // Import preferences
-    if (data.profile?.preferences) {
-      localStorage.setItem("user-preferences", JSON.stringify(data.profile.preferences));
-    }
+		// Import preferences
+		if (data.profile?.preferences) {
+			localStorage.setItem(
+				"user-preferences",
+				JSON.stringify(data.profile.preferences),
+			);
+		}
 
-    return { success: true };
-  } catch (error) {
-    console.error("[PrivacyExport] Failed to import data:", error);
-    return { success: false, error: "Failed to import data. Please try again." };
-  }
+		return { success: true };
+	} catch (error) {
+		console.error("[PrivacyExport] Failed to import data:", error);
+		return {
+			success: false,
+			error: "Failed to import data. Please try again.",
+		};
+	}
 }
 
 /**
  * Show import confirmation dialog
  */
 async function confirmImportAction(data: UserDataExport): Promise<boolean> {
-  // In a real implementation, this would show a proper modal
-  // For now, use browser confirm
-  const message = `Import ${data.sessions.length} sessions and ${data.memories.length} memories?\n\nThis will merge with your existing data.`;
-  return window.confirm(message);
+	// In a real implementation, this would show a proper modal
+	// For now, use browser confirm
+	const message = `Import ${data.sessions.length} sessions and ${data.memories.length} memories?\n\nThis will merge with your existing data.`;
+	return window.confirm(message);
 }
