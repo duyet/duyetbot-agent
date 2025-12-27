@@ -10,57 +10,57 @@ import { type AuthUser, useAuth } from "@/hooks/use-auth";
  * Returns true if sidebar should be OPEN (not collapsed)
  */
 function getSidebarOpenState(): boolean {
-  if (typeof window === "undefined") {
-    return true; // Default open on server
-  }
+	if (typeof window === "undefined") {
+		return true; // Default open on server
+	}
 
-  try {
-    const savedState = localStorage.getItem("sidebar_state");
-    // If "true" means open, return true; otherwise default to open
-    return savedState === "true" || savedState === null;
-  } catch (error) {
-    console.debug("[SidebarWrapper] Failed to read sidebar state:", error);
-    return true; // Default to open if localStorage fails
-  }
+	try {
+		const savedState = localStorage.getItem("sidebar_state");
+		// If "true" means open, return true; otherwise default to open
+		return savedState === "true" || savedState === null;
+	} catch (error) {
+		console.debug("[SidebarWrapper] Failed to read sidebar state:", error);
+		return true; // Default to open if localStorage fails
+	}
 }
 
 /**
  * Safe localStorage set helper
  */
 function setSidebarState(open: boolean): void {
-  if (typeof window === "undefined") {
-    return;
-  }
+	if (typeof window === "undefined") {
+		return;
+	}
 
-  try {
-    localStorage.setItem("sidebar_state", open ? "true" : "false");
-  } catch (error) {
-    console.debug("[SidebarWrapper] Failed to save sidebar state:", error);
-  }
+	try {
+		localStorage.setItem("sidebar_state", open ? "true" : "false");
+	} catch (error) {
+		console.debug("[SidebarWrapper] Failed to save sidebar state:", error);
+	}
 }
 
 export function SidebarWrapper({ children }: { children: React.ReactNode }) {
-  const { data: session } = useAuth();
-  const [isOpen, setIsOpen] = useState(true);
+	const { data: session } = useAuth();
+	const [isOpen, setIsOpen] = useState(true);
 
-  useEffect(() => {
-    // Read sidebar state from localStorage on mount
-    setIsOpen(getSidebarOpenState());
-  }, []);
+	useEffect(() => {
+		// Read sidebar state from localStorage on mount
+		setIsOpen(getSidebarOpenState());
+	}, []);
 
-  const user: AuthUser | undefined = session?.user;
+	const user: AuthUser | undefined = session?.user;
 
-  return (
-    <SidebarProvider
-      defaultOpen={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        setSidebarState(open);
-      }}
-      open={isOpen}
-    >
-      <AppSidebar user={user} />
-      <SidebarInset>{children}</SidebarInset>
-    </SidebarProvider>
-  );
+	return (
+		<SidebarProvider
+			defaultOpen={isOpen}
+			onOpenChange={(open) => {
+				setIsOpen(open);
+				setSidebarState(open);
+			}}
+			open={isOpen}
+		>
+			<AppSidebar user={user} />
+			<SidebarInset>{children}</SidebarInset>
+		</SidebarProvider>
+	);
 }

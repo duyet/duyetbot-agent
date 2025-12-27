@@ -14,7 +14,37 @@ export async function startTestServer(
   app: Hono,
   options: { port?: number } = {}
 ): Promise<TestServer> {
-  const port = options.port || 3000 + Math.floor(Math.random() * 1000);
+  let port = options.port;
+  let attempts = 0;
+  const maxAttempts = 10;
+
+  // If no port specified, try random ports starting from 3000
+  if (!port) {
+    while (attempts < maxAttempts) {
+      port = 3000 + Math.floor(Math.random() * 10000);
+      try {
+        const server = serve({
+          fetch: app.fetch,
+          port,
+        });
+
+        return {
+          url: `http://localhost:${port}`,
+          port,
+          close: async () => {
+            return new Promise((resolve) => {
+              server.close(() => resolve());
+            });
+          },
+        };
+      } catch (err) {
+        attempts++;
+        if (attempts >= maxAttempts) {
+          throw new Error(`Failed to find available port after ${maxAttempts} attempts`);
+        }
+      }
+    }
+  }
 
   const server = serve({
     fetch: app.fetch,

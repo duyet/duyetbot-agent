@@ -15,16 +15,16 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { user } from "../../lib/db/schema";
 import {
-  clearSessionCookie,
-  getSessionFromRequest,
-  setSessionCookie,
+	clearSessionCookie,
+	getSessionFromRequest,
+	setSessionCookie,
 } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
 import {
-  hashPassword,
-  signState,
-  verifyPassword,
-  verifyState,
+	hashPassword,
+	signState,
+	verifyPassword,
+	verifyState,
 } from "../lib/crypto";
 import { createSessionToken } from "../lib/jwt";
 import { generateUUID } from "../lib/utils";
@@ -37,15 +37,15 @@ const GENERIC_AUTH_ERROR = "Invalid email or password";
 
 // Schemas - consistent with client-side validation
 const passwordSchema = z
-  .string()
-  .min(8, "Password must be at least 8 characters")
-  .max(128, "Password must be at most 128 characters")
-  .regex(/[a-zA-Z]/, "Password must contain at least one letter")
-  .regex(/[0-9]/, "Password must contain at least one number");
+	.string()
+	.min(8, "Password must be at least 8 characters")
+	.max(128, "Password must be at most 128 characters")
+	.regex(/[a-zA-Z]/, "Password must contain at least one letter")
+	.regex(/[0-9]/, "Password must contain at least one number");
 
 const loginSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: passwordSchema,
+	email: z.string().email("Invalid email address"),
+	password: passwordSchema,
 });
 
 // Rate limiting storage (in production, use KV or Redis)
@@ -56,35 +56,35 @@ const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
  * In production, use KV store with proper expiration
  */
 function checkRateLimit(
-  identifier: string,
-  maxRequests = 5,
-  windowMs = 60_000
+	identifier: string,
+	maxRequests = 5,
+	windowMs = 60_000,
 ): boolean {
-  const now = Date.now();
-  const record = rateLimitMap.get(identifier);
+	const now = Date.now();
+	const record = rateLimitMap.get(identifier);
 
-  if (!record || now > record.resetTime) {
-    rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
-    return true;
-  }
+	if (!record || now > record.resetTime) {
+		rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
+		return true;
+	}
 
-  if (record.count >= maxRequests) {
-    return false;
-  }
+	if (record.count >= maxRequests) {
+		return false;
+	}
 
-  record.count++;
-  return true;
+	record.count++;
+	return true;
 }
 
 /**
  * Get client identifier for rate limiting
  */
 function getClientId(c: any): string {
-  const forwarded = c.req.header("x-forwarded-for");
-  const ip = forwarded
-    ? forwarded.split(",")[0]
-    : c.req.header("cf-connecting-ip") || "unknown";
-  return ip;
+	const forwarded = c.req.header("x-forwarded-for");
+	const ip = forwarded
+		? forwarded.split(",")[0]
+		: c.req.header("cf-connecting-ip") || "unknown";
+	return ip;
 }
 
 /**
@@ -95,68 +95,68 @@ function getClientId(c: any): string {
  * - Generic error messages to prevent user enumeration
  */
 authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
-  const clientId = getClientId(c);
+	const clientId = getClientId(c);
 
-  // Rate limiting
-  if (!checkRateLimit(clientId, 5, 60_000)) {
-    return c.json(
-      { error: "Too many login attempts. Please try again later." },
-      429
-    );
-  }
+	// Rate limiting
+	if (!checkRateLimit(clientId, 5, 60_000)) {
+		return c.json(
+			{ error: "Too many login attempts. Please try again later." },
+			429,
+		);
+	}
 
-  const { email, password } = c.req.valid("json");
+	const { email, password } = c.req.valid("json");
 
-  const db = getDb(c);
-  const users = await db.select().from(user).where(eq(user.email, email));
+	const db = getDb(c);
+	const users = await db.select().from(user).where(eq(user.email, email));
 
-  // Use constant-time behavior for both user not found and wrong password
-  // to prevent user enumeration via timing attacks
-  if (users.length === 0) {
-    // Still perform password verification with dummy hash to maintain timing
-    const dummyHash = await hashPassword("dummy");
-    await verifyPassword(password, dummyHash);
-    return c.json({ error: GENERIC_AUTH_ERROR }, 401);
-  }
+	// Use constant-time behavior for both user not found and wrong password
+	// to prevent user enumeration via timing attacks
+	if (users.length === 0) {
+		// Still perform password verification with dummy hash to maintain timing
+		const dummyHash = await hashPassword("dummy");
+		await verifyPassword(password, dummyHash);
+		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
+	}
 
-  const [userRecord] = users;
+	const [userRecord] = users;
 
-  if (!userRecord.password) {
-    // User was created via OAuth - can't login with password
-    return c.json({ error: GENERIC_AUTH_ERROR }, 401);
-  }
+	if (!userRecord.password) {
+		// User was created via OAuth - can't login with password
+		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
+	}
 
-  const passwordsMatch = await verifyPassword(password, userRecord.password);
+	const passwordsMatch = await verifyPassword(password, userRecord.password);
 
-  if (!passwordsMatch) {
-    return c.json({ error: GENERIC_AUTH_ERROR }, 401);
-  }
+	if (!passwordsMatch) {
+		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
+	}
 
-  // Validate SESSION_SECRET is set
-  if (!c.env.SESSION_SECRET) {
-    console.error("SESSION_SECRET is not configured");
-    return c.json({ error: "Server configuration error" }, 500);
-  }
+	// Validate SESSION_SECRET is set
+	if (!c.env.SESSION_SECRET) {
+		console.error("SESSION_SECRET is not configured");
+		return c.json({ error: "Server configuration error" }, 500);
+	}
 
-  const sessionToken = await createSessionToken(
-    userRecord.id,
-    userRecord.email,
-    "regular",
-    c.env.SESSION_SECRET
-  );
+	const sessionToken = await createSessionToken(
+		userRecord.id,
+		userRecord.email,
+		"regular",
+		c.env.SESSION_SECRET,
+	);
 
-  const response = c.json({
-    success: true,
-    user: {
-      id: userRecord.id,
-      email: userRecord.email,
-      type: "regular" as const,
-    },
-    token: sessionToken,
-  });
+	const response = c.json({
+		success: true,
+		user: {
+			id: userRecord.id,
+			email: userRecord.email,
+			type: "regular" as const,
+		},
+		token: sessionToken,
+	});
 
-  // Keep setting cookie for backward compatibility during migration
-  return setSessionCookie(response, sessionToken);
+	// Keep setting cookie for backward compatibility during migration
+	return setSessionCookie(response, sessionToken);
 });
 
 /**
@@ -167,70 +167,70 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
  * - Generic error for existing user to prevent enumeration
  */
 authRoutes.post("/register", zValidator("json", loginSchema), async (c) => {
-  const clientId = getClientId(c);
+	const clientId = getClientId(c);
 
-  // Rate limiting
-  if (!checkRateLimit(clientId, 3, 60_000)) {
-    return c.json(
-      { error: "Too many registration attempts. Please try again later." },
-      429
-    );
-  }
+	// Rate limiting
+	if (!checkRateLimit(clientId, 3, 60_000)) {
+		return c.json(
+			{ error: "Too many registration attempts. Please try again later." },
+			429,
+		);
+	}
 
-  const { email, password } = c.req.valid("json");
+	const { email, password } = c.req.valid("json");
 
-  // Validate SESSION_SECRET is set
-  if (!c.env.SESSION_SECRET) {
-    console.error("SESSION_SECRET is not configured");
-    return c.json({ error: "Server configuration error" }, 500);
-  }
+	// Validate SESSION_SECRET is set
+	if (!c.env.SESSION_SECRET) {
+		console.error("SESSION_SECRET is not configured");
+		return c.json({ error: "Server configuration error" }, 500);
+	}
 
-  const db = getDb(c);
-  const existingUsers = await db
-    .select()
-    .from(user)
-    .where(eq(user.email, email));
+	const db = getDb(c);
+	const existingUsers = await db
+		.select()
+		.from(user)
+		.where(eq(user.email, email));
 
-  if (existingUsers.length > 0) {
-    // Use generic error to prevent user enumeration
-    return c.json({ error: "An account with this email already exists" }, 409);
-  }
+	if (existingUsers.length > 0) {
+		// Use generic error to prevent user enumeration
+		return c.json({ error: "An account with this email already exists" }, 409);
+	}
 
-  const hashedPassword = await hashPassword(password);
+	const hashedPassword = await hashPassword(password);
 
-  try {
-    await db.insert(user).values({ email, password: hashedPassword });
-  } catch (error) {
-    console.error("Failed to create user:", error);
-    return c.json({ error: "Failed to create account" }, 500);
-  }
+	try {
+		await db.insert(user).values({ email, password: hashedPassword });
+	} catch (error) {
+		console.error("Failed to create user:", error);
+		return c.json({ error: "Failed to create account" }, 500);
+	}
 
-  const users = await db.select().from(user).where(eq(user.email, email));
-  const [newUser] = users;
+	const users = await db.select().from(user).where(eq(user.email, email));
+	const [newUser] = users;
 
-  if (!newUser) {
-    return c.json({ error: "Failed to create account" }, 500);
-  }
+	if (!newUser) {
+		return c.json({ error: "Failed to create account" }, 500);
+	}
 
-  const sessionToken = await createSessionToken(
-    newUser.id,
-    newUser.email,
-    "regular",
-    c.env.SESSION_SECRET
-  );
+	const sessionToken = await createSessionToken(
+		newUser.id,
+		newUser.email,
+		"regular",
+		c.env.SESSION_SECRET,
+	);
 
-  const response = c.json({
-    success: true,
-    user: {
-      id: newUser.id,
-      email: newUser.email,
-      type: "regular" as const,
-    },
-    token: sessionToken,
-  });
+	const response = c.json({
+		success: true,
+		user: {
+			id: newUser.id,
+			email: newUser.email,
+			type: "regular" as const,
+		},
+		token: sessionToken,
+	});
 
-  // Keep setting cookie for backward compatibility during migration
-  return setSessionCookie(response, sessionToken);
+	// Keep setting cookie for backward compatibility during migration
+	return setSessionCookie(response, sessionToken);
 });
 
 /**
@@ -238,8 +238,8 @@ authRoutes.post("/register", zValidator("json", loginSchema), async (c) => {
  * Clear session cookie
  */
 authRoutes.post("/logout", async (c) => {
-  const response = c.json({ success: true });
-  return clearSessionCookie(response);
+	const response = c.json({ success: true });
+	return clearSessionCookie(response);
 });
 
 /**
@@ -247,13 +247,13 @@ authRoutes.post("/logout", async (c) => {
  * Get current session
  */
 authRoutes.get("/session", async (c) => {
-  const session = await getSessionFromRequest(c);
+	const session = await getSessionFromRequest(c);
 
-  if (!session) {
-    return c.json(null, 401);
-  }
+	if (!session) {
+		return c.json(null, 401);
+	}
 
-  return c.json(session);
+	return c.json(session);
 });
 
 /**
@@ -261,38 +261,38 @@ authRoutes.get("/session", async (c) => {
  * Create guest user and redirect (simplified - returns JSON instead of redirect)
  */
 authRoutes.get("/guest", async (c) => {
-  const email = `guest-${Date.now()}`;
-  const password = await hashPassword(generateUUID());
+	const email = `guest-${Date.now()}`;
+	const password = await hashPassword(generateUUID());
 
-  const db = getDb(c);
-  await db.insert(user).values({ email, password });
+	const db = getDb(c);
+	await db.insert(user).values({ email, password });
 
-  const users = await db.select().from(user).where(eq(user.email, email));
-  const [guestUser] = users;
+	const users = await db.select().from(user).where(eq(user.email, email));
+	const [guestUser] = users;
 
-  if (!guestUser) {
-    return c.json({ error: "Failed to create guest user" }, 500);
-  }
+	if (!guestUser) {
+		return c.json({ error: "Failed to create guest user" }, 500);
+	}
 
-  const sessionToken = await createSessionToken(
-    guestUser.id,
-    guestUser.email,
-    "guest",
-    c.env.SESSION_SECRET
-  );
+	const sessionToken = await createSessionToken(
+		guestUser.id,
+		guestUser.email,
+		"guest",
+		c.env.SESSION_SECRET,
+	);
 
-  const response = c.json({
-    success: true,
-    user: {
-      id: guestUser.id,
-      email: guestUser.email,
-      type: "guest" as const,
-    },
-    token: sessionToken,
-  });
+	const response = c.json({
+		success: true,
+		user: {
+			id: guestUser.id,
+			email: guestUser.email,
+			type: "guest" as const,
+		},
+		token: sessionToken,
+	});
 
-  // Keep setting cookie for backward compatibility during migration
-  return setSessionCookie(response, sessionToken);
+	// Keep setting cookie for backward compatibility during migration
+	return setSessionCookie(response, sessionToken);
 });
 
 /**
@@ -300,27 +300,27 @@ authRoutes.get("/guest", async (c) => {
  * Initiate GitHub OAuth flow
  */
 authRoutes.get("/github", async (c) => {
-  const clientId = c.env.GITHUB_CLIENT_ID;
-  if (!clientId) {
-    return c.json({ error: "GitHub OAuth not configured" }, 500);
-  }
+	const clientId = c.env.GITHUB_CLIENT_ID;
+	if (!clientId) {
+		return c.json({ error: "GitHub OAuth not configured" }, 500);
+	}
 
-  // Generate a random state parameter for CSRF protection
-  const state = generateUUID();
-  const signedState = await signState(state, c.env.SESSION_SECRET);
+	// Generate a random state parameter for CSRF protection
+	const state = generateUUID();
+	const signedState = await signState(state, c.env.SESSION_SECRET);
 
-  // Build GitHub authorize URL
-  const params = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: `${new URL(c.req.url).origin}/api/auth/github/callback`,
-    scope: "read:user user:email",
-    state: signedState,
-  });
+	// Build GitHub authorize URL
+	const params = new URLSearchParams({
+		client_id: clientId,
+		redirect_uri: `${new URL(c.req.url).origin}/api/auth/github/callback`,
+		scope: "read:user user:email",
+		state: signedState,
+	});
 
-  const githubUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
+	const githubUrl = `https://github.com/login/oauth/authorize?${params.toString()}`;
 
-  // Redirect to GitHub
-  return c.redirect(githubUrl);
+	// Redirect to GitHub
+	return c.redirect(githubUrl);
 });
 
 /**
@@ -328,181 +328,181 @@ authRoutes.get("/github", async (c) => {
  * GitHub OAuth callback
  */
 authRoutes.get("/github/callback", async (c) => {
-  const { code, state } = c.req.query();
-  const clientId = c.env.GITHUB_CLIENT_ID;
-  const clientSecret = c.env.GITHUB_CLIENT_SECRET;
+	const { code, state } = c.req.query();
+	const clientId = c.env.GITHUB_CLIENT_ID;
+	const clientSecret = c.env.GITHUB_CLIENT_SECRET;
 
-  if (!clientId || !clientSecret) {
-    return c.json({ error: "GitHub OAuth not configured" }, 500);
-  }
+	if (!clientId || !clientSecret) {
+		return c.json({ error: "GitHub OAuth not configured" }, 500);
+	}
 
-  if (!code || !state) {
-    return c.json({ error: "Missing code or state parameter" }, 400);
-  }
+	if (!code || !state) {
+		return c.json({ error: "Missing code or state parameter" }, 400);
+	}
 
-  // Verify state parameter to prevent CSRF attacks
-  const verifiedState = await verifyState(state, c.env.SESSION_SECRET);
-  if (!verifiedState) {
-    return c.json({ error: "Invalid state parameter" }, 400);
-  }
+	// Verify state parameter to prevent CSRF attacks
+	const verifiedState = await verifyState(state, c.env.SESSION_SECRET);
+	if (!verifiedState) {
+		return c.json({ error: "Invalid state parameter" }, 400);
+	}
 
-  try {
-    // Exchange code for access token
-    const tokenResponse = await fetch(
-      "https://github.com/login/oauth/access_token",
-      {
-        method: "POST",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          client_id: clientId,
-          client_secret: clientSecret,
-          code,
-        }),
-      }
-    );
+	try {
+		// Exchange code for access token
+		const tokenResponse = await fetch(
+			"https://github.com/login/oauth/access_token",
+			{
+				method: "POST",
+				headers: {
+					Accept: "application/json",
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					client_id: clientId,
+					client_secret: clientSecret,
+					code,
+				}),
+			},
+		);
 
-    if (!tokenResponse.ok) {
-      console.error(
-        "[GitHub OAuth] Token exchange failed:",
-        tokenResponse.status
-      );
-      return c.json({ error: "Failed to exchange code for token" }, 500);
-    }
+		if (!tokenResponse.ok) {
+			console.error(
+				"[GitHub OAuth] Token exchange failed:",
+				tokenResponse.status,
+			);
+			return c.json({ error: "Failed to exchange code for token" }, 500);
+		}
 
-    const tokenData = (await tokenResponse.json()) as { access_token?: string };
-    const accessToken = tokenData.access_token;
+		const tokenData = (await tokenResponse.json()) as { access_token?: string };
+		const accessToken = tokenData.access_token;
 
-    if (!accessToken) {
-      console.error("[GitHub OAuth] No access token in response:", tokenData);
-      return c.json({ error: "No access token received" }, 500);
-    }
+		if (!accessToken) {
+			console.error("[GitHub OAuth] No access token in response:", tokenData);
+			return c.json({ error: "No access token received" }, 500);
+		}
 
-    // Fetch user profile from GitHub
-    const userResponse = await fetch("https://api.github.com/user", {
-      headers: {
-        Authorization: `token ${accessToken}`,
-        Accept: "application/vnd.github+json",
-        "User-Agent": "DuyetBot-Web",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
+		// Fetch user profile from GitHub
+		const userResponse = await fetch("https://api.github.com/user", {
+			headers: {
+				Authorization: `token ${accessToken}`,
+				Accept: "application/vnd.github+json",
+				"User-Agent": "DuyetBot-Web",
+				"X-GitHub-Api-Version": "2022-11-28",
+			},
+		});
 
-    if (!userResponse.ok) {
-      const errorText = await userResponse.text();
-      console.error(
-        "[GitHub OAuth] User profile fetch failed:",
-        userResponse.status,
-        errorText
-      );
-      return c.json(
-        { error: `Failed to fetch user profile: ${userResponse.status}` },
-        500
-      );
-    }
+		if (!userResponse.ok) {
+			const errorText = await userResponse.text();
+			console.error(
+				"[GitHub OAuth] User profile fetch failed:",
+				userResponse.status,
+				errorText,
+			);
+			return c.json(
+				{ error: `Failed to fetch user profile: ${userResponse.status}` },
+				500,
+			);
+		}
 
-    const githubUser = (await userResponse.json()) as {
-      id: number;
-      login: string;
-      name?: string;
-      email?: string;
-    };
+		const githubUser = (await userResponse.json()) as {
+			id: number;
+			login: string;
+			name?: string;
+			email?: string;
+		};
 
-    // Fetch user emails to get primary email
-    const emailsResponse = await fetch("https://api.github.com/user/emails", {
-      headers: {
-        Authorization: `token ${accessToken}`,
-        Accept: "application/vnd.github+json",
-        "User-Agent": "DuyetBot-Web",
-        "X-GitHub-Api-Version": "2022-11-28",
-      },
-    });
+		// Fetch user emails to get primary email
+		const emailsResponse = await fetch("https://api.github.com/user/emails", {
+			headers: {
+				Authorization: `token ${accessToken}`,
+				Accept: "application/vnd.github+json",
+				"User-Agent": "DuyetBot-Web",
+				"X-GitHub-Api-Version": "2022-11-28",
+			},
+		});
 
-    let email = githubUser.email;
-    if (emailsResponse.ok) {
-      const emails = (await emailsResponse.json()) as Array<{
-        email: string;
-        primary: boolean;
-        verified: boolean;
-      }>;
-      const primaryEmail = emails.find((e) => e.primary && e.verified);
-      if (primaryEmail) {
-        email = primaryEmail.email;
-      }
-    }
+		let email = githubUser.email;
+		if (emailsResponse.ok) {
+			const emails = (await emailsResponse.json()) as Array<{
+				email: string;
+				primary: boolean;
+				verified: boolean;
+			}>;
+			const primaryEmail = emails.find((e) => e.primary && e.verified);
+			if (primaryEmail) {
+				email = primaryEmail.email;
+			}
+		}
 
-    if (!email) {
-      return c.json({ error: "No email found for GitHub account" }, 400);
-    }
+		if (!email) {
+			return c.json({ error: "No email found for GitHub account" }, 400);
+		}
 
-    // Check if user exists by GitHub ID
-    const db = getDb(c);
-    const githubId = `github_${githubUser.id}`;
+		// Check if user exists by GitHub ID
+		const db = getDb(c);
+		const githubId = `github_${githubUser.id}`;
 
-    let existingUser = await db
-      .select()
-      .from(user)
-      .where(eq(user.githubId, githubId))
-      .get();
+		let existingUser = await db
+			.select()
+			.from(user)
+			.where(eq(user.githubId, githubId))
+			.get();
 
-    // If not found by GitHub ID, check by email
-    if (!existingUser) {
-      existingUser = await db
-        .select()
-        .from(user)
-        .where(eq(user.email, email))
-        .get();
-    }
+		// If not found by GitHub ID, check by email
+		if (!existingUser) {
+			existingUser = await db
+				.select()
+				.from(user)
+				.where(eq(user.email, email))
+				.get();
+		}
 
-    let userId: string;
-    let _isNewUser = false;
+		let userId: string;
+		let _isNewUser = false;
 
-    if (existingUser) {
-      // Update existing user with GitHub ID if missing
-      if (!existingUser.githubId) {
-        await db
-          .update(user)
-          .set({
-            githubId,
-            name: githubUser.name || githubUser.login,
-            updatedAt: new Date(),
-          })
-          .where(eq(user.id, existingUser.id));
-      }
-      userId = existingUser.id;
-    } else {
-      // Create new user
-      userId = generateUUID();
-      await db.insert(user).values({
-        id: userId,
-        email,
-        name: githubUser.name || githubUser.login,
-        githubId,
-        createdAt: new Date(),
-        updatedAt: new Date(),
-      });
-      _isNewUser = true;
-    }
+		if (existingUser) {
+			// Update existing user with GitHub ID if missing
+			if (!existingUser.githubId) {
+				await db
+					.update(user)
+					.set({
+						githubId,
+						name: githubUser.name || githubUser.login,
+						updatedAt: new Date(),
+					})
+					.where(eq(user.id, existingUser.id));
+			}
+			userId = existingUser.id;
+		} else {
+			// Create new user
+			userId = generateUUID();
+			await db.insert(user).values({
+				id: userId,
+				email,
+				name: githubUser.name || githubUser.login,
+				githubId,
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			});
+			_isNewUser = true;
+		}
 
-    // Create session token
-    const sessionToken = await createSessionToken(
-      userId,
-      email,
-      "regular",
-      c.env.SESSION_SECRET
-    );
+		// Create session token
+		const sessionToken = await createSessionToken(
+			userId,
+			email,
+			"regular",
+			c.env.SESSION_SECRET,
+		);
 
-    // Set session cookie and redirect to homepage
-    const origin = new URL(c.req.url).origin;
-    c.header(
-      "Set-Cookie",
-      `session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`
-    );
-    return c.redirect(origin);
-  } catch (error) {
-    console.error("[GitHub OAuth] Error:", error);
-    return c.json({ error: "OAuth flow failed" }, 500);
-  }
+		// Set session cookie and redirect to homepage
+		const origin = new URL(c.req.url).origin;
+		c.header(
+			"Set-Cookie",
+			`session=${sessionToken}; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=${30 * 24 * 60 * 60}`,
+		);
+		return c.redirect(origin);
+	} catch (error) {
+		console.error("[GitHub OAuth] Error:", error);
+		return c.json({ error: "OAuth flow failed" }, 500);
+	}
 });

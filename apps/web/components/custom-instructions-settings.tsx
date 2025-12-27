@@ -1,45 +1,45 @@
 "use client";
 
 import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Slider } from "@/components/ui/slider";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogFooter,
-} from "@/components/ui/dialog";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Badge } from "@/components/ui/badge";
-import {
-  SparklesIcon,
-  Code2Icon,
-  PenToolIcon,
-  BrainIcon,
-  GraduationCapIcon,
-  FileSearchIcon,
-  Settings2Icon,
-  InfoIcon,
+	BrainIcon,
+	Code2Icon,
+	FileSearchIcon,
+	GraduationCapIcon,
+	InfoIcon,
+	PenToolIcon,
+	Settings2Icon,
+	SparklesIcon,
 } from "@/components/icons";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
-  useCustomInstructions,
-  INSTRUCTION_TEMPLATES,
-  DEFAULT_AI_SETTINGS,
-  type InstructionTemplate,
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import {
+	DEFAULT_AI_SETTINGS,
+	INSTRUCTION_TEMPLATES,
+	type InstructionTemplate,
+	useCustomInstructions,
 } from "@/lib/custom-instructions";
 
 /**
@@ -52,380 +52,412 @@ import {
  * - Configuring AI generation settings
  */
 export function CustomInstructionsSettings({ chatId }: { chatId?: string }) {
-  const {
-    instructions,
-    aiSettings,
-    updateGlobal,
-    updateChat,
-    setEnabled,
-    setActiveTemplate,
-    updateAISettings,
-    resetSettings,
-  } = useCustomInstructions();
+	const {
+		instructions,
+		aiSettings,
+		updateGlobal,
+		updateChat,
+		setEnabled,
+		setActiveTemplate,
+		updateAISettings,
+		resetSettings,
+	} = useCustomInstructions();
 
-  const [open, setOpen] = useState(false);
-  const [globalInput, setGlobalInput] = useState(instructions.global);
-  const [chatInput, setChatInput] = useState(
-    chatId ? instructions.chatSpecific[chatId] || "" : ""
-  );
-  const [selectedTemplate, setSelectedTemplate] = useState<
-    string | undefined
-  >(instructions.activeTemplate);
+	const [open, setOpen] = useState(false);
+	const [globalInput, setGlobalInput] = useState(instructions.global);
+	const [chatInput, setChatInput] = useState(
+		chatId ? instructions.chatSpecific[chatId] || "" : "",
+	);
+	const [selectedTemplate, setSelectedTemplate] = useState<string | undefined>(
+		instructions.activeTemplate,
+	);
 
-  const handleSave = () => {
-    updateGlobal(globalInput);
-    if (chatId) {
-      updateChat(chatId, chatInput);
-    }
-    setActiveTemplate(selectedTemplate);
-    setOpen(false);
-  };
+	const handleSave = () => {
+		updateGlobal(globalInput);
+		if (chatId) {
+			updateChat(chatId, chatInput);
+		}
+		setActiveTemplate(selectedTemplate);
+		setOpen(false);
+	};
 
-  const handleTemplateSelect = (template: InstructionTemplate) => {
-    setSelectedTemplate(template.id);
-    // Optionally append template to global instructions
-    if (!globalInput.includes(template.instruction)) {
-      setGlobalInput(
-        globalInput
-          ? `${globalInput}\n\n${template.instruction}`
-          : template.instruction
-      );
-    }
-  };
+	const handleTemplateSelect = (template: InstructionTemplate) => {
+		setSelectedTemplate(template.id);
+		// Optionally append template to global instructions
+		if (!globalInput.includes(template.instruction)) {
+			setGlobalInput(
+				globalInput
+					? `${globalInput}\n\n${template.instruction}`
+					: template.instruction,
+			);
+		}
+	};
 
-  const getCategoryIcon = (category: InstructionTemplate["category"]) => {
-    const iconProps = { size: 16 };
-    switch (category) {
-      case "coding":
-        return <span className="w-4 h-4 flex"><Code2Icon {...iconProps} /></span>;
-      case "writing":
-        return <span className="w-4 h-4 flex"><PenToolIcon {...iconProps} /></span>;
-      case "analysis":
-        return <span className="w-4 h-4 flex"><BrainIcon {...iconProps} /></span>;
-      case "general":
-        return <span className="w-4 h-4 flex"><GraduationCapIcon {...iconProps} /></span>;
-      default:
-        return <span className="w-4 h-4 flex"><SparklesIcon {...iconProps} /></span>;
-    }
-  };
+	const getCategoryIcon = (category: InstructionTemplate["category"]) => {
+		const iconProps = { size: 16 };
+		switch (category) {
+			case "coding":
+				return (
+					<span className="flex h-4 w-4">
+						<Code2Icon {...iconProps} />
+					</span>
+				);
+			case "writing":
+				return (
+					<span className="flex h-4 w-4">
+						<PenToolIcon {...iconProps} />
+					</span>
+				);
+			case "analysis":
+				return (
+					<span className="flex h-4 w-4">
+						<BrainIcon {...iconProps} />
+					</span>
+				);
+			case "general":
+				return (
+					<span className="flex h-4 w-4">
+						<GraduationCapIcon {...iconProps} />
+					</span>
+				);
+			default:
+				return (
+					<span className="flex h-4 w-4">
+						<SparklesIcon {...iconProps} />
+					</span>
+				);
+		}
+	};
 
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-2">
-          <span className="w-4 h-4 flex"><SparklesIcon size={16} /></span>
-          Custom Instructions
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <span className="w-5 h-5 flex"><SparklesIcon size={20} /></span>
-            Custom Instructions & AI Settings
-          </DialogTitle>
-          <DialogDescription>
-            Customize how the AI responds by setting instructions and
-            generation parameters.
-          </DialogDescription>
-        </DialogHeader>
+	return (
+		<Dialog onOpenChange={setOpen} open={open}>
+			<DialogTrigger asChild>
+				<Button className="gap-2" size="sm" variant="ghost">
+					<span className="flex h-4 w-4">
+						<SparklesIcon size={16} />
+					</span>
+					Custom Instructions
+				</Button>
+			</DialogTrigger>
+			<DialogContent className="flex max-h-[90vh] max-w-3xl flex-col overflow-hidden">
+				<DialogHeader>
+					<DialogTitle className="flex items-center gap-2">
+						<span className="flex h-5 w-5">
+							<SparklesIcon size={20} />
+						</span>
+						Custom Instructions & AI Settings
+					</DialogTitle>
+					<DialogDescription>
+						Customize how the AI responds by setting instructions and generation
+						parameters.
+					</DialogDescription>
+				</DialogHeader>
 
-        <Tabs defaultValue="instructions" className="flex-1 overflow-hidden">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="instructions">Instructions</TabsTrigger>
-            <TabsTrigger value="settings">AI Settings</TabsTrigger>
-          </TabsList>
+				<Tabs className="flex-1 overflow-hidden" defaultValue="instructions">
+					<TabsList className="grid w-full grid-cols-2">
+						<TabsTrigger value="instructions">Instructions</TabsTrigger>
+						<TabsTrigger value="settings">AI Settings</TabsTrigger>
+					</TabsList>
 
-          <TabsContent
-            value="instructions"
-            className="flex-1 overflow-hidden flex flex-col"
-          >
-            <ScrollArea className="flex-1 px-1">
-              <div className="space-y-6 pr-4">
-                {/* Enable Toggle */}
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="enable-instructions" className="text-base">
-                      Enable Custom Instructions
-                    </Label>
-                    <p className="text-sm text-muted-foreground">
-                      Apply your instructions to all conversations
-                    </p>
-                  </div>
-                  <Switch
-                    id="enable-instructions"
-                    checked={instructions.enabled}
-                    onCheckedChange={setEnabled}
-                  />
-                </div>
+					<TabsContent
+						className="flex flex-1 flex-col overflow-hidden"
+						value="instructions"
+					>
+						<ScrollArea className="flex-1 px-1">
+							<div className="space-y-6 pr-4">
+								{/* Enable Toggle */}
+								<div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
+									<div className="space-y-0.5">
+										<Label className="text-base" htmlFor="enable-instructions">
+											Enable Custom Instructions
+										</Label>
+										<p className="text-muted-foreground text-sm">
+											Apply your instructions to all conversations
+										</p>
+									</div>
+									<Switch
+										checked={instructions.enabled}
+										id="enable-instructions"
+										onCheckedChange={setEnabled}
+									/>
+								</div>
 
-                {/* Global Instructions */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="global-instructions" className="text-base">
-                      Global Instructions
-                    </Label>
-                    <Badge variant="outline" className="text-xs">
-                      Applied to all chats
-                    </Badge>
-                  </div>
-                  <Textarea
-                    id="global-instructions"
-                    placeholder="Enter instructions that apply to all conversations...&#10;&#10;Example:&#10;- Always provide code examples&#10;- Explain technical concepts simply&#10;- Include error handling in code"
-                    value={globalInput}
-                    onChange={(e) => setGlobalInput(e.target.value)}
-                    rows={8}
-                    className="font-mono text-sm"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    These instructions will be included in the system prompt for
-                    every chat.
-                  </p>
-                </div>
+								{/* Global Instructions */}
+								<div className="space-y-2">
+									<div className="flex items-center justify-between">
+										<Label className="text-base" htmlFor="global-instructions">
+											Global Instructions
+										</Label>
+										<Badge className="text-xs" variant="outline">
+											Applied to all chats
+										</Badge>
+									</div>
+									<Textarea
+										className="font-mono text-sm"
+										id="global-instructions"
+										onChange={(e) => setGlobalInput(e.target.value)}
+										placeholder="Enter instructions that apply to all conversations...&#10;&#10;Example:&#10;- Always provide code examples&#10;- Explain technical concepts simply&#10;- Include error handling in code"
+										rows={8}
+										value={globalInput}
+									/>
+									<p className="text-muted-foreground text-xs">
+										These instructions will be included in the system prompt for
+										every chat.
+									</p>
+								</div>
 
-                {/* Chat-Specific Instructions */}
-                {chatId && (
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <Label htmlFor="chat-instructions" className="text-base">
-                        Chat-Specific Instructions
-                      </Label>
-                      <Badge variant="outline" className="text-xs">
-                        This chat only
-                      </Badge>
-                    </div>
-                    <Textarea
-                      id="chat-instructions"
-                      placeholder="Enter instructions specific to this conversation..."
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      rows={4}
-                      className="font-mono text-sm"
-                    />
-                  </div>
-                )}
+								{/* Chat-Specific Instructions */}
+								{chatId && (
+									<div className="space-y-2">
+										<div className="flex items-center justify-between">
+											<Label className="text-base" htmlFor="chat-instructions">
+												Chat-Specific Instructions
+											</Label>
+											<Badge className="text-xs" variant="outline">
+												This chat only
+											</Badge>
+										</div>
+										<Textarea
+											className="font-mono text-sm"
+											id="chat-instructions"
+											onChange={(e) => setChatInput(e.target.value)}
+											placeholder="Enter instructions specific to this conversation..."
+											rows={4}
+											value={chatInput}
+										/>
+									</div>
+								)}
 
-                {/* Template Library */}
-                <div className="space-y-3">
-                  <Label className="text-base flex items-center gap-2">
-                    <span className="w-4 h-4 flex"><FileSearchIcon size={16} /></span>
-                    Instruction Templates
-                  </Label>
-                  <p className="text-sm text-muted-foreground">
-                    Quick-start with pre-built instruction sets
-                  </p>
-                  <div className="grid gap-3">
-                    {INSTRUCTION_TEMPLATES.map((template) => (
-                      <div
-                        key={template.id}
-                        className={`p-4 border rounded-lg cursor-pointer transition-all hover:bg-accent ${
-                          selectedTemplate === template.id
-                            ? "border-primary bg-primary/5"
-                            : ""
-                        }`}
-                        onClick={() => handleTemplateSelect(template)}
-                      >
-                        <div className="flex items-start gap-3">
-                          <div className="mt-0.5 text-primary">
-                            {getCategoryIcon(template.category)}
-                          </div>
-                          <div className="flex-1 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <h4 className="font-medium">{template.name}</h4>
-                              <Badge variant="secondary" className="text-xs">
-                                {template.category}
-                              </Badge>
-                            </div>
-                            <p className="text-sm text-muted-foreground">
-                              {template.description}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </ScrollArea>
-          </TabsContent>
+								{/* Template Library */}
+								<div className="space-y-3">
+									<Label className="flex items-center gap-2 text-base">
+										<span className="flex h-4 w-4">
+											<FileSearchIcon size={16} />
+										</span>
+										Instruction Templates
+									</Label>
+									<p className="text-muted-foreground text-sm">
+										Quick-start with pre-built instruction sets
+									</p>
+									<div className="grid gap-3">
+										{INSTRUCTION_TEMPLATES.map((template) => (
+											<div
+												className={`cursor-pointer rounded-lg border p-4 transition-all hover:bg-accent ${
+													selectedTemplate === template.id
+														? "border-primary bg-primary/5"
+														: ""
+												}`}
+												key={template.id}
+												onClick={() => handleTemplateSelect(template)}
+											>
+												<div className="flex items-start gap-3">
+													<div className="mt-0.5 text-primary">
+														{getCategoryIcon(template.category)}
+													</div>
+													<div className="flex-1 space-y-1">
+														<div className="flex items-center justify-between">
+															<h4 className="font-medium">{template.name}</h4>
+															<Badge className="text-xs" variant="secondary">
+																{template.category}
+															</Badge>
+														</div>
+														<p className="text-muted-foreground text-sm">
+															{template.description}
+														</p>
+													</div>
+												</div>
+											</div>
+										))}
+									</div>
+								</div>
+							</div>
+						</ScrollArea>
+					</TabsContent>
 
-          <TabsContent
-            value="settings"
-            className="flex-1 overflow-hidden flex flex-col"
-          >
-            <ScrollArea className="flex-1 px-1">
-              <div className="space-y-6 pr-4">
-                <div className="flex items-start gap-3 p-4 border rounded-lg bg-muted/30">
-                  <span className="w-5 h-5 text-muted-foreground mt-0.5 flex"><InfoIcon size={20} /></span>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium">About AI Settings</p>
-                    <p className="text-xs text-muted-foreground">
-                      These parameters control how the AI generates responses.
-                      Changes apply to all new messages.
-                    </p>
-                  </div>
-                </div>
+					<TabsContent
+						className="flex flex-1 flex-col overflow-hidden"
+						value="settings"
+					>
+						<ScrollArea className="flex-1 px-1">
+							<div className="space-y-6 pr-4">
+								<div className="flex items-start gap-3 rounded-lg border bg-muted/30 p-4">
+									<span className="mt-0.5 flex h-5 w-5 text-muted-foreground">
+										<InfoIcon size={20} />
+									</span>
+									<div className="space-y-1">
+										<p className="font-medium text-sm">About AI Settings</p>
+										<p className="text-muted-foreground text-xs">
+											These parameters control how the AI generates responses.
+											Changes apply to all new messages.
+										</p>
+									</div>
+								</div>
 
-                {/* Temperature */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="temperature" className="text-base">
-                      Temperature
-                    </Label>
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {aiSettings.temperature.toFixed(1)}
-                    </Badge>
-                  </div>
-                  <Slider
-                    id="temperature"
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    value={[aiSettings.temperature]}
-                    onValueChange={([value]) =>
-                      updateAISettings({ temperature: value })
-                    }
-                    className="py-4"
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>Precise (0.0)</span>
-                    <span>Balanced (1.0)</span>
-                    <span>Creative (2.0)</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Lower values produce more focused responses, higher values
-                    produce more varied and creative outputs.
-                  </p>
-                </div>
+								{/* Temperature */}
+								<div className="space-y-4">
+									<div className="flex items-center justify-between">
+										<Label className="text-base" htmlFor="temperature">
+											Temperature
+										</Label>
+										<Badge className="font-mono text-xs" variant="outline">
+											{aiSettings.temperature.toFixed(1)}
+										</Badge>
+									</div>
+									<Slider
+										className="py-4"
+										id="temperature"
+										max={2}
+										min={0}
+										onValueChange={([value]) =>
+											updateAISettings({ temperature: value })
+										}
+										step={0.1}
+										value={[aiSettings.temperature]}
+									/>
+									<div className="flex justify-between text-muted-foreground text-xs">
+										<span>Precise (0.0)</span>
+										<span>Balanced (1.0)</span>
+										<span>Creative (2.0)</span>
+									</div>
+									<p className="text-muted-foreground text-xs">
+										Lower values produce more focused responses, higher values
+										produce more varied and creative outputs.
+									</p>
+								</div>
 
-                {/* Max Tokens */}
-                <div className="space-y-2">
-                  <Label htmlFor="maxTokens" className="text-base">
-                    Maximum Response Length
-                  </Label>
-                  <div className="flex items-center gap-4">
-                    <Slider
-                      id="maxTokens"
-                      min={256}
-                      max={8192}
-                      step={256}
-                      value={[aiSettings.maxTokens || 4096]}
-                      onValueChange={([value]) =>
-                        updateAISettings({ maxTokens: value })
-                      }
-                      className="flex-1"
-                    />
-                    <span className="text-sm font-mono min-w-[80px] text-right">
-                      {aiSettings.maxTokens || 4096}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Maximum number of tokens in the AI response. Leave empty
-                    for model default.
-                  </p>
-                </div>
+								{/* Max Tokens */}
+								<div className="space-y-2">
+									<Label className="text-base" htmlFor="maxTokens">
+										Maximum Response Length
+									</Label>
+									<div className="flex items-center gap-4">
+										<Slider
+											className="flex-1"
+											id="maxTokens"
+											max={8192}
+											min={256}
+											onValueChange={([value]) =>
+												updateAISettings({ maxTokens: value })
+											}
+											step={256}
+											value={[aiSettings.maxTokens || 4096]}
+										/>
+										<span className="min-w-[80px] text-right font-mono text-sm">
+											{aiSettings.maxTokens || 4096}
+										</span>
+									</div>
+									<p className="text-muted-foreground text-xs">
+										Maximum number of tokens in the AI response. Leave empty for
+										model default.
+									</p>
+								</div>
 
-                {/* Top P */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="topP" className="text-base">
-                      Top P (Nucleus Sampling)
-                    </Label>
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {aiSettings.topP?.toFixed(2) || "default"}
-                    </Badge>
-                  </div>
-                  <Slider
-                    id="topP"
-                    min={0}
-                    max={1}
-                    step={0.05}
-                    value={[aiSettings.topP || 1]}
-                    onValueChange={([value]) => updateAISettings({ topP: value })}
-                    className="py-4"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Controls diversity by limiting to the most likely tokens
-                    that sum to probability P.
-                  </p>
-                </div>
+								{/* Top P */}
+								<div className="space-y-4">
+									<div className="flex items-center justify-between">
+										<Label className="text-base" htmlFor="topP">
+											Top P (Nucleus Sampling)
+										</Label>
+										<Badge className="font-mono text-xs" variant="outline">
+											{aiSettings.topP?.toFixed(2) || "default"}
+										</Badge>
+									</div>
+									<Slider
+										className="py-4"
+										id="topP"
+										max={1}
+										min={0}
+										onValueChange={([value]) =>
+											updateAISettings({ topP: value })
+										}
+										step={0.05}
+										value={[aiSettings.topP || 1]}
+									/>
+									<p className="text-muted-foreground text-xs">
+										Controls diversity by limiting to the most likely tokens
+										that sum to probability P.
+									</p>
+								</div>
 
-                {/* Frequency Penalty */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="frequencyPenalty" className="text-base">
-                      Frequency Penalty
-                    </Label>
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {aiSettings.frequencyPenalty?.toFixed(1) || "0.0"}
-                    </Badge>
-                  </div>
-                  <Slider
-                    id="frequencyPenalty"
-                    min={-2}
-                    max={2}
-                    step={0.1}
-                    value={[aiSettings.frequencyPenalty || 0]}
-                    onValueChange={([value]) =>
-                      updateAISettings({ frequencyPenalty: value })
-                    }
-                    className="py-4"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Reduces repetition of frequently used tokens. Positive
-                    values decrease repetition.
-                  </p>
-                </div>
+								{/* Frequency Penalty */}
+								<div className="space-y-4">
+									<div className="flex items-center justify-between">
+										<Label className="text-base" htmlFor="frequencyPenalty">
+											Frequency Penalty
+										</Label>
+										<Badge className="font-mono text-xs" variant="outline">
+											{aiSettings.frequencyPenalty?.toFixed(1) || "0.0"}
+										</Badge>
+									</div>
+									<Slider
+										className="py-4"
+										id="frequencyPenalty"
+										max={2}
+										min={-2}
+										onValueChange={([value]) =>
+											updateAISettings({ frequencyPenalty: value })
+										}
+										step={0.1}
+										value={[aiSettings.frequencyPenalty || 0]}
+									/>
+									<p className="text-muted-foreground text-xs">
+										Reduces repetition of frequently used tokens. Positive
+										values decrease repetition.
+									</p>
+								</div>
 
-                {/* Presence Penalty */}
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="presencePenalty" className="text-base">
-                      Presence Penalty
-                    </Label>
-                    <Badge variant="outline" className="text-xs font-mono">
-                      {aiSettings.presencePenalty?.toFixed(1) || "0.0"}
-                    </Badge>
-                  </div>
-                  <Slider
-                    id="presencePenalty"
-                    min={-2}
-                    max={2}
-                    step={0.1}
-                    value={[aiSettings.presencePenalty || 0]}
-                    onValueChange={([value]) =>
-                      updateAISettings({ presencePenalty: value })
-                    }
-                    className="py-4"
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Encourages talking about new topics. Positive values
-                    increase topic diversity.
-                  </p>
-                </div>
+								{/* Presence Penalty */}
+								<div className="space-y-4">
+									<div className="flex items-center justify-between">
+										<Label className="text-base" htmlFor="presencePenalty">
+											Presence Penalty
+										</Label>
+										<Badge className="font-mono text-xs" variant="outline">
+											{aiSettings.presencePenalty?.toFixed(1) || "0.0"}
+										</Badge>
+									</div>
+									<Slider
+										className="py-4"
+										id="presencePenalty"
+										max={2}
+										min={-2}
+										onValueChange={([value]) =>
+											updateAISettings({ presencePenalty: value })
+										}
+										step={0.1}
+										value={[aiSettings.presencePenalty || 0]}
+									/>
+									<p className="text-muted-foreground text-xs">
+										Encourages talking about new topics. Positive values
+										increase topic diversity.
+									</p>
+								</div>
 
-                {/* Reset Button */}
-                <div className="flex justify-end pt-4 border-t">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => resetSettings()}
-                  >
-                    <span className="w-4 h-4 mr-2 flex"><Settings2Icon size={16} /></span>
-                    Reset to Defaults
-                  </Button>
-                </div>
-              </div>
-            </ScrollArea>
-          </TabsContent>
-        </Tabs>
+								{/* Reset Button */}
+								<div className="flex justify-end border-t pt-4">
+									<Button
+										onClick={() => resetSettings()}
+										size="sm"
+										variant="outline"
+									>
+										<span className="mr-2 flex h-4 w-4">
+											<Settings2Icon size={16} />
+										</span>
+										Reset to Defaults
+									</Button>
+								</div>
+							</div>
+						</ScrollArea>
+					</TabsContent>
+				</Tabs>
 
-        <DialogFooter className="border-t pt-4">
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSave}>Save Changes</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
+				<DialogFooter className="border-t pt-4">
+					<Button onClick={() => setOpen(false)} variant="outline">
+						Cancel
+					</Button>
+					<Button onClick={handleSave}>Save Changes</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	);
 }
