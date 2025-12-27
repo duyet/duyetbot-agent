@@ -321,3 +321,40 @@ export const chatToTag = sqliteTable(
 );
 
 export type ChatToTag = InferSelectModel<typeof chatToTag>;
+
+// Custom user-defined tools
+export const customTool = sqliteTable("CustomTool", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: text("name").notNull(),
+	description: text("description").notNull(),
+	// JSON schema for tool parameters (Zod-compatible format)
+	inputSchema: text("inputSchema", { mode: "json" }).notNull(),
+	// Action type: http_fetch, code_execution, mcp_call
+	actionType: text("actionType", {
+		enum: ["http_fetch", "code_execution", "mcp_call"],
+	}).notNull(),
+	// Action configuration (URL template, code, MCP endpoint)
+	actionConfig: text("actionConfig", { mode: "json" }).notNull(),
+	// Whether this tool requires user approval before execution
+	needsApproval: integer("needsApproval", { mode: "boolean" })
+		.notNull()
+		.default(false),
+	// Enabled/disabled state
+	isEnabled: integer("isEnabled", { mode: "boolean" }).notNull().default(true),
+	userId: text("userId")
+		.notNull()
+		.references(() => user.id, {
+			onDelete: "cascade",
+			onUpdate: "no action",
+		}),
+	createdAt: integer("createdAt", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer("updatedAt", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+});
+
+export type CustomTool = InferSelectModel<typeof customTool>;

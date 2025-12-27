@@ -1,3 +1,5 @@
+import type { User } from "../lib/db/schema";
+
 /**
  * Cloudflare Workers Environment Bindings
  */
@@ -29,4 +31,14 @@ export type Env = {
 	GITHUB_CLIENT_ID?: string;
 	GITHUB_CLIENT_SECRET?: string;
 	GITHUB_TOKEN?: string;
+};
+
+/**
+ * Hono Environment with bindings and context variables
+ */
+export type HonoEnv = {
+	Bindings: Env;
+	Variables: {
+		user?: User;
+	};
 };

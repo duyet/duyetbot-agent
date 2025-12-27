@@ -12,6 +12,7 @@ import { WorkerError } from "./lib/errors";
 // Import route handlers
 import { authRoutes } from "./routes/auth";
 import { chatRoutes } from "./routes/chat";
+import { customToolsRouter } from "./routes/custom-tools";
 import { documentRoutes } from "./routes/document";
 import { filesRoutes } from "./routes/files";
 import { historyRoutes } from "./routes/history";
@@ -89,6 +90,7 @@ app.route("/api/document", documentRoutes);
 app.route("/api/files", filesRoutes);
 app.route("/api/rate-limit", rateLimitRoutes);
 app.route("/api/suggestions", suggestionsRoutes);
+app.route("/api/tools/custom", customToolsRouter);
 app.route("/api/vote", voteRoutes);
 
 // Health check
