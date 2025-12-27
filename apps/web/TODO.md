@@ -87,7 +87,7 @@
 - [x] **Model selector UI** - Enhanced model picker with search and categories ✅
 - [x] **Custom model parameters** - Temperature, max tokens, topP via settings UI ✅
 - [x] **Provider fallback** - Graceful degradation when provider fails (streamWithFallback, executeWithFallback with fallback chains) ✅
-- [ ] **Model comparison** - Compare responses from different models
+- [x] **Model comparison** - Compare responses from multiple models side-by-side via `/compare` route ✅
 
 ### 4. Tool System Enhancement
 **Goal:** Rich tool ecosystem for AI capabilities
