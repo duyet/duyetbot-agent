@@ -80,6 +80,7 @@ export function AppSidebar({ user }: { user: AuthUser | undefined }) {
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<Button
+												aria-label="Delete all chats"
 												className="h-8 p-1 md:h-fit md:p-2"
 												onClick={() => setShowDeleteAllDialog(true)}
 												type="button"
@@ -96,6 +97,7 @@ export function AppSidebar({ user }: { user: AuthUser | undefined }) {
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											aria-label="Compare models side by side"
 											className="h-8 p-1 md:h-fit md:p-2"
 											onClick={() => {
 												setOpenMobile(false);
@@ -114,6 +116,7 @@ export function AppSidebar({ user }: { user: AuthUser | undefined }) {
 								<Tooltip>
 									<TooltipTrigger asChild>
 										<Button
+											aria-label="Start a new chat"
 											className="h-8 p-1 md:h-fit md:p-2"
 											onClick={() => {
 												setOpenMobile(false);

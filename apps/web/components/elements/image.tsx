@@ -16,7 +16,7 @@ export const Image = ({
 	// biome-ignore lint/performance/noImgElement: "Generated image without explicit size"
 	<img
 		{...props}
-		alt={props.alt}
+		alt={props.alt || "AI generated image"}
 		className={cn(
 			"h-auto max-w-full overflow-hidden rounded-md",
 			props.className,

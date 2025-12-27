@@ -231,8 +231,13 @@ const PurePreviewMessage = ({
 												<ToolInput input={part.input} />
 											)}
 											{state === "approval-requested" && approvalId && (
-												<div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+												<div
+													aria-label="Weather lookup permission request"
+													className="flex items-center justify-end gap-2 border-t px-4 py-3"
+													role="group"
+												>
 													<button
+														aria-label="Deny weather lookup request"
 														className="rounded-md px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
 														onClick={() => {
 															addToolApprovalResponse({
@@ -246,6 +251,7 @@ const PurePreviewMessage = ({
 														Deny
 													</button>
 													<button
+														aria-label="Allow weather lookup request"
 														className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm transition-colors hover:bg-primary/90"
 														onClick={() => {
 															addToolApprovalResponse({
@@ -400,8 +406,13 @@ const PurePreviewMessage = ({
 												<ToolInput input={part.input} />
 											)}
 											{state === "approval-requested" && approvalId && (
-												<div className="flex items-center justify-end gap-2 border-t px-4 py-3">
+												<div
+													aria-label="URL fetch permission request"
+													className="flex items-center justify-end gap-2 border-t px-4 py-3"
+													role="group"
+												>
 													<button
+														aria-label="Deny URL fetch request"
 														className="rounded-md px-3 py-1.5 text-muted-foreground text-sm transition-colors hover:bg-muted hover:text-foreground"
 														onClick={() => {
 															addToolApprovalResponse({
@@ -415,6 +426,7 @@ const PurePreviewMessage = ({
 														Deny
 													</button>
 													<button
+														aria-label="Allow URL fetch request"
 														className="rounded-md bg-primary px-3 py-1.5 text-primary-foreground text-sm transition-colors hover:bg-primary/90"
 														onClick={() => {
 															addToolApprovalResponse({
