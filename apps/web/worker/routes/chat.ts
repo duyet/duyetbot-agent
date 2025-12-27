@@ -31,10 +31,7 @@ import { getLanguageModelForWorker, getTitleModelForWorker } from "../lib/ai";
 import { createGuestSession, getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
 import { WorkerError } from "../lib/errors";
-import {
-	createRateLimiters,
-	getRateLimitIdentifier,
-} from "../lib/rate-limit";
+import { createRateLimiters, getRateLimitIdentifier } from "../lib/rate-limit";
 import { getWebWorkerTools } from "../lib/tools";
 import { generateUUID } from "../lib/utils";
 import type { Env } from "../types";
@@ -235,11 +232,16 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 
 	// Apply rate limiting (stricter for guests)
 	// Only apply if RATE_LIMIT_KV binding exists
-	let rateLimitInfo: { limit: number; remaining: number; resetAt: string } | undefined;
+	let rateLimitInfo:
+		| { limit: number; remaining: number; resetAt: string }
+		| undefined;
 
 	if (c.env.RATE_LIMIT_KV) {
 		const rateLimiters = createRateLimiters(c.env);
-		const clientIp = c.req.header("cf-connecting-ip") || c.req.header("x-forwarded-for") || "unknown";
+		const clientIp =
+			c.req.header("cf-connecting-ip") ||
+			c.req.header("x-forwarded-for") ||
+			"unknown";
 		const identifier = getRateLimitIdentifier(
 			isGuest ? undefined : session.user.id,
 			isGuest ? session.user.id : undefined, // Guest userId as session token
@@ -429,7 +431,10 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 	// Add rate limit headers to successful response
 	if (rateLimitInfo) {
 		response.headers.set("X-RateLimit-Limit", String(rateLimitInfo.limit));
-		response.headers.set("X-RateLimit-Remaining", String(rateLimitInfo.remaining));
+		response.headers.set(
+			"X-RateLimit-Remaining",
+			String(rateLimitInfo.remaining),
+		);
 		response.headers.set("X-RateLimit-Reset", rateLimitInfo.resetAt);
 	}
 

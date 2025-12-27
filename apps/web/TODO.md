@@ -172,12 +172,12 @@
 - Tool approval UI for url_fetch and getWeather
 - Rich tool visualizers for all tools
 
-### Priority 2: Guest User Flow (IN PROGRESS)
+### Priority 2: Guest User Flow (COMPLETED)
 Complete rate limiting and guest session management:
 - [x] Add per-IP rate limiting for guest users (10 messages/day via KV-based token bucket)
 - [x] Implement session expiry (30-day guest sessions via cookie Max-Age)
 - [x] Add request throttling middleware (integrated into chat route with 429 responses)
-- [ ] Guest user usage dashboard (show remaining messages)
+- [x] Guest user usage dashboard (GuestUsageIndicator component with /api/rate-limit/status API)
 
 ### Priority 3: Model Comparison
 Allow comparing responses from different models side-by-side.

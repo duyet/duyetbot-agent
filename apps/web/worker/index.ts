@@ -14,6 +14,7 @@ import { chatRoutes } from "./routes/chat";
 import { documentRoutes } from "./routes/document";
 import { filesRoutes } from "./routes/files";
 import { historyRoutes } from "./routes/history";
+import { rateLimitRoutes } from "./routes/rate-limit";
 import { suggestionsRoutes } from "./routes/suggestions";
 import { voteRoutes } from "./routes/vote";
 import type { Env } from "./types";
@@ -81,6 +82,7 @@ app.route("/api/chat", chatRoutes);
 app.route("/api/history", historyRoutes);
 app.route("/api/document", documentRoutes);
 app.route("/api/files", filesRoutes);
+app.route("/api/rate-limit", rateLimitRoutes);
 app.route("/api/suggestions", suggestionsRoutes);
 app.route("/api/vote", voteRoutes);
 

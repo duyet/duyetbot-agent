@@ -8,6 +8,7 @@ import {
 	ConnectionStatusIndicator,
 	mapStatusToConnectionStatus,
 } from "@/components/connection-status";
+import { GuestUsageIndicator } from "@/components/guest-usage-indicator";
 import { SidebarToggle } from "@/components/sidebar-toggle";
 import { Button } from "@/components/ui/button";
 import type { ChatMessage } from "@/lib/types";
@@ -88,8 +89,13 @@ function PureChatHeader({
 				</div>
 			)}
 
-			{/* Connection status indicator */}
+			{/* Guest usage indicator - shows remaining messages for guests */}
 			<div className="order-4 ml-auto md:ml-2">
+				<GuestUsageIndicator variant="compact" />
+			</div>
+
+			{/* Connection status indicator */}
+			<div className="order-5 md:ml-2">
 				<ConnectionStatusIndicator
 					status={connectionStatus}
 					variant="compact"
