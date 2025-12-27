@@ -37,6 +37,7 @@ import { createGuestSession, getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
 import { WorkerError } from "../lib/errors";
 import { createRateLimiters, getRateLimitIdentifier } from "../lib/rate-limit";
+import { buildToolHint, parseMentionedTools } from "../lib/mention-parser";
 import { getWebWorkerTools } from "../lib/tools";
 import { generateUUID } from "../lib/utils";
 import type { Env } from "../types";
@@ -409,6 +410,28 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 		console.log(
 			`[${requestId}] Custom instructions applied (${customInstructions.length} chars)`,
 		);
+	}
+
+	// Parse @ mentions from the latest user message
+	// This allows users to explicitly request tools like @websearch, @weather, etc.
+	const latestUserMessage = allMessages
+		.filter((m) => m.role === "user")
+		.pop();
+	if (latestUserMessage?.parts) {
+		const textPart = latestUserMessage.parts.find(
+			(p): p is { type: "text"; text: string } =>
+				typeof p === "object" && p !== null && "type" in p && p.type === "text",
+		);
+		if (textPart?.text) {
+			const mentionedTools = parseMentionedTools(textPart.text);
+			if (mentionedTools.length > 0) {
+				const toolHint = buildToolHint(mentionedTools);
+				system = `${system}\n${toolHint}`;
+				console.log(
+					`[${requestId}] Tool mentions detected: ${mentionedTools.join(", ")}`,
+				);
+			}
+		}
 	}
 
 	// Get tools for this session
