@@ -141,7 +141,7 @@
 ### 8. Performance & Reliability
 **Goal:** Fast, reliable, scalable
 
-- [ ] **Performance monitoring** - Track page load, interaction metrics
+- [x] **Performance monitoring** - Web Vitals tracking (LCP, INP, CLS, FCP, TTFB) with sessionStorage metrics and optional beacon analytics ✅
 - [ ] **Error tracking** - Sentry integration for error monitoring
 - [x] **Rate limiting** - KV-based token bucket for guests (10/day) and users (60/min) ✅
 - [ ] **Caching strategy** - Cache static assets, API responses
