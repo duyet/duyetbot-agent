@@ -16,7 +16,6 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { useLocalStorage } from "usehooks-ts";
-import { useIsDesktop } from "@/hooks/use-responsive";
 import {
 	ModelSelector,
 	ModelSelectorContent,
@@ -28,6 +27,7 @@ import {
 	ModelSelectorName,
 	ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
+import { useIsDesktop } from "@/hooks/use-responsive";
 import {
 	chatModels,
 	DEFAULT_CHAT_MODEL,

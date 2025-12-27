@@ -89,7 +89,11 @@ export function useIsMobileOrTablet() {
  * Get current responsive tier
  * Returns: 'mobile' | 'tablet' | 'desktop' | undefined (SSR)
  */
-export function useResponsiveTier(): "mobile" | "tablet" | "desktop" | undefined {
+export function useResponsiveTier():
+	| "mobile"
+	| "tablet"
+	| "desktop"
+	| undefined {
 	const isMobile = useBreakpoint(BREAKPOINTS.md, "max");
 	const isTablet = useBreakpoint(BREAKPOINTS.lg, "max");
 

@@ -115,10 +115,15 @@ export async function getTitleModelForWorker(env: Env) {
 export async function executeWithFallback<T>(
 	env: Env,
 	primaryModelId: string,
-	operation: (model: Awaited<ReturnType<typeof getLanguageModelForWorker>>) => Promise<T>,
+	operation: (
+		model: Awaited<ReturnType<typeof getLanguageModelForWorker>>,
+	) => Promise<T>,
 ): Promise<FallbackResult<T>> {
 	const config = getFallbackConfig(primaryModelId);
-	const modelsToTry = [primaryModelId, ...config.fallbackChain.slice(0, config.maxRetries)];
+	const modelsToTry = [
+		primaryModelId,
+		...config.fallbackChain.slice(0, config.maxRetries),
+	];
 	const fallbacksAttempted: string[] = [];
 
 	for (let i = 0; i < modelsToTry.length; i++) {
@@ -198,10 +203,15 @@ export type StreamWithFallbackResult<T> = {
 export async function streamWithFallback<T>(
 	env: Env,
 	primaryModelId: string,
-	createStream: (model: Awaited<ReturnType<typeof getLanguageModelForWorker>>) => T,
+	createStream: (
+		model: Awaited<ReturnType<typeof getLanguageModelForWorker>>,
+	) => T,
 ): Promise<StreamWithFallbackResult<T>> {
 	const config = getFallbackConfig(primaryModelId);
-	const modelsToTry = [primaryModelId, ...config.fallbackChain.slice(0, config.maxRetries)];
+	const modelsToTry = [
+		primaryModelId,
+		...config.fallbackChain.slice(0, config.maxRetries),
+	];
 	const fallbacksAttempted: string[] = [];
 
 	for (let i = 0; i < modelsToTry.length; i++) {
@@ -210,7 +220,9 @@ export async function streamWithFallback<T>(
 
 		if (isFallback) {
 			fallbacksAttempted.push(modelId);
-			console.log(`[Fallback] Attempting streaming with fallback model: ${modelId}`);
+			console.log(
+				`[Fallback] Attempting streaming with fallback model: ${modelId}`,
+			);
 		}
 
 		try {
@@ -241,5 +253,7 @@ export async function streamWithFallback<T>(
 	}
 
 	// All models failed - throw the final error
-	throw new Error(`All models failed for streaming. Attempted: ${modelsToTry.join(", ")}`);
+	throw new Error(
+		`All models failed for streaming. Attempted: ${modelsToTry.join(", ")}`,
+	);
 }

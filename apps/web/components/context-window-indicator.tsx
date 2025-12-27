@@ -10,6 +10,8 @@
 import { AlertCircle, MessageSquare } from "lucide-react";
 import { useMemo } from "react";
 import { getContextWindow } from "@/lib/ai/models";
+import type { ChatMessage } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { estimateTokens, formatTokenCount } from "./token-usage-display";
 import {
 	Tooltip,
@@ -17,8 +19,6 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "./ui/tooltip";
-import { cn } from "@/lib/utils";
-import type { ChatMessage } from "@/lib/types";
 
 type ContextWindowIndicatorProps = {
 	messages: ChatMessage[];
@@ -108,8 +108,8 @@ export function ContextWindowIndicator({
 						<div className="space-y-1 text-xs">
 							<p className="font-medium">Context Window Usage</p>
 							<p>
-								{formatTokenCount(usedTokens)} / {formatTokenCount(contextWindow)}{" "}
-								tokens
+								{formatTokenCount(usedTokens)} /{" "}
+								{formatTokenCount(contextWindow)} tokens
 							</p>
 							<p className="text-muted-foreground">
 								{messageCount} messages in conversation
@@ -151,7 +151,10 @@ export function ContextWindowIndicator({
 			{/* Progress bar */}
 			<div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
 				<div
-					className={cn("h-full rounded-full transition-all", getProgressColor())}
+					className={cn(
+						"h-full rounded-full transition-all",
+						getProgressColor(),
+					)}
 					style={{ width: `${usagePercent}%` }}
 				/>
 			</div>

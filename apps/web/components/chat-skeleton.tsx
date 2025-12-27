@@ -85,12 +85,8 @@ export function MessageSkeleton({ isUser = false }: { isUser?: boolean }) {
 			<div
 				className={`flex flex-col gap-2 ${isUser ? "items-end" : "items-start"}`}
 			>
-				<Skeleton
-					className={`h-5 ${isUser ? "w-32" : "w-48"} rounded-md`}
-				/>
-				<Skeleton
-					className={`h-16 ${isUser ? "w-48" : "w-72"} rounded-lg`}
-				/>
+				<Skeleton className={`h-5 ${isUser ? "w-32" : "w-48"} rounded-md`} />
+				<Skeleton className={`h-16 ${isUser ? "w-48" : "w-72"} rounded-lg`} />
 			</div>
 		</div>
 	);

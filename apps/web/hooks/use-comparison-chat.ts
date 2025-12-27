@@ -74,10 +74,7 @@ export function useComparisonChat({
 
 	// Update a specific model's result
 	const updateResult = useCallback(
-		(
-			modelId: string,
-			update: Partial<ComparisonResult>,
-		) => {
+		(modelId: string, update: Partial<ComparisonResult>) => {
 			setResults((prev) =>
 				prev.map((r) => (r.modelId === modelId ? { ...r, ...update } : r)),
 			);

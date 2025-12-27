@@ -1,12 +1,12 @@
 "use client";
 
+import { Scale } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
-import { Scale } from "lucide-react";
 import { GithubIcon, PlusIcon, TrashIcon } from "@/components/icons";
 import {
 	getChatHistoryPaginationKey,

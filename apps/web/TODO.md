@@ -126,8 +126,8 @@
 
 - [x] **Dark mode** - Full theme support with Sun/Moon toggle ✅
 - [x] **Responsive design** - Centralized breakpoint system (use-responsive.ts), tablet hooks, optimized spacing ✅
-- [ ] **Loading states** - Skeleton screens, progress indicators
-- [ ] **Error handling** - Graceful error messages with recovery
+- [x] **Loading states** - ChatSkeleton, MessageSkeleton, SidebarSkeleton with full layout mimicking ✅
+- [x] **Error handling** - ErrorBoundary component, Next.js error.tsx pages, stream error recovery, graceful fallback UI ✅
 - [x] **Keyboard shortcuts** - Power user navigation (?, Ctrl+N, Ctrl+B, /) ✅
 - [ ] **Accessibility** - WCAG 2.1 AA compliance
 - [ ] **Animations** - Smooth transitions and micro-interactions

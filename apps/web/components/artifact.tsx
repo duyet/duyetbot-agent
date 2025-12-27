@@ -12,12 +12,12 @@ import {
 } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { useDebounceCallback, useWindowSize } from "usehooks-ts";
-import { useIsMobile } from "@/hooks/use-responsive";
 import { codeArtifact } from "@/artifacts/code/client";
 import { imageArtifact } from "@/artifacts/image/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
 import { useArtifact } from "@/hooks/use-artifact";
+import { useIsMobile } from "@/hooks/use-responsive";
 import type { Document, Vote } from "@/lib/db/schema";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { fetcher } from "@/lib/utils";

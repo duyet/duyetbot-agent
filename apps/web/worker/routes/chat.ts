@@ -421,25 +421,27 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 	// Create streaming response with fallback support
 	// If the primary model fails (rate limit, unavailable), falls back to alternative models
 	console.log(`[${requestId}] Starting AI stream with fallback support...`);
-	const { stream: result, modelUsed, usedFallback, fallbacksAttempted } = await streamWithFallback(
-		c.env,
-		selectedChatModel,
-		(model) =>
-			streamText({
-				model,
-				system,
-				messages: coreMessages,
-				tools,
-				temperature,
-				...(aiSettings?.maxTokens && { maxTokens: aiSettings.maxTokens }),
-				...(aiSettings?.topP !== undefined && { topP: aiSettings.topP }),
-				...(aiSettings?.frequencyPenalty !== undefined && {
-					frequencyPenalty: aiSettings.frequencyPenalty,
-				}),
-				...(aiSettings?.presencePenalty !== undefined && {
-					presencePenalty: aiSettings.presencePenalty,
-				}),
+	const {
+		stream: result,
+		modelUsed,
+		usedFallback,
+		fallbacksAttempted,
+	} = await streamWithFallback(c.env, selectedChatModel, (model) =>
+		streamText({
+			model,
+			system,
+			messages: coreMessages,
+			tools,
+			temperature,
+			...(aiSettings?.maxTokens && { maxTokens: aiSettings.maxTokens }),
+			...(aiSettings?.topP !== undefined && { topP: aiSettings.topP }),
+			...(aiSettings?.frequencyPenalty !== undefined && {
+				frequencyPenalty: aiSettings.frequencyPenalty,
 			}),
+			...(aiSettings?.presencePenalty !== undefined && {
+				presencePenalty: aiSettings.presencePenalty,
+			}),
+		}),
 	);
 
 	if (usedFallback) {

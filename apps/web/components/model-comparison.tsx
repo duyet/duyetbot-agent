@@ -13,9 +13,9 @@
 
 import { Scale, Sparkles, Timer, X } from "lucide-react";
 import { useCallback, useState } from "react";
-import { chatModels, type ChatModel } from "@/lib/ai/models";
 import type { ComparisonResult } from "@/hooks/use-comparison-chat";
 import { useComparisonChat } from "@/hooks/use-comparison-chat";
+import { type ChatModel, chatModels } from "@/lib/ai/models";
 import { cn } from "@/lib/utils";
 import { Markdown } from "./markdown";
 import { Button } from "./ui/button";
@@ -52,8 +52,7 @@ function ModelSelector({
 			<div className="flex flex-wrap gap-2">
 				{chatModels.map((model) => {
 					const isSelected = selectedModels.includes(model.id);
-					const isDisabled =
-						!isSelected && selectedModels.length >= maxModels;
+					const isDisabled = !isSelected && selectedModels.length >= maxModels;
 
 					return (
 						<TooltipProvider key={model.id}>
@@ -232,9 +231,7 @@ export function ModelComparison({ onClose }: ModelComparisonProps) {
 					<div className="flex flex-col gap-2">
 						<Button
 							disabled={
-								isComparing ||
-								!inputValue.trim() ||
-								selectedModelIds.length < 2
+								isComparing || !inputValue.trim() || selectedModelIds.length < 2
 							}
 							type="submit"
 						>

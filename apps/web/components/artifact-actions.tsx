@@ -6,6 +6,25 @@ import type { ArtifactActionContext } from "./create-artifact";
 import { Button } from "./ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 
+function getActionErrorMessage(
+	error: unknown,
+	actionDescription: string,
+): string {
+	if (error instanceof Error) {
+		const message = error.message.toLowerCase();
+		if (message.includes("network") || message.includes("fetch")) {
+			return "Network error. Please check your connection and try again.";
+		}
+		if (message.includes("timeout")) {
+			return "The action timed out. Please try again.";
+		}
+		if (message.includes("permission") || message.includes("denied")) {
+			return "Permission denied. You may not have access to perform this action.";
+		}
+	}
+	return `Failed to ${actionDescription.toLowerCase()}. Please try again.`;
+}
+
 type ArtifactActionsProps = {
 	artifact: UIArtifact;
 	handleVersionChange: (type: "next" | "prev" | "toggle" | "latest") => void;
@@ -32,7 +51,10 @@ function PureArtifactActions({
 	);
 
 	if (!artifactDefinition) {
-		throw new Error("Artifact definition not found!");
+		console.warn(
+			`[ArtifactActions] No definition found for artifact kind: ${artifact.kind}`,
+		);
+		return null;
 	}
 
 	const actionContext: ArtifactActionContext = {
@@ -67,8 +89,16 @@ function PureArtifactActions({
 
 								try {
 									await Promise.resolve(action.onClick(actionContext));
-								} catch (_error) {
-									toast.error("Failed to execute action");
+								} catch (error) {
+									const errorMessage = getActionErrorMessage(
+										error,
+										action.description,
+									);
+									toast.error(errorMessage);
+									console.error(
+										`[ArtifactAction] Failed to execute "${action.description}":`,
+										error,
+									);
 								} finally {
 									setIsLoading(false);
 								}
