@@ -1,80 +1,69 @@
-// Curated list of top models from Vercel AI Gateway
-export const DEFAULT_CHAT_MODEL = "google/gemini-2.5-flash-lite";
+// OpenRouter models via Cloudflare AI Gateway
+export const DEFAULT_CHAT_MODEL = "xiaomi/mimo-v2-flash:free";
 
 export type ChatModel = {
   id: string;
   name: string;
   provider: string;
   description: string;
+  tier?: "free" | "paid" | "premium";
 };
 
 export const chatModels: ChatModel[] = [
-  // Anthropic
+  // OpenRouter - Free Tier
   {
-    id: "anthropic/claude-haiku-4.5",
-    name: "Claude Haiku 4.5",
-    provider: "anthropic",
-    description: "Fast and affordable, great for everyday tasks",
+    id: "xiaomi/mimo-v2-flash:free",
+    name: "Mimo Flash Free",
+    provider: "openrouter",
+    description: "Fast and free AI model (public beta)",
+    tier: "free",
   },
   {
-    id: "anthropic/claude-sonnet-4.5",
-    name: "Claude Sonnet 4.5",
-    provider: "anthropic",
-    description: "Best balance of speed, intelligence, and cost",
+    id: "google/gemma-3-4b-it:free",
+    name: "Gemma 3 4B",
+    provider: "openrouter",
+    description: "Google's lightweight free model",
+    tier: "free",
+  },
+
+  // OpenRouter - Paid Tier
+  {
+    id: "openai/gpt-4o-mini",
+    name: "GPT-4o Mini",
+    provider: "openrouter",
+    description: "OpenAI's efficient small model",
+    tier: "paid",
   },
   {
-    id: "anthropic/claude-opus-4.5",
-    name: "Claude Opus 4.5",
-    provider: "anthropic",
-    description: "Most capable Anthropic model",
+    id: "anthropic/claude-3-haiku",
+    name: "Claude 3 Haiku",
+    provider: "openrouter",
+    description: "Anthropic's fast and compact model",
+    tier: "paid",
   },
-  // OpenAI
+
+  // OpenRouter - Premium Tier
   {
-    id: "openai/gpt-4.1-mini",
-    name: "GPT-4.1 Mini",
-    provider: "openai",
-    description: "Fast and cost-effective for simple tasks",
-  },
-  {
-    id: "openai/gpt-5.2",
-    name: "GPT-5.2",
-    provider: "openai",
-    description: "Most capable OpenAI model",
-  },
-  // Google
-  {
-    id: "google/gemini-2.5-flash-lite",
-    name: "Gemini 2.5 Flash Lite",
-    provider: "google",
-    description: "Ultra fast and affordable",
-  },
-  {
-    id: "google/gemini-3-pro-preview",
-    name: "Gemini 3 Pro",
-    provider: "google",
-    description: "Most capable Google model",
-  },
-  // xAI
-  {
-    id: "xai/grok-4.1-fast-non-reasoning",
-    name: "Grok 4.1 Fast",
-    provider: "xai",
-    description: "Fast with 30K context",
-  },
-  // Reasoning models (extended thinking)
-  {
-    id: "anthropic/claude-3.7-sonnet-thinking",
-    name: "Claude 3.7 Sonnet",
-    provider: "reasoning",
-    description: "Extended thinking for complex problems",
-  },
-  {
-    id: "xai/grok-code-fast-1-thinking",
-    name: "Grok Code Fast",
-    provider: "reasoning",
-    description: "Reasoning optimized for code",
+    id: "anthropic/claude-3.5-sonnet",
+    name: "Claude 3.5 Sonnet",
+    provider: "openrouter",
+    description: "Anthropic's most capable model",
+    tier: "premium",
   },
 ];
+
+// Group models by tier for UI
+export const modelsByTier = chatModels.reduce(
+  (acc, model) => {
+    const tier = model.tier || "paid";
+    if (!acc[tier]) {
+      acc[tier] = [];
+    }
+    acc[tier].push(model);
+    return acc;
+  },
+  {} as Record<string, ChatModel[]>
+);
 
 // Group models by provider for UI
 export const modelsByProvider = chatModels.reduce(

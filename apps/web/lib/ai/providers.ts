@@ -1,11 +1,12 @@
-import { getCloudflareContext } from "@opennextjs/cloudflare";
 import { createOpenAI } from "@ai-sdk/openai";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 import {
   customProvider,
   extractReasoningMiddleware,
   wrapLanguageModel,
 } from "ai";
 import { isTestEnvironment } from "../constants";
+import { chatModels, DEFAULT_CHAT_MODEL } from "./models";
 
 const THINKING_SUFFIX_REGEX = /-thinking$/;
 
@@ -46,6 +47,14 @@ export async function getLanguageModel(modelId: string) {
     return testProvider.languageModel(modelId);
   }
 
+  // Validate modelId exists in our configuration
+  const validModel = chatModels.find((m) => m.id === modelId);
+  if (!validModel) {
+    console.warn(
+      `[providers] Unknown model ID: ${modelId}. Falling back to default: ${DEFAULT_CHAT_MODEL}`
+    );
+  }
+
   const openai = await getOpenAIClient();
   const isReasoningModel =
     modelId.includes("reasoning") || modelId.endsWith("-thinking");
@@ -58,7 +67,7 @@ export async function getLanguageModel(modelId: string) {
     });
   }
 
-  return openai(modelId);
+  return openai(validModel ? modelId : DEFAULT_CHAT_MODEL);
 }
 
 export async function getTitleModel() {
@@ -67,7 +76,8 @@ export async function getTitleModel() {
   }
 
   const openai = await getOpenAIClient();
-  return openai("anthropic/claude-haiku-4.5");
+  // Use a fast free model for title generation
+  return openai("google/gemma-3-4b-it:free");
 }
 
 export async function getArtifactModel() {
@@ -76,5 +86,6 @@ export async function getArtifactModel() {
   }
 
   const openai = await getOpenAIClient();
-  return openai("anthropic/claude-haiku-4.5");
+  // Use a fast free model for artifact generation
+  return openai("google/gemma-3-4b-it:free");
 }

@@ -31,6 +31,7 @@ import {
   chatModels,
   DEFAULT_CHAT_MODEL,
   modelsByProvider,
+  modelsByTier,
 } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -194,7 +195,11 @@ function PureMultimodalInput({
       });
 
       if (response.ok) {
-        const data = await response.json() as { url: string; pathname: string; contentType: string };
+        const data = (await response.json()) as {
+          url: string;
+          pathname: string;
+          contentType: string;
+        };
         const { url, pathname, contentType } = data;
 
         return {
@@ -203,7 +208,7 @@ function PureMultimodalInput({
           contentType,
         };
       }
-      const { error } = await response.json() as { error: string };
+      const { error } = (await response.json()) as { error: string };
       toast.error(error);
     } catch (_error) {
       toast.error("Failed to upload file, please try again!");
@@ -480,7 +485,16 @@ function PureModelSelectorCompact({
     google: "Google",
     xai: "xAI",
     reasoning: "Reasoning",
+    openrouter: "OpenRouter",
   };
+
+  // Tier display names and order
+  const tierNames: Record<string, string> = {
+    free: "Free Tier",
+    paid: "Paid Tier",
+    premium: "Premium",
+  };
+  const tierOrder = ["free", "paid", "premium"];
 
   return (
     <ModelSelector onOpenChange={setOpen} open={open}>
@@ -493,13 +507,16 @@ function PureModelSelectorCompact({
       <ModelSelectorContent>
         <ModelSelectorInput placeholder="Search models..." />
         <ModelSelectorList>
-          {Object.entries(modelsByProvider).map(
-            ([providerKey, providerModels]) => (
+          {tierOrder.map((tier) => {
+            const tierModels = modelsByTier[tier];
+            if (!tierModels || tierModels.length === 0) return null;
+
+            return (
               <ModelSelectorGroup
-                heading={providerNames[providerKey] ?? providerKey}
-                key={providerKey}
+                heading={tierNames[tier] ?? tier}
+                key={tier}
               >
-                {providerModels.map((model) => {
+                {tierModels.map((model) => {
                   const logoProvider = model.id.split("/")[0];
                   return (
                     <ModelSelectorItem
@@ -520,8 +537,8 @@ function PureModelSelectorCompact({
                   );
                 })}
               </ModelSelectorGroup>
-            )
-          )}
+            );
+          })}
         </ModelSelectorList>
       </ModelSelectorContent>
     </ModelSelector>
