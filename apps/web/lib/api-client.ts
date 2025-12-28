@@ -303,3 +303,75 @@ export async function getSuggestions({
 
 	return validated.success ? validated.data : [];
 }
+
+// Zod schemas for share API
+const shareResponseSchema = z.object({
+	shareId: z.string(),
+	shareToken: z.string(),
+	shareUrl: z.string(),
+});
+
+/**
+ * Create share link for artifact
+ */
+export async function createArtifactShare({
+	documentId,
+}: {
+	documentId: string;
+}): Promise<{ shareUrl: string } | null> {
+	const result = await safeFetch(
+		`/api/document/share?id=${encodeURIComponent(documentId)}`,
+		{
+			method: "POST",
+		},
+		shareResponseSchema,
+	);
+
+	if (result.error || !result.data) {
+		console.error("[createArtifactShare] Failed:", result.error);
+		return null;
+	}
+
+	return { shareUrl: result.data.shareUrl };
+}
+
+/**
+ * Revoke share link for artifact
+ */
+export async function revokeArtifactShare({
+	documentId,
+}: {
+	documentId: string;
+}): Promise<boolean> {
+	const result = await safeFetch(
+		`/api/document/share?id=${encodeURIComponent(documentId)}`,
+		{
+			method: "DELETE",
+		},
+	);
+
+	if (result.error) {
+		console.error("[revokeArtifactShare] Failed:", result.error);
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Get shared artifact (public, no auth)
+ */
+export async function getSharedArtifact({
+	shareId,
+}: {
+	shareId: string;
+}): Promise<any[] | null> {
+	const result = await safeFetch(`/api/share/${shareId}`);
+
+	if (result.error || !result.data) {
+		console.error("[getSharedArtifact] Failed:", result.error);
+		return null;
+	}
+
+	return result.data as any[];
+}

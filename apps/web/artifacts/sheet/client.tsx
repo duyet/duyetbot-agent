@@ -5,10 +5,12 @@ import {
 	CopyIcon,
 	LineChartIcon,
 	RedoIcon,
+	ShareIcon,
 	SparklesIcon,
 	UndoIcon,
 } from "@/components/icons";
 import { SpreadsheetEditor } from "@/components/sheet-editor";
+import { createArtifactShare } from "@/lib/api-client";
 
 type Metadata = any;
 
@@ -80,6 +82,19 @@ export const sheetArtifact = new Artifact<"sheet", Metadata>({
 
 				navigator.clipboard.writeText(cleanedCsv);
 				toast.success("Copied csv to clipboard!");
+			},
+		},
+		{
+			icon: <ShareIcon size={18} />,
+			description: "Share artifact",
+			onClick: async ({ documentId }) => {
+				const result = await createArtifactShare({ documentId });
+				if (result?.shareUrl) {
+					navigator.clipboard.writeText(result.shareUrl);
+					toast.success("Share link copied to clipboard!");
+				} else {
+					toast.error("Failed to create share link");
+				}
 			},
 		},
 	],

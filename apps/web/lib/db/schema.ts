@@ -160,6 +160,12 @@ export const document = sqliteTable(
 				onDelete: "no action",
 				onUpdate: "no action",
 			}),
+		// Document sharing fields
+		shareId: text("shareId").unique(),
+		shareToken: text("shareToken"),
+		isPublic: integer("isPublic", { mode: "boolean" })
+			.notNull()
+			.default(false),
 	},
 	(table) => {
 		return {

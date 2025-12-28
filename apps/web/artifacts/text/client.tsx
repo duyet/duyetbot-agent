@@ -8,9 +8,11 @@ import {
 	MessageIcon,
 	PenIcon,
 	RedoIcon,
+	ShareIcon,
 	UndoIcon,
 } from "@/components/icons";
 import { Editor } from "@/components/text-editor";
+import { createArtifactShare } from "@/lib/api-client";
 import { getSuggestions } from "@/lib/api-client";
 import type { Suggestion } from "@/lib/db/schema";
 
@@ -141,6 +143,19 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
 			onClick: ({ content }) => {
 				navigator.clipboard.writeText(content);
 				toast.success("Copied to clipboard!");
+			},
+		},
+		{
+			icon: <ShareIcon size={18} />,
+			description: "Share artifact",
+			onClick: async ({ documentId }) => {
+				const result = await createArtifactShare({ documentId });
+				if (result?.shareUrl) {
+					navigator.clipboard.writeText(result.shareUrl);
+					toast.success("Share link copied to clipboard!");
+				} else {
+					toast.error("Failed to create share link");
+				}
 			},
 		},
 	],

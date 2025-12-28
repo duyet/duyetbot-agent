@@ -12,8 +12,10 @@ import {
 	MessageIcon,
 	PlayIcon,
 	RedoIcon,
+	ShareIcon,
 	UndoIcon,
 } from "@/components/icons";
+import { createArtifactShare } from "@/lib/api-client";
 import { generateUUID } from "@/lib/utils";
 
 const OUTPUT_HANDLERS = {
@@ -242,6 +244,19 @@ export const codeArtifact = new Artifact<"code", Metadata>({
 			onClick: ({ content }) => {
 				navigator.clipboard.writeText(content);
 				toast.success("Copied to clipboard!");
+			},
+		},
+		{
+			icon: <ShareIcon size={18} />,
+			description: "Share artifact",
+			onClick: async ({ documentId }) => {
+				const result = await createArtifactShare({ documentId });
+				if (result?.shareUrl) {
+					navigator.clipboard.writeText(result.shareUrl);
+					toast.success("Share link copied to clipboard!");
+				} else {
+					toast.error("Failed to create share link");
+				}
 			},
 		},
 	],

@@ -33,6 +33,7 @@ type ArtifactActionsProps = {
 	mode: "edit" | "diff";
 	metadata: any;
 	setMetadata: Dispatch<SetStateAction<any>>;
+	documentId: string;
 };
 
 function PureArtifactActions({
@@ -43,6 +44,7 @@ function PureArtifactActions({
 	mode,
 	metadata,
 	setMetadata,
+	documentId,
 }: ArtifactActionsProps) {
 	const [isLoading, setIsLoading] = useState(false);
 
@@ -59,6 +61,7 @@ function PureArtifactActions({
 
 	const actionContext: ArtifactActionContext = {
 		content: artifact.content,
+		documentId,
 		handleVersionChange,
 		currentVersionIndex,
 		isCurrentVersion,

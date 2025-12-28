@@ -19,7 +19,14 @@ import {
 } from "recharts";
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
-import { CopyIcon, DownloadIcon, RedoIcon, UndoIcon } from "@/components/icons";
+import {
+	CopyIcon,
+	DownloadIcon,
+	RedoIcon,
+	ShareIcon,
+	UndoIcon,
+} from "@/components/icons";
+import { createArtifactShare } from "@/lib/api-client";
 
 /**
  * Chart data format expected from AI:
@@ -312,6 +319,19 @@ export const chartArtifact = new Artifact<"chart", ChartMetadata>({
 					toast.success("Downloaded chart as SVG!");
 				} else {
 					toast.error("Could not find chart to download");
+				}
+			},
+		},
+		{
+			icon: <ShareIcon size={18} />,
+			description: "Share artifact",
+			onClick: async ({ documentId }) => {
+				const result = await createArtifactShare({ documentId });
+				if (result?.shareUrl) {
+					navigator.clipboard.writeText(result.shareUrl);
+					toast.success("Share link copied to clipboard!");
+				} else {
+					toast.error("Failed to create share link");
 				}
 			},
 		},

@@ -14,7 +14,7 @@ import { authRoutes } from "./routes/auth";
 import { chatRoutes } from "./routes/chat";
 import { customToolsRouter } from "./routes/custom-tools";
 import { docsRouter } from "./routes/docs";
-import { documentRoutes } from "./routes/document";
+import { documentRoutes, shareRoutes } from "./routes/document";
 import { filesRoutes } from "./routes/files";
 import { historyRoutes } from "./routes/history";
 import { rateLimitRoutes } from "./routes/rate-limit";
@@ -94,6 +94,7 @@ app.route("/api/suggestions", suggestionsRoutes);
 app.route("/api/tools/custom", customToolsRouter);
 app.route("/api/vote", voteRoutes);
 app.route("/api/docs", docsRouter);
+app.route("/api/share", shareRoutes);
 
 // Health check
 app.get("/health", (c) => {

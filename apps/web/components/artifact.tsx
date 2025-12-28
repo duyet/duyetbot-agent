@@ -460,6 +460,7 @@ function PureArtifact({
 								metadata={metadata}
 								mode={mode}
 								setMetadata={setMetadata}
+								documentId={artifact.documentId}
 							/>
 						</div>
 

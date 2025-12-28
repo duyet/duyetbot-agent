@@ -1,7 +1,8 @@
 import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
-import { CopyIcon, RedoIcon, UndoIcon } from "@/components/icons";
+import { CopyIcon, RedoIcon, ShareIcon, UndoIcon } from "@/components/icons";
 import { ImageEditor } from "@/components/image-editor";
+import { createArtifactShare } from "@/lib/api-client";
 
 export const imageArtifact = new Artifact({
 	kind: "image",
@@ -69,6 +70,19 @@ export const imageArtifact = new Artifact({
 				};
 
 				toast.success("Copied image to clipboard!");
+			},
+		},
+		{
+			icon: <ShareIcon size={18} />,
+			description: "Share artifact",
+			onClick: async ({ documentId }) => {
+				const result = await createArtifactShare({ documentId });
+				if (result?.shareUrl) {
+					navigator.clipboard.writeText(result.shareUrl);
+					toast.success("Share link copied to clipboard!");
+				} else {
+					toast.error("Failed to create share link");
+				}
 			},
 		},
 	],
