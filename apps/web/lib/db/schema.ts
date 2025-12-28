@@ -461,3 +461,36 @@ export const sessions = sqliteTable("Session", {
 });
 
 export type DbSession = InferSelectModel<typeof sessions>;
+
+// Security audit log for tracking sensitive operations
+// Provides audit trail for security events and compliance
+export const auditLog = sqliteTable("AuditLog", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	// User who performed the action (nullable for system events)
+	userId: text("userId").references(() => user.id, {
+		onDelete: "set null",
+		onUpdate: "no action",
+	}),
+	// Action type (login, logout, session_created, session_invalidated, session_rotated, password_change, etc.)
+	action: text("action").notNull(),
+	// Resource affected (sessionId, userId, etc.)
+	resourceType: text("resourceType"), // "session", "user", "document", etc.
+	resourceId: text("resourceId"),
+	// Operation outcome
+	success: integer("success", { mode: "boolean" }).notNull(),
+	// Error message if operation failed
+	errorMessage: text("errorMessage"),
+	// Request metadata for security analysis
+	userAgent: text("userAgent"),
+	ipAddress: text("ipAddress"),
+	// Additional context (JSON)
+	metadata: text("metadata", { mode: "json" }),
+	// When the action occurred
+	timestamp: integer("timestamp", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+});
+
+export type AuditLog = InferSelectModel<typeof auditLog>;
