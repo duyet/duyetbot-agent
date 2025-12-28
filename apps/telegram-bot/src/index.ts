@@ -18,9 +18,9 @@ import {
 } from '@duyetbot/observability';
 import { type Env, TelegramAgent } from './agent.js';
 import {
+  createRateLimitMiddleware,
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
-  createRateLimitMiddleware,
 } from './middlewares/index.js';
 import { processEventNotifications } from './notifications/index.js';
 import { answerCallbackQuery, createTelegramContext, telegramTransport } from './transport.js';

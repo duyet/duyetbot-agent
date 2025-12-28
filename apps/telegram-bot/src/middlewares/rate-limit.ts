@@ -83,8 +83,7 @@ function cleanupStaleEntries(): void {
   for (const [userId, state] of rateLimitState.entries()) {
     // Remove if no recent messages and not throttled
     const hasRecentMessages =
-      state.messageTimestamps.some((ts) => now - ts < staleThreshold) ||
-      state.throttleUntil > now;
+      state.messageTimestamps.some((ts) => now - ts < staleThreshold) || state.throttleUntil > now;
 
     if (!hasRecentMessages) {
       rateLimitState.delete(userId);
@@ -146,11 +145,7 @@ function checkPerMinuteLimit(
  * @param now - Current timestamp
  * @returns true if under burst limit, false if burst detected
  */
-function checkBurstLimit(
-  state: UserRateLimitState,
-  config: RateLimitConfig,
-  now: number
-): boolean {
+function checkBurstLimit(state: UserRateLimitState, config: RateLimitConfig, now: number): boolean {
   // Reset burst tracking if window expired
   if (state.burstStart && now - state.burstStart > config.burstWindow) {
     state.burstStart = undefined;

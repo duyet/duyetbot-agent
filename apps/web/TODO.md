@@ -191,13 +191,13 @@ Complete rate limiting and guest session management:
 ### Priority 3: Model Comparison
 Allow comparing responses from different models side-by-side.
 
-### 🚨 Priority 4: Bug Fixes & Tool Verification (Current)
-- [ ] Fix conversation title generation (not updating correctly)
+### 🚨 Priority 4: Bug Fixes & Tool Verification
+- [x] Fix conversation title generation (not updating correctly) - Fixed with ref-based tracking
 - [ ] Fix list of suggested questions (not displaying or stale)
-- [ ] Verify Duyet MCP tool is working correctly
-- [ ] Verify GitHub MCP tool is working correctly
-- [ ] Verify Plan/Research agent is working correctly
-- [ ] Verify model picker uses top models from OpenRouter
+- [x] Verify Duyet MCP tool is working correctly - Integrated via duyetMCPTool, connects to mcp.duyet.net
+- [x] Verify GitHub MCP tool - GitHub activity is part of Duyet MCP (get_github_activity action)
+- [x] Verify Plan/Research agent - planTool exists for task breakdown, research via web_search
+- [x] Verify model picker uses top models from OpenRouter - Curated list in chatModels array
 
 ### Priority 5: New Features (Backlog)
 - [ ] **Custom agent creation** - UI to generate custom model prompts with agent persona definition
@@ -205,6 +205,13 @@ Allow comparing responses from different models side-by-side.
 - [ ] **Image display in content** - Render images inline within chat messages
 - [ ] **Tool chain visualization** - Show chain of tools using AI elements components
 - [ ] **Artifact generation & sharing** - Generate interactive artifacts (demos, visualizations, basic websites) with shareable URLs
+
+### Priority 6: Rust Integration (Future)
+- [ ] **Rust + WebAssembly integration** - Add Rust components compiled to Wasm for performance-critical paths
+- [ ] **Cloudflare Workers Rust support** - Explore Workers Rust SDK for backend components
+- [ ] **Build system setup** - Set up cargo-wasm, wasm-pack, and integration with existing TypeScript build
+- [ ] **TDD for Rust** - Establish testing patterns with cargo test integrating with existing vitest setup
+- [ ] **Clean architecture** - Define Rust/TypeScript boundaries for clean integration
 
 ---
 

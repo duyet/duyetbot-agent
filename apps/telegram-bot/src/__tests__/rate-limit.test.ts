@@ -2,16 +2,16 @@
  * Tests for rate limiting middleware
  */
 
-import { describe, expect, it, beforeEach } from 'vitest';
 import { Hono } from 'hono';
+import { beforeEach, describe, expect, it } from 'vitest';
 import {
-  DEFAULT_RATE_LIMIT,
-  RateLimitErrorCodes,
   createRateLimitMiddleware,
+  DEFAULT_RATE_LIMIT,
   getRateLimitStats,
   getUserRateLimitState,
-  resetUserRateLimitState,
   type RateLimitConfig,
+  RateLimitErrorCodes,
+  resetUserRateLimitState,
   type UserRateLimitState,
 } from '../middlewares/rate-limit.js';
 import type { Env } from '../middlewares/types.js';
@@ -69,7 +69,7 @@ describe('rate-limit middleware', () => {
 
   describe('state management functions', () => {
     it('should create new state for unknown users', () => {
-      let state = getUserRateLimitState(12345);
+      const state = getUserRateLimitState(12345);
       expect(state).toBeUndefined();
 
       // Simulate state creation by calling getOrCreate indirectly
