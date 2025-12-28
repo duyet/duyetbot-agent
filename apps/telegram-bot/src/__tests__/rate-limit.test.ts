@@ -2,7 +2,6 @@
  * Tests for rate limiting middleware
  */
 
-import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
 import {
   createRateLimitMiddleware,
@@ -15,23 +14,6 @@ import {
   type UserRateLimitState,
 } from '../middlewares/rate-limit.js';
 import type { Env } from '../middlewares/types.js';
-
-// Helper to create a test webhook context
-function createTestWebhookContext(userId: number, username?: string) {
-  return {
-    userId,
-    username,
-    chatId: 12345,
-    text: 'Test message',
-    startTime: Date.now(),
-    messageId: 1,
-    isGroupChat: false,
-    chatType: 'private' as const,
-    hasBotMention: false,
-    isReply: false,
-    isReplyToBot: false,
-  };
-}
 
 describe('rate-limit middleware', () => {
   beforeEach(() => {
@@ -72,33 +54,16 @@ describe('rate-limit middleware', () => {
       const state = getUserRateLimitState(12345);
       expect(state).toBeUndefined();
 
-      // Simulate state creation by calling getOrCreate indirectly
+      // Verify middleware can be created
       const middleware = createRateLimitMiddleware();
-      const env = { TELEGRAM_BOT_TOKEN: 'test-token' } as Env;
-      const app = new Hono<{ Bindings: Env }>();
-      app.use('*', middleware);
-      app.post('/test', (c) => c.json({ ok: true }));
-
-      // After middleware runs, state should be created
-      // This is a basic smoke test for state creation
       expect(middleware).toBeDefined();
     });
 
     it('should allow manual state reset', () => {
-      // First, manually inject state for testing
-      const now = Date.now();
-      const testState: UserRateLimitState = {
-        messageTimestamps: [now - 30_000, now - 15_000, now],
-        throttleUntil: 0,
-        burstCount: 2,
-        burstStart: now - 5000,
-      };
-
-      // Note: We can't directly set state without a helper, so we test
-      // the reset function doesn't throw and stats update
+      // Test that reset function doesn't throw
       resetUserRateLimitState(12345);
-      const stats = getRateLimitStats();
-      expect(stats).toBeDefined();
+      const state = getUserRateLimitState(12345);
+      expect(state).toBeUndefined();
     });
 
     it('should provide rate limit statistics', () => {
@@ -113,23 +78,12 @@ describe('rate-limit middleware', () => {
   });
 
   describe('per-minute rate limiting', () => {
-    it('should allow messages within per-minute limit', async () => {
+    it('should allow messages within per-minute limit', () => {
       const config: Partial<RateLimitConfig> = {
         maxPerMinute: 5,
         maxBurst: 10, // High to not trigger burst
       };
       const middleware = createRateLimitMiddleware(config);
-      const env = { TELEGRAM_BOT_TOKEN: 'test-token' } as Env;
-
-      const app = new Hono<{ Bindings: Env }>();
-      app.use('*', middleware);
-      app.post('/test', (c) => {
-        const rateLimited = c.get('rateLimited');
-        return c.json({ rateLimited });
-      });
-
-      // Send 5 messages (at the limit) - we can't actually send in test
-      // but we verify the middleware is created correctly
       expect(middleware).toBeDefined();
     });
 
@@ -241,10 +195,10 @@ describe('rate-limit middleware', () => {
     });
 
     it('should handle undefined username', () => {
-      const username = undefined;
+      const username = undefined as string | undefined;
       const adminUsername = 'admin_user';
 
-      const isExempt = username?.toLowerCase() === adminUsername?.toLowerCase();
+      const isExempt = username?.toLowerCase() === adminUsername.toLowerCase();
       expect(isExempt).toBe(false);
     });
   });

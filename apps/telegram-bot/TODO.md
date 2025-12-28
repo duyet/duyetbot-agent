@@ -5,27 +5,37 @@
 Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonomous AI agent system with best-in-class Telegram UX.
 
 **Current State**:
-- 126 tests passing (unit + E2E)
-- ~6,630 LOC in src/
+- 145 tests passing (unit + E2E)
+- ~7,000 LOC in src/
 - Transport layer pattern implemented
 - Event Bridge notification system (recently added)
 - Fire-and-forget webhook processing
+- **NEW**: Rate limiting middleware with burst detection
 
 ---
 
-## Priority 1: Core Reliability & Security
+## Priority 1: Core Reliability & Security ✅ IN PROGRESS
 
-### 1.1 Rate Limiting & Throttling
-**Status**: `pending`
-**Effort**: 2-3 hours
+### 1.1 Rate Limiting & Throttling ✅ DONE
+**Status**: `done`
+**Effort**: 3 hours completed
 **Impact**: Prevents abuse, reduces API costs
 
-- [ ] Implement per-user rate limiting in Durable Object
-- [ ] Add burst detection for spam prevention
-- [ ] Configure Telegram Bot API rate limit awareness (30 msg/sec)
-- [ ] Add metrics for rate limit hits
+- [x] Implement per-user rate limiting in Durable Object
+- [x] Add burst detection for spam prevention
+- [x] Configure Telegram Bot API rate limit awareness (30 msg/sec)
+- [x] Add metrics for rate limit hits
 
-**Files**: `src/agent.ts`, `src/middlewares/rate-limit.ts` (new)
+**Files**: `src/middlewares/rate-limit.ts` (new), `src/index.ts`
+
+**Implementation Details**:
+- Sliding window algorithm for per-minute limits (default: 20 msg/min)
+- Burst detection (default: 5 msg in 10s triggers 60s throttle)
+- Admin user exemption (TELEGRAM_ADMIN env var)
+- In-memory state with auto-cleanup (5min stale threshold)
+- Statistics API for monitoring (getRateLimitStats)
+
+**Test Coverage**: 19 new tests in `src/__tests__/rate-limit.test.ts`
 
 ---
 
@@ -62,7 +72,7 @@ Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonom
 ## Priority 2: Telegram UX Enhancements
 
 ### 2.1 Inline Keyboards for Interactive Actions
-**Status**: `pending`
+**Status**: `next`
 **Effort**: 4-6 hours
 **Impact**: Significant UX improvement
 
@@ -152,7 +162,7 @@ Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonom
 ## Priority 4: Testing & Documentation
 
 ### 4.1 Increase Test Coverage
-**Status**: `good` (126 tests passing)
+**Status**: `good` (145 tests passing)
 **Effort**: 4-6 hours
 **Impact**: Confidence in changes
 
@@ -237,29 +247,83 @@ Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonom
 
 ---
 
+## Priority 6: Rust Integration (NEW - User Request)
+
+### 6.1 Rust Tooling for Performance
+**Status**: `exploring`
+**Effort**: TBD
+**Impact**: Performance optimization
+
+- [ ] Identify performance bottlenecks suitable for Rust
+- [ ] Design TypeScript-Rust FFI boundaries
+- [ ] Set up wasm32-wasi target for Cloudflare Workers
+- [ ] Implement proof-of-concept WASM module
+
+**Considerations**:
+- Cloudflare Workers supports WASM modules
+- Start with computationally intensive operations (token counting, parsing)
+- Keep core business logic in TypeScript for maintainability
+
+---
+
+### 6.2 Build & Development Workflow
+**Status**: `exploring`
+**Effort**: TBD
+**Impact**: Developer experience
+
+- [ ] Integrate cargo into monorepo build system
+- [ ] Set up automated testing for Rust code
+- [ ] Configure WASM build pipeline
+- [ ] Add TDD framework for Rust (cargo test)
+
+**Tools to Evaluate**:
+- `wasm-pack` for building WASM packages
+- `wasm-bindgen` for TypeScript interop
+- `cargo-workspace` for monorepo integration
+
+---
+
+### 6.3 Rust for Core Algorithms
+**Status**: `exploring`
+**Effort**: TBD
+**Impact**: Performance
+
+- [ ] Port message parsing to Rust
+- [ ] Implement rate limiting counters in Rust
+- [ ] Add token counting/estimation in Rust
+- [ ] Benchmark vs TypeScript implementation
+
+**Note**: Requires careful profiling to justify complexity
+
+---
+
 ## Status Legend
 
 - `pending` - Not started
 - `partial` - Some implementation exists
 - `done` - Complete
+- `next` - Next priority
+- `exploring` - Research phase
 
 ## Metrics
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| Test Coverage | 126 tests | 150+ tests |
+| Test Coverage | 145 tests | 150+ tests |
 | E2E Scenarios | 6 | 10+ |
 | Admin Commands | 0 | 5+ |
 | Documentation | Minimal | Comprehensive |
+| Rust Integration | None | Exploring |
 
 ---
 
 ## Next Steps (Current Iteration)
 
-1. **Immediate**: Implement Priority 1.1 (Rate Limiting)
-2. **Then**: Add Priority 2.1 (Inline Keyboards)
-3. **Finally**: Deploy and validate
+1. **Just Completed**: Priority 1.1 (Rate Limiting) ✅
+2. **Deploying**: Commit and deploy rate limiting to production
+3. **Next**: Priority 2.1 (Inline Keyboards for `/settings` command)
+4. **Parallel**: Explore Rust integration possibilities
 
 ---
 
-*Last Updated: 2025-12-28 (Ralph Loop Iteration 1)*
+*Last Updated: 2025-12-28 (Ralph Loop Iteration 1 - Rate Limiting Complete)*
