@@ -11,6 +11,25 @@ import {
 import { cn } from "@/lib/utils";
 
 /**
+ * Platform detection for keyboard shortcuts
+ * Returns true if the user is on a Mac (Darwin) platform
+ */
+function isMacPlatform(): boolean {
+	if (typeof window === "undefined") return false;
+	return (
+		navigator.platform.toUpperCase().indexOf("MAC") >= 0 ||
+		navigator.userAgent.toUpperCase().indexOf("MAC") >= 0
+	);
+}
+
+/**
+ * Get the platform-appropriate modifier key label
+ */
+function getModifierKeyLabel(): string {
+	return isMacPlatform() ? "⌘" : "Ctrl";
+}
+
+/**
  * Keyboard shortcut definition
  */
 export interface KeyboardShortcut {
@@ -20,6 +39,7 @@ export interface KeyboardShortcut {
 	ctrl?: boolean;
 	shift?: boolean;
 	alt?: boolean;
+	meta?: boolean; // For Cmd key on Mac
 	action?: () => void;
 }
 
@@ -125,29 +145,48 @@ export const APP_SHORTCUTS: KeyboardShortcut[] = [
 
 /**
  * Format keyboard shortcut for display
+ * Uses platform-appropriate modifier key labels (⌘ for Mac, Ctrl for Windows/Linux)
  */
 export function formatShortcut(shortcut: KeyboardShortcut): string {
 	const parts: string[] = [];
+	const isMac = isMacPlatform();
 
-	if (shortcut.ctrl) parts.push("Ctrl");
+	// Handle cross-platform modifier keys
+	if (shortcut.ctrl && !isMac) parts.push("Ctrl");
+	if (shortcut.meta && isMac) parts.push("⌘");
+	if (shortcut.meta && !isMac) parts.push("Ctrl");
+	if (shortcut.ctrl && isMac) parts.push("⌃"); // Control key on Mac
 	if (shortcut.shift) parts.push("Shift");
-	if (shortcut.alt) parts.push("Alt");
+	if (shortcut.alt) parts.push(isMac ? "⌥" : "Alt");
 
 	parts.push(shortcut.key.toUpperCase());
 
-	return parts.join(" + ");
+	return parts.join(isMac ? " " : " + ");
 }
 
 /**
  * Check if event matches shortcut
+ * Handles cross-platform modifier key matching (meta/Cmd on Mac, ctrl on Windows)
  */
 export function matchesShortcut(
 	e: KeyboardEvent,
 	shortcut: KeyboardShortcut,
 ): boolean {
+	const isMac = isMacPlatform();
+
+	// Match the key
+	if (e.key.toLowerCase() !== shortcut.key.toLowerCase()) {
+		return false;
+	}
+
+	// Handle cross-platform modifier key matching
+	// On Mac: meta (Cmd) maps to ctrl in shortcut definitions
+	// On Windows/Linux: ctrl maps directly
+	const hasMetaOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+	const expectsMetaOrCtrl = isMac ? !!shortcut.meta : !!shortcut.ctrl;
+
 	return (
-		e.key.toLowerCase() === shortcut.key.toLowerCase() &&
-		!!e.ctrlKey === !!shortcut.ctrl &&
+		hasMetaOrCtrl === expectsMetaOrCtrl &&
 		!!e.shiftKey === !!shortcut.shift &&
 		!!e.altKey === !!shortcut.alt
 	);
@@ -186,6 +225,7 @@ export function KeyboardShortcutsDialog() {
 
 	// Group shortcuts by category
 	const categories = Array.from(new Set(APP_SHORTCUTS.map((s) => s.category)));
+	const modifierLabel = getModifierKeyLabel();
 
 	return (
 		<Dialog onOpenChange={setIsOpen} open={isOpen}>
@@ -193,8 +233,8 @@ export function KeyboardShortcutsDialog() {
 				<DialogHeader>
 					<DialogTitle>Keyboard Shortcuts</DialogTitle>
 					<DialogDescription>
-						Press ? to toggle this dialog. Press Ctrl/Cmd + key combinations to
-						use shortcuts.
+						Press ? to toggle this dialog. Press {modifierLabel} + key
+						combinations to use shortcuts.
 					</DialogDescription>
 				</DialogHeader>
 

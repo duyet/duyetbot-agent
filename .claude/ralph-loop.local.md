@@ -1,10 +1,10 @@
 ---
 
 active: true
-iteration: 34
+iteration: 36
 max_iterations: 0
 completion_promise: null
-started_at: "2025-12-29T03:10:00Z"
+started_at: "2025-12-29T03:30:00Z"
 ---
 
 If everything is complete then
@@ -137,6 +137,63 @@ mock.module('cloudflare:workers', () => {
    - Increase test coverage to 80%+
    - Add tests for artifact components
    - Add tests for authentication flow
+
+---
+
+## Iteration 34 Summary (Dec 29, 2025)
+
+### Completed
+
+#### Web App Keyboard Navigation Enhancements
+- **Platform-Aware Keyboard Shortcuts**
+  - Added `isMacPlatform()` function to detect Mac vs Windows/Linux
+  - Updated `formatShortcut()` to display platform-appropriate modifier keys (⌘ for Mac, Ctrl for Windows)
+  - Updated `matchesShortcut()` to handle cross-platform keyboard events
+  - KeyboardShortcut interface now supports `meta` property for Cmd key
+
+- **Command Palette (Cmd/Ctrl + K)**
+  - Created `CommandPalette` component using `cmdk` library
+  - Commands include: New Chat, Toggle Sidebar, Toggle Theme, Keyboard Shortcuts
+  - Cross-platform keyboard shortcut: Cmd+K on Mac, Ctrl+K on Windows/Linux
+  - Integrated into chat layout for global accessibility
+
+- **Enhanced Dialog Focus Management**
+  - Added explicit `onOpenAutoFocus` handler to focus first focusable element
+  - Added `onInteractOutside` handler to prevent closing when clicking scrollable areas
+  - Added `onCloseAutoFocus` handler comments for clarity
+  - Radix UI dialogs now have proper focus trapping configured
+
+- **Visible Focus Indicators**
+  - Added `:focus-visible` CSS rule with `outline-2 outline-offset-2 outline-ring`
+  - Enhanced focus visibility for all interactive elements
+  - Added `.skip-link` class for accessibility (hidden until focused)
+
+### Files Modified
+- `apps/web/components/keyboard-shortcuts.tsx`: Platform detection, cross-platform matching
+- `apps/web/components/command-palette.tsx`: NEW - Command palette with Cmd+K shortcut
+- `apps/web/components/ui/dialog.tsx`: Enhanced focus management
+- `apps/web/app/globals.css`: Enhanced focus indicators
+- `apps/web/app/(chat)/layout.tsx`: Added CommandPalette component
+
+### Technical Notes
+
+**Cross-Platform Keyboard Handling**:
+```typescript
+// Mac: metaKey = Command key (⌘)
+// Windows/Linux: ctrlKey = Control key
+const isMac = isMacPlatform();
+const hasMetaOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+```
+
+**Command Palette Architecture**:
+- Uses `cmdk` library for keyboard navigation (arrow keys, Enter, Escape)
+- Integrates with `useKeyboardShortcuts` hook for global shortcut registration
+- Commands are extensible - easy to add new actions
+
+**Focus Trapping**:
+- Radix UI Dialog has built-in focus trap via `FocusScope`
+- Explicit handlers ensure first focusable element receives focus on open
+- Focus returns to trigger element on close (default behavior)
 
 ---
 

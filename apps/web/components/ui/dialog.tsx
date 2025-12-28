@@ -32,11 +32,34 @@ DialogOverlay.displayName = DialogPrimitive.Overlay.displayName
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content>
->(({ className, children, ...props }, ref) => (
+>(({ className, children, onPointerDownOutside, onEscapeKeyDown, ...props }, ref) => (
   <DialogPortal>
     <DialogOverlay />
     <DialogPrimitive.Content
       ref={ref}
+      onPointerDownOutside={onPointerDownOutside}
+      onEscapeKeyDown={onEscapeKeyDown}
+      onInteractOutside={(event) => {
+        // Prevent closing when clicking inside scrollable areas
+        const target = event.target as HTMLElement;
+        if (target.closest('[data-scrollable]')) {
+          event.preventDefault();
+        }
+      }}
+      onOpenAutoFocus={(event) => {
+        // Focus the first focusable element when dialog opens
+        event.preventDefault();
+        const firstFocusable = (
+          event.target as HTMLElement
+        ).querySelector<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        firstFocusable?.focus();
+      }}
+      onCloseAutoFocus={(event) => {
+        // Return focus to trigger element when dialog closes
+        // This is default Radix UI behavior, kept for clarity
+      }}
       className={cn(
         "fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 sm:rounded-lg",
         className
