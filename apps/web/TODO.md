@@ -115,6 +115,7 @@
 - [x] **Multi-turn conversations** - Full history loaded with branching and editing support ✅
 - [x] **Mention parsing** - @ mentions for tools with autocomplete (6 tools, aliases, keyboard nav) ✅
 - [x] **Conversation context** - Threaded/branching via ChatBranch component and /api/chat/branch endpoint ✅
+- [x] **Voice input** - Web Speech API integration with useSpeechRecognition hook, VoiceInputButton in toolbar ✅
 
 ### 6. User Management & Authentication
 **Goal:** Seamless user experience with proper auth

@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 180
+iteration: 465
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-28T04:28:04Z"
@@ -135,18 +135,19 @@ Transform `apps/web` into the **world's best Chatbot UI** - a production-grade, 
 - Authentication (email/password, GitHub OAuth)
 - Privacy controls (GDPR compliant)
 - 18 production health tests
+- Voice input via Web Speech API (Chrome/Edge/Safari)
 
 ### 🔧 Known Issues
 - All E2E tests passing ✅
 - Could add more models from OpenRouter as they become available
 - Consider adding visual regression tests (Percy/Chromatic)
-- Consider adding voice input/output capabilities
+- Voice output (text-to-speech) not yet implemented
 
-### 🎯 Next Priorities (Iteration 5)
+### 🎯 Next Priorities (Iteration 465+)
 1. Consider adding visual regression tests (Percy/Chromatic)
 2. Implement load testing with k6
 3. Add more OpenRouter models as they become available
-4. Consider adding voice input/output capabilities
+4. Consider adding voice output (text-to-speech) capabilities
 5. Consider adding real-time collaboration features
 
 ## 🛠️ Commands Reference

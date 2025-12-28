@@ -3,7 +3,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
-import { CheckIcon } from "lucide-react";
+import { CheckIcon, MicIcon, MicOffIcon } from "lucide-react";
 import {
 	type ChangeEvent,
 	type Dispatch,
@@ -28,6 +28,7 @@ import {
 	ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
 import { useIsDesktop } from "@/hooks/use-responsive";
+import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import {
 	chatModels,
 	DEFAULT_CHAT_MODEL,
@@ -149,6 +150,19 @@ function PureMultimodalInput({
 		setInput(event.target.value);
 		updateCursorPosition(event);
 	};
+
+	// Handle voice input transcription
+	const handleVoiceTranscript = useCallback(
+		(transcribedText: string) => {
+			setInput((prev) => {
+				const separator = prev.trim() ? " " : "";
+				return prev + separator + transcribedText;
+			});
+			// Focus the textarea after voice input
+			textareaRef.current?.focus();
+		},
+		[setInput],
+	);
 
 	// Handle mention selection from autocomplete
 	const handleMentionSelect = useCallback(
@@ -444,6 +458,10 @@ function PureMultimodalInput({
 							selectedModelId={selectedModelId}
 							status={status}
 						/>
+						<VoiceInputButton
+							onTranscript={handleVoiceTranscript}
+							status={status}
+						/>
 						<ModelSelectorCompact
 							onModelChange={onModelChange}
 							selectedModelId={selectedModelId}
@@ -661,3 +679,73 @@ function PureStopButton({
 }
 
 const StopButton = memo(PureStopButton);
+
+function PureVoiceInputButton({
+	status,
+	onTranscript,
+}: {
+	status: UseChatHelpers<ChatMessage>["status"];
+	onTranscript: (text: string) => void;
+}) {
+	const {
+		state,
+		transcript,
+		isSupported,
+		startListening,
+		stopListening,
+		resetTranscript,
+	} = useSpeechRecognition({
+		continuous: true,
+		interimResults: true,
+	});
+
+	const isListening = state === "listening" || state === "starting";
+
+	// When transcript changes, append to input
+	useEffect(() => {
+		if (transcript) {
+			onTranscript(transcript);
+			resetTranscript();
+		}
+	}, [transcript, onTranscript, resetTranscript]);
+
+	const handleClick = useCallback(() => {
+		if (isListening) {
+			stopListening();
+		} else {
+			startListening();
+		}
+	}, [isListening, startListening, stopListening]);
+
+	// Don't render if not supported
+	if (!isSupported) {
+		return null;
+	}
+
+	return (
+		<Button
+			aria-label={isListening ? "Stop voice input" : "Start voice input"}
+			className={cn(
+				"aspect-square h-8 rounded-lg p-1 transition-all duration-200",
+				isListening
+					? "animate-pulse bg-red-500/10 text-red-500 hover:bg-red-500/20"
+					: "text-muted-foreground hover:bg-accent",
+			)}
+			data-testid="voice-input-button"
+			disabled={status !== "ready"}
+			onClick={handleClick}
+			title={
+				isListening ? "Click to stop voice input" : "Click to start voice input"
+			}
+			variant="ghost"
+		>
+			{isListening ? (
+				<MicOffIcon size={14} style={{ width: 14, height: 14 }} />
+			) : (
+				<MicIcon size={14} style={{ width: 14, height: 14 }} />
+			)}
+		</Button>
+	);
+}
+
+const VoiceInputButton = memo(PureVoiceInputButton);
