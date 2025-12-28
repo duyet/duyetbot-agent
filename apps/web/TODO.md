@@ -117,6 +117,7 @@
 - [x] **Conversation context** - Threaded/branching via ChatBranch component and /api/chat/branch endpoint ✅
 - [x] **Voice input** - Web Speech API integration with useSpeechRecognition hook, VoiceInputButton in toolbar ✅
 - [x] **Voice output** - Text-to-speech via Web Speech Synthesis API, useSpeechSynthesis hook, "Read aloud" button on assistant messages ✅
+- [x] **Voice settings** - Customizable rate, pitch, volume, and voice selection with localStorage persistence ✅
 
 ### 6. User Management & Authentication
 **Goal:** Seamless user experience with proper auth

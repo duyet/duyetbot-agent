@@ -16,6 +16,7 @@ import type { ChatMessage } from "@/lib/types";
 import { PlusIcon } from "./icons";
 import { useSidebar } from "./ui/sidebar";
 import { VisibilitySelector, type VisibilityType } from "./visibility-selector";
+import { VoiceSettings } from "./voice-settings";
 
 type ChatStatus =
 	| "ready"
@@ -108,13 +109,18 @@ function PureChatHeader({
 				</div>
 			)}
 
+			{/* Voice settings - customize text-to-speech */}
+			<div className="order-5 hidden sm:block">
+				<VoiceSettings />
+			</div>
+
 			{/* Guest usage indicator - shows remaining messages for guests */}
-			<div className="order-5 ml-auto md:ml-2">
+			<div className="order-6 ml-auto md:ml-2">
 				<GuestUsageIndicator variant="compact" />
 			</div>
 
 			{/* Connection status indicator */}
-			<div className="order-6 md:ml-2">
+			<div className="order-7 md:ml-2">
 				<ConnectionStatusIndicator
 					status={connectionStatus}
 					variant="compact"

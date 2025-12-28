@@ -10,6 +10,7 @@ import { useSpeechSynthesis } from "@/hooks/use-text-to-speech";
 import { deleteMessage } from "@/lib/api-client";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
+import { getVoiceOptions, useVoiceSettings } from "@/lib/voice-settings";
 import { ChatBranch } from "./chat-branch";
 import { Action, Actions } from "./elements/actions";
 import {
@@ -40,6 +41,7 @@ export function PureMessageActions({
 	const [_, copyToClipboard] = useCopyToClipboard();
 	const [isDeleting, setIsDeleting] = useState(false);
 	const { speak, cancel, isSpeaking, isSupported } = useSpeechSynthesis();
+	const { settings: voiceSettings } = useVoiceSettings();
 
 	const textFromParts = message.parts
 		?.filter((part) => part.type === "text")
@@ -51,11 +53,11 @@ export function PureMessageActions({
 		if (isSpeaking) {
 			cancel();
 		} else if (textFromParts) {
-			speak(textFromParts);
+			speak(textFromParts, getVoiceOptions(voiceSettings));
 		} else {
 			toast.error("No text to speak");
 		}
-	}, [isSpeaking, cancel, speak, textFromParts]);
+	}, [isSpeaking, cancel, speak, textFromParts, voiceSettings]);
 
 	if (isLoading) {
 		return null;
@@ -136,7 +138,7 @@ export function PureMessageActions({
 				<CopyIcon />
 			</Action>
 
-			{isSupported && (
+			{isSupported && voiceSettings.enabled && (
 				<Action
 					data-testid="message-speak"
 					onClick={handleSpeak}
