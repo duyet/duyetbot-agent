@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 52
+**Iteration**: 53
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -82,7 +82,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 #### Web App Security
 - [x] Add CSP headers for all routes
 - [x] Implement CSRF protection for state-changing operations
-- [ ] Add rate limiting per user (not just per IP)
+- [x] Add rate limiting per user (not just per IP)
 - [x] Add input sanitization for all user inputs
 - [ ] Implement secure session management
 - [ ] Add audit logging for sensitive operations
@@ -281,6 +281,22 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 53 (Dec 29, 2025)
+- ✅ Verified per-user rate limiting already implemented in chat routes
+- ✅ Confirmed `getRateLimitIdentifier()` prioritizes: userId > sessionToken > IP
+- ✅ Auth endpoints appropriately use IP-based rate limiting (users not authenticated yet)
+- ✅ Chat API uses KV-based distributed rate limiting with user-specific limits
+- ✅ No code changes needed - feature already complete
+
+### Iteration 52 (Dec 29, 2025)
+- ✅ Fixed XSS vulnerability in Markdown component by replacing react-markdown with Streamdown
+- ✅ Replaced `ReactMarkdown` with `Streamdown` component using `getSecureRehypePlugins()`
+- ✅ Added `source` parameter (ai | user) for flexible security configuration
+- ✅ Verified all dangerouslySetInnerHTML usage is safe (Shiki generates safe HTML)
+- ✅ Biome auto-fixed 1 file during validation
+- ✅ All 32 packages type-check passing
+- ✅ All 18 packages build successfully
 
 ### Iteration 51 (Dec 29, 2025)
 - ✅ Analyzed CSRF protection requirements - confirmed SameSite=Lax cookies already provide protection
