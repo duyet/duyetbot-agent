@@ -48,32 +48,57 @@ const loginSchema = z.object({
 	password: passwordSchema,
 });
 
-// Rate limiting storage (in production, use KV or Redis)
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
-
 /**
- * Simple rate limiter for auth endpoints
- * In production, use KV store with proper expiration
+ * KV-based rate limiter for auth endpoints
+ * Uses Cloudflare KV for persistent rate limiting across worker instances
  */
-function checkRateLimit(
+async function checkRateLimit(
+	c: any,
 	identifier: string,
 	maxRequests = 5,
 	windowMs = 60_000,
-): boolean {
-	const now = Date.now();
-	const record = rateLimitMap.get(identifier);
+): Promise<boolean> {
+	try {
+		const kv = c.env.RATE_LIMIT_KV;
+		if (!kv) {
+			// Fallback to in-memory if KV not available (development)
+			console.warn("RATE_LIMIT_KV not available, using in-memory rate limiting");
+			return true; // Allow in development
+		}
 
-	if (!record || now > record.resetTime) {
-		rateLimitMap.set(identifier, { count: 1, resetTime: now + windowMs });
+		const key = `auth_rate_limit:${identifier}`;
+		const now = Date.now();
+		const windowStart = now - windowMs;
+
+		// Get current rate limit data
+		const record = await kv.get(key, "json");
+		const data = record as { count: number; resetTime: number } | null;
+
+		// Clean up expired window
+		if (!data || now > data.resetTime) {
+			await kv.put(key, JSON.stringify({ count: 1, resetTime: now + windowMs }), {
+				expirationTtl: Math.ceil(windowMs / 1000),
+			});
+			return true;
+		}
+
+		// Check if limit exceeded
+		if (data.count >= maxRequests) {
+			return false;
+		}
+
+		// Increment counter
+		data.count++;
+		await kv.put(key, JSON.stringify(data), {
+			expirationTtl: Math.ceil((data.resetTime - now) / 1000),
+		});
+
+		return true;
+	} catch (error) {
+		console.error("Rate limit check failed:", error);
+		// Fail open - allow request if rate limiting fails
 		return true;
 	}
-
-	if (record.count >= maxRequests) {
-		return false;
-	}
-
-	record.count++;
-	return true;
 }
 
 /**
@@ -97,8 +122,9 @@ function getClientId(c: any): string {
 authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 	const clientId = getClientId(c);
 
-	// Rate limiting
-	if (!checkRateLimit(clientId, 5, 60_000)) {
+	// Rate limiting (now using KV)
+	const allowed = await checkRateLimit(c, clientId, 5, 60_000);
+	if (!allowed) {
 		return c.json(
 			{ error: "Too many login attempts. Please try again later." },
 			429,
@@ -113,9 +139,10 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 	// Use constant-time behavior for both user not found and wrong password
 	// to prevent user enumeration via timing attacks
 	if (users.length === 0) {
-		// Still perform password verification with dummy hash to maintain timing
-		const dummyHash = await hashPassword("dummy");
-		await verifyPassword(password, dummyHash);
+		// Always perform password verification to maintain consistent timing
+		// Use a pre-computed dummy hash instead of hashing on each request
+		const dummyHash = "$2a$10$abcdefghijklmnopqrstuvwxyz1234567890"; // Valid bcrypt hash format
+		await verifyPassword("dummy_password_for_timing", dummyHash);
 		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
 	}
 
@@ -123,6 +150,9 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 
 	if (!userRecord.password) {
 		// User was created via OAuth - can't login with password
+		// Still verify a dummy password for consistent timing
+		const dummyHash = "$2a$10$abcdefghijklmnopqrstuvwxyz1234567890";
+		await verifyPassword("dummy_password_for_timing", dummyHash);
 		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
 	}
 

@@ -299,3 +299,131 @@ PRODUCTION_URL=https://duyetbot-web.duyet.workers.dev
 ---
 
 *Last Updated: 2025-12-28*
+
+---
+
+## 🚨 Priority 1: Critical Security Fixes
+
+**Estimated Time**: 2-3 weeks
+
+### CORS & Security Headers (Quick Wins)
+- [ ] Fix CORS wildcard origin with credentials (worker/index.ts:35)
+- [ ] Add Content-Security-Policy header
+- [ ] Add X-Frame-Options, X-Content-Type-Options headers
+- [ ] Add Permissions-Policy header
+
+### Input Sanitization
+- [ ] Sanitize dangerouslySetInnerHTML usage (code-block.tsx)
+- [ ] Validate and sanitize all user inputs
+- [ ] Add DOMPurify for HTML content
+
+### Authentication & Rate Limiting
+- [ ] Fix in-memory rate limiting to use KV/D1 (auth.ts:52)
+- [ ] Fix timing attack vulnerability in password comparison
+- [ ] Add consistent auth middleware to all routes
+
+### Error Handling
+- [ ] Remove debug info from production error responses (worker/index.ts:70-84)
+- [ ] Implement structured logging without sensitive data
+- [ ] Add error tracking (Sentry) with proper filtering
+
+### File Upload Security
+- [ ] Add magic number validation for file uploads
+- [ ] Add per-user upload quotas
+- [ ] Add virus scanning for uploaded files
+
+---
+
+## 🔴 Priority 2: High Priority Issues
+
+**Estimated Time**: 2-3 weeks
+
+### Performance Optimization
+- [ ] Add React.memo to expensive components
+- [ ] Implement code splitting for heavy components
+- [ ] Add virtual scrolling for message lists (react-window)
+- [ ] Enable image optimization
+- [ ] Add resource hints (preconnect, prefetch)
+
+### Type Safety
+- [ ] Replace `any` types with proper types (58 files)
+- [ ] Enable stricter TypeScript rules
+- [ ] Add Zod schemas for all API inputs/outputs
+
+### Error Boundaries
+- [ ] Add error boundaries to major sections
+- [ ] Implement error recovery UI
+- [ ] Add fallback components
+
+### Bundle Size Reduction
+- [ ] Analyze and reduce bundle size (currently 19MB)
+- [ ] Replace heavy dependencies with lighter alternatives
+- [ ] Implement tree shaking for unused code
+
+---
+
+## 🟡 Priority 3: Code Quality Improvements
+
+**Estimated Time**: 4-6 weeks
+
+### Refactoring
+- [ ] Split large files (>500 lines) into smaller modules
+- [ ] Consolidate duplicate components (elements vs ai-elements)
+- [ ] Standardize error handling pattern
+
+### Testing
+- [ ] Increase unit test coverage to 80%+
+- [ ] Add integration tests for tool execution
+- [ ] Add integration tests for auth flows
+- [ ] Add load testing for concurrent users
+- [ ] Add edge case tests (network failures, offline mode)
+
+### Code Cleanup
+- [ ] Remove console.logs from production code (52 files)
+- [ ] Implement proper logging service
+- [ ] Add JSDoc comments to public APIs
+
+---
+
+## 🟢 Priority 4: Accessibility & UX
+
+**Estimated Time**: 3-4 weeks
+
+### Accessibility (WCAG 2.1 AA)
+- [ ] Add ARIA labels to all icon-only buttons
+- [ ] Ensure full keyboard navigation
+- [ ] Implement focus management in modals
+- [ ] Audit and fix color contrast ratios
+- [ ] Add alt text enforcement for images
+
+### User Experience
+- [ ] Add consistent loading states (skeleton loaders)
+- [ ] Add empty states with CTAs
+- [ ] Add progress indicators for long operations
+- [ ] Standardize toast/notification system
+- [ ] Improve mobile responsive design
+
+---
+
+## 🔵 Priority 5: Architecture & Features
+
+**Estimated Time**: 8-12 weeks
+
+### Architecture
+- [ ] Evaluate single-platform deployment (Next.js vs Cloudflare Workers)
+- [ ] Implement dependency injection pattern
+- [ ] Add API validation layer
+- [ ] Document API with examples
+
+### Features
+- [ ] Add offline support (service worker, message queue)
+- [ ] Add undo/redo for message edits
+- [ ] Add message search functionality
+- [ ] Enhance export options with full context
+- [ ] Add chat collaboration features
+
+### Observability
+- [ ] Add custom business metrics tracking
+- [ ] Implement distributed tracing
+- [ ] Set up alerting for errors and performance
+- [ ] Centralize log aggregation

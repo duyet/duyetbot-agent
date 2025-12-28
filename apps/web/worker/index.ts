@@ -4,11 +4,11 @@
  */
 
 import { Hono } from "hono";
-import { cors } from "hono/cors";
 import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { addStaticCacheHeaders, cacheMiddleware } from "./lib/cache";
 import { WorkerError } from "./lib/errors";
+import { productionErrorHandler, secureCors, securityHeaders } from "./lib/security";
 // Import route handlers
 import { agentsRouter } from "./routes/agents";
 import { authRoutes } from "./routes/auth";
@@ -29,14 +29,9 @@ const app = new Hono<{ Bindings: Env }>();
 // Global middleware
 app.use("*", logger());
 app.use("*", secureHeaders());
-app.use(
-	"*",
-	cors({
-		origin: "*", // Configure appropriately for production
-		credentials: true, // Keep during migration for cookie backward compatibility
-		allowHeaders: ["Authorization", "Content-Type", "Cookie"],
-	}),
-);
+app.use("*", secureCors());
+app.use("*", securityHeaders());
+app.use("*", productionErrorHandler());
 
 // Caching middleware for API responses (after CORS to ensure headers are set)
 app.use("/api/*", cacheMiddleware());
@@ -47,8 +42,9 @@ app.onError((err, c) => {
 	const requestId = crypto.randomUUID().slice(0, 8);
 	const path = new URL(c.req.url).pathname;
 	const method = c.req.method;
+	const isProduction = c.env.ENVIRONMENT === "production";
 
-	// Log error with context
+	// Log error with context (always logged server-side)
 	console.error(`[${requestId}] ${method} ${path} - ERROR:`, err);
 	console.error(`[${requestId}] Error message:`, err.message);
 	console.error(`[${requestId}] Error stack:`, err.stack);
@@ -61,23 +57,33 @@ app.onError((err, c) => {
 		return err.toResponse();
 	}
 
-	// For unexpected errors, return detailed debug info
+	// For unexpected errors, return safe response
 	console.error(
 		`[${requestId}] Unexpected error type: ${err.constructor.name}`,
 	);
 
-	// Return detailed error response for debugging
+	// In production, return minimal error info to avoid information disclosure
+	if (isProduction) {
+		return c.json(
+			{
+				error: "Internal server error",
+				requestId,
+			},
+			500,
+		);
+	}
+
+	// In development, return detailed debug info
 	return c.json(
 		{
 			error: "Internal server error",
+			requestId,
 			debug: {
-				requestId,
 				path,
 				method,
 				errorType: err.constructor.name,
 				message: err.message,
-				// Include stack trace for debugging (remove in production if needed)
-				stack: err.stack?.split("\n").slice(0, 5).join("\n"), // First 5 lines of stack
+				stack: err.stack?.split("\n").slice(0, 5).join("\n"),
 			},
 		},
 		500,
