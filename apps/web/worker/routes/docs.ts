@@ -123,7 +123,11 @@ function jsonToYaml(obj: unknown, indent = 0): string {
 		return entries
 			.map(([key, value]) => {
 				const valueYaml = jsonToYaml(value, indent + 1);
-				if (typeof value === "object" && value !== null && !Array.isArray(value)) {
+				if (
+					typeof value === "object" &&
+					value !== null &&
+					!Array.isArray(value)
+				) {
 					return `${spaces}${key}:\n${valueYaml}`;
 				}
 				if (Array.isArray(value) && value.length > 0) {

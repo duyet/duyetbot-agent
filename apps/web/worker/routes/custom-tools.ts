@@ -7,9 +7,9 @@
 import { eq } from "drizzle-orm";
 import { Hono } from "hono";
 import { z } from "zod";
-import type { HonoEnv } from "../types";
 import { createDb } from "../../lib/db";
 import { customTool } from "../../lib/db/schema";
+import type { HonoEnv } from "../types";
 
 const customToolsRouter = new Hono<HonoEnv>();
 
@@ -73,7 +73,9 @@ customToolsRouter.get("/", async (c) => {
 			id: tool.id,
 			name: tool.name,
 			description: tool.description,
-			parameters: extractParameters(tool.inputSchema as Record<string, unknown>),
+			parameters: extractParameters(
+				tool.inputSchema as Record<string, unknown>,
+			),
 			actionType: tool.actionType,
 			actionConfig: tool.actionConfig,
 			needsApproval: tool.needsApproval,
@@ -303,9 +305,7 @@ customToolsRouter.patch("/:id/toggle", async (c) => {
 });
 
 // Helper to extract parameters from input schema for frontend
-function extractParameters(
-	schema: Record<string, unknown>,
-): Array<{
+function extractParameters(schema: Record<string, unknown>): Array<{
 	name: string;
 	type: string;
 	description: string;

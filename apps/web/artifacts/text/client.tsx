@@ -153,7 +153,7 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
 					role: "user",
 					parts: [
 						{
-							type: "text",
+							type: "text" as const,
 							text: "Please add final polish and check for grammar, add section titles for better structure, and ensure everything reads smoothly.",
 						},
 					],
@@ -168,7 +168,7 @@ export const textArtifact = new Artifact<"text", TextArtifactMetadata>({
 					role: "user",
 					parts: [
 						{
-							type: "text",
+							type: "text" as const,
 							text: "Please add suggestions you have that could improve the writing.",
 						},
 					],

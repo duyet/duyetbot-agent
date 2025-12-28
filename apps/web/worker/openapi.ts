@@ -1300,7 +1300,10 @@ export const openApiSpec = {
 				properties: {
 					error: { type: "string", description: "Error message" },
 					code: { type: "string", description: "Error code" },
-					requestId: { type: "string", description: "Request ID for debugging" },
+					requestId: {
+						type: "string",
+						description: "Request ID for debugging",
+					},
 				},
 				required: ["error"],
 			},
@@ -1453,7 +1456,13 @@ export const openApiSpec = {
 			},
 			CustomToolInput: {
 				type: "object",
-				required: ["name", "description", "inputSchema", "actionType", "actionConfig"],
+				required: [
+					"name",
+					"description",
+					"inputSchema",
+					"actionType",
+					"actionConfig",
+				],
 				properties: {
 					name: {
 						type: "string",
@@ -1494,8 +1503,14 @@ export const openApiSpec = {
 								title: "HTTP Fetch Config",
 								properties: {
 									url: { type: "string", format: "uri" },
-									method: { type: "string", enum: ["GET", "POST", "PUT", "DELETE"] },
-									headers: { type: "object", additionalProperties: { type: "string" } },
+									method: {
+										type: "string",
+										enum: ["GET", "POST", "PUT", "DELETE"],
+									},
+									headers: {
+										type: "object",
+										additionalProperties: { type: "string" },
+									},
 									bodyTemplate: { type: "string" },
 								},
 								required: ["url", "method"],

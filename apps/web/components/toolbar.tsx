@@ -204,7 +204,7 @@ const ReadingLevelSelector = ({
 										role: "user",
 										parts: [
 											{
-												type: "text",
+												type: "text" as const,
 												text: `Please adjust the reading level to ${LEVELS[currentLevel]} level.`,
 											},
 										],

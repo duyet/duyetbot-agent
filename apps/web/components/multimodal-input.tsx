@@ -91,11 +91,8 @@ function PureMultimodalInput({
 }) {
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
 	const isDesktop = useIsDesktop();
-	const {
-		cursorPosition,
-		updateCursorPosition,
-		setCursorPosition,
-	} = useMentionAutocomplete();
+	const { cursorPosition, updateCursorPosition, setCursorPosition } =
+		useMentionAutocomplete();
 
 	const adjustHeight = useCallback(() => {
 		if (textareaRef.current) {
@@ -194,7 +191,7 @@ function PureMultimodalInput({
 					mediaType: attachment.contentType,
 				})),
 				{
-					type: "text",
+					type: "text" as const,
 					text: input,
 				},
 			],
@@ -262,7 +259,7 @@ function PureMultimodalInput({
 				const uploadPromises = files.map((file) => uploadFile(file));
 				const uploadedAttachments = await Promise.all(uploadPromises);
 				const successfullyUploadedAttachments = uploadedAttachments.filter(
-					(attachment) => attachment !== undefined,
+					(attachment): attachment is Attachment => attachment !== undefined,
 				);
 
 				setAttachments((currentAttachments) => [
@@ -429,7 +426,11 @@ function PureMultimodalInput({
 						minHeight={44}
 						onChange={handleInput}
 						onKeyUp={updateCursorPosition}
-						onClick={(e) => setCursorPosition((e.target as HTMLTextAreaElement).selectionStart ?? 0)}
+						onClick={(e) =>
+							setCursorPosition(
+								(e.target as HTMLTextAreaElement).selectionStart ?? 0,
+							)
+						}
 						placeholder="Send a message... (type @ to mention tools)"
 						ref={textareaRef}
 						rows={1}

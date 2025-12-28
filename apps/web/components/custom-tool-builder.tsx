@@ -121,7 +121,9 @@ export function CustomToolBuilder({
 		try {
 			const response = await fetch("/api/tools/custom");
 			if (response.ok) {
-				const data = (await response.json()) as { tools?: CustomToolDefinition[] };
+				const data = (await response.json()) as {
+					tools?: CustomToolDefinition[];
+				};
 				setTools(data.tools || []);
 			}
 		} catch (error) {

@@ -69,7 +69,7 @@ export function PureMessageActions({
 
 	const textFromParts = message.parts
 		?.filter((part) => part.type === "text")
-		.map((part) => part.text)
+		.map((part) => ("text" in part ? part.text : ""))
 		.join("\n")
 		.trim();
 

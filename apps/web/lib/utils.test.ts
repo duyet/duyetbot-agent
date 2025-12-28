@@ -1,20 +1,21 @@
 /**
  * Unit tests for lib/utils.ts
  */
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+
+import type { UIMessage } from "ai";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { DBMessage } from "./db/schema";
 import {
 	cn,
+	convertToUIMessages,
 	generateUUID,
 	getLocalStorage,
-	setLocalStorage,
 	getMostRecentUserMessage,
 	getTextFromMessage,
-	sanitizeText,
 	getTrailingMessageId,
-	convertToUIMessages,
+	sanitizeText,
+	setLocalStorage,
 } from "./utils";
-import type { UIMessage } from "ai";
-import type { DBMessage } from "./db/schema";
 
 describe("cn (className merge)", () => {
 	it("merges multiple class names", () => {

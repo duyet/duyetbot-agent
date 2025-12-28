@@ -36,8 +36,8 @@ import {
 import { createGuestSession, getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
 import { WorkerError } from "../lib/errors";
-import { createRateLimiters, getRateLimitIdentifier } from "../lib/rate-limit";
 import { buildToolHint, parseMentionedTools } from "../lib/mention-parser";
+import { createRateLimiters, getRateLimitIdentifier } from "../lib/rate-limit";
 import { getWebWorkerTools } from "../lib/tools";
 import { generateUUID } from "../lib/utils";
 import type { Env } from "../types";
@@ -414,9 +414,7 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 
 	// Parse @ mentions from the latest user message
 	// This allows users to explicitly request tools like @websearch, @weather, etc.
-	const latestUserMessage = allMessages
-		.filter((m) => m.role === "user")
-		.pop();
+	const latestUserMessage = allMessages.filter((m) => m.role === "user").pop();
 	if (latestUserMessage?.parts) {
 		const textPart = latestUserMessage.parts.find(
 			(p): p is { type: "text"; text: string } =>

@@ -102,9 +102,9 @@ describe("verifyPassword", () => {
 
 	it("returns false for invalid base64 in hash", async () => {
 		// Invalid base64 characters
-		expect(
-			await verifyPassword("password", "validSalt$!!!invalid!!!"),
-		).toBe(false);
+		expect(await verifyPassword("password", "validSalt$!!!invalid!!!")).toBe(
+			false,
+		);
 	});
 
 	it("returns false for empty stored hash", async () => {

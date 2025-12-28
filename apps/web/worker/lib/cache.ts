@@ -190,9 +190,7 @@ export function addStaticCacheHeaders(
 	const cached = new Response(response.body, response);
 
 	// Immutable assets (hashed filenames)
-	if (
-		pathname.match(/\.[a-f0-9]{8,}\.(js|css|woff2?|png|jpg|webp|svg|ico)$/)
-	) {
+	if (pathname.match(/\.[a-f0-9]{8,}\.(js|css|woff2?|png|jpg|webp|svg|ico)$/)) {
 		cached.headers.set(
 			"Cache-Control",
 			"public, max-age=31536000, immutable", // 1 year

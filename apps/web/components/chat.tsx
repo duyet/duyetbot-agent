@@ -180,8 +180,10 @@ export function Chat({
 			// and this is the first time we're completing a response
 			if (messages.length === 2 && !isReadonly) {
 				const firstUserMessage = messages.find((m) => m.role === "user");
-				const messageText =
-					firstUserMessage?.parts?.find((p) => p.type === "text")?.text || "";
+				const textPart = firstUserMessage?.parts?.find(
+					(p) => p.type === "text",
+				);
+				const messageText = textPart && "text" in textPart ? textPart.text : "";
 
 				if (messageText) {
 					try {
@@ -223,7 +225,7 @@ export function Chat({
 		if (query && !hasAppendedQuery) {
 			sendMessage({
 				role: "user" as const,
-				parts: [{ type: "text", text: query }],
+				parts: [{ type: "text" as const, text: query }],
 			});
 
 			setHasAppendedQuery(true);

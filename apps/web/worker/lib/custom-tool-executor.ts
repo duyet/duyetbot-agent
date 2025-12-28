@@ -14,7 +14,7 @@ import { tool } from "ai";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 import { createDb } from "../../lib/db";
-import { customTool, type CustomTool } from "../../lib/db/schema";
+import { type CustomTool, customTool } from "../../lib/db/schema";
 
 type HttpFetchConfig = {
 	url: string;
@@ -135,14 +135,19 @@ async function executeMCPCall(
 	config: MCPCallConfig,
 	params: Record<string, unknown>,
 ): Promise<unknown> {
-	const response = await fetch(`${config.serverUrl}/api/tools/${config.toolName}`, {
-		method: "POST",
-		headers: { "Content-Type": "application/json" },
-		body: JSON.stringify(params),
-	});
+	const response = await fetch(
+		`${config.serverUrl}/api/tools/${config.toolName}`,
+		{
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(params),
+		},
+	);
 
 	if (!response.ok) {
-		throw new Error(`MCP call failed: ${response.status} ${response.statusText}`);
+		throw new Error(
+			`MCP call failed: ${response.status} ${response.statusText}`,
+		);
 	}
 
 	return await response.json();
@@ -172,7 +177,8 @@ export function createExecutableTool(toolDef: CustomTool) {
 						// Return instructions for the AI to use the code artifact instead
 						return {
 							error: true,
-							message: "Code execution tools run in the browser only. " +
+							message:
+								"Code execution tools run in the browser only. " +
 								"Use the code artifact feature to execute code safely.",
 							suggestion: "Create a code artifact with the code to execute.",
 						};

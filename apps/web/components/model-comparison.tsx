@@ -94,7 +94,7 @@ function ComparisonPanel({
 }) {
 	const assistantMessage = result.messages.find((m) => m.role === "assistant");
 	const textPart = assistantMessage?.parts?.find((p) => p.type === "text");
-	const content = textPart?.text || "";
+	const content = textPart && "text" in textPart ? textPart.text : "";
 
 	return (
 		<div className="flex h-full flex-col">

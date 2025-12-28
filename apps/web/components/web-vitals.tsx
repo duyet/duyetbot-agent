@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
-import { onCLS, onFCP, onINP, onLCP, onTTFB, type Metric } from "web-vitals";
+import { type Metric, onCLS, onFCP, onINP, onLCP, onTTFB } from "web-vitals";
 
 /**
  * Web Vitals Performance Monitoring Component
@@ -150,7 +150,10 @@ export function PerformanceSummary() {
 			<div className="mb-2 font-semibold">Performance Metrics</div>
 			<div className="space-y-1">
 				{Array.from(latest.values()).map((metric) => (
-					<div className="flex items-center justify-between gap-4" key={metric.name}>
+					<div
+						className="flex items-center justify-between gap-4"
+						key={metric.name}
+					>
 						<span className="font-mono">{metric.name}</span>
 						<span
 							className={

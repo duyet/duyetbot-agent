@@ -55,7 +55,8 @@ const PurePreviewMessage = ({
 	const [mode, setMode] = useState<"view" | "edit">("view");
 
 	const attachmentsFromMessage = message.parts.filter(
-		(part) => part.type === "file",
+		(part): part is { type: "file"; url: string; filename?: string; mediaType: string } =>
+			part.type === "file",
 	);
 
 	useDataStream();
@@ -144,7 +145,9 @@ const PurePreviewMessage = ({
 													: undefined
 											}
 										>
-											<Response>{sanitizeText(part.text)}</Response>
+											<Response>
+												{sanitizeText("text" in part ? part.text : "")}
+											</Response>
 										</MessageContent>
 									</div>
 								);

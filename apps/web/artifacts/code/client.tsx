@@ -254,7 +254,7 @@ export const codeArtifact = new Artifact<"code", Metadata>({
 					role: "user",
 					parts: [
 						{
-							type: "text",
+							type: "text" as const,
 							text: "Add comments to the code snippet for understanding",
 						},
 					],
@@ -269,7 +269,7 @@ export const codeArtifact = new Artifact<"code", Metadata>({
 					role: "user",
 					parts: [
 						{
-							type: "text",
+							type: "text" as const,
 							text: "Add logs to the code snippet for debugging",
 						},
 					],

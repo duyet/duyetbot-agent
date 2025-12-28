@@ -40,7 +40,7 @@ function PureSuggestedActions({ chatId, sendMessage }: SuggestedActionsProps) {
 							window.history.pushState({}, "", `/chat/${chatId}`);
 							sendMessage({
 								role: "user",
-								parts: [{ type: "text", text: suggestion }],
+								parts: [{ type: "text" as const, text: suggestion }],
 							});
 						}}
 						suggestion={suggestedAction}

@@ -3,13 +3,13 @@
  */
 import { describe, expect, it } from "vitest";
 import {
-	resolveToolId,
-	parseMentions,
+	completeMention,
 	detectMentionTrigger,
 	filterTools,
-	completeMention,
 	getToolById,
 	MENTIONABLE_TOOLS,
+	parseMentions,
+	resolveToolId,
 } from "./mention-parser";
 
 describe("resolveToolId", () => {

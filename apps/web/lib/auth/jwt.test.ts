@@ -2,7 +2,7 @@
  * Unit tests for lib/auth/jwt.ts
  * JWT session management with HMAC-SHA256 signing
  */
-import { describe, expect, it, vi, beforeAll } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 
 // Set environment variable BEFORE importing the module
 // because jwt.ts throws on import if SESSION_SECRET is not set
@@ -19,7 +19,11 @@ describe("JWT Session Management", () => {
 	describe("createSessionToken", () => {
 		it("creates a valid JWT token with 3 parts", async () => {
 			const { createSessionToken } = await importJwt();
-			const token = await createSessionToken("user-123", "test@example.com", "regular");
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+			);
 
 			const parts = token.split(".");
 			expect(parts).toHaveLength(3);
@@ -27,7 +31,11 @@ describe("JWT Session Management", () => {
 
 		it("encodes user information in the token", async () => {
 			const { createSessionToken, verifySessionToken } = await importJwt();
-			const token = await createSessionToken("user-123", "test@example.com", "regular");
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+			);
 
 			const payload = await verifySessionToken(token);
 			expect(payload).not.toBeNull();
@@ -52,7 +60,12 @@ describe("JWT Session Management", () => {
 			const expiresIn = 60 * 1000; // 1 minute
 			const beforeCreate = Math.floor(Date.now() / 1000);
 
-			const token = await createSessionToken("user-123", "test@example.com", "regular", expiresIn);
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+				expiresIn,
+			);
 
 			const payload = await verifySessionToken(token);
 			const afterCreate = Math.floor(Date.now() / 1000);
@@ -67,7 +80,11 @@ describe("JWT Session Management", () => {
 			const { createSessionToken, verifySessionToken } = await importJwt();
 			const beforeCreate = Math.floor(Date.now() / 1000);
 
-			const token = await createSessionToken("user-123", "test@example.com", "regular");
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+			);
 
 			const payload = await verifySessionToken(token);
 			const afterCreate = Math.floor(Date.now() / 1000);
@@ -81,20 +98,32 @@ describe("JWT Session Management", () => {
 			const beforeCreate = Math.floor(Date.now() / 1000);
 			const thirtyDaysInSeconds = 30 * 24 * 60 * 60;
 
-			const token = await createSessionToken("user-123", "test@example.com", "regular");
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+			);
 
 			const payload = await verifySessionToken(token);
 
 			// Should expire approximately 30 days from now
-			expect(payload?.exp).toBeGreaterThan(beforeCreate + thirtyDaysInSeconds - 10);
-			expect(payload?.exp).toBeLessThan(beforeCreate + thirtyDaysInSeconds + 10);
+			expect(payload?.exp).toBeGreaterThan(
+				beforeCreate + thirtyDaysInSeconds - 10,
+			);
+			expect(payload?.exp).toBeLessThan(
+				beforeCreate + thirtyDaysInSeconds + 10,
+			);
 		});
 	});
 
 	describe("verifySessionToken", () => {
 		it("returns payload for valid token", async () => {
 			const { createSessionToken, verifySessionToken } = await importJwt();
-			const token = await createSessionToken("user-123", "test@example.com", "regular");
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+			);
 
 			const payload = await verifySessionToken(token);
 
@@ -111,7 +140,12 @@ describe("JWT Session Management", () => {
 			vi.spyOn(Date, "now").mockReturnValue(pastTime);
 
 			// Create token that expires in 1 second (but since we're mocking time 2 seconds ago, it's already expired)
-			const token = await createSessionToken("user-123", "test@example.com", "regular", 1000);
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+				1000,
+			);
 
 			// Restore real Date.now
 			vi.restoreAllMocks();
@@ -123,7 +157,11 @@ describe("JWT Session Management", () => {
 
 		it("returns null for token with invalid signature", async () => {
 			const { createSessionToken, verifySessionToken } = await importJwt();
-			const token = await createSessionToken("user-123", "test@example.com", "regular");
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+			);
 
 			// Tamper with the signature
 			const parts = token.split(".");
@@ -135,11 +173,17 @@ describe("JWT Session Management", () => {
 
 		it("returns null for token with tampered payload", async () => {
 			const { createSessionToken, verifySessionToken } = await importJwt();
-			const token = await createSessionToken("user-123", "test@example.com", "regular");
+			const token = await createSessionToken(
+				"user-123",
+				"test@example.com",
+				"regular",
+			);
 
 			// Tamper with the payload
 			const parts = token.split(".");
-			const tamperedPayload = btoa(JSON.stringify({ id: "hacker", type: "admin" }))
+			const tamperedPayload = btoa(
+				JSON.stringify({ id: "hacker", type: "admin" }),
+			)
 				.replace(/\+/g, "-")
 				.replace(/\//g, "_")
 				.replace(/=/g, "");
@@ -215,7 +259,11 @@ describe("JWT Session Management", () => {
 describe("JWT token format", () => {
 	it("uses HS256 algorithm in header", async () => {
 		const { createSessionToken } = await importJwt();
-		const token = await createSessionToken("user-123", "test@example.com", "regular");
+		const token = await createSessionToken(
+			"user-123",
+			"test@example.com",
+			"regular",
+		);
 
 		const [headerPart] = token.split(".");
 		// Add padding for proper base64 decoding
@@ -231,7 +279,11 @@ describe("JWT token format", () => {
 
 		// Create multiple tokens to increase chance of hitting special chars
 		for (let i = 0; i < 10; i++) {
-			const token = await createSessionToken(`user-${i}`, `test${i}@example.com`, "regular");
+			const token = await createSessionToken(
+				`user-${i}`,
+				`test${i}@example.com`,
+				"regular",
+			);
 
 			expect(token).not.toContain("+");
 			expect(token).not.toContain("/");

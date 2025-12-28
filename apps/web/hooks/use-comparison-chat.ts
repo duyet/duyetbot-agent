@@ -115,7 +115,7 @@ export function useComparisonChat({
 							message: {
 								id: messageId,
 								role: "user",
-								parts: [{ type: "text", text: newPrompt }],
+								parts: [{ type: "text" as const, text: newPrompt }],
 							},
 							selectedChatModel: model.id,
 							selectedVisibilityType: "private",
@@ -155,7 +155,7 @@ export function useComparisonChat({
 							const assistantMessage: ChatMessage = {
 								id: generateUUID(),
 								role: "assistant",
-								parts: [{ type: "text", text: combinedText }],
+								parts: [{ type: "text" as const, text: combinedText }],
 							};
 
 							updateResult(model.id, {
@@ -163,7 +163,7 @@ export function useComparisonChat({
 									{
 										id: messageId,
 										role: "user",
-										parts: [{ type: "text", text: newPrompt }],
+										parts: [{ type: "text" as const, text: newPrompt }],
 									},
 									assistantMessage,
 								],

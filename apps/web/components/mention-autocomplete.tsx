@@ -1,21 +1,14 @@
 "use client";
 
-import {
-	Cloud,
-	ClipboardList,
-	Globe,
-	Link,
-	List,
-	User,
-} from "lucide-react";
+import { ClipboardList, Cloud, Globe, Link, List, User } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
-	type MentionableTool,
-	type MentionTrigger,
 	completeMention,
 	detectMentionTrigger,
 	filterTools,
 	MENTIONABLE_TOOLS,
+	type MentionableTool,
+	type MentionTrigger,
 } from "@/lib/mention-parser";
 import { cn } from "@/lib/utils";
 
@@ -206,7 +199,11 @@ export function useMentionAutocomplete() {
 	const [cursorPosition, setCursorPosition] = useState(0);
 
 	const updateCursorPosition = useCallback(
-		(e: React.ChangeEvent<HTMLTextAreaElement> | React.KeyboardEvent<HTMLTextAreaElement>) => {
+		(
+			e:
+				| React.ChangeEvent<HTMLTextAreaElement>
+				| React.KeyboardEvent<HTMLTextAreaElement>,
+		) => {
 			const target = e.target as HTMLTextAreaElement;
 			setCursorPosition(target.selectionStart ?? 0);
 		},

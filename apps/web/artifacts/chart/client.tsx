@@ -1,6 +1,5 @@
 "use client";
 
-import { toast } from "sonner";
 import {
 	Area,
 	AreaChart,
@@ -18,13 +17,9 @@ import {
 	XAxis,
 	YAxis,
 } from "recharts";
+import { toast } from "sonner";
 import { Artifact } from "@/components/create-artifact";
-import {
-	CopyIcon,
-	DownloadIcon,
-	RedoIcon,
-	UndoIcon,
-} from "@/components/icons";
+import { CopyIcon, DownloadIcon, RedoIcon, UndoIcon } from "@/components/icons";
 
 /**
  * Chart data format expected from AI:
@@ -77,7 +72,10 @@ function parseChartContent(content: string): ChartConfig | null {
 function ChartRenderer({
 	config,
 	isLoading,
-}: { config: ChartConfig | null; isLoading: boolean }) {
+}: {
+	config: ChartConfig | null;
+	isLoading: boolean;
+}) {
 	if (isLoading) {
 		return (
 			<div className="flex h-64 items-center justify-center">
