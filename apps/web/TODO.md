@@ -193,13 +193,18 @@ Allow comparing responses from different models side-by-side.
 
 ### 🚨 Priority 4: Bug Fixes & Tool Verification
 - [x] Fix conversation title generation (not updating correctly) - Fixed with ref-based tracking
-- [ ] Fix list of suggested questions (not displaying or stale)
+- [x] Fix list of suggested questions - Investigated: Two separate systems working as designed (SuggestedActions for new chats, requestSuggestions for artifacts)
 - [x] Verify Duyet MCP tool is working correctly - Integrated via duyetMCPTool, connects to mcp.duyet.net
 - [x] Verify GitHub MCP tool - GitHub activity is part of Duyet MCP (get_github_activity action)
 - [x] Verify Plan/Research agent - planTool exists for task breakdown, research via web_search
 - [x] Verify model picker uses top models from OpenRouter - Curated list in chatModels array
 
-### Priority 5: New Features (Backlog)
+### Priority 5: Code Quality Improvements (IN PROGRESS)
+- [x] Extract file upload logic into `useFileUpload` hook (multimodal-input.tsx refactored from 752 to 633 lines)
+- [x] Extract input persistence logic into `useInputPersistence` hook for localStorage management
+- [ ] Further component splitting for chat.tsx (358 lines) and remaining multimodal-input complexity
+
+### Priority 6: New Features (Backlog)
 - [ ] **Custom agent creation** - UI to generate custom model prompts with agent persona definition
 - [ ] **Scheduled daily tasks** - Ability to schedule recurring tasks with integration selection (web search, tools, etc.)
 - [ ] **Image display in content** - Render images inline within chat messages

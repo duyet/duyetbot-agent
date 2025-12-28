@@ -5,7 +5,6 @@ import type { UIMessage } from "ai";
 import equal from "fast-deep-equal";
 import { CheckIcon, MicIcon, MicOffIcon } from "lucide-react";
 import {
-	type ChangeEvent,
 	type Dispatch,
 	memo,
 	type SetStateAction,
@@ -15,7 +14,6 @@ import {
 	useState,
 } from "react";
 import { toast } from "sonner";
-import { useLocalStorage } from "usehooks-ts";
 import {
 	ModelSelector,
 	ModelSelectorContent,
@@ -35,6 +33,8 @@ import {
 	modelsByProvider,
 } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { useInputPersistence } from "@/hooks/use-input-persistence";
 import { cn } from "@/lib/utils";
 import {
 	PromptInput,
@@ -125,26 +125,20 @@ function PureMultimodalInput({
 		}
 	}, []);
 
-	const [localStorageInput, setLocalStorageInput] = useLocalStorage(
-		"input",
-		"",
-	);
+	// Use the input persistence hook for localStorage management
+	const { setLocalStorageInput, handleInputPersistence } = useInputPersistence({
+		textareaRef,
+		onInputChange: setInput,
+		adjustHeight,
+		input,
+	});
 
+	// Handle hydration from localStorage
 	useEffect(() => {
-		if (textareaRef.current) {
-			const domValue = textareaRef.current.value;
-			// Prefer DOM value over localStorage to handle hydration
-			const finalValue = domValue || localStorageInput || "";
-			setInput(finalValue);
-			adjustHeight();
-		}
+		handleInputPersistence();
 		// Only run once after hydration
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [adjustHeight, localStorageInput, setInput]);
-
-	useEffect(() => {
-		setLocalStorageInput(input);
-	}, [input, setLocalStorageInput]);
+	}, []);
 
 	const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setInput(event.target.value);
@@ -190,7 +184,11 @@ function PureMultimodalInput({
 	}, []);
 
 	const fileInputRef = useRef<HTMLInputElement>(null);
-	const [uploadQueue, setUploadQueue] = useState<string[]>([]);
+
+	// Use the file upload hook for file upload logic
+	const { uploadQueue, handleFileChange, handlePaste } = useFileUpload({
+		onAttachmentsChange: setAttachments,
+	});
 
 	const submitForm = useCallback(() => {
 		window.history.pushState({}, "", `/chat/${chatId}`);
@@ -231,122 +229,6 @@ function PureMultimodalInput({
 		chatId,
 		resetHeight,
 	]);
-
-	const uploadFile = useCallback(async (file: File) => {
-		const formData = new FormData();
-		formData.append("file", file);
-
-		try {
-			const response = await fetch("/api/files/upload", {
-				method: "POST",
-				body: formData,
-			});
-
-			if (response.ok) {
-				const data = (await response.json()) as {
-					url: string;
-					pathname: string;
-					contentType: string;
-				};
-				const { url, pathname, contentType } = data;
-
-				return {
-					url,
-					name: pathname,
-					contentType,
-				};
-			}
-			const { error } = (await response.json()) as { error: string };
-			toast.error(error);
-		} catch (_error) {
-			toast.error("Failed to upload file, please try again!");
-		}
-	}, []);
-
-	const handleFileChange = useCallback(
-		async (event: ChangeEvent<HTMLInputElement>) => {
-			const files = Array.from(event.target.files || []);
-
-			setUploadQueue(files.map((file) => file.name));
-
-			try {
-				const uploadPromises = files.map((file) => uploadFile(file));
-				const uploadedAttachments = await Promise.all(uploadPromises);
-				const successfullyUploadedAttachments = uploadedAttachments.filter(
-					(attachment): attachment is Attachment => attachment !== undefined,
-				);
-
-				setAttachments((currentAttachments) => [
-					...currentAttachments,
-					...successfullyUploadedAttachments,
-				]);
-
-				// Show success toast for uploaded files
-				if (successfullyUploadedAttachments.length > 0) {
-					const count = successfullyUploadedAttachments.length;
-					toast.success(
-						count === 1
-							? "File uploaded successfully"
-							: `${count} files uploaded successfully`,
-					);
-				}
-			} catch (error) {
-				console.error("Error uploading files!", error);
-				toast.error("Failed to upload files");
-			} finally {
-				setUploadQueue([]);
-			}
-		},
-		[setAttachments, uploadFile],
-	);
-
-	const handlePaste = useCallback(
-		async (event: ClipboardEvent) => {
-			const items = event.clipboardData?.items;
-			if (!items) {
-				return;
-			}
-
-			const imageItems = Array.from(items).filter((item) =>
-				item.type.startsWith("image/"),
-			);
-
-			if (imageItems.length === 0) {
-				return;
-			}
-
-			// Prevent default paste behavior for images
-			event.preventDefault();
-
-			setUploadQueue((prev) => [...prev, "Pasted image"]);
-
-			try {
-				const uploadPromises = imageItems
-					.map((item) => item.getAsFile())
-					.filter((file): file is File => file !== null)
-					.map((file) => uploadFile(file));
-
-				const uploadedAttachments = await Promise.all(uploadPromises);
-				const successfullyUploadedAttachments = uploadedAttachments.filter(
-					(attachment) =>
-						attachment !== undefined &&
-						attachment.url !== undefined &&
-						attachment.contentType !== undefined,
-				);
-
-				setAttachments((curr) => [
-					...curr,
-					...(successfullyUploadedAttachments as Attachment[]),
-				]);
-			} catch (error) {
-				console.error("Error uploading pasted images:", error);
-				toast.error("Failed to upload pasted image(s)");
-			} finally {
-				setUploadQueue([]);
-			}
-		},
-		[setAttachments, uploadFile],
-	);
 
 	// Add paste event listener to textarea
 	useEffect(() => {
