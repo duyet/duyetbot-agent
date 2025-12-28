@@ -232,8 +232,13 @@ Complete rate limiting and guest session management:
   - Click-to-expand modal for full-size view
   - Hover overlay with maximize button
   - Error fallback showing alt text
+- [x] **Tool chain visualization** - Show chain of tools using AI elements components ✅
+  - ToolChain component with vertical timeline visualization
+  - Automatic chain detection based on execution state transitions
+  - Visual connectors with status icons (green=complete, yellow=waiting, red=error)
+  - Filters completed tools with specialized visualizers (SearchResults, Weather, etc.)
+  - Multi-step chain rendering with step indicators and descriptions
 - [ ] **Scheduled daily tasks** - Ability to schedule recurring tasks with integration selection (web search, tools, etc.)
-- [ ] **Tool chain visualization** - Show chain of tools using AI elements components
 
 ### Priority 6: Rust Integration (Future)
 - [ ] **Rust + WebAssembly integration** - Add Rust components compiled to Wasm for performance-critical paths

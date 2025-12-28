@@ -26,6 +26,7 @@ import { PlanVisualizer } from "./plan-visualizer";
 import { PreviewAttachment } from "./preview-attachment";
 import { ScratchpadViewer } from "./scratchpad-viewer";
 import { SearchResults } from "./search-results";
+import { ToolChain } from "./ai-elements/tool-chain";
 import { type TokenUsage, TokenUsageDisplay } from "./token-usage-display";
 import { TypingIndicator } from "./typing-indicator";
 import { UrlFetchPreview } from "./url-fetch-preview";
