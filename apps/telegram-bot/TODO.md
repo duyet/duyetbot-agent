@@ -5,12 +5,13 @@
 Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonomous AI agent system with best-in-class Telegram UX.
 
 **Current State**:
-- 145 tests passing (unit + E2E)
+- 167 tests passing (145 unit + 22 E2E)
 - ~7,000 LOC in src/
 - Transport layer pattern implemented
-- Event Bridge notification system (recently added)
+- Event Bridge notification system
 - Fire-and-forget webhook processing
-- **NEW**: Rate limiting middleware with burst detection
+- Rate limiting middleware with burst detection (20 msg/min, 5 burst/10s)
+- Admin exemption (TELEGRAM_ADMIN env var)
 
 ---
 
@@ -309,10 +310,11 @@ Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonom
 
 | Metric | Current | Target |
 |--------|---------|--------|
-| Test Coverage | 145 tests | 150+ tests |
+| Test Coverage | 167 tests (145 unit + 22 E2E) | 200+ tests |
 | E2E Scenarios | 6 | 10+ |
 | Admin Commands | 0 | 5+ |
 | Documentation | Minimal | Comprehensive |
+| Rate Limiting | ✅ Implemented | - |
 | Rust Integration | None | Exploring |
 
 ---
