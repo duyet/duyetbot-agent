@@ -7,11 +7,9 @@
  * - cleanup after each test
  */
 
-import { afterEach } from "vitest";
-import { cleanup } from "@testing-library/react";
 import * as matchers from "@testing-library/jest-dom/matchers";
-
-import { expect, vi } from "vitest";
+import { cleanup } from "@testing-library/react";
+import { afterEach, expect, vi } from "vitest";
 
 // Extend Vitest's expect with jest-dom matchers
 expect.extend(matchers);
@@ -50,7 +48,6 @@ Object.defineProperty(window, "matchMedia", {
 
 // Mock IntersectionObserver
 global.IntersectionObserver = class IntersectionObserver {
-	constructor() {}
 	disconnect() {}
 	observe() {}
 	takeRecords() {
@@ -61,7 +58,6 @@ global.IntersectionObserver = class IntersectionObserver {
 
 // Mock ResizeObserver
 global.ResizeObserver = class ResizeObserver {
-	constructor() {}
 	disconnect() {}
 	observe() {}
 	unobserve() {}

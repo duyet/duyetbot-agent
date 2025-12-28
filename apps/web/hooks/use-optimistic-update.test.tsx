@@ -12,8 +12,8 @@
  * 8. Rollback timing and delays
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { renderHook, waitFor, act } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import type { ChatMessage } from "@/lib/types";
 import { useOptimisticUpdate } from "./use-optimistic-update";
 
@@ -169,7 +169,7 @@ describe("useOptimisticUpdate - Successful Optimistic Updates", () => {
 			useOptimisticUpdate(initialMessages, setMessages),
 		);
 
-		let apiResult;
+		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",
@@ -188,7 +188,7 @@ describe("useOptimisticUpdate - Successful Optimistic Updates", () => {
 describe("useOptimisticUpdate - Rollback on API Failure", () => {
 	it("schedules rollback when execute returns success: false", async () => {
 		const initialMessages = [createMockMessage("1", "Original")];
-		const { setMessages, getLatestMessages, reset } = createSetMessagesTracker();
+		const { setMessages, getLatestMessages } = createSetMessagesTracker();
 
 		const { result } = renderHook(() =>
 			useOptimisticUpdate(initialMessages, setMessages, {
@@ -224,7 +224,9 @@ describe("useOptimisticUpdate - Rollback on API Failure", () => {
 		);
 
 		// After rollback, messages should be restored
-		expect(getLatestMessages(initialMessages)[0].parts[0].text).toBe("Original");
+		expect(getLatestMessages(initialMessages)[0].parts[0].text).toBe(
+			"Original",
+		);
 	});
 
 	it("calls custom rollback callback if provided", async () => {
@@ -296,7 +298,9 @@ describe("useOptimisticUpdate - Rollback on Exception", () => {
 		);
 
 		// After rollback, messages should be restored
-		expect(getLatestMessages(initialMessages)[0].parts[0].text).toBe("Original");
+		expect(getLatestMessages(initialMessages)[0].parts[0].text).toBe(
+			"Original",
+		);
 	});
 
 	it("returns error result when execute throws", async () => {
@@ -309,7 +313,7 @@ describe("useOptimisticUpdate - Rollback on Exception", () => {
 			}),
 		);
 
-		let apiResult;
+		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",
@@ -339,7 +343,7 @@ describe("useOptimisticUpdate - Rollback on Exception", () => {
 			}),
 		);
 
-		let apiResult;
+		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",
@@ -348,7 +352,6 @@ describe("useOptimisticUpdate - Rollback on Exception", () => {
 					/* No-op */
 				},
 				execute: async () => {
-					// biome-ignore lint/complexity/useLiteralKeys: testing non-Error exception
 					throw "String error";
 				},
 			});
@@ -519,7 +522,9 @@ describe("useOptimisticUpdate - Rollback Control", () => {
 		});
 
 		// Messages should be restored immediately
-		expect(getLatestMessages(initialMessages)[0].parts[0].text).toBe("Original");
+		expect(getLatestMessages(initialMessages)[0].parts[0].text).toBe(
+			"Original",
+		);
 		expect(result.current.pendingOperations).toEqual([]);
 	});
 });
@@ -533,7 +538,7 @@ describe("useOptimisticUpdate - Apply Optimistic Failure", () => {
 			useOptimisticUpdate(initialMessages, setMessages),
 		);
 
-		let apiResult;
+		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",
