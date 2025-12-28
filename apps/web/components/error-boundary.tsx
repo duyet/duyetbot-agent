@@ -7,15 +7,18 @@ import { Button } from "@/components/ui/button";
 interface ErrorBoundaryProps {
 	children: ReactNode;
 	fallback?: ReactNode;
-	onError?: (error: Error, errorInfo: ErrorInfo) => void;
+	onError?: (error: Error, errorInfo: ErrorInfo, errorId: string) => void;
 	onReset?: () => void;
+	onReport?: (error: Error, errorInfo: ErrorInfo, errorId: string) => void;
 	level?: "page" | "section" | "component";
+	showDetails?: boolean;
 }
 
 interface ErrorBoundaryState {
 	hasError: boolean;
 	error: Error | null;
 	errorInfo: ErrorInfo | null;
+	errorId: string;
 }
 
 export class ErrorBoundary extends Component<
@@ -28,11 +31,16 @@ export class ErrorBoundary extends Component<
 			hasError: false,
 			error: null,
 			errorInfo: null,
+			errorId: "",
 		};
 	}
 
 	static getDerivedStateFromError(error: Error): Partial<ErrorBoundaryState> {
-		return { hasError: true, error };
+		return {
+			hasError: true,
+			error,
+			errorId: `err-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+		};
 	}
 
 	componentDidCatch(error: Error, errorInfo: ErrorInfo) {
@@ -40,13 +48,14 @@ export class ErrorBoundary extends Component<
 
 		// Log error with context
 		console.error("[ErrorBoundary] Caught error:", {
+			errorId: this.state.errorId,
 			error: error.message,
 			stack: error.stack,
 			componentStack: errorInfo.componentStack,
 		});
 
 		// Call custom error handler if provided
-		this.props.onError?.(error, errorInfo);
+		this.props.onError?.(error, errorInfo, this.state.errorId);
 	}
 
 	handleReset = () => {
@@ -73,10 +82,16 @@ export class ErrorBoundary extends Component<
 			return (
 				<ErrorFallback
 					error={this.state.error}
+					errorInfo={this.state.errorInfo}
+					errorId={this.state.errorId}
 					level={level}
+					showDetails={
+						this.props.showDetails ?? process.env.NODE_ENV === "development"
+					}
 					onGoHome={this.handleGoHome}
 					onReload={this.handleReload}
 					onReset={this.handleReset}
+					onReport={this.props.onReport}
 				/>
 			);
 		}
@@ -87,18 +102,26 @@ export class ErrorBoundary extends Component<
 
 interface ErrorFallbackProps {
 	error: Error | null;
+	errorInfo: ErrorInfo | null;
+	errorId: string;
 	level: "page" | "section" | "component";
+	showDetails: boolean;
 	onReset: () => void;
 	onReload: () => void;
 	onGoHome: () => void;
+	onReport?: (error: Error, errorInfo: ErrorInfo, errorId: string) => void;
 }
 
 function ErrorFallback({
 	error,
+	errorInfo,
+	errorId,
 	level,
+	showDetails,
 	onReset,
 	onReload,
 	onGoHome,
+	onReport,
 }: ErrorFallbackProps) {
 	const isPageLevel = level === "page";
 	const isComponentLevel = level === "component";
@@ -106,15 +129,31 @@ function ErrorFallback({
 	// Get user-friendly error message
 	const errorMessage = getErrorMessage(error);
 
+	const handleCopyError = () => {
+		const errorText = `Error ID: ${errorId}\n\nError: ${error?.message}\n\nStack:\n${error?.stack}\n\nComponent Stack:\n${errorInfo?.componentStack}`;
+		navigator.clipboard.writeText(errorText);
+	};
+
+	const handleReport = () => {
+		if (onReport && error && errorInfo) {
+			onReport(error, errorInfo, errorId);
+		}
+	};
+
 	if (isComponentLevel) {
 		return (
 			<div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
 				<AlertTriangle className="size-4 shrink-0" />
 				<span>{errorMessage}</span>
-				<Button className="ml-auto" onClick={onReset} size="sm" variant="ghost">
-					<RefreshCw className="mr-1 size-3" />
-					Retry
-				</Button>
+				<div className="ml-auto flex gap-1">
+					<Button onClick={handleCopyError} size="sm" variant="ghost">
+						Copy
+					</Button>
+					<Button onClick={onReset} size="sm" variant="ghost">
+						<RefreshCw className="mr-1 size-3" />
+						Retry
+					</Button>
+				</div>
 			</div>
 		);
 	}
@@ -135,6 +174,7 @@ function ErrorFallback({
 					<p className="max-w-md text-sm text-muted-foreground">
 						{errorMessage}
 					</p>
+					<p className="text-xs text-muted-foreground">Error ID: {errorId}</p>
 				</div>
 			</div>
 
@@ -150,22 +190,47 @@ function ErrorFallback({
 							<RefreshCw className="mr-2 size-4" />
 							Reload page
 						</Button>
-						<Button onClick={onGoHome} variant="ghost">
+						<Button onClick={onGoHome} variant="outline">
 							<Home className="mr-2 size-4" />
 							Go home
 						</Button>
 					</>
 				)}
+
+				<Button onClick={handleCopyError} variant="outline" size="sm">
+					Copy error
+				</Button>
+
+				{onReport && (
+					<Button onClick={handleReport} variant="outline" size="sm">
+						Report issue
+					</Button>
+				)}
 			</div>
 
-			{process.env.NODE_ENV === "development" && error && (
+			{showDetails && error && errorInfo && (
 				<details className="mt-4 w-full max-w-2xl rounded-lg border bg-muted/50 p-4">
 					<summary className="cursor-pointer text-sm font-medium text-muted-foreground">
-						Error details (development only)
+						Error details
 					</summary>
-					<pre className="mt-3 overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
-						{error.stack || error.message}
-					</pre>
+					<div className="mt-3 space-y-3">
+						<div>
+							<div className="mb-1 text-sm font-medium">Error ID:</div>
+							<code className="text-xs text-muted-foreground">{errorId}</code>
+						</div>
+						<div>
+							<div className="mb-1 text-sm font-medium">Stack Trace:</div>
+							<pre className="overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
+								{error.stack || error.message}
+							</pre>
+						</div>
+						<div>
+							<div className="mb-1 text-sm font-medium">Component Stack:</div>
+							<pre className="overflow-auto whitespace-pre-wrap text-xs text-muted-foreground">
+								{errorInfo.componentStack}
+							</pre>
+						</div>
+					</div>
 				</details>
 			)}
 		</div>
@@ -214,8 +279,12 @@ export function ChatErrorBoundary({ children }: { children: ReactNode }) {
 		<ErrorBoundary
 			fallback={<ChatErrorFallback />}
 			level="section"
-			onError={(error) => {
-				console.error("[ChatErrorBoundary] Error in chat:", error);
+			onError={(error, errorInfo, errorId) => {
+				console.error("[ChatErrorBoundary] Error in chat:", {
+					errorId,
+					error,
+					errorInfo,
+				});
 			}}
 		>
 			{children}
@@ -259,6 +328,42 @@ function ChatErrorFallback() {
 				</Button>
 			</div>
 		</div>
+	);
+}
+
+// Artifact viewer error boundary
+export function ArtifactErrorBoundary({ children }: { children: ReactNode }) {
+	return (
+		<ErrorBoundary
+			level="section"
+			onError={(error, errorInfo, errorId) => {
+				console.error("[ArtifactErrorBoundary] Error in artifact:", {
+					errorId,
+					error,
+					errorInfo,
+				});
+			}}
+		>
+			{children}
+		</ErrorBoundary>
+	);
+}
+
+// Document editor error boundary
+export function DocumentErrorBoundary({ children }: { children: ReactNode }) {
+	return (
+		<ErrorBoundary
+			level="section"
+			onError={(error, errorInfo, errorId) => {
+				console.error("[DocumentErrorBoundary] Error in document:", {
+					errorId,
+					error,
+					errorInfo,
+				});
+			}}
+		>
+			{children}
+		</ErrorBoundary>
 	);
 }
 

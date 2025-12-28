@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 33
+**Iteration**: 42
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -33,8 +33,8 @@ This is a continuous improvement project with a focus on building a multi-agent 
 - [ ] Add skeleton screens for dashboard and analytics pages
 
 #### Error Recovery
-- [ ] Add retry buttons for failed API calls
-- [ ] Implement optimistic UI updates with automatic rollback
+- [x] Add retry buttons for failed API calls
+- [x] Implement optimistic UI updates with automatic rollback
 - [ ] Add error boundary fallbacks for each major component
 - [ ] Create user-friendly error messages for common scenarios
 - [ ] Add "Report Issue" button that captures error context
@@ -280,6 +280,32 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 41-42 (Dec 29, 2025)
+- ✅ Implemented optimistic UI updates with automatic rollback
+- ✅ Created `useOptimisticUpdate` hook with snapshot-based state management
+- ✅ Created `PendingIndicator` components for visual feedback
+- ✅ Added `RollbackWarning` banner with countdown timer
+- ✅ Fixed all Biome lint errors (hook dependencies, conditional useEffect)
+- ✅ All 515 tests passing
+- ✅ All 32 packages type-check passing
+- ✅ All 18 packages build successfully
+
+### Iteration 40 (Dec 29, 2025)
+- ✅ Created `ErrorWithRetry` component for error recovery
+- ✅ Implemented exponential backoff with jitter in API client
+- ✅ Added retry logic for failed API calls
+- ✅ Created `useApiRequest` hook for consistent error handling
+- ✅ Added configurable retry configuration (maxRetries, delays, status codes)
+- ✅ All tests passing (715+ tests)
+
+### Iteration 34-39 (Dec 29, 2025)
+- ✅ Added keyboard navigation with Cmd+K command palette
+- ✅ Cross-platform keyboard shortcuts (Mac/Windows/Linux)
+- ✅ Enhanced dialog focus management
+- ✅ Visible focus indicators for accessibility
+- ✅ Enhanced Biome configuration with schema update
+- ✅ Various code quality improvements
 
 ### Iteration 33 (Dec 29, 2025)
 - ✅ Fixed Agent<Env> constraint errors from agents@0.3.0 upgrade

@@ -17,6 +17,7 @@ import { codeArtifact } from "@/artifacts/code/client";
 import { imageArtifact } from "@/artifacts/image/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
+import { ArtifactErrorBoundary } from "@/components/error-boundary";
 import { useArtifact } from "@/hooks/use-artifact";
 import { useIsMobile } from "@/hooks/use-responsive";
 import type { Document, Vote } from "@/lib/db/schema";
@@ -465,25 +466,27 @@ function PureArtifact({
 						</div>
 
 						<div className="h-full max-w-full! items-center overflow-y-scroll bg-background dark:bg-muted">
-							<artifactDefinition.content
-								content={
-									isCurrentVersion
-										? artifact.content
-										: getDocumentContentById(currentVersionIndex)
-								}
-								currentVersionIndex={currentVersionIndex}
-								getDocumentContentById={getDocumentContentById}
-								isCurrentVersion={isCurrentVersion}
-								isInline={false}
-								isLoading={isDocumentsFetching && !artifact.content}
-								metadata={metadata}
-								mode={mode}
-								onSaveContent={saveContent}
-								setMetadata={setMetadata}
-								status={artifact.status}
-								suggestions={[]}
-								title={artifact.title}
-							/>
+							<ArtifactErrorBoundary>
+								<artifactDefinition.content
+									content={
+										isCurrentVersion
+											? artifact.content
+											: getDocumentContentById(currentVersionIndex)
+									}
+									currentVersionIndex={currentVersionIndex}
+									getDocumentContentById={getDocumentContentById}
+									isCurrentVersion={isCurrentVersion}
+									isInline={false}
+									isLoading={isDocumentsFetching && !artifact.content}
+									metadata={metadata}
+									mode={mode}
+									onSaveContent={saveContent}
+									setMetadata={setMetadata}
+									status={artifact.status}
+									suggestions={[]}
+									title={artifact.title}
+								/>
+							</ArtifactErrorBoundary>
 
 							<AnimatePresence>
 								{isCurrentVersion && (

@@ -46,11 +46,11 @@ interface OptimisticUpdateConfig {
 /**
  * Hook state
  */
-interface OptimisticUpdateState {
-	pendingOperations: PendingOperation[];
-	hasPendingOperation: boolean;
-	currentOperationId: string | null;
-}
+// interface OptimisticUpdateState {
+// 	pendingOperations: PendingOperation[];
+// 	hasPendingOperation: boolean;
+// 	currentOperationId: string | null;
+// }
 
 /**
  * Hook for optimistic UI updates with automatic rollback
@@ -318,7 +318,9 @@ export function useOptimisticUpdate(
 	const forceRollback = useCallback(() => {
 		clearRollbackTimeout();
 		// Rollback all pending operations
-		pendingOperations.forEach((op) => op.rollbackData());
+		void pendingOperations.forEach((op) => {
+			op.rollbackData();
+		});
 		setPendingOperations([]);
 		setCurrentOperationId(null);
 	}, [clearRollbackTimeout, pendingOperations]);
