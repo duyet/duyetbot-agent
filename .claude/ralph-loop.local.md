@@ -35,7 +35,7 @@ Please rewrite this files for each iteration  what you plan to do next, and any 
 
 ---
 
-## Iteration 29-30 Summary (Dec 28, 2025)
+## Iteration 29-31 Summary (Dec 28-29, 2025)
 
 ### Completed
 
@@ -48,43 +48,47 @@ Please rewrite this files for each iteration  what you plan to do next, and any 
 - Committed fixes (commit a6a7753) to feature/web-ui-improvements branch
 
 #### Documentation Updates
-- Updated iteration counter to 30
+- Updated iteration counter to 30-31
 - Added comprehensive iteration summary to track progress
 
-### Blockers & Issues Discovered
+#### Memory-MCP Version Conflict Resolution (COMPLETED)
+- **Root Cause Identified**: Three different MCP SDK versions were installed
+  - v1.23.0 from `agents@0.3.0`
+  - v1.24.2 from catalog
+  - v1.24.3 from `promptfoo`
+- **Solution Applied**:
+  - Pinned `@modelcontextprotocol/sdk` to exact version `1.24.2` in catalog
+  - Pinned `agents` to `0.3.0` in catalog for consistency
+  - Added `resolutions` field to force single MCP SDK version across all packages
+  - Removed duplicate `agents` dependency from root dependencies
+- **Result**: All packages now use `@modelcontextprotocol/sdk@1.24.2` consistently
+- **Commit**: 84f684b "fix: resolve @modelcontextprotocol/sdk version conflict"
 
-#### Memory-MCP TypeScript Errors (Critical)
-The memory-mcp package is experiencing OOM during type-check, revealing deeper issues:
+### Remaining Issues
 
-1. **Package Version Conflict**: Duplicate `@modelcontextprotocol/sdk` versions detected
-   - v1.24.2 (one location)
-   - v1.24.3 (another location)
-   - This causes type incompatibility between McpServer types
+#### Memory-MCP TypeScript Errors (In Progress)
+Even with version conflict resolved, memory-mcp still has remaining type errors:
 
-2. **Type Instantiation Errors**: 3 occurrences of "Type instantiation is excessively deep and possibly infinite"
+1. **Type Instantiation Errors**: 3 occurrences of "Type instantiation is excessively deep and possibly infinite"
    - Lines: 43, 113, 215, 279 in `apps/memory-mcp/src/mcp-agent.ts`
+   - These are complex type definitions that exceed TypeScript's depth limit
 
-3. **Tool Registration Type Errors**: No overload matches for tool registration
-   - Related to Zod schema type incompatibilities
+2. **Tool Registration Type Errors**: No overload matches for tool registration
+   - Related to Zod schema type incompatibilities with the MCP SDK
+   - The `ZodOptional<ZodRecord<ZodString, ZodUnknown>>` type is not compatible with expected `AnySchema`
 
-4. **Implicit Any Types**: 3 occurrences
+3. **Implicit Any Types**: 3 occurrences
    - Line 234: `query`, `limit`, `filter` parameters need proper typing
-
-#### Root Cause Analysis
-The increased heap size (8GB) allowed type-check to run longer, exposing that the issue is NOT just memory limits - it's:
-- Duplicate/Conflicting package versions causing type system confusion
-- Complex type instantiations that exceed TypeScript's depth limit
-- Missing type annotations leading to implicit 'any' types
 
 ### Next Steps
 
-1. **Fix memory-mcp TypeScript errors** (High Priority)
-   - Resolve @modelcontextprotocol/sdk version conflict (check package.json dependencies)
-   - Add proper type annotations for query/limit/filter parameters
-   - Simplify type definitions to avoid infinite instantiation
-   - Consider using type assertions or intermediate types to break circular references
+1. **Fix remaining memory-mcp TypeScript errors** (High Priority)
+   - Add proper type annotations for query/limit/filter parameters to eliminate implicit 'any' types
+   - Simplify type definitions or use type assertions to avoid infinite instantiation
+   - Consider using intermediate types to break circular references
+   - May need to adjust Zod schema definitions to match MCP SDK expectations
 
-2. **After memory-mcp is fixed**: Continue with improvements from TODO.md
+2. **After memory-mcp is fully fixed**: Continue with improvements from TODO.md
    - Focus on web app UI/UX enhancements
    - Add more E2E tests
    - Performance optimizations
@@ -94,18 +98,18 @@ The increased heap size (8GB) allowed type-check to run longer, exposing that th
 
 **Commit History:**
 - a6a7753: "fix(web): resolve React hooks violations and remove unused code"
+- d6e5391: "docs: update iteration progress and document memory-mcp blocker"
+- 84f684b: "fix: resolve @modelcontextprotocol/sdk version conflict"
 
 **Type-Check Results:**
 - All packages except memory-mcp: PASSING
-- memory-mcp: FAILING (OOM + TypeScript errors)
+- memory-mcp: PARTIALLY FIXED (version conflict resolved, type errors remain)
 
 **Biome Lint:**
 - Status: All clean
 - 293 files checked, no issues
 
----
-
-Take note to CLAUDE.md and README.md for overall progress and important notes. Take note that this repo is non-stop continuous improvement, never stop improvement, never stop learning, never stop fixing bugs, never stop optimizing, never stop enhancing, never stop refactoring, never stop reusing, never stop documenting, never stop designing, never stop testing, never stop securing, never stop speeding up, never stop cleaning code, never stop improving DX/UX/UI. Always be improving. Always be learning. Always be fixing. Always be optimizing. Always be enhancing. Always be refactoring. Always be reusing. Always be documenting. Always be designing. Always be testing. Always be securing. Always be speeding up. Always be cleaning code. Always be improving DX/UX/UI. This is a non-stop continuous improvement project. 
+--- Take note that this repo is non-stop continuous improvement, never stop improvement, never stop learning, never stop fixing bugs, never stop optimizing, never stop enhancing, never stop refactoring, never stop reusing, never stop documenting, never stop designing, never stop testing, never stop securing, never stop speeding up, never stop cleaning code, never stop improving DX/UX/UI. Always be improving. Always be learning. Always be fixing. Always be optimizing. Always be enhancing. Always be refactoring. Always be reusing. Always be documenting. Always be designing. Always be testing. Always be securing. Always be speeding up. Always be cleaning code. Always be improving DX/UX/UI. This is a non-stop continuous improvement project. 
 
 
 The principle is to never stop improving, never stop learning, never stop fixing bugs, never stop optimizing, never stop enhancing, never stop refactoring, never stop reusing, never stop documenting, never stop designing, never stop testing, never stop securing, never stop speeding up, never stop cleaning code, never stop improving DX/UX/UI. Always be improving. Always be learning. Always be fixing. Always be optimizing. Always be enhancing. Always be refactoring. Always be reusing. Always be documenting. Always be designing. Always be testing. Always be securing. Always be speeding up. Always be cleaning code. Always be improving DX/UX/UI. This is a non-stop continuous improvement project.
