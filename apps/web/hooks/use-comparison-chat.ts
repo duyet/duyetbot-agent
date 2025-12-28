@@ -5,8 +5,7 @@
  * Sends the same prompt to multiple models in parallel and tracks their responses.
  */
 
-import { useChat } from "@ai-sdk/react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useState } from "react";
 import type { ChatMessage } from "@/lib/types";
 import { generateUUID } from "@/lib/utils";
 

@@ -111,13 +111,54 @@ export function EnhancedArtifactViewer({
 				return ImageIcon;
 			case "sheet":
 				return Table;
-			case "text":
 			default:
 				return FileText;
 		}
 	};
 
 	const KindIcon = getKindIcon();
+
+	// Copy content to clipboard
+	const handleCopy = useCallback(async () => {
+		try {
+			await navigator.clipboard.writeText(content);
+			toast.success("Copied to clipboard");
+		} catch (_error) {
+			toast.error("Failed to copy content");
+		}
+	}, [content]);
+
+	// Download content as file
+	const handleDownload = useCallback(() => {
+		const extensions: Record<ArtifactKind, string> = {
+			code: getLanguageExtension(metadata.language as string) || "txt",
+			image: "png",
+			sheet: "csv",
+			text: "txt",
+		};
+
+		const extension = extensions[kind];
+		const filename = `${title}.${extension}`;
+
+		// Create blob and download
+		const blob = new Blob([content], { type: "text/plain" });
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement("a");
+		link.href = url;
+		link.download = filename;
+		document.body.appendChild(link);
+		link.click();
+		document.body.removeChild(link);
+		URL.revokeObjectURL(url);
+
+		toast.success(`Downloaded ${filename}`);
+	}, [content, title, kind, metadata]);
+
+	// Reset zoom and rotation
+	const handleResetView = useCallback(() => {
+		setZoom(100);
+		setRotation(0);
+	}, []);
 
 	// Handle keyboard shortcuts
 	useEffect(() => {
@@ -178,49 +219,7 @@ export function EnhancedArtifactViewer({
 
 		window.addEventListener("keydown", handleKeyDown);
 		return () => window.removeEventListener("keydown", handleKeyDown);
-	}, [kind, readOnly]);
-
-	// Copy content to clipboard
-	const handleCopy = useCallback(async () => {
-		try {
-			await navigator.clipboard.writeText(content);
-			toast.success("Copied to clipboard");
-		} catch (error) {
-			toast.error("Failed to copy content");
-		}
-	}, [content]);
-
-	// Download content as file
-	const handleDownload = useCallback(() => {
-		const extensions: Record<ArtifactKind, string> = {
-			code: getLanguageExtension(metadata.language as string) || "txt",
-			image: "png",
-			sheet: "csv",
-			text: "txt",
-		};
-
-		const extension = extensions[kind];
-		const filename = `${title}.${extension}`;
-
-		// Create blob and download
-		const blob = new Blob([content], { type: "text/plain" });
-		const url = URL.createObjectURL(blob);
-		const link = document.createElement("a");
-		link.href = url;
-		link.download = filename;
-		document.body.appendChild(link);
-		link.click();
-		document.body.removeChild(link);
-		URL.revokeObjectURL(url);
-
-		toast.success(`Downloaded ${filename}`);
-	}, [content, title, kind, metadata]);
-
-	// Reset zoom and rotation
-	const handleResetView = useCallback(() => {
-		setZoom(100);
-		setRotation(0);
-	}, []);
+	}, [kind, readOnly, handleDownload]);
 
 	// Render toolbar buttons
 	const renderToolbar = () => (

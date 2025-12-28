@@ -15,7 +15,6 @@ import {
 	getStoredToken,
 	initTokenSync,
 	removeStoredToken,
-	setStoredToken,
 } from "@/lib/auth/token-storage";
 
 export type AuthUser = {
@@ -87,7 +86,7 @@ export function useAuth(): UseAuthReturn {
 			const token = getStoredToken();
 			const headers: HeadersInit = {};
 			if (token) {
-				headers["Authorization"] = `Bearer ${token}`;
+				headers.Authorization = `Bearer ${token}`;
 			}
 
 			const response = await fetch("/api/auth/session", {
@@ -196,7 +195,7 @@ export function useAuth(): UseAuthReturn {
 			const token = getStoredToken();
 			const headers: HeadersInit = {};
 			if (token) {
-				headers["Authorization"] = `Bearer ${token}`;
+				headers.Authorization = `Bearer ${token}`;
 			}
 
 			await fetch("/api/auth/logout", {

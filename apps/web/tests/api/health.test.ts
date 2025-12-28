@@ -1,7 +1,7 @@
 /**
  * Health check API tests
  */
-import { beforeAll, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 const API_URL = process.env.API_URL || "https://duyetbot-web.duyet.workers.dev";
 

@@ -25,7 +25,7 @@ const fetcher = async (url: string): Promise<RateLimitStatus | null> => {
 	const token = getStoredToken();
 	const headers: HeadersInit = {};
 	if (token) {
-		headers["Authorization"] = `Bearer ${token}`;
+		headers.Authorization = `Bearer ${token}`;
 	}
 
 	const response = await fetch(url, { headers });

@@ -76,16 +76,9 @@ export function SessionRestoreDialog({
 }: SessionRestoreOptions) {
 	const router = useRouter();
 	const [sessions, setSessions] = useState<SessionHistoryEntry[]>([]);
-	const [selectedSession, setSelectedSession] =
+	const [_selectedSession, setSelectedSession] =
 		useState<SessionHistoryEntry | null>(null);
 	const [showConfirm, setShowConfirm] = useState(false);
-
-	// Load sessions when dialog opens
-	useEffect(() => {
-		if (open) {
-			loadSessions();
-		}
-	}, [open]);
 
 	const loadSessions = useCallback(() => {
 		const history = getSessionHistory();
@@ -97,6 +90,13 @@ export function SessionRestoreDialog({
 			),
 		);
 	}, []);
+
+	// Load sessions when dialog opens
+	useEffect(() => {
+		if (open) {
+			loadSessions();
+		}
+	}, [open, loadSessions]);
 
 	const handleRestore = useCallback(
 		(session: SessionHistoryEntry) => {
@@ -207,7 +207,7 @@ interface SessionItemProps {
 }
 
 function SessionItem({ session, onRestore, onDelete }: SessionItemProps) {
-	const [isDeleting, setIsDeleting] = useState(false);
+	const [_isDeleting, _setIsDeleting] = useState(false);
 
 	const handleDeleteClick = useCallback(
 		(e: React.MouseEvent) => {

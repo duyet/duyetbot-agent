@@ -267,7 +267,7 @@ export function completeMention(
 	// Insert the completed mention
 	// Only add trailing space if there isn't already whitespace after cursor
 	const needsSpace = afterCursor.length === 0 || !/^\s/.test(afterCursor);
-	const mentionText = "@" + tool.id + (needsSpace ? " " : "");
+	const mentionText = `@${tool.id}${needsSpace ? " " : ""}`;
 	const newText = beforeMention + mentionText + afterCursor;
 	const newCursorPosition = trigger.startIndex + mentionText.length;
 

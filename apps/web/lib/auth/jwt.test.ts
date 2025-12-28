@@ -135,7 +135,7 @@ describe("JWT Session Management", () => {
 			const { createSessionToken, verifySessionToken } = await importJwt();
 
 			// Mock Date.now to create a token that's already expired
-			const realDateNow = Date.now;
+			const _realDateNow = Date.now;
 			const pastTime = Date.now() - 2000; // 2 seconds ago
 			vi.spyOn(Date, "now").mockReturnValue(pastTime);
 

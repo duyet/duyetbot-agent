@@ -111,7 +111,7 @@ export async function deleteData(
 			try {
 				localStorage.removeItem(key);
 				deletedItems++;
-			} catch (error) {
+			} catch (_error) {
 				errors.push(`Failed to delete ${key}`);
 			}
 		}
@@ -160,7 +160,7 @@ function deletePattern(pattern: string): number {
 	try {
 		for (let i = 0; i < localStorage.length; i++) {
 			const key = localStorage.key(i);
-			if (key && key.startsWith(prefix)) {
+			if (key?.startsWith(prefix)) {
 				localStorage.removeItem(key);
 				deleted++;
 			}

@@ -377,7 +377,7 @@ export function validateDataImport(json: string): {
 		}
 
 		return { valid: true };
-	} catch (error) {
+	} catch (_error) {
 		return { valid: false, error: "Invalid JSON format" };
 	}
 }

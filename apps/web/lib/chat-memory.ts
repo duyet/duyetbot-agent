@@ -52,11 +52,6 @@ export function useChatMemory(chatId: string) {
 	const [memories, setMemories] = useState<MemoryEntry[]>([]);
 	const [isLoaded, setIsLoaded] = useState(false);
 
-	// Load memories on mount
-	useEffect(() => {
-		loadMemories();
-	}, [chatId]);
-
 	/**
 	 * Load memories from localStorage
 	 */
@@ -76,6 +71,11 @@ export function useChatMemory(chatId: string) {
 			setIsLoaded(true);
 		}
 	}, [chatId]);
+
+	// Load memories on mount
+	useEffect(() => {
+		loadMemories();
+	}, [loadMemories]);
 
 	/**
 	 * Save all memories to localStorage

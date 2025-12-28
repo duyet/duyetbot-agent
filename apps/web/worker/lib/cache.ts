@@ -221,7 +221,7 @@ export function addStaticCacheHeaders(
  * Note: This is a best-effort operation in Workers
  */
 export async function purgeCache(pattern: string): Promise<void> {
-	const cache = caches.default;
+	const _cache = caches.default;
 	// Cloudflare Cache API doesn't support pattern deletion
 	// This is a placeholder for future implementation with a cache registry
 	console.log(`[Cache] Purge requested for pattern: ${pattern}`);

@@ -3,7 +3,7 @@
  *
  * Tests both authenticated and unauthenticated (guest) scenarios
  */
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it } from "vitest";
 
 const API_URL = process.env.API_URL || "https://duyetbot-web.duyet.workers.dev";
 

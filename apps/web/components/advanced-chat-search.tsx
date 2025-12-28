@@ -30,6 +30,30 @@ import {
 } from "./icons";
 
 /**
+ * Calculate relevance score (0-1)
+ * Pure function - moved outside component to avoid recreation on each render
+ */
+function calculateRelevance(text: string, query: string): number {
+	const lowerText = text.toLowerCase();
+	const lowerQuery = query.toLowerCase();
+
+	// Exact match
+	if (lowerText === lowerQuery) return 1;
+
+	// Contains query
+	if (lowerText.includes(lowerQuery)) {
+		// Higher score if query appears at start
+		if (lowerText.startsWith(lowerQuery)) return 0.9;
+		return 0.7;
+	}
+
+	// Partial word matches
+	const queryWords = lowerQuery.split(/\s+/);
+	const matchedWords = queryWords.filter((word) => lowerText.includes(word));
+	return matchedWords.length / queryWords.length;
+}
+
+/**
  * Search filters
  */
 export interface SearchFilters {
@@ -71,16 +95,6 @@ export function AdvancedChatSearch() {
 	const [results, setResults] = useState<SearchResult[]>([]);
 	const [isSearching, setIsSearching] = useState(false);
 	const [showFilters, setShowFilters] = useState(false);
-
-	// Load query from URL
-	useEffect(() => {
-		const urlQuery = searchParams.get("q");
-		if (urlQuery) {
-			setQuery(urlQuery);
-			setFilters({ query: urlQuery });
-			performSearch(urlQuery);
-		}
-	}, [searchParams]);
 
 	/**
 	 * Perform search
@@ -160,28 +174,15 @@ export function AdvancedChatSearch() {
 		[filters],
 	);
 
-	/**
-	 * Calculate relevance score (0-1)
-	 */
-	function calculateRelevance(text: string, query: string): number {
-		const lowerText = text.toLowerCase();
-		const lowerQuery = query.toLowerCase();
-
-		// Exact match
-		if (lowerText === lowerQuery) return 1;
-
-		// Contains query
-		if (lowerText.includes(lowerQuery)) {
-			// Higher score if query appears at start
-			if (lowerText.startsWith(lowerQuery)) return 0.9;
-			return 0.7;
+	// Load query from URL
+	useEffect(() => {
+		const urlQuery = searchParams.get("q");
+		if (urlQuery) {
+			setQuery(urlQuery);
+			setFilters({ query: urlQuery });
+			performSearch(urlQuery);
 		}
-
-		// Partial word matches
-		const queryWords = lowerQuery.split(/\s+/);
-		const matchedWords = queryWords.filter((word) => lowerText.includes(word));
-		return matchedWords.length / queryWords.length;
-	}
+	}, [searchParams, performSearch]);
 
 	/**
 	 * Handle search input

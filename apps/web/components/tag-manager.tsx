@@ -1,6 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,9 +17,7 @@ import type { SessionMetadata } from "@/lib/session-persistence";
 import { cn } from "@/lib/utils";
 import {
 	CheckIcon,
-	Edit2Icon,
 	FolderIcon,
-	FolderOpenIcon,
 	PlusIcon,
 	TagIcon,
 	Trash2Icon,
@@ -75,12 +72,6 @@ export function TagManager({ chatId }: { chatId: string }) {
 	const [folders, setFolders] = useState<Folder[]>([]);
 	const [chatMetadata, setChatMetadata] = useState<SessionMetadata>({});
 
-	useEffect(() => {
-		if (isOpen) {
-			loadData();
-		}
-	}, [isOpen, chatId]);
-
 	const loadData = useCallback(() => {
 		// Load tags
 		const storedTags = localStorage.getItem(STORAGE_KEYS.TAGS);
@@ -102,6 +93,12 @@ export function TagManager({ chatId }: { chatId: string }) {
 			setChatMetadata(JSON.parse(storedMetadata));
 		}
 	}, [chatId]);
+
+	useEffect(() => {
+		if (isOpen) {
+			loadData();
+		}
+	}, [isOpen, loadData]);
 
 	return (
 		<Dialog onOpenChange={setIsOpen} open={isOpen}>
