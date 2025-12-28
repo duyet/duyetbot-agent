@@ -2,7 +2,7 @@
 
 import { Clock, Search, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
 	Dialog,
 	DialogContent,
@@ -30,17 +30,27 @@ export function ChatSearchBar({
 	const [isSearching, setIsSearching] = useState(false);
 	const [selectedIndex, setSelectedIndex] = useState(0);
 	const router = useRouter();
+	const abortControllerRef = useRef<AbortController | null>(null);
 
-	const searchChats = async (searchQuery: string) => {
+	const searchChats = useCallback(async (searchQuery: string) => {
 		if (!searchQuery.trim()) {
 			setResults([]);
 			return;
 		}
 
+		// Cancel any pending request
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+		}
+
+		// Create new abort controller for this request
+		abortControllerRef.current = new AbortController();
+
 		setIsSearching(true);
 		try {
 			const response = await fetch(
 				`/api/search?q=${encodeURIComponent(searchQuery)}`,
+				{ signal: abortControllerRef.current.signal },
 			);
 			if (!response.ok) {
 				throw new Error("Search failed");
@@ -49,13 +59,17 @@ export function ChatSearchBar({
 			setResults(searchResults);
 			setSelectedIndex(0);
 		} catch (error) {
+			// Ignore abort errors
+			if (error instanceof Error && error.name === "AbortError") {
+				return;
+			}
 			console.error("Search error:", error);
 		} finally {
 			setIsSearching(false);
 		}
-	};
+	}, []);
 
-	// Debounced search
+	// Debounced search with cleanup
 	useEffect(() => {
 		const timeout = setTimeout(() => {
 			if (query) {
@@ -65,7 +79,13 @@ export function ChatSearchBar({
 			}
 		}, 300);
 
-		return () => clearTimeout(timeout);
+		return () => {
+			clearTimeout(timeout);
+			// Cancel any pending request on cleanup
+			if (abortControllerRef.current) {
+				abortControllerRef.current.abort();
+			}
+		};
 	}, [query, searchChats]);
 
 	// Keyboard navigation

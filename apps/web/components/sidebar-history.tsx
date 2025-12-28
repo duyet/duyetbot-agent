@@ -133,11 +133,17 @@ export function SidebarHistory({ user }: { user: AuthUser | undefined }) {
 
 		setShowDeleteDialog(false);
 
-		const deletePromise = fetch(`/api/chat?id=${chatToDelete}`, {
-			method: "DELETE",
-		});
+		const deleteChat = async () => {
+			const response = await fetch(`/api/chat?id=${chatToDelete}`, {
+				method: "DELETE",
+			});
+			if (!response.ok) {
+				throw new Error("Failed to delete chat");
+			}
+			return response;
+		};
 
-		toast.promise(deletePromise, {
+		toast.promise(deleteChat(), {
 			loading: "Deleting chat...",
 			success: () => {
 				mutate((chatHistories) => {

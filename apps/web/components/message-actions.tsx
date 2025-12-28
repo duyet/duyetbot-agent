@@ -127,16 +127,22 @@ export function PureMessageActions({
 				data-testid="message-upvote"
 				disabled={vote?.isUpvoted}
 				onClick={() => {
-					const upvote = fetch("/api/vote", {
-						method: "PATCH",
-						body: JSON.stringify({
-							chatId,
-							messageId: message.id,
-							type: "up",
-						}),
-					});
+					const upvote = async () => {
+						const response = await fetch("/api/vote", {
+							method: "PATCH",
+							body: JSON.stringify({
+								chatId,
+								messageId: message.id,
+								type: "up",
+							}),
+						});
+						if (!response.ok) {
+							throw new Error("Failed to upvote");
+						}
+						return response;
+					};
 
-					toast.promise(upvote, {
+					toast.promise(upvote(), {
 						loading: "Upvoting Response...",
 						success: () => {
 							mutate<Vote[]>(
@@ -176,16 +182,22 @@ export function PureMessageActions({
 				data-testid="message-downvote"
 				disabled={vote && !vote.isUpvoted}
 				onClick={() => {
-					const downvote = fetch("/api/vote", {
-						method: "PATCH",
-						body: JSON.stringify({
-							chatId,
-							messageId: message.id,
-							type: "down",
-						}),
-					});
+					const downvote = async () => {
+						const response = await fetch("/api/vote", {
+							method: "PATCH",
+							body: JSON.stringify({
+								chatId,
+								messageId: message.id,
+								type: "down",
+							}),
+						});
+						if (!response.ok) {
+							throw new Error("Failed to downvote");
+						}
+						return response;
+					};
 
-					toast.promise(downvote, {
+					toast.promise(downvote(), {
 						loading: "Downvoting Response...",
 						success: () => {
 							mutate<Vote[]>(
