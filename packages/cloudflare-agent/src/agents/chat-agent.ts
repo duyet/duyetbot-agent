@@ -51,7 +51,7 @@ export interface ChatAgentState {
  * Environment bindings for ChatAgent
  * @deprecated Use RouterAgentEnv instead
  */
-export interface ChatAgentEnv {
+export interface ChatAgentEnv extends Cloudflare.Env {
   /** RouterAgent for query classification and routing */
   RouterAgent?: AgentNamespace<Agent<ChatAgentEnv, unknown>>;
 }

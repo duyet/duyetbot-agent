@@ -328,14 +328,16 @@ export const AgentMixin = {
 /**
  * Type guard to check if an object is an Agent
  */
-export function isAgent<TEnv, TState>(obj: unknown): obj is Agent<TEnv, TState> {
+export function isAgent<TEnv extends Cloudflare.Env, TState>(
+  obj: unknown
+): obj is Agent<TEnv, TState> {
   return typeof obj === 'object' && obj !== null && 'state' in obj && 'setState' in obj;
 }
 
 /**
  * Helper to safely get agent by name with proper typing
  */
-export async function getTypedAgent<TAgent extends Agent<unknown, unknown>>(
+export async function getTypedAgent<TAgent extends Agent<Cloudflare.Env, unknown>>(
   namespace: {
     idFromName: (name: string) => unknown;
     get: (id: unknown) => TAgent;

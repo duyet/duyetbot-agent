@@ -245,14 +245,12 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
  * Type for the CloudflareChatAgent class constructor
  * Extends typeof Agent to maintain compatibility with AgentNamespace
  */
-export type CloudflareChatAgentClass<TEnv, TContext = unknown> = typeof Agent<
-  TEnv,
-  CloudflareAgentState
-> & {
-  new (
-    ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
-  ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
-};
+export type CloudflareChatAgentClass<TEnv extends Cloudflare.Env, TContext = unknown> =
+  typeof Agent<TEnv, CloudflareAgentState> & {
+    new (
+      ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
+    ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
+  };
 
 /**
  * Create a Cloudflare Durable Object Agent class with direct LLM integration
@@ -272,7 +270,7 @@ import type { QuotedContext } from './workflow/types.js';
  * });
  * ```
  */
-export function createCloudflareChatAgent<TEnv, TContext = unknown>(
+export function createCloudflareChatAgent<TEnv extends Cloudflare.Env, TContext = unknown>(
   config: CloudflareAgentConfig<TEnv, TContext>
 ): CloudflareChatAgentClass<TEnv, TContext> {
   const maxHistory = config.maxHistory ?? 100;
@@ -2013,7 +2011,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
  * Type helper for agent namespaces
  * Use this for the Env interface to get proper typing for agent stubs
  */
-export type CloudflareChatAgentNamespace<TEnv, TContext = unknown> = AgentNamespace<
+export type CloudflareChatAgentNamespace<
+  TEnv extends Cloudflare.Env,
+  TContext = unknown
+> = AgentNamespace<
   Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>
 >;
 

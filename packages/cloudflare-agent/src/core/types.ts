@@ -192,23 +192,24 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
  * Type for the CloudflareChatAgent class constructor
  * Extends typeof Agent to maintain compatibility with AgentNamespace
  */
-export type CloudflareChatAgentClass<TEnv, TContext = unknown> = typeof Agent<
-  TEnv,
-  CloudflareAgentState
-> & {
-  new (
-    ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
-  ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
-};
+export type CloudflareChatAgentClass<TEnv extends Cloudflare.Env, TContext = unknown> =
+  typeof Agent<TEnv, CloudflareAgentState> & {
+    new (
+      ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
+    ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
+  };
 
 /**
  * Namespace type for the agent binding
  * TContext is kept for backward compatibility but unused
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export type CloudflareChatAgentNamespace<_TEnv, _TContext = unknown> = AgentNamespace<any>;
+export type CloudflareChatAgentNamespace<
+  _TEnv extends Cloudflare.Env,
+  _TContext = unknown
+> = AgentNamespace<any>;
 
 /**
  * Adapter factory return type for dependency injection
  */
-export type AdapterFactory<TEnv> = (env: TEnv) => AdapterBundle;
+export type AdapterFactory<TEnv extends Cloudflare.Env> = (env: TEnv) => AdapterBundle;

@@ -10,7 +10,7 @@ import type {
  * Adapter for reporting state to the centralized State Durable Object.
  * Uses a fire-and-forget pattern to avoid blocking the main agent flow.
  */
-export class StateDOReporter<TEnv> {
+export class StateDOReporter<TEnv extends Cloudflare.Env> {
   constructor(private getEnv: () => TEnv) {}
 
   /**
@@ -24,7 +24,7 @@ export class StateDOReporter<TEnv> {
     const env = this.getEnv();
     // NOTE: Legacy code using deleted RouterAgentEnv
     const envWithState = env as unknown as {
-      StateDO?: AgentNamespace<Agent<unknown, unknown>>;
+      StateDO?: AgentNamespace<Agent<Cloudflare.Env, unknown>>;
     };
 
     if (!envWithState.StateDO) {

@@ -5,7 +5,7 @@ import type { CloudflareAgentState, MCPServerConnection } from '../cloudflare-ag
 /**
  * Handles initialization of MCP server connections.
  */
-export class MCPInitializer<TEnv> {
+export class MCPInitializer<TEnv extends Cloudflare.Env> {
   constructor(
     private agent: Agent<TEnv, CloudflareAgentState>,
     private mcpServers: MCPServerConnection[],
