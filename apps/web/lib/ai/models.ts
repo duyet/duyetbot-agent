@@ -39,6 +39,12 @@ export const chatModels: ChatModel[] = [
 		description: "Fast and affordable, great for everyday tasks",
 	},
 	{
+		id: "anthropic/claude-4.5-haiku",
+		name: "Claude Haiku 4.5",
+		provider: "anthropic",
+		description: "Extended thinking Haiku, 73%+ on SWE-bench",
+	},
+	{
 		id: "anthropic/claude-sonnet-4",
 		name: "Claude Sonnet 4",
 		provider: "anthropic",
@@ -87,6 +93,18 @@ export const chatModels: ChatModel[] = [
 		provider: "openai",
 		description: "Fast reasoning model for coding",
 	},
+	{
+		id: "openai/gpt-5",
+		name: "GPT-5",
+		provider: "openai",
+		description: "OpenAI's most capable flagship model",
+	},
+	{
+		id: "openai/gpt-5-mini",
+		name: "GPT-5 Mini",
+		provider: "openai",
+		description: "Cost-effective GPT-5 variant",
+	},
 	// Google - Gemini family
 	{
 		id: "google/gemini-2.5-flash-preview",
@@ -102,12 +120,25 @@ export const chatModels: ChatModel[] = [
 		description: "Most capable Google model",
 		contextWindow: 1_000_000,
 	},
+	{
+		id: "google/gemini-3-flash-preview",
+		name: "Gemini 3 Flash",
+		provider: "google",
+		description: "Configurable reasoning with thinking levels",
+		contextWindow: 1_000_000,
+	},
 	// xAI - Grok family
 	{
 		id: "x-ai/grok-3-beta",
 		name: "Grok 3",
 		provider: "xai",
 		description: "xAI's latest flagship model",
+	},
+	{
+		id: "x-ai/grok-4-fast",
+		name: "Grok 4 Fast",
+		provider: "xai",
+		description: "High-speed reasoning model",
 	},
 	// DeepSeek
 	{
