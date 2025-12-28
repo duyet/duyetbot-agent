@@ -12,6 +12,7 @@ import { EditorView } from "prosemirror-view";
 import { useEffect, useRef } from "react";
 import { renderToString } from "react-dom/server";
 import { Streamdown } from "streamdown";
+import { getSecureRehypePlugins } from "@/lib/streamdown-security";
 
 import { DiffType, diffEditor } from "@/lib/editor/diff";
 
@@ -60,10 +61,14 @@ export const DiffView = ({ oldContent, newContent }: DiffEditorProps) => {
 			const parser = DOMParser.fromSchema(diffSchema);
 
 			const oldHtmlContent = renderToString(
-				<Streamdown>{oldContent}</Streamdown>,
+				<Streamdown rehypePlugins={getSecureRehypePlugins("ai")}>
+					{oldContent}
+				</Streamdown>,
 			);
 			const newHtmlContent = renderToString(
-				<Streamdown>{newContent}</Streamdown>,
+				<Streamdown rehypePlugins={getSecureRehypePlugins("ai")}>
+					{newContent}
+				</Streamdown>,
 			);
 
 			const oldContainer = document.createElement("div");

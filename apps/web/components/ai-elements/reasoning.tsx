@@ -5,6 +5,7 @@ import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
+import { getSecureRehypePlugins } from "@/lib/streamdown-security";
 import {
 	Collapsible,
 	CollapsibleContent,
@@ -178,7 +179,9 @@ export const ReasoningContent = memo(
 			{...props}
 		>
 			<div className="max-h-48 overflow-y-auto rounded-md border border-border/50 bg-muted/30 p-2.5 text-[11px] **:text-[11px] [&_li]:my-0 [&_ol]:my-1 [&_p]:my-0 [&_ul]:my-1">
-				<Streamdown>{children}</Streamdown>
+				<Streamdown rehypePlugins={getSecureRehypePlugins("ai")}>
+					{children}
+				</Streamdown>
 			</div>
 		</CollapsibleContent>
 	),

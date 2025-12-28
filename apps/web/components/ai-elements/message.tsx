@@ -10,6 +10,7 @@ import {
 import type { ComponentProps, HTMLAttributes, ReactElement } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
+import { getSecureRehypePlugins } from "@/lib/streamdown-security";
 import { Button } from "@/components/ui/button";
 import { ButtonGroup, ButtonGroupText } from "@/components/ui/button-group";
 import {
@@ -310,6 +311,7 @@ export const MessageResponse = memo(
 				"size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0",
 				className,
 			)}
+			rehypePlugins={getSecureRehypePlugins("ai")}
 			{...props}
 		/>
 	),
