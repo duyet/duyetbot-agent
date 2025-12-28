@@ -47,6 +47,7 @@ export function VoiceSettings() {
 		updateVolume,
 		updateVoice,
 		setEnabled,
+		setAutoRead,
 		resetSettings,
 	} = useVoiceSettings();
 
@@ -124,6 +125,24 @@ export function VoiceSettings() {
 								checked={settings.enabled}
 								id="enable-voice"
 								onCheckedChange={setEnabled}
+							/>
+						</div>
+
+						{/* Auto-Read Toggle */}
+						<div className="flex items-center justify-between rounded-lg border bg-muted/30 p-4">
+							<div className="space-y-0.5">
+								<Label className="text-base" htmlFor="auto-read">
+									Auto-Read Responses
+								</Label>
+								<p className="text-muted-foreground text-sm">
+									Automatically read new AI messages aloud
+								</p>
+							</div>
+							<Switch
+								checked={settings.autoRead}
+								disabled={!settings.enabled}
+								id="auto-read"
+								onCheckedChange={setAutoRead}
 							/>
 						</div>
 

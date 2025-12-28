@@ -1,10 +1,12 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { ArrowDownIcon } from "lucide-react";
-import { memo } from "react";
+import { memo, useEffect, useRef } from "react";
 import { useMessages } from "@/hooks/use-messages";
+import { useSpeechSynthesis } from "@/hooks/use-text-to-speech";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
+import { getVoiceOptions, useVoiceSettings } from "@/lib/voice-settings";
 import { useDataStream } from "./data-stream-provider";
 import { Greeting } from "./greeting";
 import { PreviewMessage, ThinkingMessage } from "./message";
@@ -44,6 +46,45 @@ function PureMessages({
 	});
 
 	useDataStream();
+
+	// Auto-read functionality
+	const { speak, isSupported } = useSpeechSynthesis();
+	const { settings: voiceSettings } = useVoiceSettings();
+	const prevStatusRef = useRef(status);
+	const lastReadMessageIdRef = useRef<string | null>(null);
+
+	useEffect(() => {
+		// Check if status just changed from streaming to ready
+		const wasStreaming = prevStatusRef.current === "streaming";
+		const isNowReady = status === "ready";
+		prevStatusRef.current = status;
+
+		// Early return if auto-read conditions not met
+		if (!wasStreaming || !isNowReady) return;
+		if (!isSupported || !voiceSettings.enabled || !voiceSettings.autoRead)
+			return;
+		if (messages.length === 0) return;
+
+		const lastMessage = messages[messages.length - 1];
+
+		// Only read assistant messages
+		if (lastMessage.role !== "assistant") return;
+
+		// Prevent reading the same message twice
+		if (lastReadMessageIdRef.current === lastMessage.id) return;
+		lastReadMessageIdRef.current = lastMessage.id;
+
+		// Extract text from message parts
+		const textFromParts = lastMessage.parts
+			?.filter((part) => part.type === "text")
+			.map((part) => ("text" in part ? part.text : ""))
+			.join("\n")
+			.trim();
+
+		if (textFromParts) {
+			speak(textFromParts, getVoiceOptions(voiceSettings));
+		}
+	}, [status, messages, speak, isSupported, voiceSettings]);
 
 	return (
 		<div className="relative flex-1">

@@ -23,6 +23,8 @@ export interface VoiceSettings {
 	voiceURI?: string;
 	/** Whether TTS is enabled globally */
 	enabled: boolean;
+	/** Automatically read new AI messages */
+	autoRead: boolean;
 }
 
 const STORAGE_KEY = "voice-settings";
@@ -33,6 +35,7 @@ const DEFAULT_SETTINGS: VoiceSettings = {
 	volume: 1,
 	voiceURI: undefined,
 	enabled: true,
+	autoRead: false,
 };
 
 /**
@@ -106,6 +109,13 @@ export function useVoiceSettings() {
 		[settings, saveSettings],
 	);
 
+	const setAutoRead = useCallback(
+		(autoRead: boolean) => {
+			saveSettings({ ...settings, autoRead });
+		},
+		[settings, saveSettings],
+	);
+
 	const resetSettings = useCallback(() => {
 		saveSettings(DEFAULT_SETTINGS);
 	}, [saveSettings]);
@@ -118,6 +128,7 @@ export function useVoiceSettings() {
 		updateVolume,
 		updateVoice,
 		setEnabled,
+		setAutoRead,
 		resetSettings,
 	};
 }
