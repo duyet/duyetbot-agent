@@ -4,8 +4,10 @@
  * DELETE /api/history - Delete all chats
  */
 
+import { zValidator } from "@hono/zod-validator";
 import { desc, eq, gt, inArray, lt } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
 import { chat, message, stream, vote } from "../../lib/db/schema";
 import { getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
@@ -14,16 +16,21 @@ import type { Env } from "../types";
 
 export const historyRoutes = new Hono<{ Bindings: Env }>();
 
+// Validation schema for history query parameters
+const historyQuerySchema = z.object({
+	limit: z.coerce.number().int().min(1).max(100).default(10),
+	starting_after: z.string().uuid().optional(),
+	ending_before: z.string().uuid().optional(),
+});
+
 /**
  * GET /api/history
  * Get chat history with pagination
  */
-historyRoutes.get("/", async (c) => {
-	const limit = Number.parseInt(c.req.query("limit") || "10", 10);
-	const startingAfter = c.req.query("starting_after");
-	const endingBefore = c.req.query("ending_before");
+historyRoutes.get("/", zValidator("query", historyQuerySchema), async (c) => {
+	const { limit, starting_after, ending_before } = c.req.valid("query");
 
-	if (startingAfter && endingBefore) {
+	if (starting_after && ending_before) {
 		throw new WorkerError(
 			"bad_request:api",
 			"Only one of starting_after or ending_before can be provided.",

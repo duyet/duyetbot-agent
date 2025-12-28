@@ -7,8 +7,10 @@
  * DELETE /api/document/share?id={id} - Revoke share link
  */
 
+import { zValidator } from "@hono/zod-validator";
 import { and, eq, gt } from "drizzle-orm";
 import { Hono } from "hono";
+import { z } from "zod";
 import { document } from "../../lib/db/schema";
 import { getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
@@ -19,6 +21,13 @@ export const documentRoutes = new Hono<{ Bindings: Env }>();
 export const shareRoutes = new Hono<{ Bindings: Env }>();
 
 type ArtifactKind = "text" | "code" | "image" | "sheet";
+
+// Validation schemas
+const saveDocumentSchema = z.object({
+	content: z.string().max(1_000_000, "Content too large (max 1MB)"),
+	title: z.string().min(1).max(500, "Title must be 1-500 characters"),
+	kind: z.enum(["text", "code", "image", "sheet"]),
+});
 
 /**
  * GET /api/document?id={id}
@@ -61,7 +70,7 @@ documentRoutes.get("/", async (c) => {
  * POST /api/document?id={id}
  * Save document
  */
-documentRoutes.post("/", async (c) => {
+documentRoutes.post("/", zValidator("json", saveDocumentSchema), async (c) => {
 	const id = c.req.query("id");
 
 	if (!id) {
@@ -74,12 +83,7 @@ documentRoutes.post("/", async (c) => {
 		throw new WorkerError("not_found:document");
 	}
 
-	const {
-		content,
-		title,
-		kind,
-	}: { content: string; title: string; kind: ArtifactKind } =
-		await c.req.json();
+	const { content, title, kind } = c.req.valid("json");
 
 	const db = getDb(c);
 	const documents = await db.select().from(document).where(eq(document.id, id));
