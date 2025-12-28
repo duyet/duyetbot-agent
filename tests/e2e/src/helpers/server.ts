@@ -37,7 +37,7 @@ export async function startTestServer(
             });
           },
         };
-      } catch (err) {
+      } catch {
         attempts++;
         if (attempts >= maxAttempts) {
           throw new Error(`Failed to find available port after ${maxAttempts} attempts`);

@@ -5,7 +5,7 @@
  * Called by the scheduled cron handler.
  */
 
-import { EventBridge, type AgentEvent } from '@duyetbot/cloudflare-agent';
+import { type AgentEvent, EventBridge } from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import { formatEventBatch, formatEventNotification } from './formatter.js';
 import type { NotificationBatchResult, NotificationPreferences } from './types.js';

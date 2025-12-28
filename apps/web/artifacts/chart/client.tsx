@@ -201,10 +201,7 @@ function ChartRenderer({
 						>
 							{data.map((_, index) => (
 								<Cell
-									key={`cell-${
-										// biome-ignore lint/suspicious/noArrayIndexKey: pie chart cells need index-based keys
-										index
-									}`}
+									key={`cell-${index}`}
 									fill={colors[index % colors.length]}
 								/>
 							))}

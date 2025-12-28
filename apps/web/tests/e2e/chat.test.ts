@@ -167,8 +167,10 @@ test.describe("Model Selector", () => {
 			.first();
 		await modelButton.click();
 
-		// Search input should appear
-		const searchInput = page.getByPlaceholder("Search models...");
+		// Search input should appear with full placeholder text
+		const searchInput = page.getByPlaceholder(
+			"Search models by name or provider...",
+		);
 		await expect(searchInput).toBeVisible();
 	});
 
@@ -179,7 +181,9 @@ test.describe("Model Selector", () => {
 			.first();
 		await modelButton.click();
 
-		const searchInput = page.getByPlaceholder("Search models...");
+		const searchInput = page.getByPlaceholder(
+			"Search models by name or provider...",
+		);
 		await searchInput.fill("Claude");
 
 		// Should filter models - use first() to handle strict mode violation
@@ -196,7 +200,9 @@ test.describe("Model Selector", () => {
 		await page.keyboard.press("Escape");
 
 		// Search input should no longer be visible
-		const searchInput = page.getByPlaceholder("Search models...");
+		const searchInput = page.getByPlaceholder(
+			"Search models by name or provider...",
+		);
 		await expect(searchInput).not.toBeVisible();
 	});
 });

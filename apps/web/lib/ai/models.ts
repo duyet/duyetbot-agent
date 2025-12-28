@@ -17,6 +17,7 @@ export const DEFAULT_CONTEXT_WINDOWS: Record<string, number> = {
 	google: 1_000_000, // Gemini 1.5+
 	xai: 131_072, // Grok
 	deepseek: 64_000, // DeepSeek
+	"z-ai": 128_000, // GLM models
 };
 
 // Get context window for a model
@@ -68,18 +69,26 @@ export const chatModels: ChatModel[] = [
 		provider: "openai",
 		description: "Advanced reasoning model",
 	},
+	{
+		id: "openai/o3-mini",
+		name: "o3-mini",
+		provider: "openai",
+		description: "Fast reasoning model for coding",
+	},
 	// Google - Gemini family
 	{
 		id: "google/gemini-2.5-flash-preview",
 		name: "Gemini 2.5 Flash",
 		provider: "google",
 		description: "Ultra fast and affordable",
+		contextWindow: 1_000_000,
 	},
 	{
 		id: "google/gemini-2.5-pro-preview",
 		name: "Gemini 2.5 Pro",
 		provider: "google",
 		description: "Most capable Google model",
+		contextWindow: 1_000_000,
 	},
 	// xAI - Grok family
 	{
@@ -94,6 +103,47 @@ export const chatModels: ChatModel[] = [
 		name: "DeepSeek V3",
 		provider: "deepseek",
 		description: "Powerful open-weight model",
+	},
+	// Meta - Llama family
+	{
+		id: "meta-llama/llama-3.3-70b-instruct",
+		name: "Llama 3.3 70B",
+		provider: "meta",
+		description: "Open-weight model for general tasks",
+	},
+	{
+		id: "meta-llama/llama-3.1-8b-instruct",
+		name: "Llama 3.1 8B",
+		provider: "meta",
+		description: "Fast open-weight model",
+	},
+	// Mistral AI
+	{
+		id: "mistralai/mistral-large",
+		name: "Mistral Large",
+		provider: "mistralai",
+		description: "High-performance multilingual model",
+	},
+	{
+		id: "mistralai/codestral",
+		name: "Codestral",
+		provider: "mistralai",
+		description: "Specialized for code generation",
+	},
+	// Qwen
+	{
+		id: "qwen/qwen-2.5-coder-32b-instruct",
+		name: "Qwen 2.5 Coder",
+		provider: "qwen",
+		description: "Specialized for coding tasks",
+	},
+	// Z.AI - GLM family
+	{
+		id: "z-ai/glm-4.7",
+		name: "GLM-4.7",
+		provider: "z-ai",
+		description: "Latest open-weights model with strong coding",
+		contextWindow: 128_000,
 	},
 	// Reasoning models (extended thinking)
 	{

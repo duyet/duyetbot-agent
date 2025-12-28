@@ -346,7 +346,6 @@ export function MessageAttachment({
 		>
 			{isImage ? (
 				<>
-					{/* biome-ignore lint/performance/noImgElement: dynamic user-uploaded images */}
 					<img
 						alt={filename || "attachment"}
 						className="size-full object-cover"

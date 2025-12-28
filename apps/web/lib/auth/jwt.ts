@@ -22,7 +22,6 @@ export type Session = {
 	expires: string;
 };
 
-// biome-ignore lint/complexity/useLiteralKeys: Needed for dynamic access
 const SESSION_SECRET = process.env.SESSION_SECRET || process.env.AUTH_SECRET;
 
 if (!SESSION_SECRET) {

@@ -12,7 +12,6 @@ export const Image = ({
 	mediaType,
 	...props
 }: ImageProps) => (
-	// biome-ignore lint/performance/noImgElement: Generated image without explicit size
 	<img
 		{...props}
 		alt={props.alt || "AI generated image"}

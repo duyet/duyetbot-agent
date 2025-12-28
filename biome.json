@@ -8,13 +8,12 @@
   },
   "files": {
     "ignoreUnknown": true,
-    "includes": ["**", "!!**/*.css"]
+    "includes": ["**/*.ts", "**/*.tsx", "**/*.js", "**/*.jsx", "**/*.json", "**/*.jsonc", "**/*.md"]
   },
   "css": {
     "parser": {
       "cssModules": true,
-      "allowWrongLineComments": true,
-      "tailwindDirectives": true
+      "allowWrongLineComments": true
     },
     "formatter": { "enabled": false },
     "linter": { "enabled": false }

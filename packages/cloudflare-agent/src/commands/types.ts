@@ -1,5 +1,28 @@
 import type { CloudflareAgentState } from '../cloudflare-agent.js';
 
+/**
+ * Environment bindings for admin commands that need D1/KV access.
+ */
+export interface CommandEnv {
+  /** D1 database for observability data */
+  OBSERVABILITY_DB?: D1Database;
+  /** KV namespace for heartbeat/safety */
+  HEARTBEAT_KV?: KVNamespace;
+  /** Platform identifier */
+  ENVIRONMENT?: string;
+}
+
+/**
+ * Agent status information for /agents command.
+ */
+export interface AgentInfo {
+  name: string;
+  platform: string;
+  status: 'healthy' | 'degraded' | 'offline';
+  lastActive?: number;
+  messageCount?: number;
+}
+
 export interface CommandContext {
   /** Is the user an admin */
   isAdmin?: boolean;
@@ -15,6 +38,10 @@ export interface CommandContext {
   resetMcp?: () => void;
   /** Clear persistent messages from D1 storage */
   clearMessages?: () => Promise<number>;
+  /** Environment bindings for admin queries */
+  env?: CommandEnv;
+  /** Agent start time for uptime calculation */
+  startedAt?: number;
   /** Agent configuration */
   config: {
     welcomeMessage?: string;

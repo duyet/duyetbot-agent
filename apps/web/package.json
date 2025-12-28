@@ -21,7 +21,10 @@
 		"test:api:coverage": "vitest run --coverage",
 		"test:api:manual": "bun tests/manual/manual-api-test.ts",
 		"test:unit": "SESSION_SECRET=test-secret vitest run lib/",
-		"test:unit:watch": "SESSION_SECRET=test-secret vitest lib/"
+		"test:unit:watch": "SESSION_SECRET=test-secret vitest lib/",
+		"test:load": "k6 run tests/load/smoke-test.js",
+		"test:load:api": "k6 run tests/load/api-load-test.js",
+		"test:load:prod": "k6 run --env URL=https://duyetbot-web.duyet.workers.dev tests/load/smoke-test.js"
 	},
 	"dependencies": {
 		"@ai-sdk/openai": "^3.0.1",

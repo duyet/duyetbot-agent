@@ -56,7 +56,9 @@
 				/* These are fine for components with intentionally unused params */
 				"noUnusedFunctionParameters": "off",
 				/* False positives with React hooks and function declarations */
-				"noInvalidUseBeforeDeclaration": "off"
+				"noInvalidUseBeforeDeclaration": "off",
+				/* False positives with dynamically generated IDs */
+				"useUniqueElementIds": "off"
 			},
 			"performance": {
 				/* AI-generated images wrapped in proper containers */

@@ -616,7 +616,15 @@ export const builtinCommands: Record<string, CommandHandler> = {
         case 'categories':
           if (args.length > 1) {
             const newCategories = args.slice(1).map((c) => c.toLowerCase());
-            const validCategories = ['github', 'task', 'notification', 'approval', 'schedule', 'system', 'agent'];
+            const validCategories = [
+              'github',
+              'task',
+              'notification',
+              'approval',
+              'schedule',
+              'system',
+              'agent',
+            ];
             const filtered = newCategories.filter((c) => validCategories.includes(c));
 
             if (filtered.length > 0) {

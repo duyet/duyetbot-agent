@@ -23,8 +23,10 @@ test.describe("Model Selector", () => {
 			.first();
 		await modelButton.click();
 
-		// Search input should be visible in the popover
-		await expect(page.getByPlaceholder("Search models...")).toBeVisible();
+		// Search input should be visible in the popover with full placeholder text
+		await expect(
+			page.getByPlaceholder("Search models by name or provider..."),
+		).toBeVisible();
 	});
 
 	test("can search for models", async ({ page }) => {
@@ -34,7 +36,9 @@ test.describe("Model Selector", () => {
 			.first();
 		await modelButton.click();
 
-		const searchInput = page.getByPlaceholder("Search models...");
+		const searchInput = page.getByPlaceholder(
+			"Search models by name or provider...",
+		);
 		await searchInput.fill("Claude");
 
 		// Should show at least one Claude model (use flexible matching)
@@ -48,12 +52,16 @@ test.describe("Model Selector", () => {
 			.first();
 		await modelButton.click();
 
-		await expect(page.getByPlaceholder("Search models...")).toBeVisible();
+		await expect(
+			page.getByPlaceholder("Search models by name or provider..."),
+		).toBeVisible();
 
 		// Click outside to close
 		await page.keyboard.press("Escape");
 
-		await expect(page.getByPlaceholder("Search models...")).not.toBeVisible();
+		await expect(
+			page.getByPlaceholder("Search models by name or provider..."),
+		).not.toBeVisible();
 	});
 
 	test("shows model provider groups", async ({ page }) => {
@@ -64,8 +72,9 @@ test.describe("Model Selector", () => {
 		await modelButton.click();
 
 		// Should show provider group headers
-		await expect(page.getByText("Anthropic")).toBeVisible();
-		await expect(page.getByText("Google")).toBeVisible();
+		// Use .first() to handle strict mode violations when multiple elements match
+		await expect(page.getByText("Anthropic").first()).toBeVisible();
+		await expect(page.getByText("Google").first()).toBeVisible();
 	});
 
 	test("can select a different model", async ({ page }) => {
@@ -85,7 +94,9 @@ test.describe("Model Selector", () => {
 		await firstClaudeModel.click();
 
 		// Popover should close
-		await expect(page.getByPlaceholder("Search models...")).not.toBeVisible();
+		await expect(
+			page.getByPlaceholder("Search models by name or provider..."),
+		).not.toBeVisible();
 
 		// Model button should now show the selected model (changed from initial)
 		const updatedButton = page

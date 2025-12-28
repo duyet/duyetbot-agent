@@ -170,3 +170,87 @@ test.describe("Performance Checks", () => {
 		expect(criticalErrors).toHaveLength(0);
 	});
 });
+
+test.describe("Core User Flows", () => {
+	test("model selector opens and displays models", async ({ page }) => {
+		await page.goto("/");
+
+		// Click model selector button
+		const modelButton = page.locator("button").filter({
+			hasText: /Gemini|Claude|GPT|Grok|DeepSeek/i,
+		});
+		await modelButton.first().click();
+
+		// Model selector popover should be visible
+		const searchInput = page.getByPlaceholder(
+			"Search models by name or provider...",
+		);
+		await expect(searchInput).toBeVisible();
+
+		// Should show multiple providers
+		await expect(page.getByText("Anthropic").first()).toBeVisible();
+		await expect(page.getByText("Google").first()).toBeVisible();
+	});
+
+	test("dark mode toggle works", async ({ page }) => {
+		await page.goto("/");
+
+		// Check for theme toggle button
+		const themeButton = page.locator("button").filter({
+			hasText: /theme|mode|dark|light/i,
+		});
+
+		const count = await themeButton.count();
+		if (count > 0) {
+			// If theme button exists, click it
+			await themeButton.first().click();
+
+			// Page should still be functional after theme change
+			await expect(page.getByTestId("multimodal-input")).toBeVisible();
+		}
+	});
+
+	test("chat history sidebar is accessible", async ({ page }) => {
+		await page.goto("/");
+
+		// Look for sidebar toggle or history button
+		const sidebarButton = page.locator("button").filter({
+			hasText: /history|menu|sidebar/i,
+		});
+
+		const count = await sidebarButton.count();
+		if (count > 0) {
+			await sidebarButton.first().click();
+
+			// Input should still be accessible
+			await expect(page.getByTestId("multimodal-input")).toBeVisible();
+		}
+	});
+});
+
+test.describe("Responsive Design", () => {
+	test("mobile viewport works correctly", async ({ page }) => {
+		await page.setViewportSize({ width: 375, height: 667 }); // iPhone SE
+		await page.goto("/");
+
+		// Core elements should be visible on mobile
+		await expect(page.getByTestId("multimodal-input")).toBeVisible();
+		await expect(page.getByTestId("send-button")).toBeVisible();
+	});
+
+	test("tablet viewport works correctly", async ({ page }) => {
+		await page.setViewportSize({ width: 768, height: 1024 }); // iPad
+		await page.goto("/");
+
+		// Core elements should be visible on tablet
+		await expect(page.getByTestId("multimodal-input")).toBeVisible();
+		await expect(
+			page
+				.locator("button")
+				.filter({
+					hasText: /Gemini|Claude|GPT|Grok|DeepSeek/i,
+				})
+				.first(),
+		).toBeVisible();
+	});
+});
