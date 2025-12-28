@@ -165,8 +165,8 @@
 - [ ] **Component documentation** - Storybook for component catalog
 - [x] **Architecture documentation** - System design diagrams in docs/ARCHITECTURE.md ✅
 - [x] **Deployment guide** - Step-by-step deployment instructions in docs/DEPLOYMENT.md ✅
-- [ ] **Contributing guide** - How to contribute to the project
-- [ ] **Troubleshooting guide** - Common issues and solutions
+- [x] **Contributing guide** - How to contribute to the project in docs/CONTRIBUTING.md ✅
+- [x] **Troubleshooting guide** - Common issues and solutions in docs/TROUBLESHOOTING.md ✅
 
 ---
 
