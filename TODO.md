@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 53
+**Iteration**: 54
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -84,7 +84,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 - [x] Implement CSRF protection for state-changing operations
 - [x] Add rate limiting per user (not just per IP)
 - [x] Add input sanitization for all user inputs
-- [ ] Implement secure session management
+- [x] Implement secure session management
 - [ ] Add audit logging for sensitive operations
 
 #### API Security
@@ -281,6 +281,18 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 54 (Dec 29, 2025)
+- ✅ Implemented secure session management with database-backed session registry
+- ✅ Created `Session` table schema with token hash, expiration, activity tracking, and rotation support
+- ✅ Created `session-manager.ts` utilities for session lifecycle management (register, verify, invalidate, rotate)
+- ✅ Updated `auth-helpers.ts` with `createAndRegisterSession()` and `verifySessionWithDatabase()` for defense-in-depth
+- ✅ Updated all auth routes (login, register, guest, GitHub OAuth) to register sessions in database
+- ✅ Updated logout route to invalidate sessions from database (true logout, not just cookie clearing)
+- ✅ Session verification now checks both JWT signature AND database registration (defense-in-depth)
+- ✅ Tokens are SHA-256 hashed before database storage (prevents token leakage even if DB is compromised)
+- ✅ All 32 packages type-check passing
+- ✅ All 18 packages build successfully
 
 ### Iteration 53 (Dec 29, 2025)
 - ✅ Verified per-user rate limiting already implemented in chat routes

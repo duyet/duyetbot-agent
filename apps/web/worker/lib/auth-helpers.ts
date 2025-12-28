@@ -7,6 +7,11 @@ import { user } from "../../lib/db/schema";
 import { getDb } from "./context";
 import { hashPassword } from "./crypto";
 import { createSessionToken } from "./jwt";
+import {
+	registerSession,
+	type SessionMetadata,
+	verifySession as verifyDbSession,
+} from "./session-manager";
 import { generateUUID } from "./utils";
 
 export type Session = {
@@ -18,35 +23,18 @@ export type Session = {
 	expires: string;
 };
 
-type SessionPayload = {
-	id: string;
-	email?: string;
-	type: "guest" | "regular";
-	exp: number;
-	iat: number;
-};
-
 /**
  * Get session from request (supports both Authorization header and Cookie)
  * - Tries Authorization: Bearer <token> first (new bearer token approach)
  * - Falls back to Cookie: session=<token> for backward compatibility
+ * - Verifies both JWT signature and database registration (defense-in-depth)
  */
 export async function getSessionFromRequest(c: any): Promise<Session | null> {
 	// Try Authorization header first (bearer token)
 	const authHeader = c.req.header("Authorization");
 	if (authHeader?.startsWith("Bearer ")) {
 		const token = authHeader.slice(7);
-		const payload = await verifySessionToken(token, c.env.SESSION_SECRET);
-		if (payload) {
-			return {
-				user: {
-					id: payload.id,
-					email: payload.email,
-					type: payload.type,
-				},
-				expires: new Date(payload.exp * 1000).toISOString(),
-			};
-		}
+		return await verifySessionWithDatabase(token, c.env.SESSION_SECRET, c);
 	}
 
 	// Fallback to cookie (for backward compatibility)
@@ -57,79 +45,11 @@ export async function getSessionFromRequest(c: any): Promise<Session | null> {
 
 		if (sessionCookie) {
 			const token = sessionCookie.slice(8);
-			const payload = await verifySessionToken(token, c.env.SESSION_SECRET);
-			if (payload) {
-				return {
-					user: {
-						id: payload.id,
-						email: payload.email,
-						type: payload.type,
-					},
-					expires: new Date(payload.exp * 1000).toISOString(),
-				};
-			}
+			return await verifySessionWithDatabase(token, c.env.SESSION_SECRET, c);
 		}
 	}
 
 	return null;
-}
-
-/**
- * Verify session token
- */
-async function verifySessionToken(
-	token: string,
-	secret: string,
-): Promise<SessionPayload | null> {
-	try {
-		const parts = token.split(".");
-		if (parts.length !== 3) {
-			return null;
-		}
-
-		const [encodedHeader, encodedPayload, signature] = parts;
-		const tokenData = `${encodedHeader}.${encodedPayload}`;
-
-		// Verify signature
-		const encoder = new TextEncoder();
-		const keyData = encoder.encode(secret);
-
-		const key = await crypto.subtle.importKey(
-			"raw",
-			keyData,
-			{ name: "HMAC", hash: "SHA-256" },
-			false,
-			["verify"],
-		);
-
-		const signatureBuffer = base64UrlDecode(signature);
-
-		const isValid = await crypto.subtle.verify(
-			"HMAC",
-			key,
-			signatureBuffer as BufferSource,
-			encoder.encode(tokenData),
-		);
-
-		if (!isValid) {
-			return null;
-		}
-
-		// Decode payload
-		const payload = JSON.parse(
-			new TextDecoder().decode(base64UrlDecode(encodedPayload)),
-		);
-
-		// Check expiration
-		const now = Math.floor(Date.now() / 1000);
-		if (payload.exp < now) {
-			return null;
-		}
-
-		return payload;
-	} catch {
-		return null;
-	}
 }
 
 function base64UrlDecode(str: string): Uint8Array {
@@ -207,4 +127,142 @@ export async function createGuestSession(
 	};
 
 	return { session, token };
+}
+
+/**
+ * Get session metadata from request (user agent, IP address)
+ * Used for session security tracking
+ */
+export function getSessionMetadata(c: any): SessionMetadata {
+	const userAgent = c.req.header("user-agent");
+	const forwarded = c.req.header("x-forwarded-for");
+	const ipAddress = forwarded
+		? forwarded.split(",")[0]
+		: c.req.header("cf-connecting-ip");
+
+	return {
+		userAgent,
+		ipAddress,
+	};
+}
+
+/**
+ * Create a session token and register it in the database
+ * This combines JWT creation with database session registration
+ *
+ * @param userId - User ID
+ * @param email - User email (optional)
+ * @param type - User type (guest or regular)
+ * @param secret - Session secret
+ * @param expiresAt - Session expiration time
+ * @param c - Hono context (for database access)
+ * @param metadata - Session metadata (user agent, IP)
+ * @param replacedSessionId - Optional ID of session being replaced
+ * @returns Session token
+ */
+export async function createAndRegisterSession(
+	userId: string,
+	email: string | undefined,
+	type: "guest" | "regular",
+	secret: string,
+	expiresAt: Date,
+	c: any,
+	metadata?: SessionMetadata,
+	replacedSessionId?: string,
+): Promise<string> {
+	// Create JWT token
+	const token = await createSessionToken(userId, email, type, secret);
+
+	// Register session in database
+	const effectiveMetadata = metadata || getSessionMetadata(c);
+	await registerSession(
+		c,
+		userId,
+		token,
+		expiresAt,
+		effectiveMetadata,
+		replacedSessionId,
+	);
+
+	return token;
+}
+
+/**
+ * Verify a session token against both JWT signature and database
+ * This provides defense-in-depth session verification
+ *
+ * @param token - Session token to verify
+ * @param secret - Session secret
+ * @param c - Hono context (for database access)
+ * @returns Session info if valid, null if invalid
+ */
+export async function verifySessionWithDatabase(
+	token: string,
+	secret: string,
+	c: any,
+): Promise<Session | null> {
+	try {
+		// First verify JWT signature and expiration
+		const parts = token.split(".");
+		if (parts.length !== 3) {
+			return null;
+		}
+
+		const [encodedHeader, encodedPayload, signature] = parts;
+		const tokenData = `${encodedHeader}.${encodedPayload}`;
+
+		// Verify signature
+		const encoder = new TextEncoder();
+		const keyData = encoder.encode(secret);
+
+		const key = await crypto.subtle.importKey(
+			"raw",
+			keyData,
+			{ name: "HMAC", hash: "SHA-256" },
+			false,
+			["verify"],
+		);
+
+		const signatureBuffer = base64UrlDecode(signature);
+
+		const isValid = await crypto.subtle.verify(
+			"HMAC",
+			key,
+			signatureBuffer as BufferSource,
+			encoder.encode(tokenData),
+		);
+
+		if (!isValid) {
+			return null;
+		}
+
+		// Decode payload
+		const payload = JSON.parse(
+			new TextDecoder().decode(base64UrlDecode(encodedPayload)),
+		);
+
+		// Check expiration
+		const now = Math.floor(Date.now() / 1000);
+		if (payload.exp < now) {
+			return null;
+		}
+
+		// Verify session exists in database (defense-in-depth)
+		const dbSession = await verifyDbSession(c, token);
+		if (!dbSession) {
+			return null;
+		}
+
+		// Session is valid (both JWT and database check passed)
+		return {
+			user: {
+				id: payload.id,
+				email: payload.email,
+				type: payload.type,
+			},
+			expires: new Date(payload.exp * 1000).toISOString(),
+		};
+	} catch {
+		return null;
+	}
 }

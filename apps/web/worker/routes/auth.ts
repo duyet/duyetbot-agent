@@ -16,7 +16,9 @@ import { z } from "zod";
 import { user } from "../../lib/db/schema";
 import {
 	clearSessionCookie,
+	createAndRegisterSession,
 	getSessionFromRequest,
+	getSessionMetadata,
 	setSessionCookie,
 } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
@@ -26,7 +28,7 @@ import {
 	verifyPassword,
 	verifyState,
 } from "../lib/crypto";
-import { createSessionToken } from "../lib/jwt";
+import { invalidateSession } from "../lib/session-manager";
 import { generateUUID } from "../lib/utils";
 import type { Env } from "../types";
 
@@ -174,11 +176,16 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 		return c.json({ error: "Server configuration error" }, 500);
 	}
 
-	const sessionToken = await createSessionToken(
+	// Create and register session in database (for invalidation support)
+	const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+	const sessionToken = await createAndRegisterSession(
 		userRecord.id,
 		userRecord.email,
 		"regular",
 		c.env.SESSION_SECRET,
+		expiresAt,
+		c,
+		getSessionMetadata(c),
 	);
 
 	const response = c.json({
@@ -248,11 +255,16 @@ authRoutes.post("/register", zValidator("json", loginSchema), async (c) => {
 		return c.json({ error: "Failed to create account" }, 500);
 	}
 
-	const sessionToken = await createSessionToken(
+	// Create and register session in database (for invalidation support)
+	const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+	const sessionToken = await createAndRegisterSession(
 		newUser.id,
 		newUser.email,
 		"regular",
 		c.env.SESSION_SECRET,
+		expiresAt,
+		c,
+		getSessionMetadata(c),
 	);
 
 	const response = c.json({
@@ -271,9 +283,38 @@ authRoutes.post("/register", zValidator("json", loginSchema), async (c) => {
 
 /**
  * POST /api/auth/logout
- * Clear session cookie
+ * Clear session cookie and invalidate session in database
  */
 authRoutes.post("/logout", async (c) => {
+	// Get session token for database invalidation
+	const authHeader = c.req.header("Authorization");
+	const cookieHeader = c.req.header("Cookie");
+
+	let token: string | null = null;
+
+	// Try Authorization header first
+	if (authHeader?.startsWith("Bearer ")) {
+		token = authHeader.slice(7);
+	}
+	// Fallback to cookie
+	else if (cookieHeader) {
+		const cookies = cookieHeader.split(";").map((c: string) => c.trim());
+		const sessionCookie = cookies.find((c: string) => c.startsWith("session="));
+		if (sessionCookie) {
+			token = sessionCookie.slice(8);
+		}
+	}
+
+	// Invalidate session in database if token found
+	if (token) {
+		try {
+			await invalidateSession(c, token);
+		} catch (error) {
+			console.error("[logout] Failed to invalidate session:", error);
+			// Continue with cookie clearing even if database invalidation fails
+		}
+	}
+
 	const response = c.json({ success: true });
 	return clearSessionCookie(response);
 });
@@ -310,11 +351,16 @@ authRoutes.get("/guest", async (c) => {
 		return c.json({ error: "Failed to create guest user" }, 500);
 	}
 
-	const sessionToken = await createSessionToken(
+	// Create and register session in database (for invalidation support)
+	const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+	const sessionToken = await createAndRegisterSession(
 		guestUser.id,
 		guestUser.email,
 		"guest",
 		c.env.SESSION_SECRET,
+		expiresAt,
+		c,
+		getSessionMetadata(c),
 	);
 
 	const response = c.json({
@@ -522,12 +568,16 @@ authRoutes.get("/github/callback", async (c) => {
 			_isNewUser = true;
 		}
 
-		// Create session token
-		const sessionToken = await createSessionToken(
+		// Create and register session token
+		const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+		const sessionToken = await createAndRegisterSession(
 			userId,
 			email,
 			"regular",
 			c.env.SESSION_SECRET,
+			expiresAt,
+			c,
+			getSessionMetadata(c),
 		);
 
 		// Set session cookie and redirect to homepage

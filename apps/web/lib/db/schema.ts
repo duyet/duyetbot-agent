@@ -420,3 +420,44 @@ export const agent = sqliteTable("Agent", {
 });
 
 export type Agent = InferSelectModel<typeof agent>;
+
+// User sessions for secure session management
+// Enables session invalidation, rotation, and fixation prevention
+export const sessions = sqliteTable("Session", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	userId: text("userId")
+		.notNull()
+		.references(() => user.id, {
+			onDelete: "cascade",
+			onUpdate: "no action",
+		}),
+	// Session token hash for verification (not stored in plaintext)
+	tokenHash: text("tokenHash").notNull().unique(),
+	// When the session was created
+	createdAt: integer("createdAt", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	// When the session expires (30 days from creation by default)
+	expiresAt: integer("expiresAt", { mode: "timestamp" }).notNull(),
+	// Last activity time for session timeout detection
+	lastActivityAt: integer("lastActivityAt", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	// User agent and IP for session verification (optional)
+	userAgent: text("userAgent"),
+	ipAddress: text("ipAddress"),
+	// Whether this session was rotated from a previous session (prevents fixation)
+	isRotated: integer("isRotated", { mode: "boolean" }).notNull().default(false),
+	// ID of the session this replaced (for rotation tracking)
+	replacedSessionId: text("replacedSessionId").references(
+		(): any => sessions.id,
+		{
+			onDelete: "set null",
+			onUpdate: "no action",
+		},
+	),
+});
+
+export type DbSession = InferSelectModel<typeof sessions>;
