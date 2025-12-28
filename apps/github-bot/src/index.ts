@@ -24,7 +24,24 @@ import {
   createGitHubParserMiddleware,
   createGitHubSignatureMiddleware,
 } from './middlewares/index.js';
+import type { GitHubWebhookPayload, WebhookContext } from './middlewares/types.js';
 import { createGitHubContext, githubTransport } from './transport.js';
+
+// Extend Hono context to include github-bot middleware variables
+// Note: We extend the base ContextVariableMap with our app-specific variables
+declare module 'hono' {
+  interface ContextVariableMap {
+    // From SignatureVariables
+    skipProcessing: boolean;
+    rawBody: string;
+    // From ParserVariables
+    webhookContext: WebhookContext | undefined;
+    payload: GitHubWebhookPayload | undefined;
+    // From MentionVariables
+    hasMention: boolean;
+    task: string | undefined;
+  }
+}
 
 export type { Env, GitHubAgentInstance } from './agent.js';
 // Local Durable Object export
