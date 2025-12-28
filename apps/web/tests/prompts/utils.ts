@@ -1,4 +1,6 @@
-import type { LanguageModelV3StreamPart } from "@ai-sdk/provider";
+// Note: LanguageModelV3StreamPart is a deep internal type from ai package
+// Using any for the return type to avoid version incompatibility issues
+// The types are validated at runtime by the MockLanguageModelV3 class
 
 const mockUsage = {
 	inputTokens: { total: 10, noCache: 10, cacheRead: 0, cacheWrite: 0 },
@@ -8,8 +10,8 @@ const mockUsage = {
 export function getResponseChunksByPrompt(
 	_prompt: unknown,
 	includeReasoning = false,
-): LanguageModelV3StreamPart[] {
-	const chunks: LanguageModelV3StreamPart[] = [];
+): any[] {
+	const chunks: any[] = [];
 
 	if (includeReasoning) {
 		chunks.push(
