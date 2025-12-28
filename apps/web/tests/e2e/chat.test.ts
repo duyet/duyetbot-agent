@@ -357,6 +357,153 @@ test.describe("Keyboard Navigation", () => {
 		expect(value).toContain("Line 1");
 		expect(value).toContain("Line 2");
 	});
+
+	test.describe("Arrow Key Navigation", () => {
+		test("Arrow Down starts navigation from first message", async ({
+			page,
+		}) => {
+			await page.goto("/");
+
+			// Create a chat with multiple messages
+			const input = page.getByTestId("multimodal-input");
+			await input.fill("First message");
+			await input.press("Enter");
+
+			// Wait for response
+			await page.waitForSelector("[data-message-id]", { timeout: 10_000 });
+
+			// Clear input and send another message
+			await input.fill("");
+			await input.fill("Second message");
+			await input.press("Enter");
+
+			// Wait for second response
+			await page.waitForSelector(`[data-message-id]:nth-of-type(4)`, {
+				timeout: 10_000,
+			});
+
+			// Blur the input so arrow keys work for navigation
+			await input.blur();
+
+			// Press Arrow Down to start navigation
+			await page.keyboard.press("ArrowDown");
+
+			// First message should be focused (has data-focused attribute)
+			const firstMessage = page.locator("[data-message-id]").first();
+			await expect(firstMessage).toHaveAttribute("data-focused", "true");
+		});
+
+		test("Arrow Down moves to next message", async ({ page }) => {
+			await page.goto("/");
+
+			// Create a chat with messages
+			const input = page.getByTestId("multimodal-input");
+			await input.fill("First message");
+			await input.press("Enter");
+			await page.waitForSelector("[data-message-id]", { timeout: 10_000 });
+
+			// Blur input and press Arrow Down twice
+			await input.blur();
+			await page.keyboard.press("ArrowDown");
+			await page.keyboard.press("ArrowDown");
+
+			// Second message should be focused
+			const messages = page.locator("[data-message-id]");
+			const secondMessage = messages.nth(1);
+			await expect(secondMessage).toHaveAttribute("data-focused", "true");
+		});
+
+		test("Arrow Up starts from last message", async ({ page }) => {
+			await page.goto("/");
+
+			// Create a chat
+			const input = page.getByTestId("multimodal-input");
+			await input.fill("Test message");
+			await input.press("Enter");
+			await page.waitForSelector("[data-message-id]", { timeout: 10_000 });
+
+			// Blur input and press Arrow Up
+			await input.blur();
+			await page.keyboard.press("ArrowUp");
+
+			// Last message should be focused
+			const messages = page.locator("[data-message-id]");
+			const lastMessage = messages.last();
+			await expect(lastMessage).toHaveAttribute("data-focused", "true");
+		});
+
+		test("Arrow Up moves to previous message", async ({ page }) => {
+			await page.goto("/");
+
+			// Create a chat with multiple messages
+			const input = page.getByTestId("multimodal-input");
+			await input.fill("First message");
+			await input.press("Enter");
+			await page.waitForSelector("[data-message-id]", { timeout: 10_000 });
+
+			await input.fill("Second message");
+			await input.press("Enter");
+			await page.waitForSelector(`[data-message-id]:nth-of-type(4)`, {
+				timeout: 10_000,
+			});
+
+			// Blur input, navigate to last, then move up
+			await input.blur();
+			await page.keyboard.press("ArrowUp");
+			await page.keyboard.press("ArrowUp");
+
+			// Second-to-last message should be focused
+			const messages = page.locator("[data-message-id]");
+			const count = await messages.count();
+			const secondToLast = messages.nth(count - 2);
+			await expect(secondToLast).toHaveAttribute("data-focused", "true");
+		});
+
+		test("Escape clears message focus", async ({ page }) => {
+			await page.goto("/");
+
+			// Create a chat
+			const input = page.getByTestId("multimodal-input");
+			await input.fill("Test message");
+			await input.press("Enter");
+			await page.waitForSelector("[data-message-id]", { timeout: 10_000 });
+
+			// Focus a message
+			await input.blur();
+			await page.keyboard.press("ArrowDown");
+
+			// Verify message is focused
+			const firstMessage = page.locator("[data-message-id]").first();
+			await expect(firstMessage).toHaveAttribute("data-focused", "true");
+
+			// Press Escape to clear focus
+			await page.keyboard.press("Escape");
+
+			// No message should have data-focused attribute
+			const focusedMessages = page.locator("[data-focused=true]");
+			await expect(focusedMessages).toHaveCount(0);
+		});
+
+		test("arrow keys do not work when input is focused", async ({ page }) => {
+			await page.goto("/");
+
+			// Create a chat
+			const input = page.getByTestId("multimodal-input");
+			await input.fill("Test message");
+			await input.press("Enter");
+			await page.waitForSelector("[data-message-id]", { timeout: 10_000 });
+
+			// Keep input focused
+			await input.focus();
+
+			// Press Arrow Down
+			await page.keyboard.press("ArrowDown");
+
+			// No message should be focused (arrow key should not trigger navigation)
+			const focusedMessages = page.locator("[data-focused=true]");
+			await expect(focusedMessages).toHaveCount(0);
+		});
+	});
 });
 
 // ========================
