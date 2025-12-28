@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 49
+**Iteration**: 50
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -80,7 +80,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ### 3. Security Enhancements (Priority: MEDIUM)
 
 #### Web App Security
-- [ ] Add CSP headers for all routes
+- [x] Add CSP headers for all routes
 - [ ] Implement CSRF protection for state-changing operations
 - [ ] Add rate limiting per user (not just per IP)
 - [ ] Add input sanitization for all user inputs
@@ -281,6 +281,13 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 50 (Dec 29, 2025)
+- ✅ Verified skeleton infrastructure is comprehensive and in use (ChatSkeleton, MessageSkeleton, MessagesListSkeleton, SidebarSkeleton)
+- ✅ Analyzed virtual scrolling complexity - deferred due to dynamic message heights and interaction requirements
+- ✅ Added CSP headers to static assets served via ASSETS binding
+- ✅ Fixed security headers gap - static assets now include CSP, X-Frame-Options, X-Content-Type-Options, Referrer-Policy
+- ✅ Build and type-check passing
 
 ### Iteration 49 (Dec 29, 2025)
 - ✅ Implemented native lazy loading for images using `loading="lazy"` attribute

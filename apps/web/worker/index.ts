@@ -127,6 +127,11 @@ app.get("*", async (c) => {
 		return c.json({ error: "Not found" }, 404);
 	}
 
+	// Apply security headers for static assets
+	// Note: securityHeaders middleware is already applied globally, but we need to
+	// ensure headers are set when serving from ASSETS binding
+	const nonce = crypto.randomUUID().slice(0, 16);
+
 	// For static files, serve from assets
 	try {
 		// Try to get the file from assets binding
@@ -136,7 +141,20 @@ app.get("*", async (c) => {
 
 		if (asset && asset.status !== 404) {
 			// Add cache headers for static assets
-			return addStaticCacheHeaders(asset, path);
+			const response = addStaticCacheHeaders(asset, path);
+
+			// Clone and add security headers
+			const headers = new Headers(response.headers);
+			headers.set("Content-Security-Policy", getCspHeader(nonce));
+			headers.set("X-Frame-Options", "DENY");
+			headers.set("X-Content-Type-Options", "nosniff");
+			headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+			return new Response(response.body, {
+				status: response.status,
+				statusText: response.statusText,
+				headers,
+			});
 		}
 
 		// For non-API routes, serve index.html (SPA fallback)
@@ -145,7 +163,20 @@ app.get("*", async (c) => {
 		);
 
 		if (indexAsset) {
-			return addStaticCacheHeaders(indexAsset, "/index.html");
+			const response = addStaticCacheHeaders(indexAsset, "/index.html");
+
+			// Clone and add security headers
+			const headers = new Headers(response.headers);
+			headers.set("Content-Security-Policy", getCspHeader(nonce));
+			headers.set("X-Frame-Options", "DENY");
+			headers.set("X-Content-Type-Options", "nosniff");
+			headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+
+			return new Response(response.body, {
+				status: response.status,
+				statusText: response.statusText,
+				headers,
+			});
 		}
 
 		return c.json({ error: "Not found" }, 404);
@@ -153,5 +184,28 @@ app.get("*", async (c) => {
 		return c.json({ error: "Not found" }, 404);
 	}
 });
+
+/**
+ * Get CSP header with nonce for inline scripts
+ * Note: Next.js static export doesn't use nonces, so we use 'unsafe-inline'
+ */
+function getCspHeader(_nonce: string): string {
+	const isProduction =
+		typeof process !== "undefined" && process.env.NODE_ENV === "production";
+
+	return [
+		"default-src 'self'",
+		"script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net",
+		"style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+		"img-src 'self' data: https: blob:",
+		"font-src 'self' data:",
+		"connect-src 'self' https://*.openai.com https://*.anthropic.com https://api.duyet.net",
+		"frame-src 'none'",
+		"base-uri 'self'",
+		"form-action 'self'",
+		// Upgrade insecure requests in production
+		...(isProduction ? ["upgrade-insecure-requests"] : []),
+	].join("; ");
+}
 
 export default app;
