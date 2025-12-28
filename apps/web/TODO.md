@@ -298,7 +298,27 @@ PRODUCTION_URL=https://duyetbot-web.duyet.workers.dev
 
 ---
 
-*Last Updated: 2025-12-28*
+*Last Updated: 2025-12-28 (Iteration 30)*
+
+---
+
+## 🚨 Critical: Memory-MCP Type Errors (Discovered Dec 28)
+
+**Status**: BLOCKED - TypeScript compilation errors preventing type-check
+
+### Issues Found
+1. **Package Version Conflict**: Duplicate `@modelcontextprotocol/sdk` versions (v1.24.2 and v1.24.3)
+2. **Type Instantiation Errors**: "excessively deep and possibly infinite" at lines 43, 113, 215, 279
+3. **Tool Registration Errors**: No overload matches due to Zod schema incompatibilities
+4. **Implicit Any Types**: Missing type annotations for `query`, `limit`, `filter` parameters
+
+### Next Steps
+- [ ] Resolve @modelcontextprotocol/sdk version conflict in apps/memory-mcp/package.json
+- [ ] Add proper type annotations to eliminate implicit 'any' types
+- [ ] Simplify type definitions to avoid infinite instantiation
+- [ ] Consider type assertions or intermediate types for complex schemas
+
+---
 
 ---
 
