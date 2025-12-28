@@ -16,6 +16,7 @@ import {
 	UndoIcon,
 } from "@/components/icons";
 import { createArtifactShare } from "@/lib/api-client";
+import { loadPyodide } from "@/lib/pyodide-loader";
 import { generateUUID } from "@/lib/utils";
 
 const OUTPUT_HANDLERS = {
@@ -135,8 +136,9 @@ export const codeArtifact = new Artifact<"code", Metadata>({
 				}));
 
 				try {
-					// @ts-expect-error - loadPyodide is not defined
-					const currentPyodideInstance = await globalThis.loadPyodide({
+					// Lazy load Pyodide only when code execution is requested
+					const loadPyodideFunc = await loadPyodide();
+					const currentPyodideInstance = await loadPyodideFunc({
 						indexURL: "https://cdn.jsdelivr.net/pyodide/v0.23.4/full/",
 					});
 

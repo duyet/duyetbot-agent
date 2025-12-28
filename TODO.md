@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 46
+**Iteration**: 47
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -40,6 +40,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 - [x] Add "Report Issue" button that captures error context
 
 #### Performance & UX
+- [x] Lazy load Pyodide library only when code artifact is executed (~9MB savings)
 - [ ] Implement code splitting for large components (artifacts, dashboard)
 - [ ] Add virtual scrolling for long message lists
 - [ ] Lazy load images and heavy assets
@@ -280,6 +281,15 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 47 (Dec 29, 2025)
+- ✅ Implemented lazy loading for Pyodide library (~9MB bundle savings)
+- ✅ Created `pyodide-loader.ts` utility for on-demand Pyodide loading
+- ✅ Removed Pyodide from layout.tsx beforeInteractive script (was loading on every page)
+- ✅ Added type declarations for Pyodide in `types/global.d.ts`
+- ✅ Updated code artifact to use lazy loader when executing Python code
+- ✅ Fixed useless Fragment warning in layout.tsx
+- ✅ Build and type-check passing
 
 ### Iteration 46 (Dec 29, 2025)
 - ✅ Verified E2E testing infrastructure fully implemented with Playwright
