@@ -10,8 +10,9 @@ Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonom
 - Transport layer pattern implemented
 - Event Bridge notification system
 - Fire-and-forget webhook processing
-- Rate limiting middleware with burst detection (20 msg/min, 5 burst/10s)
-- Admin exemption (TELEGRAM_ADMIN env var)
+- **NEW: Rate limiting middleware** with burst detection (20 msg/min, 5 burst/10s)
+- **NEW: Admin exemption** via TELEGRAM_ADMIN env var
+- **NEW: Production deployed** at https://duyetbot-telegram.duyet.workers.dev
 
 ---
 
@@ -321,11 +322,12 @@ Continuous improvement roadmap for `apps/telegram-bot` to evolve into an autonom
 
 ## Next Steps (Current Iteration)
 
-1. **Just Completed**: Priority 1.1 (Rate Limiting) ✅
-2. **Deploying**: Commit and deploy rate limiting to production
-3. **Next**: Priority 2.1 (Inline Keyboards for `/settings` command)
-4. **Parallel**: Explore Rust integration possibilities
+1. **Completed**: Priority 1.1 (Rate Limiting) ✅
+2. **Completed**: Fixed Cloudflare Workers setInterval issue ✅
+3. **Completed**: Deployed to production ✅
+4. **Next**: Priority 2.1 (Inline Keyboards for `/settings` command)
+5. **Parallel**: Explore Rust integration possibilities (see Priority 6)
 
 ---
 
-*Last Updated: 2025-12-28 (Ralph Loop Iteration 1 - Rate Limiting Complete)*
+*Last Updated: 2025-12-28 (Ralph Loop Iteration 1 - Rate Limiting Complete & Deployed)*
