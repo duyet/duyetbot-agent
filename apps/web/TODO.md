@@ -199,6 +199,13 @@ Allow comparing responses from different models side-by-side.
 - [ ] Verify Plan/Research agent is working correctly
 - [ ] Verify model picker uses top models from OpenRouter
 
+### Priority 5: New Features (Backlog)
+- [ ] **Custom agent creation** - UI to generate custom model prompts with agent persona definition
+- [ ] **Scheduled daily tasks** - Ability to schedule recurring tasks with integration selection (web search, tools, etc.)
+- [ ] **Image display in content** - Render images inline within chat messages
+- [ ] **Tool chain visualization** - Show chain of tools using AI elements components
+- [ ] **Artifact generation & sharing** - Generate interactive artifacts (demos, visualizations, basic websites) with shareable URLs
+
 ---
 
 ## 📊 Success Metrics

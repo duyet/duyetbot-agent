@@ -1,6 +1,6 @@
 // Curated list of top models from OpenRouter
 // See: https://openrouter.ai/models for full list
-export const DEFAULT_CHAT_MODEL = "google/gemini-2.5-flash-preview";
+export const DEFAULT_CHAT_MODEL = "xiaomi/mimo-vl-2-flash:free";
 
 export type ChatModel = {
 	id: string;
@@ -18,6 +18,7 @@ export const DEFAULT_CONTEXT_WINDOWS: Record<string, number> = {
 	xai: 131_072, // Grok
 	deepseek: 64_000, // DeepSeek
 	"z-ai": 128_000, // GLM models
+	xiaomi: 128_000, // MiMo models
 };
 
 // Get context window for a model
@@ -31,6 +32,14 @@ export function getContextWindow(modelId: string): number {
 }
 
 export const chatModels: ChatModel[] = [
+	// Xiaomi - MiMo family (Free tier)
+	{
+		id: "xiaomi/mimo-vl-2-flash:free",
+		name: "MiMo VL 2 Flash",
+		provider: "xiaomi",
+		description: "Free multimodal model with vision capabilities",
+		contextWindow: 128_000,
+	},
 	// Anthropic - Claude family
 	{
 		id: "anthropic/claude-3.5-haiku",

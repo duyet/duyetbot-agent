@@ -11,7 +11,7 @@ import {
 describe("ai/models", () => {
 	describe("DEFAULT_CHAT_MODEL", () => {
 		it("should be a valid model ID", () => {
-			expect(DEFAULT_CHAT_MODEL).toBe("google/gemini-2.5-flash-preview");
+			expect(DEFAULT_CHAT_MODEL).toBe("xiaomi/mimo-vl-2-flash:free");
 		});
 
 		it("should exist in chatModels array", () => {
@@ -28,6 +28,7 @@ describe("ai/models", () => {
 			expect(DEFAULT_CONTEXT_WINDOWS.xai).toBe(131_072);
 			expect(DEFAULT_CONTEXT_WINDOWS.deepseek).toBe(64_000);
 			expect(DEFAULT_CONTEXT_WINDOWS["z-ai"]).toBe(128_000);
+			expect(DEFAULT_CONTEXT_WINDOWS.xiaomi).toBe(128_000);
 		});
 
 		it("should have numeric values for all providers", () => {
@@ -42,8 +43,8 @@ describe("ai/models", () => {
 
 	describe("getContextWindow", () => {
 		it("should return explicit context window for model with one defined", () => {
-			const contextWindow = getContextWindow("google/gemini-2.5-flash-preview");
-			expect(contextWindow).toBe(1_000_000);
+			const contextWindow = getContextWindow("xiaomi/mimo-vl-2-flash:free");
+			expect(contextWindow).toBe(128_000);
 		});
 
 		it("should return provider default for model without explicit context window", () => {
@@ -98,7 +99,13 @@ describe("ai/models", () => {
 
 		it("should have models from multiple providers", () => {
 			const providers = new Set(chatModels.map((m) => m.provider));
-			expect(providers.size).toBeGreaterThanOrEqual(5);
+			expect(providers.size).toBeGreaterThanOrEqual(6);
+		});
+
+		it("should include Xiaomi MiMo model", () => {
+			const xiaomiModels = chatModels.filter((m) => m.provider === "xiaomi");
+			expect(xiaomiModels.length).toBeGreaterThanOrEqual(1);
+			expect(xiaomiModels.some((m) => m.name.includes("MiMo"))).toBe(true);
 		});
 
 		it("should include Anthropic Claude models", () => {
@@ -190,7 +197,8 @@ describe("ai/models", () => {
 	describe("model ID format", () => {
 		it("should follow provider/model-name format", () => {
 			for (const model of chatModels) {
-				expect(model.id).toMatch(/^[a-z0-9-]+\/[a-z0-9.-]+$/);
+				// Allow colons for :free suffix from OpenRouter
+				expect(model.id).toMatch(/^[a-z0-9-]+\/[a-z0-9.:-]+$/);
 			}
 		});
 
@@ -205,6 +213,8 @@ describe("ai/models", () => {
 					expect(["anthropic", "openai", "deepseek"]).toContain(idProvider);
 				} else if (model.provider === "meta") {
 					expect(idProvider).toBe("meta-llama");
+				} else if (model.provider === "xiaomi") {
+					expect(idProvider).toBe("xiaomi");
 				} else {
 					expect(idProvider).toBe(model.provider);
 				}
