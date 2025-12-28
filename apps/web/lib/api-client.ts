@@ -28,61 +28,166 @@ export type RegisterActionState = {
 };
 
 /**
- * Safe fetch wrapper with error handling and abort support
+ * Retry configuration for fetch requests
+ */
+interface RetryConfig {
+	maxRetries?: number;
+	initialDelay?: number;
+	maxDelay?: number;
+	retryableStatuses?: Set<number>;
+	retryableErrors?: Set<string>;
+}
+
+const DEFAULT_RETRY_CONFIG: Required<RetryConfig> = {
+	maxRetries: 3,
+	initialDelay: 1000, // 1 second
+	maxDelay: 10000, // 10 seconds
+	retryableStatuses: new Set([408, 429, 500, 502, 503, 504]),
+	retryableErrors: new Set(["Failed to fetch", "NetworkError", "AbortError"]),
+};
+
+/**
+ * Calculate exponential backoff delay with jitter
+ */
+function calculateRetryDelay(
+	attempt: number,
+	config: Required<RetryConfig>,
+): number {
+	const exponentialDelay = Math.min(
+		config.initialDelay * 2 ** attempt,
+		config.maxDelay,
+	);
+	// Add jitter (±25%) to avoid thundering herd
+	const jitter = exponentialDelay * 0.25 * (Math.random() * 2 - 1);
+	return Math.max(0, exponentialDelay + jitter);
+}
+
+/**
+ * Check if error is retryable
+ */
+function isRetryableError(
+	error: Error | unknown,
+	config: Required<RetryConfig>,
+): boolean {
+	if (!(error instanceof Error)) {
+		return false;
+	}
+
+	// Check retryable error names/messages
+	if (
+		config.retryableErrors.has(error.name) ||
+		[...config.retryableErrors].some((msg) => error.message.includes(msg))
+	) {
+		return true;
+	}
+
+	// Check for network-related errors
+	const message = error.message.toLowerCase();
+	return (
+		message.includes("network") ||
+		message.includes("fetch") ||
+		message.includes("connection")
+	);
+}
+
+/**
+ * Safe fetch wrapper with error handling, retry with exponential backoff, and abort support
  */
 async function safeFetch<T>(
 	url: string,
 	options: RequestInit = {},
 	schema?: z.ZodSchema<T>,
+	retryConfig?: RetryConfig,
 ): Promise<{ data?: T; error?: string; status: number }> {
+	const config = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
 	const controller = new AbortController();
 	const timeoutId = setTimeout(() => controller.abort(), 30_000); // 30s timeout
 
-	try {
-		const response = await fetch(url, {
-			...options,
-			signal: controller.signal,
-		});
+	let lastError: Error | undefined;
 
-		clearTimeout(timeoutId);
+	for (let attempt = 0; attempt <= config.maxRetries; attempt++) {
+		try {
+			const response = await fetch(url, {
+				...options,
+				signal: controller.signal,
+			});
 
-		if (!response.ok) {
-			const data = await response.json().catch(() => ({}));
-			return {
-				error:
-					(data as { error?: string }).error ||
-					`Request failed with status ${response.status}`,
-				status: response.status,
-			};
-		}
+			clearTimeout(timeoutId);
 
-		const json = await response.json();
-
-		if (schema) {
-			try {
-				const validated = schema.parse(json);
-				return { data: validated, status: response.status };
-			} catch (error) {
-				if (isZodError(error)) {
-					return { error: formatZodError(error), status: response.status };
+			// Check if response status is retryable
+			if (!response.ok && config.retryableStatuses.has(response.status)) {
+				if (attempt < config.maxRetries) {
+					const delay = calculateRetryDelay(attempt, config);
+					console.warn(
+						`[safeFetch] Retrying request (${attempt + 1}/${config.maxRetries}) after ${delay.toFixed(0)}ms due to status ${response.status}`,
+					);
+					await new Promise((resolve) => setTimeout(resolve, delay));
+					continue;
 				}
-				return { error: "Invalid response format", status: response.status };
 			}
-		}
 
-		return { data: json as T, status: response.status };
-	} catch (error) {
-		clearTimeout(timeoutId);
-
-		if (error instanceof Error) {
-			if (error.name === "AbortError") {
-				return { error: "Request timeout. Please try again.", status: 408 };
+			if (!response.ok) {
+				const data = await response.json().catch(() => ({}));
+				return {
+					error:
+						(data as { error?: string }).error ||
+						`Request failed with status ${response.status}`,
+					status: response.status,
+				};
 			}
-			return { error: error.message, status: 0 };
-		}
 
-		return { error: "An unexpected error occurred", status: 0 };
+			const json = await response.json();
+
+			if (schema) {
+				try {
+					const validated = schema.parse(json);
+					return { data: validated, status: response.status };
+				} catch (error) {
+					if (isZodError(error)) {
+						return { error: formatZodError(error), status: response.status };
+					}
+					return { error: "Invalid response format", status: response.status };
+				}
+			}
+
+			return { data: json as T, status: response.status };
+		} catch (error) {
+			clearTimeout(timeoutId);
+
+			// Store error for potential retry
+			if (error instanceof Error) {
+				lastError = error;
+			}
+
+			// Check if error is retryable
+			const isRetryable = isRetryableError(error, config);
+
+			if (isRetryable && attempt < config.maxRetries) {
+				const delay = calculateRetryDelay(attempt, config);
+				console.warn(
+					`[safeFetch] Retrying request (${attempt + 1}/${config.maxRetries}) after ${delay.toFixed(0)}ms due to error: ${error instanceof Error ? error.message : "Unknown"}`,
+				);
+				await new Promise((resolve) => setTimeout(resolve, delay));
+				continue;
+			}
+
+			// Non-retryable error or max retries exceeded
+			if (error instanceof Error) {
+				if (error.name === "AbortError") {
+					return { error: "Request timeout. Please try again.", status: 408 };
+				}
+				return { error: error.message, status: 0 };
+			}
+
+			return { error: "An unexpected error occurred", status: 0 };
+		}
 	}
+
+	// Max retries exceeded
+	return {
+		error: lastError?.message || `Request failed after ${config.maxRetries} retries`,
+		status: 0,
+	};
 }
 
 // Zod schemas for API responses

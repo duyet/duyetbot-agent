@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useKeyboardShortcuts } from "@/components/keyboard-shortcuts";
 import {
 	CommandDialog,
