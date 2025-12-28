@@ -310,7 +310,6 @@ export function PromptInputAttachment({
 					<div className="relative size-5 shrink-0">
 						<div className="absolute inset-0 flex size-5 items-center justify-center overflow-hidden rounded bg-background transition-opacity group-hover:opacity-0">
 							{isImage ? (
-								/* biome-ignore lint/performance/noImgElement: dynamic user uploads */
 								<img
 									alt={filename || "attachment"}
 									className="size-5 object-cover"
@@ -346,7 +345,6 @@ export function PromptInputAttachment({
 				<div className="w-auto space-y-3">
 					{isImage && (
 						<div className="flex max-h-96 w-96 items-center justify-center overflow-hidden rounded-md border">
-							{/* biome-ignore lint/performance/noImgElement: dynamic user uploads */}
 							<img
 								alt={filename || "attachment preview"}
 								className="max-h-full max-w-full object-contain"
@@ -1109,16 +1107,24 @@ interface SpeechRecognitionErrorEvent extends Event {
 	error: string;
 }
 
-declare global {
-	interface Window {
-		SpeechRecognition: {
-			new (): SpeechRecognition;
-		};
-		webkitSpeechRecognition: {
-			new (): SpeechRecognition;
-		};
-	}
-}
+// Web Speech API types - using local types to avoid conflicts with DOM lib
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type SpeechRecognitionConstructor = new () => SpeechRecognition;
+
+const getSpeechRecognition = (): SpeechRecognitionConstructor | null => {
+	if (typeof window === "undefined") return null;
+	// Standard API or webkit-prefixed version
+	return (
+		(window as unknown as { SpeechRecognition?: SpeechRecognitionConstructor })
+			.SpeechRecognition ||
+		(
+			window as unknown as {
+				webkitSpeechRecognition?: SpeechRecognitionConstructor;
+			}
+		).webkitSpeechRecognition ||
+		null
+	);
+};
 
 export type PromptInputSpeechButtonProps = ComponentProps<
 	typeof PromptInputButton
@@ -1140,12 +1146,8 @@ export const PromptInputSpeechButton = ({
 	const recognitionRef = useRef<SpeechRecognition | null>(null);
 
 	useEffect(() => {
-		if (
-			typeof window !== "undefined" &&
-			("SpeechRecognition" in window || "webkitSpeechRecognition" in window)
-		) {
-			const SpeechRecognitionCtor =
-				window.SpeechRecognition || window.webkitSpeechRecognition;
+		const SpeechRecognitionCtor = getSpeechRecognition();
+		if (SpeechRecognitionCtor) {
 			const speechRecognition = new SpeechRecognitionCtor();
 
 			speechRecognition.continuous = true;
