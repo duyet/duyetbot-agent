@@ -6,6 +6,7 @@
  * Uses fire-and-forget pattern with ChatAgent for async message processing.
  */
 
+import { EventBridge, type GitHubPREventPayload, publishPREvent } from '@duyetbot/cloudflare-agent';
 // Removed deleted imports: createGlobalContext, githubToWebhookInput
 import { createBaseApp } from '@duyetbot/hono-middleware';
 import {
@@ -315,6 +316,81 @@ app.post(
                 error: err instanceof Error ? err.message : String(err),
               });
             });
+          }
+
+          // Publish Event Bridge event for cross-agent notification (fire-and-forget)
+          if (env.OBSERVABILITY_DB && isPullRequest && issue) {
+            try {
+              const bridge = new EventBridge({
+                // Type assertion needed: D1Database types from different packages
+                // are structurally identical but TypeScript sees them as distinct
+                db: env.OBSERVABILITY_DB as unknown as D1Database,
+                agentId: 'github-bot',
+              });
+
+              // Map GitHub action to Event Bridge action type
+              const actionMap: Record<string, GitHubPREventPayload['action']> = {
+                opened: 'opened',
+                closed:
+                  webhookCtx.action === 'closed' && (payload.pull_request as any)?.merged
+                    ? 'merged'
+                    : 'closed',
+                review_requested: 'review_requested',
+                submitted:
+                  action === 'submitted'
+                    ? 'approved'
+                    : (undefined as unknown as GitHubPREventPayload['action']),
+              };
+
+              const eventAction = actionMap[action] ?? (action as GitHubPREventPayload['action']);
+
+              // Only publish for relevant PR actions
+              if (
+                [
+                  'opened',
+                  'closed',
+                  'merged',
+                  'review_requested',
+                  'approved',
+                  'changes_requested',
+                ].includes(eventAction)
+              ) {
+                const prPayload: GitHubPREventPayload = {
+                  action: eventAction,
+                  repo: `${owner}/${repo}`,
+                  prNumber: issue.number,
+                  title: issue.title,
+                  author: sender.login,
+                  url:
+                    fullIssueOrPr?.html_url ??
+                    `https://github.com/${owner}/${repo}/pull/${issue.number}`,
+                };
+
+                // Add optional fields only if defined
+                if (webhookCtx.additions !== undefined) {
+                  prPayload.additions = webhookCtx.additions;
+                }
+                if (webhookCtx.deletions !== undefined) {
+                  prPayload.deletions = webhookCtx.deletions;
+                }
+
+                await bridge.initialize();
+                await publishPREvent(bridge, prPayload, requestId);
+
+                logger.info(`[${requestId}] [EVENT_BRIDGE] Published PR event`, {
+                  requestId,
+                  action: eventAction,
+                  repo: `${owner}/${repo}`,
+                  prNumber: issue.number,
+                });
+              }
+            } catch (eventError) {
+              // Don't fail the webhook if Event Bridge fails
+              logger.error(`[${requestId}] [EVENT_BRIDGE] Failed to publish event`, {
+                requestId,
+                error: eventError instanceof Error ? eventError.message : String(eventError),
+              });
+            }
           }
         })()
       );

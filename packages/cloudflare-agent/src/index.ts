@@ -362,6 +362,7 @@ export {
   type ToolExecutorConfig,
 } from './chat/index.js';
 export * from './commands/index.js';
+export * from './events/index.js';
 export * from './mcp/index.js';
 // Persistence module (message store, session management)
 export {

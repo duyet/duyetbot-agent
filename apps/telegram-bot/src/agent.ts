@@ -42,6 +42,8 @@ interface BaseEnv extends ProviderEnv {
   // Internal forward endpoint (for web app integration)
   FORWARD_SECRET?: string;
   TELEGRAM_FORWARD_CHAT_ID?: string;
+  // Admin chat ID for scheduled notifications
+  TELEGRAM_ADMIN_CHAT_ID?: string;
 }
 
 /**
