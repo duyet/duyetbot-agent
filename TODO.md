@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 56
+**Iteration**: 57
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -22,7 +22,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 - [x] Add keyboard shortcuts for common actions (Cmd+K for command palette, Cmd+I for new chat)
 - [x] Implement focus trapping in modals and dialogs
 - [x] Add visible focus indicators for all interactive elements
-- [ ] Support arrow key navigation in message lists and artifact galleries
+- [x] Support arrow key navigation in message lists and artifact galleries
 - [x] Add escape key handlers for closing modals/panels
 
 #### Loading States
@@ -281,6 +281,18 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 57 (Dec 29, 2025)
+- ✅ Implemented arrow key navigation for message lists (Messages component)
+- ✅ Implemented arrow key navigation for artifact galleries (ArtifactMessages component)
+- ✅ Arrow Up/Down keys navigate between messages with visual focus indicator
+- ✅ Escape key clears focus indicator
+- ✅ Arrow keys ignored when typing in input/textarea fields
+- ✅ Smooth scrolling to focused message with `scrollIntoView()`
+- ✅ Focus resets when messages change significantly
+- ✅ Visual feedback with `[&[data-focused=true]]:bg-muted/50` styling
+- ✅ All 32 packages type-check passing
+- ✅ All 715+ tests passing
 
 ### Iteration 56 (Dec 29, 2025)
 - ✅ Implemented focus trapping in AlertDialog and Sheet components for keyboard accessibility
