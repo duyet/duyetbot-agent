@@ -199,17 +199,20 @@ Allow comparing responses from different models side-by-side.
 - [x] Verify Plan/Research agent - planTool exists for task breakdown, research via web_search
 - [x] Verify model picker uses top models from OpenRouter - Curated list in chatModels array
 
-### Priority 5: Code Quality Improvements (IN PROGRESS)
+### Priority 5: Code Quality Improvements (COMPLETED)
 - [x] Extract file upload logic into `useFileUpload` hook (multimodal-input.tsx refactored from 752 to 633 lines)
 - [x] Extract input persistence logic into `useInputPersistence` hook for localStorage management
-- [ ] Further component splitting for chat.tsx (358 lines) and remaining multimodal-input complexity
+- [x] Extract chat transport config into `useChatTransport` hook (chat.tsx refactored from 358 to 231 lines)
+- [x] Extract title generation logic into `useTitleGeneration` hook
+- [x] Extract URL query handling into `useURLQuery` hook
+- [x] Extract credit card alert into `CreditCardAlertDialog` component
 
 ### Priority 6: New Features (Backlog)
+- [x] **Artifact generation & sharing** - Generate interactive artifacts (demos, visualizations, basic websites) with shareable URLs ✅
 - [ ] **Custom agent creation** - UI to generate custom model prompts with agent persona definition
 - [ ] **Scheduled daily tasks** - Ability to schedule recurring tasks with integration selection (web search, tools, etc.)
 - [ ] **Image display in content** - Render images inline within chat messages
 - [ ] **Tool chain visualization** - Show chain of tools using AI elements components
-- [ ] **Artifact generation & sharing** - Generate interactive artifacts (demos, visualizations, basic websites) with shareable URLs
 
 ### Priority 6: Rust Integration (Future)
 - [ ] **Rust + WebAssembly integration** - Add Rust components compiled to Wasm for performance-critical paths
