@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 473
+iteration: 497
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-28T04:28:04Z"
@@ -124,7 +124,7 @@ Transform `apps/web` into the **world's best Chatbot UI** - a production-grade, 
 - 6 built-in tools with visualizers
 - Custom tool builder
 - Web search with DuckDuckGo
-- 21 OpenRouter models with switcher
+- 23 OpenRouter models with switcher (including Claude Opus 4.5, Claude Sonnet 4.5)
 - Model comparison at /compare
 - Dark/light themes
 - Keyboard shortcuts

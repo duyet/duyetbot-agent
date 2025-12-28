@@ -45,10 +45,22 @@ export const chatModels: ChatModel[] = [
 		description: "Best balance of speed, intelligence, and cost",
 	},
 	{
+		id: "anthropic/claude-sonnet-4.5",
+		name: "Claude Sonnet 4.5",
+		provider: "anthropic",
+		description: "Enhanced Sonnet with improved coding and reasoning",
+	},
+	{
 		id: "anthropic/claude-opus-4",
 		name: "Claude Opus 4",
 		provider: "anthropic",
-		description: "Most capable Anthropic model",
+		description: "High-capability reasoning model",
+	},
+	{
+		id: "anthropic/claude-opus-4.5",
+		name: "Claude Opus 4.5",
+		provider: "anthropic",
+		description: "Most capable Anthropic model, best for coding and agents",
 	},
 	// OpenAI - GPT family
 	{
