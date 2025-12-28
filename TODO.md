@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 60
+**Iteration**: 61
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -281,6 +281,18 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 61 (Dec 29, 2025) - PLANNING
+- [ ] Continue Phase 1: Critical Hooks unit tests
+  - [ ] Test use-chat-transport hook (WebSocket/streaming transport layer)
+  - [ ] Test use-artifact hook (Artifact state management)
+  - [ ] Test use-auth hook (Authentication state)
+  - [ ] Test use-file-upload hook (File attachment handling)
+- [ ] Begin Phase 2: Core Utilities unit tests
+  - [ ] Test lib/api-client.ts (All API calls depend on this - 150+ lines, retry logic, Zod validation)
+  - [ ] Test lib/chat-memory.ts (Memory system with importance scoring)
+  - [ ] Test lib/chat-search.ts (Search across conversations)
+- [ ] Improve test coverage from 3.3% toward 80% target
 
 ### Iteration 60 (Dec 29, 2025)
 - ✅ Created hook testing infrastructure for React hooks with @testing-library/react
