@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 47
+**Iteration**: 48
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -41,7 +41,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 
 #### Performance & UX
 - [x] Lazy load Pyodide library only when code artifact is executed (~9MB savings)
-- [ ] Implement code splitting for large components (artifacts, dashboard)
+- [x] Implement code splitting for large components (artifacts, dashboard)
 - [ ] Add virtual scrolling for long message lists
 - [ ] Lazy load images and heavy assets
 - [ ] Add service worker for offline support
@@ -281,6 +281,15 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 48 (Dec 29, 2025)
+- ✅ Implemented code splitting for artifact content renderers using Next.js dynamic imports
+- ✅ Created lazy-loaded components for text, code, image, sheet, and chart artifacts
+- ✅ Added loading states with skeleton messages for each artifact type
+- ✅ Created artifactContentMap for dynamic component resolution based on artifact kind
+- ✅ Artifact renderers now load on-demand when users open artifacts (reduces initial bundle)
+- ✅ Compatible with static export (output: "export")
+- ✅ Build and type-check passing
 
 ### Iteration 47 (Dec 29, 2025)
 - ✅ Implemented lazy loading for Pyodide library (~9MB bundle savings)
