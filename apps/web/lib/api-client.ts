@@ -484,7 +484,11 @@ const templatesResponseSchema = z.object({
  * Get all agents for current user
  */
 export async function getAgents(): Promise<Agent[] | null> {
-	const result = await safeFetch("/api/agents", undefined, agentsResponseSchema);
+	const result = await safeFetch(
+		"/api/agents",
+		undefined,
+		agentsResponseSchema,
+	);
 
 	if (result.error || !result.data) {
 		console.error("[getAgents] Failed:", result.error);
@@ -502,7 +506,11 @@ export async function getAgentTemplates(): Promise<{
 	models: string[];
 	templates: Record<string, AgentTemplate>;
 } | null> {
-	const result = await safeFetch("/api/agents/templates", undefined, templatesResponseSchema);
+	const result = await safeFetch(
+		"/api/agents/templates",
+		undefined,
+		templatesResponseSchema,
+	);
 
 	if (result.error || !result.data) {
 		console.error("[getAgentTemplates] Failed:", result.error);
@@ -540,7 +548,11 @@ export async function createAgent(
  * Get a specific agent by ID
  */
 export async function getAgent(agentId: string): Promise<Agent | null> {
-	const result = await safeFetch(`/api/agents/${agentId}`, undefined, agentResponseSchema);
+	const result = await safeFetch(
+		`/api/agents/${agentId}`,
+		undefined,
+		agentResponseSchema,
+	);
 
 	if (result.error || !result.data) {
 		console.error("[getAgent] Failed:", result.error);

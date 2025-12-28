@@ -234,7 +234,7 @@ export class EventBridge {
       minPriority?: EventPriority;
     }
   ): void {
-    const key = categories.join(',') + ':' + (options?.types?.join(',') ?? '*');
+    const key = `${categories.join(',')}:${options?.types?.join(',') ?? '*'}`;
 
     if (!this.handlers.has(key)) {
       this.handlers.set(key, []);

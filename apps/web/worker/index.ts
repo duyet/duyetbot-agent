@@ -8,7 +8,11 @@ import { logger } from "hono/logger";
 import { secureHeaders } from "hono/secure-headers";
 import { addStaticCacheHeaders, cacheMiddleware } from "./lib/cache";
 import { WorkerError } from "./lib/errors";
-import { productionErrorHandler, secureCors, securityHeaders } from "./lib/security";
+import {
+	productionErrorHandler,
+	secureCors,
+	securityHeaders,
+} from "./lib/security";
 // Import route handlers
 import { agentsRouter } from "./routes/agents";
 import { authRoutes } from "./routes/auth";

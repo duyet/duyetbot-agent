@@ -25,6 +25,8 @@ import {
 	ModelSelectorName,
 	ModelSelectorTrigger,
 } from "@/components/ai-elements/model-selector";
+import { useFileUpload } from "@/hooks/use-file-upload";
+import { useInputPersistence } from "@/hooks/use-input-persistence";
 import { useIsDesktop } from "@/hooks/use-responsive";
 import { useSpeechRecognition } from "@/hooks/use-speech-recognition";
 import {
@@ -33,8 +35,6 @@ import {
 	modelsByProvider,
 } from "@/lib/ai/models";
 import type { Attachment, ChatMessage } from "@/lib/types";
-import { useFileUpload } from "@/hooks/use-file-upload";
-import { useInputPersistence } from "@/hooks/use-input-persistence";
 import { cn } from "@/lib/utils";
 import {
 	PromptInput,
@@ -138,7 +138,7 @@ function PureMultimodalInput({
 		handleInputPersistence();
 		// Only run once after hydration
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, []);
+	}, [handleInputPersistence]);
 
 	const handleInput = (event: React.ChangeEvent<HTMLTextAreaElement>) => {
 		setInput(event.target.value);

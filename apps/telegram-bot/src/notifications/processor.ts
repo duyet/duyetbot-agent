@@ -86,7 +86,7 @@ async function getAdminPreferences(
         updatedAt: result.updated_at,
       };
     }
-  } catch (error) {
+  } catch (_error) {
     // Table might not exist yet - will be created on first save
     logger.debug('[NotificationProcessor] No preferences found, using defaults', {
       chatId: adminChatId,

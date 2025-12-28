@@ -3,14 +3,6 @@
 import { Bot, Loader2, Plus, Save, Trash2, Wand2 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import type { Agent, AgentCategory, AgentTemplate } from "@/lib/api-client";
-import {
-	createAgent,
-	getAgentTemplates,
-	updateAgent,
-	deleteAgent,
-	toggleAgent,
-} from "@/lib/api-client";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -32,6 +24,14 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import type { Agent, AgentCategory, AgentTemplate } from "@/lib/api-client";
+import {
+	createAgent,
+	deleteAgent,
+	getAgentTemplates,
+	toggleAgent,
+	updateAgent,
+} from "@/lib/api-client";
 
 // Available models (same as in API)
 const AVAILABLE_MODELS = [
@@ -86,9 +86,8 @@ export function AgentBuilder({
 		models: string[];
 		templates: Record<string, AgentTemplate>;
 	} | null>(null);
-	const [agentData, setAgentData] = useState<
-		Omit<Agent, "id" | "createdAt" | "updatedAt">
-	>(EMPTY_AGENT);
+	const [agentData, setAgentData] =
+		useState<Omit<Agent, "id" | "createdAt" | "updatedAt">>(EMPTY_AGENT);
 
 	const isEditMode = Boolean(agent?.id);
 
@@ -209,7 +208,11 @@ export function AgentBuilder({
 		<Dialog open={isOpen} onOpenChange={setIsOpen}>
 			<DialogTrigger asChild>
 				{agent ? (
-					<Button variant="ghost" size="sm" onClick={(e) => e.stopPropagation()}>
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={(e) => e.stopPropagation()}
+					>
 						Edit
 					</Button>
 				) : (
@@ -248,7 +251,10 @@ export function AgentBuilder({
 										placeholder="My Custom Agent"
 										value={agentData.name}
 										onChange={(e) =>
-											setAgentData((prev) => ({ ...prev, name: e.target.value }))
+											setAgentData((prev) => ({
+												...prev,
+												name: e.target.value,
+											}))
 										}
 									/>
 								</div>
@@ -260,7 +266,10 @@ export function AgentBuilder({
 										maxLength={2}
 										value={agentData.avatar || ""}
 										onChange={(e) =>
-											setAgentData((prev) => ({ ...prev, avatar: e.target.value }))
+											setAgentData((prev) => ({
+												...prev,
+												avatar: e.target.value,
+											}))
 										}
 										className="w-20 text-center"
 									/>
@@ -274,7 +283,10 @@ export function AgentBuilder({
 									placeholder="A brief description of what this agent does"
 									value={agentData.description}
 									onChange={(e) =>
-										setAgentData((prev) => ({ ...prev, description: e.target.value }))
+										setAgentData((prev) => ({
+											...prev,
+											description: e.target.value,
+										}))
 									}
 									rows={2}
 								/>
@@ -336,7 +348,10 @@ export function AgentBuilder({
 								placeholder="You are an expert assistant with..."
 								value={agentData.systemPrompt}
 								onChange={(e) =>
-									setAgentData((prev) => ({ ...prev, systemPrompt: e.target.value }))
+									setAgentData((prev) => ({
+										...prev,
+										systemPrompt: e.target.value,
+									}))
 								}
 								rows={4}
 								className="font-mono text-sm"
@@ -354,13 +369,17 @@ export function AgentBuilder({
 								placeholder="- Be concise and clear&#10;- Provide examples&#10;- Explain your reasoning"
 								value={agentData.guidelines}
 								onChange={(e) =>
-									setAgentData((prev) => ({ ...prev, guidelines: e.target.value }))
+									setAgentData((prev) => ({
+										...prev,
+										guidelines: e.target.value,
+									}))
 								}
 								rows={3}
 								className="font-mono text-sm"
 							/>
 							<p className="text-xs text-muted-foreground">
-								Specific guidelines for how the agent should respond (one per line)
+								Specific guidelines for how the agent should respond (one per
+								line)
 							</p>
 						</div>
 
@@ -372,7 +391,10 @@ export function AgentBuilder({
 								placeholder="Use markdown with code blocks for code..."
 								value={agentData.outputFormat}
 								onChange={(e) =>
-									setAgentData((prev) => ({ ...prev, outputFormat: e.target.value }))
+									setAgentData((prev) => ({
+										...prev,
+										outputFormat: e.target.value,
+									}))
 								}
 								rows={2}
 								className="font-mono text-sm"
@@ -419,7 +441,10 @@ export function AgentBuilder({
 										step="0.1"
 										value={agentData.temperature}
 										onChange={(e) =>
-											setAgentData((prev) => ({ ...prev, temperature: e.target.value }))
+											setAgentData((prev) => ({
+												...prev,
+												temperature: e.target.value,
+											}))
 										}
 									/>
 								</div>
@@ -434,7 +459,10 @@ export function AgentBuilder({
 										step="256"
 										value={agentData.maxTokens}
 										onChange={(e) =>
-											setAgentData((prev) => ({ ...prev, maxTokens: e.target.value }))
+											setAgentData((prev) => ({
+												...prev,
+												maxTokens: e.target.value,
+											}))
 										}
 									/>
 								</div>
@@ -449,7 +477,10 @@ export function AgentBuilder({
 										step="0.05"
 										value={agentData.topP}
 										onChange={(e) =>
-											setAgentData((prev) => ({ ...prev, topP: e.target.value }))
+											setAgentData((prev) => ({
+												...prev,
+												topP: e.target.value,
+											}))
 										}
 									/>
 								</div>

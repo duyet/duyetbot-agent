@@ -7,9 +7,9 @@ import { codeArtifact } from "@/artifacts/code/client";
 import { imageArtifact } from "@/artifacts/image/client";
 import { sheetArtifact } from "@/artifacts/sheet/client";
 import { textArtifact } from "@/artifacts/text/client";
+import { SidebarLeftIcon } from "@/components/icons";
 import { getSharedArtifact } from "@/lib/api-client";
 import type { Document } from "@/lib/db/schema";
-import { SidebarLeftIcon } from "@/components/icons";
 
 // Artifact definitions for content rendering
 const artifactDefinitions = [
@@ -165,9 +165,7 @@ export default function SharedArtifactPage() {
 						href="/"
 						className="inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
 					>
-						<span className="hidden sm:inline">
-							Try DuyetBot Chat
-						</span>
+						<span className="hidden sm:inline">Try DuyetBot Chat</span>
 						<span className="text-lg">↗</span>
 					</a>
 				</div>
@@ -198,8 +196,8 @@ export default function SharedArtifactPage() {
 					Shared via{" "}
 					<a href="/" className="hover:text-foreground underline">
 						DuyetBot
-					</a>
-					{" "}• Create your own AI-generated artifacts
+					</a>{" "}
+					• Create your own AI-generated artifacts
 				</p>
 			</footer>
 		</div>

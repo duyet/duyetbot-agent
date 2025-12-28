@@ -163,9 +163,7 @@ export const document = sqliteTable(
 		// Document sharing fields
 		shareId: text("shareId").unique(),
 		shareToken: text("shareToken"),
-		isPublic: integer("isPublic", { mode: "boolean" })
-			.notNull()
-			.default(false),
+		isPublic: integer("isPublic", { mode: "boolean" }).notNull().default(false),
 	},
 	(table) => {
 		return {
@@ -381,16 +379,24 @@ export const agent = sqliteTable("Agent", {
 	// Output format preferences
 	outputFormat: text("outputFormat").notNull().default(""),
 	// Model parameters
-	modelId: text("modelId").notNull().default("anthropic/claude-sonnet-4-20250514"),
+	modelId: text("modelId")
+		.notNull()
+		.default("anthropic/claude-sonnet-4-20250514"),
 	temperature: text("temperature", { mode: "json" }).notNull().default("0.7"),
 	maxTokens: text("maxTokens", { mode: "json" }).notNull().default("4096"),
 	topP: text("topP", { mode: "json" }).notNull().default("1"),
-	frequencyPenalty: text("frequencyPenalty", { mode: "json" }).notNull().default("0"),
-	presencePenalty: text("presencePenalty", { mode: "json" }).notNull().default("0"),
+	frequencyPenalty: text("frequencyPenalty", { mode: "json" })
+		.notNull()
+		.default("0"),
+	presencePenalty: text("presencePenalty", { mode: "json" })
+		.notNull()
+		.default("0"),
 	// Tools this agent has access to (array of tool IDs)
 	enabledTools: text("enabledTools", {
 		mode: "json",
-	}).$type<string[]>().default([]),
+	})
+		.$type<string[]>()
+		.default([]),
 	// Whether this agent requires user approval before execution
 	needsApproval: integer("needsApproval", { mode: "boolean" })
 		.notNull()

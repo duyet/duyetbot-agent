@@ -2,7 +2,6 @@
 
 import { useChat } from "@ai-sdk/react";
 import { useRouter } from "next/navigation";
-import type { UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -10,9 +9,9 @@ import { ChatHeader } from "@/components/chat-header";
 import { CreditCardAlertDialog } from "@/components/credit-card-alert-dialog";
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
+import { createChatTransport } from "@/hooks/use-chat-transport";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { useOnlineStatus } from "@/hooks/use-online-status";
-import { createChatTransport } from "@/hooks/use-chat-transport";
 import { useTitleGeneration } from "@/hooks/use-title-generation";
 import { useURLQuery } from "@/hooks/use-url-query";
 import type { Vote } from "@/lib/db/schema";

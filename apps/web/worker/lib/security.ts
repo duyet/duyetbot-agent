@@ -3,7 +3,7 @@
  * Provides CORS configuration, security headers, and content security policy
  */
 
-import { type MiddlewareHandler } from "hono";
+import type { MiddlewareHandler } from "hono";
 
 /**
  * Allowed origins for CORS
@@ -111,11 +111,11 @@ export const securityHeaders = (): MiddlewareHandler => async (c, next) => {
 	);
 
 	// Strict-Transport-Security: Force HTTPS (only in production)
-	if (
-		typeof process !== "undefined" &&
-		process.env.NODE_ENV === "production"
-	) {
-		c.header("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+	if (typeof process !== "undefined" && process.env.NODE_ENV === "production") {
+		c.header(
+			"Strict-Transport-Security",
+			"max-age=31536000; includeSubDomains",
+		);
 	}
 };
 
@@ -123,27 +123,28 @@ export const securityHeaders = (): MiddlewareHandler => async (c, next) => {
  * Production error response middleware
  * Removes debug information in production environment
  */
-export const productionErrorHandler = (): MiddlewareHandler => async (c, next) => {
-	await next();
+export const productionErrorHandler =
+	(): MiddlewareHandler => async (c, next) => {
+		await next();
 
-	// Override error responses in production to remove debug info
-	if (
-		c.res.status === 500 ||
-		c.res.status === 400 ||
-		c.res.status === 401 ||
-		c.res.status === 403
-	) {
-		const isDevelopment =
-			typeof process !== "undefined" && process.env.NODE_ENV !== "production";
+		// Override error responses in production to remove debug info
+		if (
+			c.res.status === 500 ||
+			c.res.status === 400 ||
+			c.res.status === 401 ||
+			c.res.status === 403
+		) {
+			const isDevelopment =
+				typeof process !== "undefined" && process.env.NODE_ENV !== "production";
 
-		// In production, check if response contains debug info and sanitize it
-		if (!isDevelopment) {
-			// The error handler in index.ts handles this, but we add extra protection
-			const contentType = c.res.headers.get("Content-Type");
-			if (contentType?.includes("application/json")) {
-				// Let the original error handler manage the response format
-				// This middleware ensures no debug info leaks through other paths
+			// In production, check if response contains debug info and sanitize it
+			if (!isDevelopment) {
+				// The error handler in index.ts handles this, but we add extra protection
+				const contentType = c.res.headers.get("Content-Type");
+				if (contentType?.includes("application/json")) {
+					// Let the original error handler manage the response format
+					// This middleware ensures no debug info leaks through other paths
+				}
 			}
 		}
-	}
-};
+	};

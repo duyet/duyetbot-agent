@@ -27,7 +27,10 @@ const MAGIC_NUMBERS: Record<string, Uint8Array> = {
 /**
  * Check if file matches its declared type via magic number
  */
-async function validateFileType(file: File, declaredType: string): Promise<boolean> {
+async function validateFileType(
+	file: File,
+	declaredType: string,
+): Promise<boolean> {
 	// Skip magic number check for text/code files (they have no binary signature)
 	const textTypes = [
 		"text/plain",

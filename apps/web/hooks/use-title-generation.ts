@@ -1,7 +1,6 @@
-import { useEffect, useRef } from "react";
 import type { UIMessage } from "ai";
 import { useRouter } from "next/navigation";
-import type { ChatMessage } from "@/lib/types";
+import { useEffect, useRef } from "react";
 import { generateTitleFromUserMessage } from "@/lib/api-client";
 
 interface UseTitleGenerationOptions {
@@ -55,5 +54,5 @@ export function useTitleGeneration({
 				// Reset ref on failure so we can retry
 				titleGeneratedRef.current = false;
 			});
-	}, [messages.length, chatId, isReadonly, router]);
+	}, [messages.length, chatId, isReadonly, router, messages.find]);
 }

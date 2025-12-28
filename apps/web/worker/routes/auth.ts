@@ -62,13 +62,15 @@ async function checkRateLimit(
 		const kv = c.env.RATE_LIMIT_KV;
 		if (!kv) {
 			// Fallback to in-memory if KV not available (development)
-			console.warn("RATE_LIMIT_KV not available, using in-memory rate limiting");
+			console.warn(
+				"RATE_LIMIT_KV not available, using in-memory rate limiting",
+			);
 			return true; // Allow in development
 		}
 
 		const key = `auth_rate_limit:${identifier}`;
 		const now = Date.now();
-		const windowStart = now - windowMs;
+		const _windowStart = now - windowMs;
 
 		// Get current rate limit data
 		const record = await kv.get(key, "json");
@@ -76,9 +78,13 @@ async function checkRateLimit(
 
 		// Clean up expired window
 		if (!data || now > data.resetTime) {
-			await kv.put(key, JSON.stringify({ count: 1, resetTime: now + windowMs }), {
-				expirationTtl: Math.ceil(windowMs / 1000),
-			});
+			await kv.put(
+				key,
+				JSON.stringify({ count: 1, resetTime: now + windowMs }),
+				{
+					expirationTtl: Math.ceil(windowMs / 1000),
+				},
+			);
 			return true;
 		}
 

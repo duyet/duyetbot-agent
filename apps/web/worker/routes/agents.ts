@@ -28,12 +28,36 @@ const AVAILABLE_MODELS = [
 
 // Agent categories with templates
 const AGENT_CATEGORIES = [
-	{ value: "custom", label: "Custom Agent", description: "Create your own agent from scratch" },
-	{ value: "coding", label: "Coding Assistant", description: "Help with programming and code review" },
-	{ value: "writing", label: "Writing Assistant", description: "Help with writing and editing" },
-	{ value: "analysis", label: "Data Analyst", description: "Analyze data and provide insights" },
-	{ value: "research", label: "Research Assistant", description: "Help with research and information gathering" },
-	{ value: "learning", label: "Learning Tutor", description: "Teach and explain concepts" },
+	{
+		value: "custom",
+		label: "Custom Agent",
+		description: "Create your own agent from scratch",
+	},
+	{
+		value: "coding",
+		label: "Coding Assistant",
+		description: "Help with programming and code review",
+	},
+	{
+		value: "writing",
+		label: "Writing Assistant",
+		description: "Help with writing and editing",
+	},
+	{
+		value: "analysis",
+		label: "Data Analyst",
+		description: "Analyze data and provide insights",
+	},
+	{
+		value: "research",
+		label: "Research Assistant",
+		description: "Help with research and information gathering",
+	},
+	{
+		value: "learning",
+		label: "Learning Tutor",
+		description: "Teach and explain concepts",
+	},
 ] as const;
 
 // Schema validation
@@ -42,49 +66,86 @@ const agentSchema = z.object({
 		.string()
 		.min(1)
 		.max(50)
-		.regex(/^[a-zA-Z][a-zA-Z0-9_ ]*$/, "Must start with a letter, contain only letters, numbers, spaces, and underscores"),
+		.regex(
+			/^[a-zA-Z][a-zA-Z0-9_ ]*$/,
+			"Must start with a letter, contain only letters, numbers, spaces, and underscores",
+		),
 	description: z.string().min(1).max(500),
 	avatar: z.string().emoji().optional().or(z.literal("")),
 	systemPrompt: z.string().min(1).max(5000),
 	guidelines: z.string().max(2000).default(""),
 	outputFormat: z.string().max(1000).default(""),
-	modelId: z.enum(AVAILABLE_MODELS).default("anthropic/claude-sonnet-4-20250514"),
-	temperature: z.string().regex(/^\d+(\.\d+)?$/).default("0.7"),
+	modelId: z
+		.enum(AVAILABLE_MODELS)
+		.default("anthropic/claude-sonnet-4-20250514"),
+	temperature: z
+		.string()
+		.regex(/^\d+(\.\d+)?$/)
+		.default("0.7"),
 	maxTokens: z.string().regex(/^\d+$/).default("4096"),
-	topP: z.string().regex(/^\d+(\.\d+)?$/).default("1"),
-	frequencyPenalty: z.string().regex(/^-?\d+(\.\d+)?$/).default("0"),
-	presencePenalty: z.string().regex(/^-?\d+(\.\d+)?$/).default("0"),
+	topP: z
+		.string()
+		.regex(/^\d+(\.\d+)?$/)
+		.default("1"),
+	frequencyPenalty: z
+		.string()
+		.regex(/^-?\d+(\.\d+)?$/)
+		.default("0"),
+	presencePenalty: z
+		.string()
+		.regex(/^-?\d+(\.\d+)?$/)
+		.default("0"),
 	enabledTools: z.array(z.string()).default([]),
 	needsApproval: z.boolean().optional().default(false),
-	category: z.enum(AGENT_CATEGORIES.map((c) => c.value) as [string, ...string[]]).default("custom"),
+	category: z
+		.enum(AGENT_CATEGORIES.map((c) => c.value) as [string, ...string[]])
+		.default("custom"),
 });
 
 // Template prompts for categories
-const AGENT_TEMPLATES: Record<string, { systemPrompt: string; guidelines: string; outputFormat: string }> = {
+const AGENT_TEMPLATES: Record<
+	string,
+	{ systemPrompt: string; guidelines: string; outputFormat: string }
+> = {
 	coding: {
-		systemPrompt: "You are an expert coding assistant with deep knowledge of software development, algorithms, and best practices.",
-		guidelines: "- Provide clear, well-commented code\n- Explain your reasoning\n- Suggest improvements and optimizations\n- Follow language-specific best practices\n- Consider edge cases and error handling",
-		outputFormat: "Use markdown code blocks with language syntax highlighting. Include brief explanations before and after code.",
+		systemPrompt:
+			"You are an expert coding assistant with deep knowledge of software development, algorithms, and best practices.",
+		guidelines:
+			"- Provide clear, well-commented code\n- Explain your reasoning\n- Suggest improvements and optimizations\n- Follow language-specific best practices\n- Consider edge cases and error handling",
+		outputFormat:
+			"Use markdown code blocks with language syntax highlighting. Include brief explanations before and after code.",
 	},
 	writing: {
-		systemPrompt: "You are a professional writing assistant skilled in various writing styles and formats.",
-		guidelines: "- Maintain consistent tone and voice\n- Focus on clarity and conciseness\n- Adapt to different audiences\n- Provide constructive feedback\n- Suggest improvements for flow and structure",
-		outputFormat: "Use clear headings and paragraphs. Provide suggestions in bullet points when appropriate.",
+		systemPrompt:
+			"You are a professional writing assistant skilled in various writing styles and formats.",
+		guidelines:
+			"- Maintain consistent tone and voice\n- Focus on clarity and conciseness\n- Adapt to different audiences\n- Provide constructive feedback\n- Suggest improvements for flow and structure",
+		outputFormat:
+			"Use clear headings and paragraphs. Provide suggestions in bullet points when appropriate.",
 	},
 	analysis: {
-		systemPrompt: "You are a data analyst with expertise in statistical analysis, data visualization, and deriving insights from data.",
-		guidelines: "- Focus on key findings and patterns\n- Use appropriate statistical methods\n- Visualize data when helpful\n- Explain limitations and assumptions\n- Provide actionable recommendations",
-		outputFormat: "Use structured reports with clear sections. Include visual elements using ASCII art or describe charts.",
+		systemPrompt:
+			"You are a data analyst with expertise in statistical analysis, data visualization, and deriving insights from data.",
+		guidelines:
+			"- Focus on key findings and patterns\n- Use appropriate statistical methods\n- Visualize data when helpful\n- Explain limitations and assumptions\n- Provide actionable recommendations",
+		outputFormat:
+			"Use structured reports with clear sections. Include visual elements using ASCII art or describe charts.",
 	},
 	research: {
-		systemPrompt: "You are a research assistant skilled in finding, synthesizing, and presenting information from multiple sources.",
-		guidelines: "- Verify information from multiple sources\n- Cite sources when applicable\n- Distinguish between facts and opinions\n- Identify knowledge gaps\n- Present balanced perspectives",
-		outputFormat: "Use organized sections with clear headings. Include source citations when relevant.",
+		systemPrompt:
+			"You are a research assistant skilled in finding, synthesizing, and presenting information from multiple sources.",
+		guidelines:
+			"- Verify information from multiple sources\n- Cite sources when applicable\n- Distinguish between facts and opinions\n- Identify knowledge gaps\n- Present balanced perspectives",
+		outputFormat:
+			"Use organized sections with clear headings. Include source citations when relevant.",
 	},
 	learning: {
-		systemPrompt: "You are a patient learning tutor who excels at explaining complex concepts in accessible ways.",
-		guidelines: "- Start with the basics and build up\n- Use analogies and examples\n- Check for understanding\n- Adapt to learning pace\n- Encourage curiosity and questions",
-		outputFormat: "Use step-by-step explanations. Include examples and practice problems when helpful.",
+		systemPrompt:
+			"You are a patient learning tutor who excels at explaining complex concepts in accessible ways.",
+		guidelines:
+			"- Start with the basics and build up\n- Use analogies and examples\n- Check for understanding\n- Adapt to learning pace\n- Encourage curiosity and questions",
+		outputFormat:
+			"Use step-by-step explanations. Include examples and practice problems when helpful.",
 	},
 	custom: {
 		systemPrompt: "",
@@ -102,7 +163,10 @@ agentsRouter.get("/", async (c) => {
 
 	try {
 		const db = createDb(c.env.DB);
-		const agents = await db.select().from(agent).where(eq(agent.userId, user.id));
+		const agents = await db
+			.select()
+			.from(agent)
+			.where(eq(agent.userId, user.id));
 
 		return c.json({ agents });
 	} catch (error) {
@@ -134,7 +198,11 @@ agentsRouter.post("/", async (c) => {
 		const db = createDb(c.env.DB);
 
 		// Check for duplicate name
-		const existing = await db.select().from(agent).where(eq(agent.name, validated.name)).limit(1);
+		const existing = await db
+			.select()
+			.from(agent)
+			.where(eq(agent.name, validated.name))
+			.limit(1);
 
 		if (existing.length > 0 && existing[0].userId === user.id) {
 			return c.json({ error: "Agent with this name already exists" }, 400);
@@ -183,7 +251,11 @@ agentsRouter.get("/:id", async (c) => {
 
 	try {
 		const db = createDb(c.env.DB);
-		const agents = await db.select().from(agent).where(eq(agent.id, agentId)).limit(1);
+		const agents = await db
+			.select()
+			.from(agent)
+			.where(eq(agent.id, agentId))
+			.limit(1);
 
 		if (agents.length === 0) {
 			return c.json({ error: "Agent not found" }, 404);
@@ -217,7 +289,11 @@ agentsRouter.put("/:id", async (c) => {
 		const db = createDb(c.env.DB);
 
 		// Check ownership
-		const existing = await db.select().from(agent).where(eq(agent.id, agentId)).limit(1);
+		const existing = await db
+			.select()
+			.from(agent)
+			.where(eq(agent.id, agentId))
+			.limit(1);
 
 		if (existing.length === 0) {
 			return c.json({ error: "Agent not found" }, 404);
@@ -273,7 +349,11 @@ agentsRouter.delete("/:id", async (c) => {
 		const db = createDb(c.env.DB);
 
 		// Check ownership
-		const existing = await db.select().from(agent).where(eq(agent.id, agentId)).limit(1);
+		const existing = await db
+			.select()
+			.from(agent)
+			.where(eq(agent.id, agentId))
+			.limit(1);
 
 		if (existing.length === 0) {
 			return c.json({ error: "Agent not found" }, 404);
@@ -305,7 +385,11 @@ agentsRouter.patch("/:id/toggle", async (c) => {
 		const db = createDb(c.env.DB);
 
 		// Check ownership
-		const existing = await db.select().from(agent).where(eq(agent.id, agentId)).limit(1);
+		const existing = await db
+			.select()
+			.from(agent)
+			.where(eq(agent.id, agentId))
+			.limit(1);
 
 		if (existing.length === 0) {
 			return c.json({ error: "Agent not found" }, 404);

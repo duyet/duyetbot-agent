@@ -5,12 +5,12 @@ import { BrainIcon, ChevronDownIcon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import { Streamdown } from "streamdown";
-import { getSecureRehypePlugins } from "@/lib/streamdown-security";
 import {
 	Collapsible,
 	CollapsibleContent,
 	CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { getSecureRehypePlugins } from "@/lib/streamdown-security";
 import { cn } from "@/lib/utils";
 import { Shimmer } from "./shimmer";
 

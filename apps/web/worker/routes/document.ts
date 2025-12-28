@@ -20,8 +20,6 @@ import type { Env } from "../types";
 export const documentRoutes = new Hono<{ Bindings: Env }>();
 export const shareRoutes = new Hono<{ Bindings: Env }>();
 
-type ArtifactKind = "text" | "code" | "image" | "sheet";
-
 // Validation schemas
 const saveDocumentSchema = z.object({
 	content: z.string().max(1_000_000, "Content too large (max 1MB)"),

@@ -12,9 +12,8 @@ import { EditorView } from "prosemirror-view";
 import { useEffect, useRef } from "react";
 import { renderToString } from "react-dom/server";
 import { Streamdown } from "streamdown";
-import { getSecureRehypePlugins } from "@/lib/streamdown-security";
-
 import { DiffType, diffEditor } from "@/lib/editor/diff";
+import { getSecureRehypePlugins } from "@/lib/streamdown-security";
 
 const diffSchema = new Schema({
 	nodes: addListNodes(schema.spec.nodes, "paragraph block*", "block"),

@@ -12,8 +12,8 @@
  * @see https://streamdown.ai/docs/security
  */
 
-import { defaultRehypePlugins, type StreamdownProps } from "streamdown";
 import { harden } from "rehype-harden";
+import { defaultRehypePlugins, type StreamdownProps } from "streamdown";
 
 /**
  * Hardened security configuration for AI-generated content
@@ -38,9 +38,10 @@ const aiContentSecurityConfig = {
 	allowDataImages: true,
 
 	// Set default origin for relative URLs
-	defaultOrigin: typeof window !== "undefined"
-		? window.location.origin
-		: "https://duyetbot-web.duyet.workers.dev",
+	defaultOrigin:
+		typeof window !== "undefined"
+			? window.location.origin
+			: "https://duyetbot-web.duyet.workers.dev",
 };
 
 /**
@@ -87,10 +88,7 @@ export function getSecureRehypePlugins(
 
 	// Note: We deliberately exclude defaultRehypePlugins.raw
 	// This means ALL HTML tags are escaped, preventing XSS attacks
-	return [
-		defaultRehypePlugins.katex,
-		[harden, config],
-	];
+	return [defaultRehypePlugins.katex, [harden, config]];
 }
 
 // Re-export for convenience

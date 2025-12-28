@@ -1,13 +1,11 @@
-import type { RefObject } from "react";
 import { DefaultChatTransport } from "ai";
-import type { UseChatHelpers } from "@ai-sdk/react";
+import type { RefObject } from "react";
+import type { VisibilityType } from "@/components/visibility-selector";
 import {
 	getAISettings,
 	getEffectiveInstructions,
 } from "@/lib/custom-instructions";
-import type { ChatMessage } from "@/lib/types";
 import { fetchWithErrorHandlers } from "@/lib/utils";
-import type { VisibilityType } from "@/components/visibility-selector";
 
 interface PrepareChatMessagesOptions {
 	chatId: string;
@@ -38,9 +36,7 @@ export function createChatTransport({
 				request.messages.some((msg) =>
 					msg.parts?.some((part) => {
 						const state = (part as { state?: string }).state;
-						return (
-							state === "approval-responded" || state === "output-denied"
-						);
+						return state === "approval-responded" || state === "output-denied";
 					}),
 				);
 

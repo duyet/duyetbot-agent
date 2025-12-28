@@ -1,8 +1,9 @@
+import { useState } from "react";
+import { toast } from "sonner";
 import { CopyIcon, ShareIcon } from "@/components/icons";
 import { createArtifactShare } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
-import { toast } from "sonner";
+import { Button } from "./ui/button";
 import {
 	Dialog,
 	DialogContent,
@@ -11,7 +12,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "./ui/dialog";
-import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 
 interface ShareArtifactDialogProps {
@@ -64,8 +64,8 @@ export function ShareArtifactDialog({
 						Share Artifact
 					</DialogTitle>
 					<DialogDescription>
-						Create a shareable link to this artifact. Anyone with the
-						link can view it.
+						Create a shareable link to this artifact. Anyone with the link can
+						view it.
 					</DialogDescription>
 				</DialogHeader>
 
@@ -81,11 +81,7 @@ export function ShareArtifactDialog({
 						</Button>
 					) : (
 						<div className="flex gap-2">
-							<Input
-								className="flex-1"
-								readOnly
-								value={shareUrl}
-							/>
+							<Input className="flex-1" readOnly value={shareUrl} />
 							<Button
 								className={cn(
 									"shrink-0",

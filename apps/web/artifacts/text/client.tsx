@@ -12,8 +12,7 @@ import {
 	UndoIcon,
 } from "@/components/icons";
 import { Editor } from "@/components/text-editor";
-import { createArtifactShare } from "@/lib/api-client";
-import { getSuggestions } from "@/lib/api-client";
+import { createArtifactShare, getSuggestions } from "@/lib/api-client";
 import type { Suggestion } from "@/lib/db/schema";
 
 type TextArtifactMetadata = {

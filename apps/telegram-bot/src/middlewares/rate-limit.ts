@@ -230,7 +230,9 @@ function getOrCreateState(userId: number): UserRateLimitState {
  * @returns true if exempt, false otherwise
  */
 function isExempt(username?: string, adminUsername?: string): boolean {
-  if (!adminUsername) return false;
+  if (!adminUsername) {
+    return false;
+  }
   return username?.toLowerCase() === adminUsername.toLowerCase();
 }
 

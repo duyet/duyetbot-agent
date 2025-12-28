@@ -1,9 +1,11 @@
-import { type ChangeEvent, useCallback, useEffect, useState } from "react";
+import { type ChangeEvent, useCallback, useState } from "react";
 import { toast } from "sonner";
 import type { Attachment } from "@/lib/types";
 
 interface UseFileUploadOptions {
-	onAttachmentsChange: (attachments: Attachment[] | ((prev: Attachment[]) => Attachment[])) => void;
+	onAttachmentsChange: (
+		attachments: Attachment[] | ((prev: Attachment[]) => Attachment[]),
+	) => void;
 }
 
 interface UseFileUploadReturn {

@@ -1,10 +1,14 @@
 "use client";
 
-import { type ComponentProps, memo, useState, useCallback, type ImgHTMLAttributes } from "react";
 import { Maximize2 } from "lucide-react";
+import {
+	type ComponentProps,
+	type ImgHTMLAttributes,
+	memo,
+	useCallback,
+	useState,
+} from "react";
 import { Streamdown } from "streamdown";
-import { getSecureRehypePlugins } from "@/lib/streamdown-security";
-import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
 	Dialog,
@@ -12,11 +16,14 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog";
+import { getSecureRehypePlugins } from "@/lib/streamdown-security";
+import { cn } from "@/lib/utils";
 
 type ResponseProps = ComponentProps<typeof Streamdown>;
 
 // Custom image component for markdown rendering
-const MarkdownImage = memo(({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>) => {
+const MarkdownImage = memo(
+	({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageElement>) => {
 		const [isExpanded, setIsExpanded] = useState(false);
 		const [imageError, setImageError] = useState(false);
 		const [isLoading, setIsLoading] = useState(true);
@@ -28,17 +35,20 @@ const MarkdownImage = memo(({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageE
 			(src.startsWith("http://") || src.startsWith("https://"));
 
 		// Don't render if src is invalid or image failed to load
-		if (!src || (!isDataUrl && !isExternalUrl) || imageError) {
+		const shouldShowFallback =
+			!src || (!isDataUrl && !isExternalUrl) || imageError;
+
+		const handleClick = useCallback(() => {
+			setIsExpanded(true);
+		}, []);
+
+		if (shouldShowFallback) {
 			return (
 				<span className="text-muted-foreground text-sm italic">
 					[Image: {alt || "unable to display"}]
 				</span>
 			);
 		}
-
-		const handleClick = useCallback(() => {
-			setIsExpanded(true);
-		}, []);
 
 		return (
 			<>
@@ -64,7 +74,9 @@ const MarkdownImage = memo(({ src, alt, ...props }: ImgHTMLAttributes<HTMLImageE
 					{/* Loading state */}
 					{isLoading && (
 						<div className="absolute inset-0 flex items-center justify-center bg-muted/20 rounded-md animate-pulse">
-							<span className="text-xs text-muted-foreground">Loading image...</span>
+							<span className="text-xs text-muted-foreground">
+								Loading image...
+							</span>
 						</div>
 					)}
 					{/* Expand button overlay */}

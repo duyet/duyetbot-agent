@@ -11,7 +11,7 @@ import type { ComponentProps } from "react";
 import { memo, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { Tool, ToolHeader, ToolContent, ToolInput } from "./tool";
+import { Tool, ToolContent, ToolHeader, ToolInput } from "./tool";
 
 export type ToolChainProps = ComponentProps<"div"> & {
 	tools: ToolUIPart[];
@@ -39,10 +39,12 @@ function groupToolsIntoChains(tools: ToolUIPart[]): ToolUIPart[][] {
 		// Check if this tool should be part of the current chain:
 		// 1. Previous tool has output (completed execution)
 		// 2. Current tool is not already completed (still in progress or pending)
-		const prevCompleted = prevTool.state === "output-available" ||
+		const prevCompleted =
+			prevTool.state === "output-available" ||
 			prevTool.state === "output-error" ||
 			prevTool.state === "output-denied";
-		const currentInProgress = tool.state === "input-streaming" ||
+		const currentInProgress =
+			tool.state === "input-streaming" ||
 			tool.state === "input-available" ||
 			tool.state === "approval-requested" ||
 			tool.state === "approval-responded";
@@ -149,146 +151,154 @@ function getToolDescription(tool: ToolUIPart): string {
  * visualizers (SearchResults, Weather, etc.) handle them. This component
  * is primarily for multi-step tool chains or in-progress tools.
  */
-export const ToolChain = memo(({ className, tools, ...props }: ToolChainProps) => {
-	// Filter out tools that should be handled by specialized visualizers
-	// These are completed tools with custom UI components
-	const toolsNeedingChain = useMemo(() => {
-		return tools.filter((tool) => {
-			// Skip tools that are completed and have specialized visualizers
-			if (tool.state === "output-available") {
-				// These tools have their own beautiful visualizers
-				const specializedTools = [
-					"tool-web_search", // SearchResults
-					"tool-plan", // PlanVisualizer
-					"tool-duyet_mcp", // DuyetMCPResults
-					"tool-scratchpad", // ScratchpadViewer
-					"tool-getWeather", // Weather
-					"tool-url_fetch", // UrlFetchPreview
-					"tool-createDocument", // DocumentPreview
-					"tool-updateDocument", // DocumentPreview
-					"tool-requestSuggestions", // DocumentToolResult
-				];
-				return !specializedTools.includes(tool.type);
-			}
-			return true;
-		});
-	}, [tools]);
+export const ToolChain = memo(
+	({ className, tools, ...props }: ToolChainProps) => {
+		// Filter out tools that should be handled by specialized visualizers
+		// These are completed tools with custom UI components
+		const toolsNeedingChain = useMemo(() => {
+			return tools.filter((tool) => {
+				// Skip tools that are completed and have specialized visualizers
+				if (tool.state === "output-available") {
+					// These tools have their own beautiful visualizers
+					const specializedTools = [
+						"tool-web_search", // SearchResults
+						"tool-plan", // PlanVisualizer
+						"tool-duyet_mcp", // DuyetMCPResults
+						"tool-scratchpad", // ScratchpadViewer
+						"tool-getWeather", // Weather
+						"tool-url_fetch", // UrlFetchPreview
+						"tool-createDocument", // DocumentPreview
+						"tool-updateDocument", // DocumentPreview
+						"tool-requestSuggestions", // DocumentToolResult
+					];
+					return !specializedTools.includes(tool.type);
+				}
+				return true;
+			});
+		}, [tools]);
 
-	// If no tools need chain visualization, return null
-	if (toolsNeedingChain.length === 0) {
-		return null;
-	}
+		const chains = useMemo(
+			() => groupToolsIntoChains(toolsNeedingChain),
+			[toolsNeedingChain],
+		);
 
-	const chains = useMemo(() => groupToolsIntoChains(toolsNeedingChain), [toolsNeedingChain]);
+		// If no tools need chain visualization, return null
+		if (toolsNeedingChain.length === 0) {
+			return null;
+		}
 
-	// If only one chain with one tool, render as simple tool
-	if (chains.length === 1 && chains[0].length === 1) {
-		const tool = chains[0][0];
-		const widthClass = "w-[min(100%,600px)]";
+		// If only one chain with one tool, render as simple tool
+		if (chains.length === 1 && chains[0].length === 1) {
+			const tool = chains[0][0];
+			const widthClass = "w-[min(100%,600px)]";
+
+			return (
+				<div className={widthClass}>
+					<Tool className="w-full" defaultOpen={true}>
+						<ToolHeader state={tool.state} type={tool.type} />
+						<ToolContent>
+							{tool.state === "input-available" && (
+								<ToolInput input={tool.input} />
+							)}
+						</ToolContent>
+					</Tool>
+				</div>
+			);
+		}
 
 		return (
-			<div className={widthClass}>
-				<Tool className="w-full" defaultOpen={true}>
-					<ToolHeader state={tool.state} type={tool.type} />
-					<ToolContent>
-						{tool.state === "input-available" && <ToolInput input={tool.input} />}
-					</ToolContent>
-				</Tool>
-			</div>
-		);
-	}
+			<div className={cn("space-y-3", className)} {...props}>
+				{chains.map((chain, chainIndex) => (
+					<div key={`chain-${chainIndex}`} className="relative">
+						{/* Chain label for multi-tool chains */}
+						{chain.length > 1 && (
+							<div className="mb-2 flex items-center gap-2 text-muted-foreground text-xs">
+								<div className="h-px flex-1 bg-border" />
+								<span className="font-medium uppercase tracking-wide">
+									Tool Chain {chainIndex + 1}
+								</span>
+								<div className="h-px flex-1 bg-border" />
+							</div>
+						)}
 
-	return (
-		<div className={cn("space-y-3", className)} {...props}>
-			{chains.map((chain, chainIndex) => (
-				<div key={`chain-${chainIndex}`} className="relative">
-					{/* Chain label for multi-tool chains */}
-					{chain.length > 1 && (
-						<div className="mb-2 flex items-center gap-2 text-muted-foreground text-xs">
-							<div className="h-px flex-1 bg-border" />
-							<span className="font-medium uppercase tracking-wide">
-								Tool Chain {chainIndex + 1}
-							</span>
-							<div className="h-px flex-1 bg-border" />
-						</div>
-					)}
+						{/* Chain steps */}
+						<div className="space-y-2">
+							{chain.map((tool, stepIndex) => {
+								const isLastStep = stepIndex === chain.length - 1;
+								const isCompleted =
+									tool.state === "output-available" ||
+									tool.state === "output-error" ||
+									tool.state === "output-denied";
 
-					{/* Chain steps */}
-					<div className="space-y-2">
-						{chain.map((tool, stepIndex) => {
-							const isLastStep = stepIndex === chain.length - 1;
-							const isCompleted = tool.state === "output-available" ||
-								tool.state === "output-error" ||
-								tool.state === "output-denied";
+								return (
+									<div key={`tool-${tool.toolCallId}`} className="relative">
+										{/* Vertical connector line */}
+										{!isLastStep && (
+											<div className="absolute left-[19px] top-8 h-full w-px bg-border" />
+										)}
 
-							return (
-								<div key={`tool-${tool.toolCallId}`} className="relative">
-									{/* Vertical connector line */}
-									{!isLastStep && (
-										<div className="absolute left-[19px] top-8 h-full w-px bg-border" />
-									)}
-
-									{/* Tool step */}
-									<div className="flex gap-3">
-										{/* Status indicator */}
-										<div className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full bg-background border">
-											{getStateIcon(tool.state)}
-										</div>
-
-										{/* Tool content */}
-										<div className="min-w-0 flex-1">
-											<div className="mb-1.5 flex items-center gap-2">
-												<span className="font-medium text-sm">
-													{getToolDescription(tool)}
-												</span>
-												{chain.length > 1 && (
-													<Badge
-														className="gap-1 text-xs"
-														variant="secondary"
-													>
-														Step {stepIndex + 1} of {chain.length}
-													</Badge>
-												)}
+										{/* Tool step */}
+										<div className="flex gap-3">
+											{/* Status indicator */}
+											<div className="relative z-10 flex size-10 shrink-0 items-center justify-center rounded-full bg-background border">
+												{getStateIcon(tool.state)}
 											</div>
 
-											{!isCompleted && (
-												<Tool className="w-full" defaultOpen={true}>
-													<ToolHeader
-														state={tool.state}
-														type={tool.type}
-														title={getToolDescription(tool)}
-													/>
-													<ToolContent>
-														{tool.state === "input-available" && (
-															<ToolInput input={tool.input} />
-														)}
-													</ToolContent>
-												</Tool>
-											)}
-
-											{/* Status text for completed tools */}
-											{isCompleted && (
-												<div className="text-muted-foreground text-xs">
-													{getStateLabel(tool.state)}
+											{/* Tool content */}
+											<div className="min-w-0 flex-1">
+												<div className="mb-1.5 flex items-center gap-2">
+													<span className="font-medium text-sm">
+														{getToolDescription(tool)}
+													</span>
+													{chain.length > 1 && (
+														<Badge
+															className="gap-1 text-xs"
+															variant="secondary"
+														>
+															Step {stepIndex + 1} of {chain.length}
+														</Badge>
+													)}
 												</div>
-											)}
-										</div>
-									</div>
 
-									{/* Arrow connector between steps */}
-									{!isLastStep && (
-										<div className="ml-[39px] mt-1">
-											<ArrowDownIcon className="size-4 text-muted-foreground" />
+												{!isCompleted && (
+													<Tool className="w-full" defaultOpen={true}>
+														<ToolHeader
+															state={tool.state}
+															type={tool.type}
+															title={getToolDescription(tool)}
+														/>
+														<ToolContent>
+															{tool.state === "input-available" && (
+																<ToolInput input={tool.input} />
+															)}
+														</ToolContent>
+													</Tool>
+												)}
+
+												{/* Status text for completed tools */}
+												{isCompleted && (
+													<div className="text-muted-foreground text-xs">
+														{getStateLabel(tool.state)}
+													</div>
+												)}
+											</div>
 										</div>
-									)}
-								</div>
-							);
-						})}
+
+										{/* Arrow connector between steps */}
+										{!isLastStep && (
+											<div className="ml-[39px] mt-1">
+												<ArrowDownIcon className="size-4 text-muted-foreground" />
+											</div>
+										)}
+									</div>
+								);
+							})}
+						</div>
 					</div>
-				</div>
-			))}
-		</div>
-	);
-});
+				))}
+			</div>
+		);
+	},
+);
 
 ToolChain.displayName = "ToolChain";

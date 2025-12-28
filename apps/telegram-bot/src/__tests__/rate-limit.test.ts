@@ -13,7 +13,6 @@ import {
   resetUserRateLimitState,
   type UserRateLimitState,
 } from '../middlewares/rate-limit.js';
-import type { Env } from '../middlewares/types.js';
 
 describe('rate-limit middleware', () => {
   beforeEach(() => {
