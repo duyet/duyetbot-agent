@@ -60,7 +60,7 @@ const DEFAULT_COLORS = [
 function parseChartContent(content: string): ChartConfig | null {
 	try {
 		const parsed = JSON.parse(content);
-		if (parsed && parsed.type && Array.isArray(parsed.data)) {
+		if (parsed?.type && Array.isArray(parsed.data)) {
 			return parsed as ChartConfig;
 		}
 		return null;

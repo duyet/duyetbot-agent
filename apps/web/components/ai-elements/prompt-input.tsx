@@ -154,7 +154,6 @@ export function PromptInputProvider({
 		(FileUIPart & { id: string })[]
 	>([]);
 	const fileInputRef = useRef<HTMLInputElement | null>(null);
-	// biome-ignore lint/suspicious/noEmptyBlockStatements: noop initializer
 	const openRef = useRef<() => void>(() => {});
 
 	const add = useCallback((files: File[] | FileList) => {
@@ -1111,7 +1110,6 @@ interface SpeechRecognitionErrorEvent extends Event {
 }
 
 declare global {
-	// biome-ignore lint/nursery/useConsistentTypeDefinitions: global augmentation requires interface
 	interface Window {
 		SpeechRecognition: {
 			new (): SpeechRecognition;

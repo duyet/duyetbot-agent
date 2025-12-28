@@ -356,8 +356,6 @@ interface SearchResultItemProps {
 }
 
 function SearchResultItem({ result, query, onClick }: SearchResultItemProps) {
-	const [isHighlighted, setIsHighlighted] = useState(false);
-
 	const getIcon = () => {
 		if (result.type === "memory") {
 			return <TagIcon className="text-blue-500" size={16} />;
@@ -398,8 +396,6 @@ function SearchResultItem({ result, query, onClick }: SearchResultItemProps) {
 				"text-left transition-colors",
 			)}
 			onClick={onClick}
-			onMouseEnter={() => setIsHighlighted(true)}
-			onMouseLeave={() => setIsHighlighted(false)}
 		>
 			<div className="mt-1 flex-shrink-0">{getIcon()}</div>
 
@@ -410,11 +406,14 @@ function SearchResultItem({ result, query, onClick }: SearchResultItemProps) {
 				<p className="truncate text-muted-foreground text-sm">
 					{highlightText(getContent(), query)}
 				</p>
-				{getTimestamp() && (
-					<p className="mt-1 text-muted-foreground text-xs">
-						{formatTimestamp(getTimestamp()!)}
-					</p>
-				)}
+				{(() => {
+					const timestamp = getTimestamp();
+					return timestamp ? (
+						<p className="mt-1 text-muted-foreground text-xs">
+							{formatTimestamp(timestamp)}
+						</p>
+					) : null;
+				})()}
 			</div>
 
 			{/* Relevance indicator */}

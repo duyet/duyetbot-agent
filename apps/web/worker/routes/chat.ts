@@ -27,12 +27,7 @@ import {
 	stream,
 	vote,
 } from "../../lib/db/schema";
-import {
-	executeWithFallback,
-	getLanguageModelForWorker,
-	getTitleModelForWorker,
-	streamWithFallback,
-} from "../lib/ai";
+import { executeWithFallback, streamWithFallback } from "../lib/ai";
 import { createGuestSession, getSessionFromRequest } from "../lib/auth-helpers";
 import { getDb } from "../lib/context";
 import { WorkerError } from "../lib/errors";
@@ -227,7 +222,7 @@ chatRoutes.post("/", zValidator("json", postRequestBodySchema), async (c) => {
 	const {
 		id,
 		message,
-		messages: historyMessages,
+		messages: _historyMessages,
 		selectedChatModel,
 		selectedVisibilityType,
 		customInstructions,

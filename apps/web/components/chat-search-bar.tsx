@@ -21,7 +21,7 @@ type ChatSearchBarProps = {
 };
 
 export function ChatSearchBar({
-	userId,
+	userId: _userId,
 	open,
 	onOpenChange,
 }: ChatSearchBarProps) {
