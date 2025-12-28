@@ -375,3 +375,238 @@ export async function getSharedArtifact({
 
 	return result.data as any[];
 }
+
+// Agent types
+export type Agent = {
+	id: string;
+	name: string;
+	description: string;
+	avatar: string | null;
+	systemPrompt: string;
+	guidelines: string;
+	outputFormat: string;
+	modelId: string;
+	temperature: string;
+	maxTokens: string;
+	topP: string;
+	frequencyPenalty: string;
+	presencePenalty: string;
+	enabledTools: string[];
+	needsApproval: boolean;
+	isEnabled: boolean;
+	category: string;
+	createdAt: Date;
+	updatedAt: Date;
+};
+
+export type AgentCategory = {
+	value: string;
+	label: string;
+	description: string;
+};
+
+export type AgentTemplate = {
+	systemPrompt: string;
+	guidelines: string;
+	outputFormat: string;
+};
+
+// Zod schemas for API responses
+const agentsResponseSchema = z.object({
+	agents: z.array(
+		z.object({
+			id: z.string(),
+			name: z.string(),
+			description: z.string(),
+			avatar: z.string().nullable(),
+			systemPrompt: z.string(),
+			guidelines: z.string(),
+			outputFormat: z.string(),
+			modelId: z.string(),
+			temperature: z.string(),
+			maxTokens: z.string(),
+			topP: z.string(),
+			frequencyPenalty: z.string(),
+			presencePenalty: z.string(),
+			enabledTools: z.array(z.string()),
+			needsApproval: z.boolean(),
+			isEnabled: z.boolean(),
+			category: z.string(),
+			createdAt: z.coerce.date(),
+			updatedAt: z.coerce.date(),
+		}),
+	),
+});
+
+const agentResponseSchema = z.object({
+	agent: z.object({
+		id: z.string(),
+		name: z.string(),
+		description: z.string(),
+		avatar: z.string().nullable(),
+		systemPrompt: z.string(),
+		guidelines: z.string(),
+		outputFormat: z.string(),
+		modelId: z.string(),
+		temperature: z.string(),
+		maxTokens: z.string(),
+		topP: z.string(),
+		frequencyPenalty: z.string(),
+		presencePenalty: z.string(),
+		enabledTools: z.array(z.string()),
+		needsApproval: z.boolean(),
+		isEnabled: z.boolean(),
+		category: z.string(),
+		createdAt: z.coerce.date(),
+		updatedAt: z.coerce.date(),
+	}),
+});
+
+const templatesResponseSchema = z.object({
+	categories: z.array(
+		z.object({
+			value: z.string(),
+			label: z.string(),
+			description: z.string(),
+		}),
+	),
+	models: z.array(z.string()),
+	templates: z.record(
+		z.object({
+			systemPrompt: z.string(),
+			guidelines: z.string(),
+			outputFormat: z.string(),
+		}),
+	),
+});
+
+/**
+ * Get all agents for current user
+ */
+export async function getAgents(): Promise<Agent[] | null> {
+	const result = await safeFetch("/api/agents", undefined, agentsResponseSchema);
+
+	if (result.error || !result.data) {
+		console.error("[getAgents] Failed:", result.error);
+		return null;
+	}
+
+	return result.data.agents;
+}
+
+/**
+ * Get agent templates (categories, models, templates)
+ */
+export async function getAgentTemplates(): Promise<{
+	categories: AgentCategory[];
+	models: string[];
+	templates: Record<string, AgentTemplate>;
+} | null> {
+	const result = await safeFetch("/api/agents/templates", undefined, templatesResponseSchema);
+
+	if (result.error || !result.data) {
+		console.error("[getAgentTemplates] Failed:", result.error);
+		return null;
+	}
+
+	return result.data;
+}
+
+/**
+ * Create a new agent
+ */
+export async function createAgent(
+	agentData: Omit<Agent, "id" | "createdAt" | "updatedAt">,
+): Promise<Agent | null> {
+	const result = await safeFetch(
+		"/api/agents",
+		{
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(agentData),
+		},
+		agentResponseSchema,
+	);
+
+	if (result.error || !result.data) {
+		console.error("[createAgent] Failed:", result.error);
+		return null;
+	}
+
+	return result.data.agent;
+}
+
+/**
+ * Get a specific agent by ID
+ */
+export async function getAgent(agentId: string): Promise<Agent | null> {
+	const result = await safeFetch(`/api/agents/${agentId}`, undefined, agentResponseSchema);
+
+	if (result.error || !result.data) {
+		console.error("[getAgent] Failed:", result.error);
+		return null;
+	}
+
+	return result.data.agent;
+}
+
+/**
+ * Update an existing agent
+ */
+export async function updateAgent(
+	agentId: string,
+	agentData: Omit<Agent, "id" | "createdAt" | "updatedAt">,
+): Promise<Agent | null> {
+	const result = await safeFetch(
+		`/api/agents/${agentId}`,
+		{
+			method: "PUT",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(agentData),
+		},
+		agentResponseSchema,
+	);
+
+	if (result.error || !result.data) {
+		console.error("[updateAgent] Failed:", result.error);
+		return null;
+	}
+
+	return result.data.agent;
+}
+
+/**
+ * Delete an agent
+ */
+export async function deleteAgent(agentId: string): Promise<boolean> {
+	const result = await safeFetch(`/api/agents/${agentId}`, {
+		method: "DELETE",
+	});
+
+	if (result.error) {
+		console.error("[deleteAgent] Failed:", result.error);
+		return false;
+	}
+
+	return true;
+}
+
+/**
+ * Toggle agent enabled state
+ */
+export async function toggleAgent(agentId: string): Promise<Agent | null> {
+	const result = await safeFetch(
+		`/api/agents/${agentId}/toggle`,
+		{
+			method: "PATCH",
+		},
+		agentResponseSchema,
+	);
+
+	if (result.error || !result.data) {
+		console.error("[toggleAgent] Failed:", result.error);
+		return null;
+	}
+
+	return result.data.agent;
+}

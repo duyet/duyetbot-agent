@@ -10,6 +10,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { addStaticCacheHeaders, cacheMiddleware } from "./lib/cache";
 import { WorkerError } from "./lib/errors";
 // Import route handlers
+import { agentsRouter } from "./routes/agents";
 import { authRoutes } from "./routes/auth";
 import { chatRoutes } from "./routes/chat";
 import { customToolsRouter } from "./routes/custom-tools";
@@ -84,6 +85,7 @@ app.onError((err, c) => {
 });
 
 // API routes
+app.route("/api/agents", agentsRouter);
 app.route("/api/auth", authRoutes);
 app.route("/api/chat", chatRoutes);
 app.route("/api/history", historyRoutes);

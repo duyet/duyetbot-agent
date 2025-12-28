@@ -364,3 +364,53 @@ export const customTool = sqliteTable("CustomTool", {
 });
 
 export type CustomTool = InferSelectModel<typeof customTool>;
+
+// Custom AI agents/personas
+export const agent = sqliteTable("Agent", {
+	id: text("id")
+		.primaryKey()
+		.$defaultFn(() => crypto.randomUUID()),
+	name: text("name").notNull(),
+	description: text("description").notNull(),
+	// Agent identity and persona
+	avatar: text("avatar"), // Emoji or icon for the agent
+	// System prompt sections
+	systemPrompt: text("systemPrompt").notNull(),
+	// Behavior guidelines
+	guidelines: text("guidelines").notNull().default(""),
+	// Output format preferences
+	outputFormat: text("outputFormat").notNull().default(""),
+	// Model parameters
+	modelId: text("modelId").notNull().default("anthropic/claude-sonnet-4-20250514"),
+	temperature: text("temperature", { mode: "json" }).notNull().default("0.7"),
+	maxTokens: text("maxTokens", { mode: "json" }).notNull().default("4096"),
+	topP: text("topP", { mode: "json" }).notNull().default("1"),
+	frequencyPenalty: text("frequencyPenalty", { mode: "json" }).notNull().default("0"),
+	presencePenalty: text("presencePenalty", { mode: "json" }).notNull().default("0"),
+	// Tools this agent has access to (array of tool IDs)
+	enabledTools: text("enabledTools", {
+		mode: "json",
+	}).$type<string[]>().default([]),
+	// Whether this agent requires user approval before execution
+	needsApproval: integer("needsApproval", { mode: "boolean" })
+		.notNull()
+		.default(false),
+	// Enabled/disabled state
+	isEnabled: integer("isEnabled", { mode: "boolean" }).notNull().default(true),
+	// Agent category/template (custom, coding, writing, analysis, etc.)
+	category: text("category").notNull().default("custom"),
+	userId: text("userId")
+		.notNull()
+		.references(() => user.id, {
+			onDelete: "cascade",
+			onUpdate: "no action",
+		}),
+	createdAt: integer("createdAt", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+	updatedAt: integer("updatedAt", { mode: "timestamp" })
+		.notNull()
+		.$defaultFn(() => new Date()),
+});
+
+export type Agent = InferSelectModel<typeof agent>;
