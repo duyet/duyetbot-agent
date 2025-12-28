@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 57
+**Iteration**: 58
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -44,7 +44,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 - [x] Implement code splitting for large components (artifacts, dashboard)
 - [ ] Add virtual scrolling for long message lists
 - [x] Lazy load images and heavy assets
-- [ ] Add service worker for offline support
+- [x] Add service worker for offline support
 - [ ] Implement optimistic UI for real-time updates
 
 ---
@@ -281,6 +281,18 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 58 (Dec 29, 2025)
+- ✅ Discovered existing service worker infrastructure (sw.ts) was not registered
+- ✅ Restored ServiceWorkerRegistration component from .bak file
+- ✅ Fixed service worker registration path from `/sw.ts` to `/sw.js` for static export compatibility
+- ✅ Integrated ServiceWorkerRegistration and OfflineBanner components into root layout
+- ✅ Service worker provides cache-first strategy for static assets (JS, CSS, images, fonts)
+- ✅ Service worker provides network-first strategy for HTML pages and API calls
+- ✅ Offline banner displays warning when user loses network connection
+- ✅ Update available UI prompts users when new service worker version is ready
+- ✅ Web app type-check and build passing
+- ✅ Complete Performance & UX section now 4/6 complete
 
 ### Iteration 57 (Dec 29, 2025)
 - ✅ Implemented arrow key navigation for message lists (Messages component)

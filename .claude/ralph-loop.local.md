@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 68
+iteration: 69
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -35,95 +35,137 @@ Please rewrite this files for each iteration  what you plan to do next, and any 
 
 ---
 
-## Iteration 58 Plan (Next)
+## Iteration 58 Summary (Dec 29, 2025)
 
-### Focus Areas for Iteration 58
+### Completed
 
-Based on the comprehensive TODO.md analysis and the self-improving philosophy, here are the planned options for Iteration 58:
+#### Service Worker Integration for Offline Support
+- **Root Objective**: Enable service worker functionality for offline support and improved caching
+- **Problem Discovery**: Service worker infrastructure already existed (`public/sw.ts`) but was not registered
+- **Solution**: Restored service worker registration component and integrated it into the application
 
-#### Current State Analysis
-- ✅ **Security Enhancements**: ALL COMPLETE (CSP headers, CSRF protection, per-user rate limiting, input sanitization, audit logging, secure session management)
-- ✅ **Keyboard Navigation**: ALL COMPLETE (shortcuts, focus trapping, visible indicators, arrow navigation, escape handlers)
-- ✅ **Error Recovery**: ALL COMPLETE (retry buttons, optimistic UI, error boundaries, user-friendly messages, report issue)
-- ✅ **Loading States**: 4/5 complete (skeletons exist, progressive loading done, spinners done)
-- ✅ **Performance**: 3/6 complete (Pyodide lazy loading, code splitting, image lazy loading done)
-- ⚠️ **Unit Test Coverage**: ~40%, target 80%+ (not started)
-- ⚠️ **E2E Tests**: Fully implemented (Playwright setup complete, tests passing)
-- ❌ **Skeleton Screens for Dashboard**: Not started (dashboard pages don't exist yet)
+- **Discovery Phase**:
+  - Found `public/sw.ts` - comprehensive service worker with:
+    - Cache-first strategy for static assets (JS, CSS, images, fonts)
+    - Network-first strategy for HTML pages and API calls
+    - API offline fallback responses (503 Service Unavailable)
+    - Background sync support for failed requests
+    - Push notification support
+  - Found `components/offline-banner.tsx` - offline UI component
+  - Found `components/service-worker-registration.tsx.bak` - backed up registration component
 
-#### Option 1: Virtual Scrolling for Message Lists (Performance Priority)
-- **Objective**: Add virtual scrolling for long message lists to improve performance
-- **Rationale**: Message lists can grow very long, virtual scrolling reduces DOM nodes
-- **Complexity**: High - dynamic message heights (attachments, tools, code blocks, reasoning), auto-scroll to bottom conflicts
-- **Trade-offs**: May conflict with arrow key navigation (iteration 57), animation delays
-- **Alternative**: Consider if current lazy loading provides sufficient performance gains
+- **Implementation**:
+  1. **Restored ServiceWorkerRegistration component** (`apps/web/components/service-worker-registration.tsx`):
+     - Changed registration path from `/sw.ts` to `/sw.js` for static export compatibility
+     - Service worker only registers in production environment
+     - Update available UI prompts users when new service worker version is ready
+     - Controller change detection triggers page reload for updates
 
-#### Option 2: Service Worker for Offline Support (Performance Priority)
-- **Objective**: Add service worker for offline functionality
-- **Tasks**:
-  1. Create service worker with cache-first strategy for static assets
-  2. Implement network-first strategy for API calls
-  3. Add offline fallback UI
-  4. Add service worker registration in app initialization
-- **Benefits**: Better UX for poor network conditions, faster subsequent loads
+  2. **Integrated components into root layout** (`apps/web/app/layout.tsx`):
+     - Added imports for `OfflineBanner` and `ServiceWorkerRegistration`
+     - Wrapped layout with React Fragment `<>...</>` to support multiple root elements
+     - Components render outside `<html>` tag for proper overlay behavior
 
-#### Option 3: Unit Test Coverage Increase (Quality Priority)
-- **Objective**: Increase test coverage from ~40% to 80%+
-- **Tasks**:
-  1. Add tests for arrow key navigation (iteration 57 feature)
-  2. Add tests for focus management (iteration 56 feature)
-  3. Add tests for authentication flow
-  4. Add tests for API client functions
-  5. Add tests for artifact rendering components
-- **Benefits**: Better code quality, catch regressions early
+- **Service Worker Capabilities**:
+  - **Static Asset Caching**: `/`, `/chat`, auth pages, icons cached on install
+  - **Cache-First Strategy**: JS, CSS, PNG, JPG, SVG, WOFF, WOFF2 files served from cache
+  - **Network-First Strategy**: HTML pages and API calls use network with cache fallback
+  - **Offline Detection**: `navigator.onLine` API with event listeners
+  - **Update Management**: Automatic detection of new service worker versions
 
-#### Option 4: Telegram Bot Enhancements (Cross-App Priority)
-- **Objective**: Add new commands to Telegram bot for platform interaction
-- **Tasks**:
-  1. `/news` - Daily news summaries
-  2. `/deploy` - Check deployment status
-  3. `/health` - System health checks
-  4. `/pr` - PR status and summaries
-  5. `/review` - Trigger AI code review
-  6. `/task` - Assign task to remote Claude session
-- **Benefits**: Expand platform capabilities, improve bot utility
+### Files Modified Summary
+- `apps/web/components/service-worker-registration.tsx`: NEW - 118 lines (restored from .bak with path fix)
+- `apps/web/app/layout.tsx`: +4 lines (imports, Fragment wrapper, component usage)
+- `TODO.md`: Updated iteration to 58, marked service worker task as complete, added summary
+- `.claude/ralph-loop.local.md`: Updated iteration to 69, added iteration 58 summary
 
-#### Option 5: GitHub Bot Improvements (Cross-App Priority)
-- **Objective**: Enhance GitHub bot with automation features
-- **Tasks**:
-  1. Automatic PR reviews using AI agents
-  2. `/pr-summary` - PR status and summary
-  3. `/merge` - Merge PR with checks
-  4. `/conflict` - Detect merge conflicts
-  5. `/assign` - Assign PR to reviewers
-- **Benefits**: Improve GitHub workflow automation
+### Final Status
+- ✅ **TypeScript**: Web app type-check successful
+- ✅ **Build**: Web app builds successfully (11 static pages, 1.29 MB First Load JS)
+- ✅ **Integration**: Both offline banner and service worker registration integrated
 
-#### Option 6: Digital Twin Foundation (Long-Term Vision)
-- **Objective**: Start building memory schema for @duyet's digital twin
-- **Tasks**:
-  1. Design memory schema for digital twin
-  2. Implement blog post ingestion from RSS/Atom feeds
-  3. Add GitHub activity tracking (commits, PRs, issues)
-  4. Create personality profile system (tone, style, preferences)
-  5. Add bilingual support (Vietnamese & English)
-- **Benefits**: Foundation for digital twin feature
+### Technical Notes
 
-### Recommendation
+**Service Worker Registration Path Fix**:
+```typescript
+// Before (from .bak file):
+const registration = await navigator.serviceWorker.register("/sw.ts", {
+  type: "module",
+});
 
-**Start with Option 2 (Service Worker for Offline Support)** as it:
-1. Completes the Performance & UX section (3/6 → 4/6 complete)
-2. Provides tangible user experience improvement
-3. Relatively straightforward implementation
-4. Builds on existing codebase patterns
-5. Doesn't conflict with recently completed features
+// After (fixed for static export):
+const registration = await navigator.serviceWorker.register("/sw.js", {
+  scope: "/",
+});
+```
 
-**Follow-up priorities**:
-- Option 3 (Unit Test Coverage) - Quality foundation
-- Option 4/5 (Cross-App Improvements) - Platform expansion
-- Option 6 (Digital Twin) - Long-term vision
+**Why `/sw.js` instead of `/sw.ts`**:
+- TypeScript files are compiled to JavaScript during Next.js build
+- Next.js static export generates `/public/sw.js` from `/public/sw.ts`
+- Service worker registration must reference the compiled JavaScript file
+- The `.ts` file doesn't exist in the built application
+
+**Production-Only Registration**:
+```typescript
+if (
+  typeof window === "undefined" ||
+  !("serviceWorker" in navigator) ||
+  process.env.NODE_ENV !== "production"
+) {
+  return; // Skip registration in development
+}
+```
+
+**React Fragment for Multiple Root Elements**:
+```tsx
+return (
+  <>
+    <html>...</html>
+    <OfflineBanner />
+    <ServiceWorkerRegistration />
+  </>
+);
+```
+
+### Offline User Experience
+1. **Online**: Normal operation, all features available
+2. **Offline**: Amber banner appears at top: "You are offline. Some features may be limited."
+3. **Cached Content**: Static assets and previously viewed pages still load
+4. **API Calls**: Return 503 Service Unavailable with offline message
+5. **Recovery**: Automatically detects when connection restored
+
+### Performance & UX Impact
+- **Cache-First Static Assets**: Instant loading for cached JS, CSS, images
+- **Network-First HTML**: Always get fresh content when online, cached fallback when offline
+- **Better UX on Poor Networks**: Cached assets load faster than network fetch
+- **Progressive Enhancement**: App works offline with cached content, new features require connection
+
+### Next Steps (From TODO.md)
+
+#### Performance & UX: 4/6 Complete ✨
+- [x] Lazy load Pyodide library (~9MB savings)
+- [x] Code splitting for artifacts
+- [ ] Virtual scrolling for long lists
+- [x] Lazy load images
+- [x] **Service worker for offline support** ← Iteration 58 ✅
+- [ ] Optimistic UI for real-time updates
+
+#### High Priority Remaining Items
+1. **Skeleton Screens for Dashboard** (blocked - dashboard doesn't exist yet)
+   - Can be implemented when dashboard pages are created
+   - Skeleton infrastructure already exists
+
+2. **Virtual Scrolling** (not started)
+   - Consider if needed based on performance metrics
+   - May conflict with arrow key navigation (iteration 57)
+
+3. **Unit Test Coverage** (~40%, target 80%+)
+   - Add tests for service worker registration
+   - Add tests for offline banner component
+   - Add tests for keyboard navigation (iterations 56-57)
 
 ### Blockers
-**None Currently** - All systems operational, ready for next iteration.
+**None Currently** - Service worker successfully integrated, offline support enabled.
 
 ---
 

@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
 import { Toaster } from "sonner";
+import { OfflineBanner } from "@/components/offline-banner";
+import { ServiceWorkerRegistration } from "@/components/service-worker-registration";
 import { ThemeProvider } from "@/components/theme-provider";
 import { WebVitals } from "@/components/web-vitals";
 
@@ -55,34 +57,38 @@ export default function RootLayout({
 	children: React.ReactNode;
 }>) {
 	return (
-		<html
-			// `next-themes` injects an extra classname to the body element to avoid
-			// visual flicker before hydration. Hence the `suppressHydrationWarning`
-			// prop is necessary to avoid the React hydration mismatch warning.
-			// https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
-			lang="en"
-			suppressHydrationWarning
-		>
-			<head>
-				<script
-					// biome-ignore lint/security/noDangerouslySetInnerHtml: "Required"
-					dangerouslySetInnerHTML={{
-						__html: THEME_COLOR_SCRIPT,
-					}}
-				/>
-			</head>
-			<body className="antialiased">
-				<ThemeProvider
-					attribute="class"
-					defaultTheme="system"
-					disableTransitionOnChange
-					enableSystem
-				>
-					<Toaster position="top-center" />
-					<WebVitals />
-					{children}
-				</ThemeProvider>
-			</body>
-		</html>
+		<>
+			<html
+				// `next-themes` injects an extra classname to the body element to avoid
+				// visual flicker before hydration. Hence the `suppressHydrationWarning`
+				// prop is necessary to avoid the React hydration mismatch warning.
+				// https://github.com/pacocoursey/next-themes?tab=readme-ov-file#with-app
+				lang="en"
+				suppressHydrationWarning
+			>
+				<head>
+					<script
+						// biome-ignore lint/security/noDangerouslySetInnerHtml: "Required"
+						dangerouslySetInnerHTML={{
+							__html: THEME_COLOR_SCRIPT,
+						}}
+					/>
+				</head>
+				<body className="antialiased">
+					<ThemeProvider
+						attribute="class"
+						defaultTheme="system"
+						disableTransitionOnChange
+						enableSystem
+					>
+						<Toaster position="top-center" />
+						<WebVitals />
+						{children}
+					</ThemeProvider>
+				</body>
+			</html>
+			<OfflineBanner />
+			<ServiceWorkerRegistration />
+		</>
 	);
 }
