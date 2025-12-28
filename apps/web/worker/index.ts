@@ -13,6 +13,7 @@ import { WorkerError } from "./lib/errors";
 import { authRoutes } from "./routes/auth";
 import { chatRoutes } from "./routes/chat";
 import { customToolsRouter } from "./routes/custom-tools";
+import { docsRouter } from "./routes/docs";
 import { documentRoutes } from "./routes/document";
 import { filesRoutes } from "./routes/files";
 import { historyRoutes } from "./routes/history";
@@ -92,6 +93,7 @@ app.route("/api/rate-limit", rateLimitRoutes);
 app.route("/api/suggestions", suggestionsRoutes);
 app.route("/api/tools/custom", customToolsRouter);
 app.route("/api/vote", voteRoutes);
+app.route("/api/docs", docsRouter);
 
 // Health check
 app.get("/health", (c) => {

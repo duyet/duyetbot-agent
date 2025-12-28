@@ -161,7 +161,7 @@
 ### 10. Documentation & Developer Experience
 **Goal:** Easy to understand and contribute to
 
-- [ ] **API documentation** - OpenAPI/Swagger for all endpoints
+- [x] **API documentation** - OpenAPI 3.1 spec with Swagger UI at /api/docs ✅
 - [ ] **Component documentation** - Storybook for component catalog
 - [ ] **Architecture documentation** - System design diagrams
 - [ ] **Deployment guide** - Step-by-step deployment instructions
