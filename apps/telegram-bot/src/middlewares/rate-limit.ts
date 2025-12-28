@@ -67,14 +67,21 @@ export interface UserRateLimitState {
  *
  * For production with multiple workers, this should be moved to D1 KV or DO storage.
  * Current implementation is suitable for single-worker deployments or as a first line of defense.
+ *
+ * NOTE: Cloudflare Workers are stateless between invocations. This state is ephemeral
+ * and resets on worker restart. For production use with multiple workers, implement
+ * distributed rate limiting using Durable Objects or KV.
  */
 const rateLimitState = new Map<number, UserRateLimitState>();
 
 /**
  * Cleanup stale entries from rate limit state
  *
- * Runs periodically to prevent memory leaks from inactive users.
+ * Runs periodically (on some requests) to prevent memory leaks from inactive users.
  * Removes entries older than 5 minutes.
+ *
+ * NOTE: This is called probabilistically on incoming requests (1% chance) rather than
+ * on a timer, because Cloudflare Workers don't allow setInterval at module scope.
  */
 function cleanupStaleEntries(): void {
   const now = Date.now();
@@ -92,8 +99,15 @@ function cleanupStaleEntries(): void {
   }
 }
 
-// Run cleanup every 5 minutes
-setInterval(cleanupStaleEntries, 5 * 60 * 1000);
+/**
+ * Probabilistic cleanup - runs on ~1% of requests
+ * This prevents memory leaks without requiring a timer
+ */
+function maybeCleanupStaleEntries(): void {
+  if (Math.random() < 0.01) {
+    cleanupStaleEntries();
+  }
+}
 
 /**
  * Check if user is currently throttled
@@ -265,6 +279,9 @@ export function createRateLimitMiddleware(
   };
 
   return async (c, next) => {
+    // Probabilistic cleanup of stale entries (1% chance)
+    maybeCleanupStaleEntries();
+
     // Initialize rate limited flag
     c.set('rateLimited', false);
 
