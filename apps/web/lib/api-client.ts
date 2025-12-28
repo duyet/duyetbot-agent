@@ -185,7 +185,8 @@ async function safeFetch<T>(
 
 	// Max retries exceeded
 	return {
-		error: lastError?.message || `Request failed after ${config.maxRetries} retries`,
+		error:
+			lastError?.message || `Request failed after ${config.maxRetries} retries`,
 		status: 0,
 	};
 }

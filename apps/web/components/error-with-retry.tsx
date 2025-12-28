@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useState } from "react";
 import { AlertOctagon, AlertTriangle, RefreshCw, X } from "lucide-react";
 import type { ReactNode } from "react";
+import { useCallback, useState } from "react";
 import { Button } from "./ui/button";
 
 export type ErrorSeverity = "error" | "warning" | "info";
@@ -63,7 +63,8 @@ export function ErrorWithRetry({
 
 	const severityClasses = {
 		error: "border-destructive/50 bg-destructive/10 text-destructive",
-		warning: "border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400",
+		warning:
+			"border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-400",
 		info: "border-blue-500/50 bg-blue-500/10 text-blue-700 dark:text-blue-400",
 	};
 
@@ -98,7 +99,9 @@ export function ErrorWithRetry({
 							className={`size-3 ${isRetrying ? "animate-spin" : ""}`}
 							aria-hidden="true"
 						/>
-						<span className="ml-1">{isRetrying ? "Retrying..." : retryText}</span>
+						<span className="ml-1">
+							{isRetrying ? "Retrying..." : retryText}
+						</span>
 					</Button>
 				)}
 

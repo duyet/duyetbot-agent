@@ -92,7 +92,9 @@ describe("getLocalStorage", () => {
 				delete store[key];
 			}),
 			clear: vi.fn(() => {
-				Object.keys(store).forEach((key) => delete store[key]);
+				Object.keys(store).forEach((key) => {
+					delete store[key];
+				});
 			}),
 			length: 0,
 			key: vi.fn(() => null),

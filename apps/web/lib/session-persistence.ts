@@ -328,7 +328,9 @@ export function clearAllSessions() {
 				key.startsWith(STORAGE_KEYS.SESSION_METADATA),
 		);
 
-		sessionKeys.forEach((key) => localStorage.removeItem(key));
+		sessionKeys.forEach((key) => {
+			localStorage.removeItem(key);
+		});
 	} catch (error) {
 		console.error("[SessionPersistence] Failed to clear all sessions:", error);
 	}
