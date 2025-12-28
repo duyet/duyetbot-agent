@@ -1,11 +1,12 @@
 import { logger } from '@duyetbot/hono-middleware';
 import type { Agent } from 'agents';
 import type { CloudflareAgentState, MCPServerConnection } from '../cloudflare-agent.js';
+import type { CloudflareEnv } from '../core/types.js';
 
 /**
  * Handles initialization of MCP server connections.
  */
-export class MCPInitializer<TEnv extends Cloudflare.Env> {
+export class MCPInitializer<TEnv extends CloudflareEnv> {
   constructor(
     private agent: Agent<TEnv, CloudflareAgentState>,
     private mcpServers: MCPServerConnection[],

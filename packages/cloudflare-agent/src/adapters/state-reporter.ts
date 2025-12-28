@@ -1,5 +1,6 @@
 import { logger } from '@duyetbot/hono-middleware';
 import type { Agent, AgentNamespace } from 'agents';
+import type { CloudflareEnv } from '../core/types.js';
 import type {
   CompleteBatchParams,
   HeartbeatParams,
@@ -10,7 +11,7 @@ import type {
  * Adapter for reporting state to the centralized State Durable Object.
  * Uses a fire-and-forget pattern to avoid blocking the main agent flow.
  */
-export class StateDOReporter<TEnv extends Cloudflare.Env> {
+export class StateDOReporter<TEnv extends CloudflareEnv> {
   constructor(private getEnv: () => TEnv) {}
 
   /**
@@ -24,7 +25,7 @@ export class StateDOReporter<TEnv extends Cloudflare.Env> {
     const env = this.getEnv();
     // NOTE: Legacy code using deleted RouterAgentEnv
     const envWithState = env as unknown as {
-      StateDO?: AgentNamespace<Agent<Cloudflare.Env, unknown>>;
+      StateDO?: AgentNamespace<Agent<CloudflareEnv, unknown>>;
     };
 
     if (!envWithState.StateDO) {

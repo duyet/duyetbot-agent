@@ -7,6 +7,12 @@ import type { ParsedInput, Transport, TransportHooks } from '../transport.js';
 import type { LLMProvider, Message, OpenAITool } from '../types.js';
 
 /**
+ * Cloudflare Worker Environment type constraint
+ * Used as a generic constraint for environment bindings
+ */
+export type CloudflareEnv = Record<string, any>;
+
+/**
  * MCP server configuration for connecting to external MCP servers
  */
 export interface MCPServerConnection {
@@ -192,12 +198,14 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
  * Type for the CloudflareChatAgent class constructor
  * Extends typeof Agent to maintain compatibility with AgentNamespace
  */
-export type CloudflareChatAgentClass<TEnv extends Cloudflare.Env, TContext = unknown> =
-  typeof Agent<TEnv, CloudflareAgentState> & {
-    new (
-      ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
-    ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
-  };
+export type CloudflareChatAgentClass<TEnv extends CloudflareEnv, TContext = unknown> = typeof Agent<
+  TEnv,
+  CloudflareAgentState
+> & {
+  new (
+    ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
+  ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
+};
 
 /**
  * Namespace type for the agent binding
@@ -205,11 +213,11 @@ export type CloudflareChatAgentClass<TEnv extends Cloudflare.Env, TContext = unk
  */
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 export type CloudflareChatAgentNamespace<
-  _TEnv extends Cloudflare.Env,
-  _TContext = unknown
+  _TEnv extends CloudflareEnv,
+  _TContext = unknown,
 > = AgentNamespace<any>;
 
 /**
  * Adapter factory return type for dependency injection
  */
-export type AdapterFactory<TEnv extends Cloudflare.Env> = (env: TEnv) => AdapterBundle;
+export type AdapterFactory<TEnv extends CloudflareEnv> = (env: TEnv) => AdapterBundle;

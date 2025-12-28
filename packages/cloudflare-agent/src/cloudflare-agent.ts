@@ -42,6 +42,7 @@ import {
   handleBuiltinCommand,
   transformSlashCommand,
 } from './commands/index.js';
+import type { CloudflareEnv } from './core/types.js';
 import { trimHistory } from './history.js';
 import { MCPInitializer } from './mcp/mcp-initializer.js';
 import type { ParsedInput, Transport, TransportHooks } from './transport.js';
@@ -245,12 +246,14 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
  * Type for the CloudflareChatAgent class constructor
  * Extends typeof Agent to maintain compatibility with AgentNamespace
  */
-export type CloudflareChatAgentClass<TEnv extends Cloudflare.Env, TContext = unknown> =
-  typeof Agent<TEnv, CloudflareAgentState> & {
-    new (
-      ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
-    ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
-  };
+export type CloudflareChatAgentClass<TEnv extends CloudflareEnv, TContext = unknown> = typeof Agent<
+  TEnv,
+  CloudflareAgentState
+> & {
+  new (
+    ...args: ConstructorParameters<typeof Agent<TEnv, CloudflareAgentState>>
+  ): Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>;
+};
 
 /**
  * Create a Cloudflare Durable Object Agent class with direct LLM integration
@@ -270,7 +273,7 @@ import type { QuotedContext } from './workflow/types.js';
  * });
  * ```
  */
-export function createCloudflareChatAgent<TEnv extends Cloudflare.Env, TContext = unknown>(
+export function createCloudflareChatAgent<TEnv extends CloudflareEnv, TContext = unknown>(
   config: CloudflareAgentConfig<TEnv, TContext>
 ): CloudflareChatAgentClass<TEnv, TContext> {
   const maxHistory = config.maxHistory ?? 100;
@@ -2012,11 +2015,9 @@ export function createCloudflareChatAgent<TEnv extends Cloudflare.Env, TContext 
  * Use this for the Env interface to get proper typing for agent stubs
  */
 export type CloudflareChatAgentNamespace<
-  TEnv extends Cloudflare.Env,
-  TContext = unknown
-> = AgentNamespace<
-  Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>
->;
+  TEnv extends CloudflareEnv,
+  TContext = unknown,
+> = AgentNamespace<Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>>;
 
 /**
  * Type-safe helper to get a CloudflareChatAgent by name

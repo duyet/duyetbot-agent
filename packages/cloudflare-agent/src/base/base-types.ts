@@ -5,6 +5,8 @@
  * These types define the common interfaces that all DO implementations extend.
  */
 
+import type { CloudflareEnv } from '../core/types.js';
+
 // ============================================================================
 // Base State
 // ============================================================================
@@ -51,7 +53,7 @@ export interface D1DatabaseBinding {
  * }
  * ```
  */
-export interface BaseEnv extends Cloudflare.Env {
+export interface BaseEnv extends CloudflareEnv {
   /** Current environment (production, development, staging) */
   ENVIRONMENT?: string;
   /** LLM model to use (e.g., 'claude-3-5-sonnet-20241022') */
