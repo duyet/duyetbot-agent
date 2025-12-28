@@ -225,8 +225,14 @@ Complete rate limiting and guest session management:
   - Pre-built templates: coding, writing, analysis, research, learning
   - Model parameter controls (temperature, max tokens, topP)
   - Avatar emoji picker and approval toggle
+- [x] **Image display in content** - Render images inline within chat messages ✅
+  - Custom MarkdownImage component via Streamdown
+  - Validates data URLs and HTTPS external URLs
+  - Loading state with pulse animation
+  - Click-to-expand modal for full-size view
+  - Hover overlay with maximize button
+  - Error fallback showing alt text
 - [ ] **Scheduled daily tasks** - Ability to schedule recurring tasks with integration selection (web search, tools, etc.)
-- [ ] **Image display in content** - Render images inline within chat messages
 - [ ] **Tool chain visualization** - Show chain of tools using AI elements components
 
 ### Priority 6: Rust Integration (Future)
