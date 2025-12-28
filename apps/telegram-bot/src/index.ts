@@ -20,6 +20,7 @@ import { type Env, TelegramAgent } from './agent.js';
 import {
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
+  createRateLimitMiddleware,
 } from './middlewares/index.js';
 import { processEventNotifications } from './notifications/index.js';
 import { answerCallbackQuery, createTelegramContext, telegramTransport } from './transport.js';
@@ -48,6 +49,7 @@ app.post(
   createTelegramWebhookAuth<EnvWithAgent>(),
   createTelegramParserMiddleware(),
   createTelegramAuthMiddleware(),
+  createRateLimitMiddleware(),
   async (c) => {
     const env = c.env;
     const startTime = Date.now();
@@ -103,6 +105,8 @@ app.post(
       let reason = 'skip_flag';
       if (c.get('unauthorized')) {
         reason = 'unauthorized';
+      } else if (c.get('rateLimited')) {
+        reason = 'rate_limited';
       } else if (webhookCtx?.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReply) {
         reason = 'group_not_mentioned_or_reply';
       }
@@ -136,6 +140,29 @@ app.post(
           });
         }
       }
+
+      // Handle rate-limited users - send friendly message explaining the limit
+      if (c.get('rateLimited') && webhookCtx) {
+        const rateLimitReason = c.get('rateLimitReason') ?? 'Please slow down.';
+        const ctx = createTelegramContext(
+          env.TELEGRAM_BOT_TOKEN,
+          webhookCtx,
+          env.TELEGRAM_ADMIN,
+          requestId,
+          env.TELEGRAM_PARSE_MODE ?? 'MarkdownV2'
+        );
+        try {
+          assertContextComplete(ctx);
+          await telegramTransport.send(ctx, `⚠️ ${rateLimitReason}`);
+        } catch (validationError) {
+          logger.error(`[${requestId}] [VALIDATION] Context incomplete (rate-limited user)`, {
+            requestId,
+            error:
+              validationError instanceof Error ? validationError.message : String(validationError),
+          });
+        }
+      }
+
       return c.text('OK');
     }
 

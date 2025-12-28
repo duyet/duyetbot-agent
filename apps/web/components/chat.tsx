@@ -78,6 +78,8 @@ export function Chat({
 	const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
 	const [currentModelId, setCurrentModelId] = useState(initialChatModel);
 	const currentModelIdRef = useRef(currentModelId);
+	// Track if we've attempted title generation for this chat
+	const titleGeneratedRef = useRef(false);
 
 	useEffect(() => {
 		currentModelIdRef.current = currentModelId;
@@ -176,9 +178,10 @@ export function Chat({
 			mutate(unstable_serialize(getChatHistoryPaginationKey));
 
 			// Generate title after first message completion for new chats
-			// Only generate if we have exactly 2 messages (1 user + 1 assistant response)
-			// and this is the first time we're completing a response
-			if (messages.length === 2 && !isReadonly) {
+			// Use a ref to track if we've already attempted generation to avoid duplicate calls
+			// Check messages.length to ensure we have at least user + assistant response
+			if (!titleGeneratedRef.current && !isReadonly && messages.length >= 2) {
+				// Find the first user message to generate title from
 				const firstUserMessage = messages.find((m) => m.role === "user");
 				const textPart = firstUserMessage?.parts?.find(
 					(p) => p.type === "text",
@@ -186,6 +189,8 @@ export function Chat({
 				const messageText = textPart && "text" in textPart ? textPart.text : "";
 
 				if (messageText) {
+					// Mark as attempted before async call to prevent duplicates
+					titleGeneratedRef.current = true;
 					try {
 						await generateTitleFromUserMessage({
 							chatId: id,
@@ -195,6 +200,8 @@ export function Chat({
 						router.refresh();
 					} catch (error) {
 						console.warn("[Chat] Failed to generate title:", error);
+						// Reset ref on failure so we can retry
+						titleGeneratedRef.current = false;
 					}
 				}
 			}

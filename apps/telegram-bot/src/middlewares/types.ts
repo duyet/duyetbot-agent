@@ -167,6 +167,8 @@ export interface Env {
   TELEGRAM_BOT_TOKEN: string;
   /** Bot username for mention detection (without @, default: 'duyetbot') */
   BOT_USERNAME?: string;
+  /** Admin username for special privileges (rate limit exemption, debug footer) */
+  TELEGRAM_ADMIN?: string;
 }
 
 /**
