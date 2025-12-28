@@ -1,35 +1,24 @@
 "use client";
 
 import { useChat } from "@ai-sdk/react";
-import { DefaultChatTransport } from "ai";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import type { UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { ChatHeader } from "@/components/chat-header";
-import {
-	AlertDialog,
-	AlertDialogAction,
-	AlertDialogCancel,
-	AlertDialogContent,
-	AlertDialogDescription,
-	AlertDialogFooter,
-	AlertDialogHeader,
-	AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { CreditCardAlertDialog } from "@/components/credit-card-alert-dialog";
 import { useArtifactSelector } from "@/hooks/use-artifact";
 import { useAutoResume } from "@/hooks/use-auto-resume";
 import { useChatVisibility } from "@/hooks/use-chat-visibility";
 import { useOnlineStatus } from "@/hooks/use-online-status";
-import { generateTitleFromUserMessage } from "@/lib/api-client";
-import {
-	getAISettings,
-	getEffectiveInstructions,
-} from "@/lib/custom-instructions";
+import { createChatTransport } from "@/hooks/use-chat-transport";
+import { useTitleGeneration } from "@/hooks/use-title-generation";
+import { useURLQuery } from "@/hooks/use-url-query";
 import type { Vote } from "@/lib/db/schema";
 import { ChatSDKError } from "@/lib/errors";
 import type { Attachment, ChatMessage } from "@/lib/types";
-import { fetcher, fetchWithErrorHandlers, generateUUID } from "@/lib/utils";
+import { fetcher, generateUUID } from "@/lib/utils";
 import { Artifact } from "./artifact";
 import { useDataStream } from "./data-stream-provider";
 import { Messages } from "./messages";
@@ -78,12 +67,17 @@ export function Chat({
 	const [showCreditCardAlert, setShowCreditCardAlert] = useState(false);
 	const [currentModelId, setCurrentModelId] = useState(initialChatModel);
 	const currentModelIdRef = useRef(currentModelId);
-	// Track if we've attempted title generation for this chat
-	const titleGeneratedRef = useRef(false);
 
 	useEffect(() => {
 		currentModelIdRef.current = currentModelId;
 	}, [currentModelId]);
+
+	// Create the chat transport with tool approval and AI settings
+	const chatTransport = createChatTransport({
+		chatId: id,
+		visibilityType,
+		currentModelIdRef,
+	});
 
 	const {
 		messages,
@@ -114,97 +108,13 @@ export function Chat({
 				) ?? false;
 			return shouldContinue;
 		},
-		transport: new DefaultChatTransport({
-			api: "/api/chat",
-			fetch: fetchWithErrorHandlers,
-			prepareSendMessagesRequest(request) {
-				const lastMessage = request.messages.at(-1);
-
-				// Check if this is a tool approval continuation:
-				// - Last message is NOT a user message (meaning no new user input)
-				// - OR any message has tool parts that were responded to (approved or denied)
-				const isToolApprovalContinuation =
-					lastMessage?.role !== "user" ||
-					request.messages.some((msg) =>
-						msg.parts?.some((part) => {
-							const state = (part as { state?: string }).state;
-							return (
-								state === "approval-responded" || state === "output-denied"
-							);
-						}),
-					);
-
-				// Get custom instructions and AI settings
-				const customInstructions = getEffectiveInstructions(id);
-				const aiSettings = getAISettings();
-
-				return {
-					body: {
-						id: request.id,
-						// Send all messages for tool approval continuation, otherwise just the last user message
-						...(isToolApprovalContinuation
-							? { messages: request.messages }
-							: { message: lastMessage }),
-						selectedChatModel: currentModelIdRef.current,
-						selectedVisibilityType: visibilityType,
-						// Include custom instructions and AI settings
-						...(customInstructions && { customInstructions }),
-						...(aiSettings && {
-							aiSettings: {
-								...(aiSettings.temperature !== 0.7 && {
-									temperature: aiSettings.temperature,
-								}),
-								...(aiSettings.maxTokens && {
-									maxTokens: aiSettings.maxTokens,
-								}),
-								...(aiSettings.topP !== undefined && { topP: aiSettings.topP }),
-								...(aiSettings.frequencyPenalty !== undefined && {
-									frequencyPenalty: aiSettings.frequencyPenalty,
-								}),
-								...(aiSettings.presencePenalty !== undefined && {
-									presencePenalty: aiSettings.presencePenalty,
-								}),
-							},
-						}),
-						...request.body,
-					},
-				};
-			},
-		}),
+		transport: chatTransport,
 		onData: (dataPart) => {
 			setDataStream((ds) => (ds ? [...ds, dataPart] : []));
 		},
-		onFinish: async () => {
+		onFinish: () => {
+			// Trigger sidebar refresh after message completion
 			mutate(unstable_serialize(getChatHistoryPaginationKey));
-
-			// Generate title after first message completion for new chats
-			// Use a ref to track if we've already attempted generation to avoid duplicate calls
-			// Check messages.length to ensure we have at least user + assistant response
-			if (!titleGeneratedRef.current && !isReadonly && messages.length >= 2) {
-				// Find the first user message to generate title from
-				const firstUserMessage = messages.find((m) => m.role === "user");
-				const textPart = firstUserMessage?.parts?.find(
-					(p) => p.type === "text",
-				);
-				const messageText = textPart && "text" in textPart ? textPart.text : "";
-
-				if (messageText) {
-					// Mark as attempted before async call to prevent duplicates
-					titleGeneratedRef.current = true;
-					try {
-						await generateTitleFromUserMessage({
-							chatId: id,
-							message: messageText,
-						});
-						// Refresh the sidebar to show updated title
-						router.refresh();
-					} catch (error) {
-						console.warn("[Chat] Failed to generate title:", error);
-						// Reset ref on failure so we can retry
-						titleGeneratedRef.current = false;
-					}
-				}
-			}
 		},
 		onError: (error) => {
 			if (error instanceof ChatSDKError) {
@@ -223,22 +133,11 @@ export function Chat({
 		},
 	});
 
-	const searchParams = useSearchParams();
-	const query = searchParams.get("query");
+	// Handle URL query parameters for auto-sending messages
+	useURLQuery({ chatId: id, sendMessage });
 
-	const [hasAppendedQuery, setHasAppendedQuery] = useState(false);
-
-	useEffect(() => {
-		if (query && !hasAppendedQuery) {
-			sendMessage({
-				role: "user" as const,
-				parts: [{ type: "text" as const, text: query }],
-			});
-
-			setHasAppendedQuery(true);
-			window.history.replaceState({}, "", `/chat/${id}`);
-		}
-	}, [query, sendMessage, hasAppendedQuery, id]);
+	// Auto-generate title after first message
+	useTitleGeneration({ chatId: id, isReadonly, messages });
 
 	const { data: votes } = useSWR<Vote[]>(
 		messages.length >= 2 ? `/api/vote?chatId=${id}` : null,
@@ -323,35 +222,10 @@ export function Chat({
 				votes={votes}
 			/>
 
-			<AlertDialog
+			<CreditCardAlertDialog
 				onOpenChange={setShowCreditCardAlert}
 				open={showCreditCardAlert}
-			>
-				<AlertDialogContent>
-					<AlertDialogHeader>
-						<AlertDialogTitle>Activate AI Gateway</AlertDialogTitle>
-						<AlertDialogDescription>
-							This application requires{" "}
-							{process.env.NODE_ENV === "production" ? "the owner" : "you"} to
-							activate Vercel AI Gateway.
-						</AlertDialogDescription>
-					</AlertDialogHeader>
-					<AlertDialogFooter>
-						<AlertDialogCancel>Cancel</AlertDialogCancel>
-						<AlertDialogAction
-							onClick={() => {
-								window.open(
-									"https://vercel.com/d?to=%2F%5Bteam%5D%2F%7E%2Fai%3Fmodal%3Dadd-credit-card",
-									"_blank",
-								);
-								window.location.href = "/";
-							}}
-						>
-							Activate
-						</AlertDialogAction>
-					</AlertDialogFooter>
-				</AlertDialogContent>
-			</AlertDialog>
+			/>
 		</>
 	);
 }
