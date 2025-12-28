@@ -1,10 +1,12 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
-import { memo, useState } from "react";
+import { Volume2Icon, VolumeXIcon } from "lucide-react";
+import { memo, useCallback, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
 import { useCopyToClipboard } from "usehooks-ts";
+import { useSpeechSynthesis } from "@/hooks/use-text-to-speech";
 import { deleteMessage } from "@/lib/api-client";
 import type { Vote } from "@/lib/db/schema";
 import type { ChatMessage } from "@/lib/types";
@@ -37,6 +39,23 @@ export function PureMessageActions({
 	const { mutate } = useSWRConfig();
 	const [_, copyToClipboard] = useCopyToClipboard();
 	const [isDeleting, setIsDeleting] = useState(false);
+	const { speak, cancel, isSpeaking, isSupported } = useSpeechSynthesis();
+
+	const textFromParts = message.parts
+		?.filter((part) => part.type === "text")
+		.map((part) => ("text" in part ? part.text : ""))
+		.join("\n")
+		.trim();
+
+	const handleSpeak = useCallback(() => {
+		if (isSpeaking) {
+			cancel();
+		} else if (textFromParts) {
+			speak(textFromParts);
+		} else {
+			toast.error("No text to speak");
+		}
+	}, [isSpeaking, cancel, speak, textFromParts]);
 
 	if (isLoading) {
 		return null;
@@ -66,12 +85,6 @@ export function PureMessageActions({
 			setIsDeleting(false);
 		}
 	};
-
-	const textFromParts = message.parts
-		?.filter((part) => part.type === "text")
-		.map((part) => ("text" in part ? part.text : ""))
-		.join("\n")
-		.trim();
 
 	const handleCopy = async () => {
 		if (!textFromParts) {
@@ -122,6 +135,20 @@ export function PureMessageActions({
 			<Action onClick={handleCopy} tooltip="Copy">
 				<CopyIcon />
 			</Action>
+
+			{isSupported && (
+				<Action
+					data-testid="message-speak"
+					onClick={handleSpeak}
+					tooltip={isSpeaking ? "Stop speaking" : "Read aloud"}
+				>
+					{isSpeaking ? (
+						<VolumeXIcon className="size-4" />
+					) : (
+						<Volume2Icon className="size-4" />
+					)}
+				</Action>
+			)}
 
 			<Action
 				data-testid="message-upvote"
