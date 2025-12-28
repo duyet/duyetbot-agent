@@ -163,8 +163,8 @@
 
 - [x] **API documentation** - OpenAPI 3.1 spec with Swagger UI at /api/docs ✅
 - [ ] **Component documentation** - Storybook for component catalog
-- [ ] **Architecture documentation** - System design diagrams
-- [ ] **Deployment guide** - Step-by-step deployment instructions
+- [x] **Architecture documentation** - System design diagrams in docs/ARCHITECTURE.md ✅
+- [x] **Deployment guide** - Step-by-step deployment instructions in docs/DEPLOYMENT.md ✅
 - [ ] **Contributing guide** - How to contribute to the project
 - [ ] **Troubleshooting guide** - Common issues and solutions
 
