@@ -16,6 +16,7 @@ import { eq } from "drizzle-orm";
 import { sessions } from "../../lib/db/schema";
 import { getDb } from "./context";
 import { generateUUID } from "./utils";
+import { logSessionEvent } from "./audit-logger";
 
 export type SessionMetadata = {
 	userAgent?: string;
@@ -82,6 +83,20 @@ export async function registerSession(
 		replacedSessionId,
 	});
 
+	// Log session creation for audit trail (non-blocking)
+	try {
+		await logSessionEvent(
+			c,
+			userId,
+			"session_created",
+			sessionId,
+			metadata,
+		);
+	} catch (error) {
+		// Non-blocking: don't fail session creation if audit logging fails
+		console.error("[session-manager] Failed to log session creation:", error);
+	}
+
 	return sessionId;
 }
 
@@ -125,6 +140,20 @@ export async function verifySession(
 		.set({ lastActivityAt: new Date() })
 		.where(eq(sessions.id, session.id));
 
+	// Log session verification for audit trail (non-blocking)
+	try {
+		await logSessionEvent(
+			c,
+			session.userId,
+			"session_verified",
+			session.id,
+			metadata,
+		);
+	} catch (error) {
+		// Non-blocking: don't fail session verification if audit logging fails
+		console.error("[session-manager] Failed to log session verification:", error);
+	}
+
 	return {
 		sessionId: session.id,
 		userId: session.userId,
@@ -149,10 +178,33 @@ export async function invalidateSession(
 	const db = getDb(c);
 	const tokenHash = await hashToken(token);
 
+	// Get session info for audit logging before deletion
+	const sessionRecords = await db
+		.select()
+		.from(sessions)
+		.where(eq(sessions.tokenHash, tokenHash))
+		.limit(1);
+
+	const userId = sessionRecords.length > 0 ? sessionRecords[0].userId : null;
+	const sessionId = sessionRecords.length > 0 ? sessionRecords[0].id : null;
+
 	const result = await db
 		.delete(sessions)
 		.where(eq(sessions.tokenHash, tokenHash))
 		.returning();
+
+	// Log session invalidation for audit trail (non-blocking)
+	if (userId && sessionId && result.length > 0) {
+		try {
+			await logSessionEvent(c, userId, "session_invalidated", sessionId);
+		} catch (error) {
+			// Non-blocking: don't fail session invalidation if audit logging fails
+			console.error(
+				"[session-manager] Failed to log session invalidation:",
+				error,
+			);
+		}
+	}
 
 	return result.length > 0;
 }
@@ -225,6 +277,20 @@ export async function rotateSession(
 
 	// Delete old session (session fixation prevention)
 	await db.delete(sessions).where(eq(sessions.id, oldSession.id));
+
+	// Log session rotation for audit trail (non-blocking)
+	try {
+		await logSessionEvent(
+			c,
+			oldSession.userId,
+			"session_rotated",
+			newSessionId,
+			metadata,
+		);
+	} catch (error) {
+		// Non-blocking: don't fail session rotation if audit logging fails
+		console.error("[session-manager] Failed to log session rotation:", error);
+	}
 
 	return newSessionId;
 }

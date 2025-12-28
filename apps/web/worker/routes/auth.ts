@@ -28,8 +28,13 @@ import {
 	verifyPassword,
 	verifyState,
 } from "../lib/crypto";
-import { invalidateSession } from "../lib/session-manager";
+import { invalidateSession, verifySession } from "../lib/session-manager";
 import { generateUUID } from "../lib/utils";
+import {
+	logAuthFailure,
+	logAuthSuccess,
+	logSecurityEvent,
+} from "../lib/audit-logger";
 import type { Env } from "../types";
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
@@ -133,6 +138,14 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 	// Rate limiting (now using KV)
 	const allowed = await checkRateLimit(c, clientId, 5, 60_000);
 	if (!allowed) {
+		// Log rate limit exceeded for security monitoring
+		await logSecurityEvent(
+			c,
+			null,
+			"rate_limit_exceeded",
+			`Login rate limit exceeded for IP: ${clientId}`,
+			getSessionMetadata(c),
+		);
 		return c.json(
 			{ error: "Too many login attempts. Please try again later." },
 			429,
@@ -151,6 +164,12 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 		// Use a pre-computed dummy hash instead of hashing on each request
 		const dummyHash = "$2a$10$abcdefghijklmnopqrstuvwxyz1234567890"; // Valid bcrypt hash format
 		await verifyPassword("dummy_password_for_timing", dummyHash);
+		// Log failed login attempt for security monitoring
+		await logAuthFailure(
+			"failed_login",
+			`Login attempt failed for email: ${email}`,
+			getSessionMetadata(c),
+		);
 		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
 	}
 
@@ -161,12 +180,24 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 		// Still verify a dummy password for consistent timing
 		const dummyHash = "$2a$10$abcdefghijklmnopqrstuvwxyz1234567890";
 		await verifyPassword("dummy_password_for_timing", dummyHash);
+		// Log failed login attempt (OAuth user trying password login)
+		await logAuthFailure(
+			"failed_login",
+			`Password login attempted for OAuth user: ${email}`,
+			getSessionMetadata(c),
+		);
 		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
 	}
 
 	const passwordsMatch = await verifyPassword(password, userRecord.password);
 
 	if (!passwordsMatch) {
+		// Log failed login attempt for security monitoring
+		await logAuthFailure(
+			"failed_login",
+			`Incorrect password for email: ${email}`,
+			getSessionMetadata(c),
+		);
 		return c.json({ error: GENERIC_AUTH_ERROR }, 401);
 	}
 
@@ -187,6 +218,9 @@ authRoutes.post("/login", zValidator("json", loginSchema), async (c) => {
 		c,
 		getSessionMetadata(c),
 	);
+
+	// Log successful login for audit trail
+	await logAuthSuccess(c, userRecord.id, "login", getSessionMetadata(c));
 
 	const response = c.json({
 		success: true,
@@ -214,6 +248,14 @@ authRoutes.post("/register", zValidator("json", loginSchema), async (c) => {
 
 	// Rate limiting
 	if (!checkRateLimit(clientId, 3, 60_000)) {
+		// Log rate limit exceeded for security monitoring
+		await logSecurityEvent(
+			c,
+			null,
+			"rate_limit_exceeded",
+			`Registration rate limit exceeded for IP: ${clientId}`,
+			getSessionMetadata(c),
+		);
 		return c.json(
 			{ error: "Too many registration attempts. Please try again later." },
 			429,
@@ -245,6 +287,12 @@ authRoutes.post("/register", zValidator("json", loginSchema), async (c) => {
 		await db.insert(user).values({ email, password: hashedPassword });
 	} catch (error) {
 		console.error("Failed to create user:", error);
+		// Log failed registration attempt for security monitoring
+		await logAuthFailure(
+			"failed_register",
+			`Database error during registration for email: ${email}`,
+			getSessionMetadata(c),
+		);
 		return c.json({ error: "Failed to create account" }, 500);
 	}
 
@@ -266,6 +314,10 @@ authRoutes.post("/register", zValidator("json", loginSchema), async (c) => {
 		c,
 		getSessionMetadata(c),
 	);
+
+	// Log successful registration for audit trail
+	await logAuthSuccess(c, newUser.id, "register", getSessionMetadata(c));
+	await logAuthSuccess(c, newUser.id, "account_created", getSessionMetadata(c));
 
 	const response = c.json({
 		success: true,
@@ -305,6 +357,19 @@ authRoutes.post("/logout", async (c) => {
 		}
 	}
 
+	// Get user ID for audit logging before invalidating session
+	let userId: string | null = null;
+	if (token) {
+		try {
+			const sessionInfo = await verifySession(c, token);
+			if (sessionInfo) {
+				userId = sessionInfo.userId;
+			}
+		} catch (error) {
+			console.error("[logout] Failed to verify session for logging:", error);
+		}
+	}
+
 	// Invalidate session in database if token found
 	if (token) {
 		try {
@@ -313,6 +378,11 @@ authRoutes.post("/logout", async (c) => {
 			console.error("[logout] Failed to invalidate session:", error);
 			// Continue with cookie clearing even if database invalidation fails
 		}
+	}
+
+	// Log logout event for audit trail
+	if (userId) {
+		await logAuthSuccess(c, userId, "logout", getSessionMetadata(c));
 	}
 
 	const response = c.json({ success: true });
@@ -362,6 +432,10 @@ authRoutes.get("/guest", async (c) => {
 		c,
 		getSessionMetadata(c),
 	);
+
+	// Log guest user creation for audit trail
+	await logAuthSuccess(c, guestUser.id, "guest_created", getSessionMetadata(c));
+	await logAuthSuccess(c, guestUser.id, "account_created", getSessionMetadata(c));
 
 	const response = c.json({
 		success: true,
@@ -579,6 +653,12 @@ authRoutes.get("/github/callback", async (c) => {
 			c,
 			getSessionMetadata(c),
 		);
+
+		// Log GitHub OAuth login for audit trail
+		await logAuthSuccess(c, userId, "oauth_login", getSessionMetadata(c));
+		if (_isNewUser) {
+			await logAuthSuccess(c, userId, "account_created", getSessionMetadata(c));
+		}
 
 		// Set session cookie and redirect to homepage
 		const origin = new URL(c.req.url).origin;

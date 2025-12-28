@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 54
+**Iteration**: 55
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -85,7 +85,7 @@ This is a continuous improvement project with a focus on building a multi-agent 
 - [x] Add rate limiting per user (not just per IP)
 - [x] Add input sanitization for all user inputs
 - [x] Implement secure session management
-- [ ] Add audit logging for sensitive operations
+- [x] Add audit logging for sensitive operations
 
 #### API Security
 - [ ] Add API key rotation mechanism
@@ -281,6 +281,18 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 55 (Dec 29, 2025)
+- ✅ Created comprehensive audit logging infrastructure for security event tracking
+- ✅ Added `AuditLog` database table with action, user, resource, outcome, metadata fields
+- ✅ Created `audit-logger.ts` utilities with type-safe audit actions and convenience functions
+- ✅ Integrated audit logging into all auth routes (login, register, logout, guest, GitHub OAuth)
+- ✅ Added session lifecycle logging to session manager (create, verify, invalidate, rotate)
+- ✅ Rate limit exceeded events now logged for security monitoring
+- ✅ Failed authentication attempts logged for anomaly detection
+- ✅ Non-blocking design: audit failures don't break authentication
+- ✅ All 32 packages type-check passing
+- ✅ All 18 packages build successfully
 
 ### Iteration 54 (Dec 29, 2025)
 - ✅ Implemented secure session management with database-backed session registry
