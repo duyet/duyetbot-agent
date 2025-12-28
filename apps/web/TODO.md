@@ -218,7 +218,13 @@ Complete rate limiting and guest session management:
   - Share button UI added to all 5 artifact types (text/code/image/sheet/chart)
   - Public viewer page at /share/[shareId] with full artifact rendering
   - ShareArtifactDialog component for managing share links
-- [ ] **Custom agent creation** - UI to generate custom model prompts with agent persona definition
+- [x] **Custom agent creation** - UI to generate custom model prompts with agent persona definition ✅
+  - Database schema: Agent table with prompts, model params, tool config
+  - API routes: Full CRUD for agents at /api/agents
+  - Agent Builder Dialog with category templates
+  - Pre-built templates: coding, writing, analysis, research, learning
+  - Model parameter controls (temperature, max tokens, topP)
+  - Avatar emoji picker and approval toggle
 - [ ] **Scheduled daily tasks** - Ability to schedule recurring tasks with integration selection (web search, tools, etc.)
 - [ ] **Image display in content** - Render images inline within chat messages
 - [ ] **Tool chain visualization** - Show chain of tools using AI elements components
