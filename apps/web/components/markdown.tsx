@@ -3,19 +3,34 @@
 /**
  * Markdown Component
  *
- * Renders markdown content with proper styling for chat interfaces.
- * Uses react-markdown for parsing and rendering.
+ * Renders markdown content with proper styling and security.
+ * Uses Streamdown with hardened security settings to prevent XSS attacks.
+ *
+ * @deprecated Use Streamdown component directly with getSecureRehypePlugins()
+ * This component is kept for backward compatibility but should be replaced.
  */
 
-import ReactMarkdown from "react-markdown";
+import { Streamdown } from "streamdown";
+import { getSecureRehypePlugins } from "@/lib/streamdown-security";
 import { cn } from "@/lib/utils";
 
 interface MarkdownProps {
 	children: string;
 	className?: string;
+	/**
+	 * Source of the markdown content
+	 * - "ai": AI-generated content (strict security settings)
+	 * - "user": User-generated content (more permissive)
+	 * @default "ai"
+	 */
+	source?: "ai" | "user";
 }
 
-export function Markdown({ children, className }: MarkdownProps) {
+export function Markdown({
+	children,
+	className,
+	source = "ai",
+}: MarkdownProps) {
 	return (
 		<div
 			className={cn(
@@ -38,7 +53,12 @@ export function Markdown({ children, className }: MarkdownProps) {
 				className,
 			)}
 		>
-			<ReactMarkdown>{children}</ReactMarkdown>
+			<Streamdown
+				rehypePlugins={getSecureRehypePlugins(source)}
+				className={cn("size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0")}
+			>
+				{children}
+			</Streamdown>
 		</div>
 	);
 }
