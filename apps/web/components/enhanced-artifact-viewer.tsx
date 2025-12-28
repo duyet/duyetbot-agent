@@ -339,6 +339,7 @@ export function EnhancedArtifactViewer({
 							alt={title}
 							className="max-h-full max-w-full rounded-lg object-contain"
 							src={content}
+							loading="lazy"
 						/>
 					</div>
 				);

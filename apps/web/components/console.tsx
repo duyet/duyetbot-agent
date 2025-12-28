@@ -169,6 +169,7 @@ export function Console({ consoleOutputs, setConsoleOutputs }: ConsoleProps) {
 													alt="output"
 													className="w-full max-w-(--breakpoint-toast-mobile) rounded-md"
 													src={content.value}
+													loading="lazy"
 												/>
 											</picture>
 										) : (

@@ -40,6 +40,7 @@ export function ImageEditor({
 							"p-0 md:p-20": !isInline,
 						})}
 						src={`data:image/png;base64,${content}`}
+						loading="lazy"
 					/>
 				</picture>
 			)}

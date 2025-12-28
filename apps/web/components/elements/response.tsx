@@ -64,6 +64,7 @@ const MarkdownImage = memo(
 							"h-auto max-w-full rounded-md transition-opacity",
 							isLoading && "opacity-0",
 						)}
+						loading="lazy"
 						onLoad={() => setIsLoading(false)}
 						onError={() => {
 							setIsLoading(false);

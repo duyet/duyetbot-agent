@@ -20,5 +20,6 @@ export const Image = ({
 			props.className,
 		)}
 		src={`data:${mediaType};base64,${base64}`}
+		loading="lazy"
 	/>
 );
