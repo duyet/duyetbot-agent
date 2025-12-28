@@ -191,6 +191,14 @@ Complete rate limiting and guest session management:
 ### Priority 3: Model Comparison
 Allow comparing responses from different models side-by-side.
 
+### 🚨 Priority 4: Bug Fixes & Tool Verification (Current)
+- [ ] Fix conversation title generation (not updating correctly)
+- [ ] Fix list of suggested questions (not displaying or stale)
+- [ ] Verify Duyet MCP tool is working correctly
+- [ ] Verify GitHub MCP tool is working correctly
+- [ ] Verify Plan/Research agent is working correctly
+- [ ] Verify model picker uses top models from OpenRouter
+
 ---
 
 ## 📊 Success Metrics
