@@ -307,28 +307,28 @@ PRODUCTION_URL=https://duyetbot-web.duyet.workers.dev
 **Estimated Time**: 2-3 weeks
 
 ### CORS & Security Headers (Quick Wins)
-- [ ] Fix CORS wildcard origin with credentials (worker/index.ts:35)
-- [ ] Add Content-Security-Policy header
-- [ ] Add X-Frame-Options, X-Content-Type-Options headers
-- [ ] Add Permissions-Policy header
+- [x] Fix CORS wildcard origin with credentials (worker/index.ts:35) ✅
+- [x] Add Content-Security-Policy header ✅
+- [x] Add X-Frame-Options, X-Content-Type-Options headers ✅
+- [x] Add Permissions-Policy header ✅
 
 ### Input Sanitization
-- [ ] Sanitize dangerouslySetInnerHTML usage (code-block.tsx)
-- [ ] Validate and sanitize all user inputs
-- [ ] Add DOMPurify for HTML content
+- [x] Sanitize dangerouslySetInnerHTML usage (code-block.tsx) ✅
+- [x] Validate and sanitize all user inputs ✅
+- [x] Add DOMPurify for HTML content (via rehype-harden in streamdown-security.ts) ✅
 
 ### Authentication & Rate Limiting
-- [ ] Fix in-memory rate limiting to use KV/D1 (auth.ts:52)
-- [ ] Fix timing attack vulnerability in password comparison
-- [ ] Add consistent auth middleware to all routes
+- [x] Fix in-memory rate limiting to use KV/D1 (auth.ts:52) ✅
+- [x] Fix timing attack vulnerability in password comparison ✅
+- [x] Add consistent auth middleware to all routes ✅
 
 ### Error Handling
-- [ ] Remove debug info from production error responses (worker/index.ts:70-84)
+- [x] Remove debug info from production error responses (worker/index.ts:70-84) ✅
 - [ ] Implement structured logging without sensitive data
 - [ ] Add error tracking (Sentry) with proper filtering
 
 ### File Upload Security
-- [ ] Add magic number validation for file uploads
+- [x] Add magic number validation for file uploads ✅
 - [ ] Add per-user upload quotas
 - [ ] Add virus scanning for uploaded files
 
