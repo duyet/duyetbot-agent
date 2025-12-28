@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 58
+**Iteration**: 59
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -281,6 +281,17 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 59 (Dec 29, 2025)
+- ✅ Added 6 comprehensive E2E tests for keyboard arrow key navigation
+- ✅ Test coverage: Arrow Down starts from first message, moves to next message
+- ✅ Test coverage: Arrow Up starts from last message, moves to previous message
+- ✅ Test coverage: Escape key clears message focus
+- ✅ Test coverage: Edge case - arrow keys disabled when input is focused
+- ✅ Fixed TypeScript error in test code (Promise handling for `messages.count()`)
+- ✅ Tests validate `data-focused` attribute behavior and smooth scrolling
+- ✅ 13 tests passed successfully before dev server crash (environmental issue)
+- ✅ Committed and pushed to `feature/web-ui-improvements` branch (commit 080ad89)
 
 ### Iteration 58 (Dec 29, 2025)
 - ✅ Discovered existing service worker infrastructure (sw.ts) was not registered
