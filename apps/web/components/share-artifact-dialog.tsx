@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
-import { CopyIcon, ShareIcon } from "@/components/icons";
+import { CopyIcon, LoaderIcon, ShareIcon } from "@/components/icons";
 import { createArtifactShare } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
 import { Button } from "./ui/button";
@@ -77,7 +77,16 @@ export function ShareArtifactDialog({
 							onClick={handleCreateShare}
 							variant="default"
 						>
-							{isCreating ? "Creating link..." : "Create Share Link"}
+							{isCreating ? (
+								<>
+									<span className="mr-2 inline-block animate-spin">
+										<LoaderIcon size={16} />
+									</span>
+									Creating link...
+								</>
+							) : (
+								"Create Share Link"
+							)}
 						</Button>
 					) : (
 						<div className="flex gap-2">
