@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 59
+**Iteration**: 60
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -281,6 +281,18 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 60 (Dec 29, 2025)
+- ✅ Created hook testing infrastructure for React hooks with @testing-library/react
+- ✅ Installed testing dependencies: @testing-library/react, @testing-library/jest-dom, happy-dom, @vitest/ui
+- ✅ Created vitest.hooks.config.ts with happy-dom environment (bun-compatible alternative to jsdom)
+- ✅ Created tests/setup/hooks-test-setup.ts with cleanup, mocks (matchMedia, IntersectionObserver, ResizeObserver)
+- ✅ Added test scripts: test:hooks, test:hooks:watch, test:hooks:coverage
+- ✅ Wrote comprehensive unit tests for use-optimistic-update hook (21 passing, 2 skipped)
+- ✅ Test coverage: initialization, success/failure paths, rollback behavior, specific operations (append/update/delete/regenerate), rollback control, snapshot management
+- ✅ Fixed TypeScript errors in hook (optimisticRegenerate) with `as const` assertion
+- ✅ All 736+ tests passing, type-check passing
+- ✅ Committed and pushed to `feature/web-ui-improvements` branch (commits 56b59f6, ee3bb5f, 79f2b22)
 
 ### Iteration 59 (Dec 29, 2025)
 - ✅ Added 6 comprehensive E2E tests for keyboard arrow key navigation
