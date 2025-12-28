@@ -17,12 +17,17 @@ import { describe, expect, it, vi } from "vitest";
 import type { ChatMessage } from "@/lib/types";
 import { useOptimisticUpdate } from "./use-optimistic-update";
 
+type MutationResult<T = void> = {
+	success: boolean;
+	error?: string;
+	data?: T;
+};
+
 // Helper to create a mock ChatMessage
 const createMockMessage = (id: string, text: string): ChatMessage => ({
 	id,
 	role: "user",
-	parts: [{ type: "text", text }],
-	createdAt: new Date().toISOString(),
+	parts: [{ type: "text" as const, text }],
 });
 
 // Helper to create a setMessages callback tracker
@@ -169,7 +174,9 @@ describe("useOptimisticUpdate - Successful Optimistic Updates", () => {
 			useOptimisticUpdate(initialMessages, setMessages),
 		);
 
-		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
+		let apiResult: Awaited<
+			ReturnType<typeof result.current.withOptimisticUpdate>
+		> = { success: false };
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",
@@ -313,7 +320,9 @@ describe("useOptimisticUpdate - Rollback on Exception", () => {
 			}),
 		);
 
-		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
+		let apiResult: Awaited<
+			ReturnType<typeof result.current.withOptimisticUpdate>
+		> = { success: false };
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",
@@ -343,7 +352,9 @@ describe("useOptimisticUpdate - Rollback on Exception", () => {
 			}),
 		);
 
-		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
+		let apiResult: Awaited<
+			ReturnType<typeof result.current.withOptimisticUpdate>
+		> = { success: false };
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",
@@ -396,7 +407,9 @@ describe("useOptimisticUpdate - Optimistic Update", () => {
 			useOptimisticUpdate(initialMessages, setMessages),
 		);
 
-		const updates = { parts: [{ type: "text", text: "Updated" }] };
+		const updates: Partial<ChatMessage> = {
+			parts: [{ type: "text", text: "Updated" }] as any,
+		};
 
 		await act(async () => {
 			await result.current.optimisticUpdate("1", updates, async () => ({
@@ -538,7 +551,9 @@ describe("useOptimisticUpdate - Apply Optimistic Failure", () => {
 			useOptimisticUpdate(initialMessages, setMessages),
 		);
 
-		let apiResult: ReturnType<typeof result.current.withOptimisticUpdate>;
+		let apiResult: Awaited<
+			ReturnType<typeof result.current.withOptimisticUpdate>
+		> = { success: false };
 		await act(async () => {
 			apiResult = await result.current.withOptimisticUpdate({
 				type: "append",

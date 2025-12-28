@@ -292,7 +292,7 @@ export function useOptimisticUpdate(
 					setMessages((prev) =>
 						prev.map((m) =>
 							m.id === (id as string)
-								? { ...m, parts: [{ type: "text", text: "Regenerating..." }] }
+								? { ...m, parts: [{ type: "text" as const, text: "Regenerating..." }] }
 								: m,
 						),
 					);
