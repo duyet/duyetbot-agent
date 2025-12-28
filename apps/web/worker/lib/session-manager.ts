@@ -14,9 +14,9 @@
 
 import { eq } from "drizzle-orm";
 import { sessions } from "../../lib/db/schema";
+import { logSessionEvent } from "./audit-logger";
 import { getDb } from "./context";
 import { generateUUID } from "./utils";
-import { logSessionEvent } from "./audit-logger";
 
 export type SessionMetadata = {
 	userAgent?: string;
@@ -85,13 +85,7 @@ export async function registerSession(
 
 	// Log session creation for audit trail (non-blocking)
 	try {
-		await logSessionEvent(
-			c,
-			userId,
-			"session_created",
-			sessionId,
-			metadata,
-		);
+		await logSessionEvent(c, userId, "session_created", sessionId, metadata);
 	} catch (error) {
 		// Non-blocking: don't fail session creation if audit logging fails
 		console.error("[session-manager] Failed to log session creation:", error);
@@ -151,7 +145,10 @@ export async function verifySession(
 		);
 	} catch (error) {
 		// Non-blocking: don't fail session verification if audit logging fails
-		console.error("[session-manager] Failed to log session verification:", error);
+		console.error(
+			"[session-manager] Failed to log session verification:",
+			error,
+		);
 	}
 
 	return {

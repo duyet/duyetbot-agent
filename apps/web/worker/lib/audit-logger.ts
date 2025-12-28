@@ -4,8 +4,8 @@
  */
 
 import { auditLog } from "../../lib/db/schema";
-import { getDb } from "./context";
 import type { SessionMetadata } from "./auth-helpers";
+import { getDb } from "./context";
 
 /**
  * Audit action types for categorizing security events
@@ -119,7 +119,12 @@ export async function logAuthFailure(
 export async function logSessionEvent(
 	c: any,
 	userId: string,
-	action: "session_created" | "session_verified" | "session_invalidated" | "session_rotated" | "session_expired",
+	action:
+		| "session_created"
+		| "session_verified"
+		| "session_invalidated"
+		| "session_rotated"
+		| "session_expired",
 	sessionId: string,
 	metadata?: SessionMetadata,
 ): Promise<void> {

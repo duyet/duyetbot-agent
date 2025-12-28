@@ -15,6 +15,11 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { user } from "../../lib/db/schema";
 import {
+	logAuthFailure,
+	logAuthSuccess,
+	logSecurityEvent,
+} from "../lib/audit-logger";
+import {
 	clearSessionCookie,
 	createAndRegisterSession,
 	getSessionFromRequest,
@@ -30,11 +35,6 @@ import {
 } from "../lib/crypto";
 import { invalidateSession, verifySession } from "../lib/session-manager";
 import { generateUUID } from "../lib/utils";
-import {
-	logAuthFailure,
-	logAuthSuccess,
-	logSecurityEvent,
-} from "../lib/audit-logger";
 import type { Env } from "../types";
 
 export const authRoutes = new Hono<{ Bindings: Env }>();
@@ -435,7 +435,12 @@ authRoutes.get("/guest", async (c) => {
 
 	// Log guest user creation for audit trail
 	await logAuthSuccess(c, guestUser.id, "guest_created", getSessionMetadata(c));
-	await logAuthSuccess(c, guestUser.id, "account_created", getSessionMetadata(c));
+	await logAuthSuccess(
+		c,
+		guestUser.id,
+		"account_created",
+		getSessionMetadata(c),
+	);
 
 	const response = c.json({
 		success: true,

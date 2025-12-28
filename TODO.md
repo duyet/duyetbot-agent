@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
 **Last Updated**: December 29, 2025
-**Iteration**: 55
+**Iteration**: 56
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -19,11 +19,11 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ### 1. Web App UI/UX Enhancements (Priority: HIGH)
 
 #### Keyboard Navigation
-- [ ] Add keyboard shortcuts for common actions (Cmd+K for command palette, Cmd+I for new chat)
-- [ ] Implement focus trapping in modals and dialogs
-- [ ] Add visible focus indicators for all interactive elements
+- [x] Add keyboard shortcuts for common actions (Cmd+K for command palette, Cmd+I for new chat)
+- [x] Implement focus trapping in modals and dialogs
+- [x] Add visible focus indicators for all interactive elements
 - [ ] Support arrow key navigation in message lists and artifact galleries
-- [ ] Add escape key handlers for closing modals/panels
+- [x] Add escape key handlers for closing modals/panels
 
 #### Loading States
 - [x] Create ChatSkeleton component for loading chat messages
@@ -281,6 +281,15 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 56 (Dec 29, 2025)
+- ✅ Implemented focus trapping in AlertDialog and Sheet components for keyboard accessibility
+- ✅ Added `onOpenAutoFocus` to automatically focus first focusable element when dialogs open
+- ✅ Added `onCloseAutoFocus` to return focus to trigger element when dialogs close
+- ✅ Added `onEscapeKeyDown` handlers for custom escape key handling
+- ✅ Dialog component already had focus trapping from iteration 34 (kept existing implementation)
+- ✅ All 32 packages type-check passing
+- ✅ All 18 packages build successfully
 
 ### Iteration 55 (Dec 29, 2025)
 - ✅ Created comprehensive audit logging infrastructure for security event tracking
