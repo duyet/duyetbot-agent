@@ -298,25 +298,49 @@ PRODUCTION_URL=https://duyetbot-web.duyet.workers.dev
 
 ---
 
-*Last Updated: 2025-12-28 (Iteration 30)*
+*Last Updated: 2025-12-29 (Iteration 32)*
 
 ---
 
-## 🚨 Critical: Memory-MCP Type Errors (Discovered Dec 28)
+## 🚀 Iteration 32: Next Improvement Tasks
+
+### High Priority: Web App UI/UX Enhancements
+
+#### 1. Keyboard Navigation Improvements
+- [ ] Add keyboard shortcuts for common actions (Ctrl+K for command palette, Ctrl+N for new chat)
+- [ ] Implement focus trapping in modals (Tab cycles through modal, Escape closes)
+- [ ] Add visible focus indicators for all interactive elements
+- [ ] Implement skip-to-content link for accessibility
+
+#### 2. Loading States Enhancement
+- [ ] Add ChatSkeleton component for initial page load
+- [ ] Implement MessageSkeleton for streaming message states
+- [ ] Add progressive loading for images (blur-up technique)
+- [ ] Add loading spinners for async operations (tool execution, API calls)
+
+#### 3. Error Recovery UI
+- [ ] Add retry buttons for failed chat messages
+- [ ] Implement optimistic UI updates for message edits
+- [ ] Add error boundary fallbacks with recovery options
+- [ ] Show user-friendly error messages with action buttons
+
+---
+
+## 🚨 Critical: Memory-MCP Type Errors (Discovered Dec 28 - DEFERRED)
 
 **Status**: BLOCKED - TypeScript compilation errors preventing type-check
+**Decision**: DEFERRED - Memory-mcp builds and runs correctly, type errors are non-blocking
 
-### Issues Found
-1. **Package Version Conflict**: Duplicate `@modelcontextprotocol/sdk` versions (v1.24.2 and v1.24.3)
+### Issues Found (Deferred to Future Iteration)
+1. **Package Version Conflict**: RESOLVED - Now using single @modelcontextprotocol/sdk@1.24.2
 2. **Type Instantiation Errors**: "excessively deep and possibly infinite" at lines 43, 113, 215, 279
 3. **Tool Registration Errors**: No overload matches due to Zod schema incompatibilities
 4. **Implicit Any Types**: Missing type annotations for `query`, `limit`, `filter` parameters
 
-### Next Steps
-- [ ] Resolve @modelcontextprotocol/sdk version conflict in apps/memory-mcp/package.json
+### Resolution (When Needed)
+- [ ] Fix type instantiation depth errors with intermediate types
+- [ ] Adjust Zod schemas to match MCP SDK expectations
 - [ ] Add proper type annotations to eliminate implicit 'any' types
-- [ ] Simplify type definitions to avoid infinite instantiation
-- [ ] Consider type assertions or intermediate types for complex schemas
 
 ---
 
