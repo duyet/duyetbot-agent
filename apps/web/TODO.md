@@ -188,8 +188,12 @@ Complete rate limiting and guest session management:
 - [x] Add request throttling middleware (integrated into chat route with 429 responses)
 - [x] Guest user usage dashboard (GuestUsageIndicator component with /api/rate-limit/status API)
 
-### Priority 3: Model Comparison
-Allow comparing responses from different models side-by-side.
+### ✅ Priority 3: Model Comparison (COMPLETED)
+- [x] Side-by-side model comparison UI (2-4 models simultaneously)
+- [x] Parallel streaming responses from multiple models
+- [x] Response timing metrics display
+- [x] Desktop grid and mobile tab layouts
+- [x] `/compare` route with dedicated comparison page
 
 ### 🚨 Priority 4: Bug Fixes & Tool Verification
 - [x] Fix conversation title generation (not updating correctly) - Fixed with ref-based tracking
@@ -208,7 +212,12 @@ Allow comparing responses from different models side-by-side.
 - [x] Extract credit card alert into `CreditCardAlertDialog` component
 
 ### Priority 6: New Features (Backlog)
-- [x] **Artifact generation & sharing** - Generate interactive artifacts (demos, visualizations, basic websites) with shareable URLs ✅
+- [x] **Artifact generation & sharing** - Generate interactive artifacts with shareable public URLs ✅
+  - Database schema: shareId, shareToken, isPublic fields on Document table
+  - API routes: POST/DELETE /api/document/share, GET /api/share/:shareId
+  - Share button UI added to all 5 artifact types (text/code/image/sheet/chart)
+  - Public viewer page at /share/[shareId] with full artifact rendering
+  - ShareArtifactDialog component for managing share links
 - [ ] **Custom agent creation** - UI to generate custom model prompts with agent persona definition
 - [ ] **Scheduled daily tasks** - Ability to schedule recurring tasks with integration selection (web search, tools, etc.)
 - [ ] **Image display in content** - Render images inline within chat messages
