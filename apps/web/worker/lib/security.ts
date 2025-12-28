@@ -120,6 +120,56 @@ export const securityHeaders = (): MiddlewareHandler => async (c, next) => {
 };
 
 /**
+ * Origin/Referer validation middleware for CSRF protection
+ * Validates state-changing operations (POST, PUT, PATCH, DELETE) come from allowed origins
+ *
+ * This provides defense-in-depth CSRF protection:
+ * - SameSite cookies already prevent most CSRF attacks
+ * - CORS whitelist prevents cross-origin requests
+ * - This middleware adds explicit Origin/Referer validation
+ *
+ * Note: Safe methods (GET, HEAD, OPTIONS) are exempt as they don't modify state
+ */
+export const originValidation = (): MiddlewareHandler => async (c, next) => {
+	// Only validate state-changing methods
+	const method = c.req.method;
+	if (!["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+		await next();
+		return;
+	}
+
+	// Get Origin header (primary) or Referer header (fallback)
+	const origin = c.req.header("Origin");
+	const referer = c.req.header("Referer");
+
+	// Extract origin from referer if needed
+	const refererOrigin = referer ? new URL(referer).origin : null;
+	const requestOrigin = origin || refererOrigin;
+
+	// Allow requests with no Origin/Referer (same-origin requests from older browsers)
+	if (!requestOrigin) {
+		await next();
+		return;
+	}
+
+	// Validate origin against allowed list
+	if (!isAllowedOrigin(requestOrigin)) {
+		console.warn(
+			`[Security] Blocked request from disallowed origin: ${requestOrigin}`,
+		);
+		return c.json(
+			{
+				error: "forbidden:origin",
+				message: "Requests must come from an allowed origin",
+			},
+			403,
+		);
+	}
+
+	await next();
+};
+
+/**
  * Production error response middleware
  * Removes debug information in production environment
  */

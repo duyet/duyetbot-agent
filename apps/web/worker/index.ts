@@ -9,6 +9,7 @@ import { secureHeaders } from "hono/secure-headers";
 import { addStaticCacheHeaders, cacheMiddleware } from "./lib/cache";
 import { WorkerError } from "./lib/errors";
 import {
+	originValidation,
 	productionErrorHandler,
 	secureCors,
 	securityHeaders,
@@ -34,6 +35,7 @@ const app = new Hono<{ Bindings: Env }>();
 app.use("*", logger());
 app.use("*", secureHeaders());
 app.use("*", secureCors());
+app.use("*", originValidation()); // CSRF protection for state-changing operations
 app.use("*", securityHeaders());
 app.use("*", productionErrorHandler());
 
