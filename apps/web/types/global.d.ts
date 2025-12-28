@@ -13,7 +13,7 @@ declare global {
 			setStdout: (config: { batched: (output: string) => void }) => void;
 			loadPackagesFromImports: (
 				code: string,
-				options?: { messageCallback?: (message: string) => void }
+				options?: { messageCallback?: (message: string) => void },
 			) => Promise<void>;
 			runPythonAsync: (code: string) => Promise<void>;
 		}>;

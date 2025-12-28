@@ -2,6 +2,7 @@ import type { UseChatHelpers } from "@ai-sdk/react";
 import { formatDistance } from "date-fns";
 import equal from "fast-deep-equal";
 import { AnimatePresence, motion } from "framer-motion";
+import dynamic from "next/dynamic";
 import {
 	type Dispatch,
 	memo,
@@ -31,6 +32,91 @@ import { Toolbar } from "./toolbar";
 import { useSidebar } from "./ui/sidebar";
 import { VersionFooter } from "./version-footer";
 import type { VisibilityType } from "./visibility-selector";
+
+// Lazy load artifact content renderers for code splitting
+const TextArtifactContent = dynamic(
+	() =>
+		import("@/artifacts/text/client").then((mod) => mod.textArtifact.content),
+	{
+		loading: () => (
+			<div className="flex h-full items-center justify-center">
+				<div className="text-muted-foreground animate-pulse">
+					Loading text editor...
+				</div>
+			</div>
+		),
+		ssr: false,
+	},
+);
+
+const CodeArtifactContent = dynamic(
+	() =>
+		import("@/artifacts/code/client").then((mod) => mod.codeArtifact.content),
+	{
+		loading: () => (
+			<div className="flex h-full items-center justify-center">
+				<div className="text-muted-foreground animate-pulse">
+					Loading code editor...
+				</div>
+			</div>
+		),
+		ssr: false,
+	},
+);
+
+const ImageArtifactContent = dynamic(
+	() =>
+		import("@/artifacts/image/client").then((mod) => mod.imageArtifact.content),
+	{
+		loading: () => (
+			<div className="flex h-full items-center justify-center">
+				<div className="text-muted-foreground animate-pulse">
+					Loading image viewer...
+				</div>
+			</div>
+		),
+		ssr: false,
+	},
+);
+
+const SheetArtifactContent = dynamic(
+	() =>
+		import("@/artifacts/sheet/client").then((mod) => mod.sheetArtifact.content),
+	{
+		loading: () => (
+			<div className="flex h-full items-center justify-center">
+				<div className="text-muted-foreground animate-pulse">
+					Loading spreadsheet...
+				</div>
+			</div>
+		),
+		ssr: false,
+	},
+);
+
+const ChartArtifactContent = dynamic(
+	() =>
+		import("@/artifacts/chart/client").then((mod) => mod.chartArtifact.content),
+	{
+		loading: () => (
+			<div className="flex h-full items-center justify-center">
+				<div className="text-muted-foreground animate-pulse">
+					Loading chart...
+				</div>
+			</div>
+		),
+		ssr: false,
+	},
+);
+
+// Map artifact kinds to their lazy-loaded content components
+const artifactContentMap = {
+	text: TextArtifactContent,
+	code: CodeArtifactContent,
+	image: ImageArtifactContent,
+	sheet: SheetArtifactContent,
+	chart: ChartArtifactContent,
+} as const;
 
 export const artifactDefinitions = [
 	textArtifact,
@@ -467,25 +553,31 @@ function PureArtifact({
 
 						<div className="h-full max-w-full! items-center overflow-y-scroll bg-background dark:bg-muted">
 							<ArtifactErrorBoundary>
-								<artifactDefinition.content
-									content={
-										isCurrentVersion
-											? artifact.content
-											: getDocumentContentById(currentVersionIndex)
-									}
-									currentVersionIndex={currentVersionIndex}
-									getDocumentContentById={getDocumentContentById}
-									isCurrentVersion={isCurrentVersion}
-									isInline={false}
-									isLoading={isDocumentsFetching && !artifact.content}
-									metadata={metadata}
-									mode={mode}
-									onSaveContent={saveContent}
-									setMetadata={setMetadata}
-									status={artifact.status}
-									suggestions={[]}
-									title={artifact.title}
-								/>
+								{(() => {
+									const ArtifactContentComponent =
+										artifactContentMap[artifact.kind];
+									return (
+										<ArtifactContentComponent
+											content={
+												isCurrentVersion
+													? artifact.content
+													: getDocumentContentById(currentVersionIndex)
+											}
+											currentVersionIndex={currentVersionIndex}
+											getDocumentContentById={getDocumentContentById}
+											isCurrentVersion={isCurrentVersion}
+											isInline={false}
+											isLoading={isDocumentsFetching && !artifact.content}
+											metadata={metadata}
+											mode={mode}
+											onSaveContent={saveContent}
+											setMetadata={setMetadata}
+											status={artifact.status}
+											suggestions={[]}
+											title={artifact.title}
+										/>
+									);
+								})()}
 							</ArtifactErrorBoundary>
 
 							<AnimatePresence>

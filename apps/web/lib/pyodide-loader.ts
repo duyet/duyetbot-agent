@@ -12,12 +12,14 @@ type PyodideInstance = {
 	setStdout: (config: { batched: (output: string) => void }) => void;
 	loadPackagesFromImports: (
 		code: string,
-		options?: { messageCallback?: (message: string) => void }
+		options?: { messageCallback?: (message: string) => void },
 	) => Promise<void>;
 	runPythonAsync: (code: string) => Promise<void>;
 };
 
-type LoadPyodideFunc = (config?: { indexURL?: string }) => Promise<PyodideInstance>;
+type LoadPyodideFunc = (config?: {
+	indexURL?: string;
+}) => Promise<PyodideInstance>;
 
 let pyodideLoadPromise: Promise<LoadPyodideFunc> | null = null;
 let pyodideScriptLoaded = false;
@@ -36,7 +38,9 @@ export async function loadPyodide(): Promise<LoadPyodideFunc> {
 	pyodideLoadPromise = (async () => {
 		// Load script if not already loaded
 		if (!pyodideScriptLoaded) {
-			await loadScript("https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js");
+			await loadScript(
+				"https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js",
+			);
 			pyodideScriptLoaded = true;
 		}
 
