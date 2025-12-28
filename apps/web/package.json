@@ -4,6 +4,10 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev --port 3000",
+		"check": "biome check . && tsc --noEmit",
+		"lint": "biome check .",
+		"lint:fix": "biome check --write .",
+		"type-check": "tsc --noEmit",
 		"dev:worker": "wrangler dev",
 		"build": "next build",
 		"deploy": "bun run build && wrangler deploy",

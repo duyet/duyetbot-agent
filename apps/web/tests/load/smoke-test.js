@@ -61,17 +61,7 @@ export const options = {
 
 const BASE_URL = __ENV.URL || "http://localhost:3000";
 
-// Test data
-const testMessage = {
-	message: "Hello, this is a load test message.",
-	model: "google/gemini-2.5-flash-preview",
-};
-
 export default function () {
-	const headers = {
-		"Content-Type": "application/json",
-	};
-
 	// Test 1: Home page health check
 	const homeRes = http.get(`${BASE_URL}/`, {
 		tags: { name: "Home" },
@@ -133,6 +123,6 @@ export function setup() {
 }
 
 // Optional: Teardown function (runs once after test)
-export function teardown(data) {
+export function teardown() {
 	console.log("Load test completed");
 }

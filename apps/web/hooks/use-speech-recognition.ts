@@ -237,20 +237,17 @@ interface LocalSpeechRecognition extends EventTarget {
 	continuous: boolean;
 	interimResults: boolean;
 	maxAlternatives: number;
-	// biome-ignore lint/suspicious/noExplicitAny: Web Speech API type
-	onstart: ((this: LocalSpeechRecognition, ev: Event) => any) | null;
-	onresult: // biome-ignore lint/suspicious/noExplicitAny: Web Speech API type
-		| ((this: LocalSpeechRecognition, ev: LocalSpeechRecognitionEvent) => any)
+	onstart: ((this: LocalSpeechRecognition, ev: Event) => void) | null;
+	onresult:
+		| ((this: LocalSpeechRecognition, ev: LocalSpeechRecognitionEvent) => void)
 		| null;
 	onerror:
 		| ((
 				this: LocalSpeechRecognition,
 				ev: LocalSpeechRecognitionErrorEvent,
-				// biome-ignore lint/suspicious/noExplicitAny: Web Speech API type
-		  ) => any)
+		  ) => void)
 		| null;
-	// biome-ignore lint/suspicious/noExplicitAny: Web Speech API type
-	onend: ((this: LocalSpeechRecognition, ev: Event) => any) | null;
+	onend: ((this: LocalSpeechRecognition, ev: Event) => void) | null;
 	start(): void;
 	stop(): void;
 	abort(): void;

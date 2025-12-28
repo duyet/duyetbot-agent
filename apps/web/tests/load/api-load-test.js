@@ -44,18 +44,18 @@ export const options = {
 const BASE_URL = __ENV.URL || "http://localhost:3000";
 const TOKEN = __ENV.TOKEN || "";
 
-// Headers
-const getHeaders = (auth = false) => {
-	const headers = {
+// Build request headers
+function buildHeaders(auth = false) {
+	const h = {
 		"Content-Type": "application/json",
 	};
 
 	if (auth && TOKEN) {
-		headers["Authorization"] = `Bearer ${TOKEN}`;
+		h.Authorization = `Bearer ${TOKEN}`;
 	}
 
-	return headers;
-};
+	return h;
+}
 
 export default function () {
 	// Test 1: Health check (always run)
@@ -71,7 +71,7 @@ export default function () {
 	// Test 2: Chat history (requires auth)
 	if (TOKEN) {
 		const historyRes = http.get(`${BASE_URL}/api/history`, {
-			headers: getHeaders(true),
+			headers: buildHeaders(true),
 			tags: { name: "History" },
 		});
 
@@ -102,7 +102,7 @@ export default function () {
 	// Test 4: Create chat (requires auth)
 	if (TOKEN) {
 		const createRes = http.post(`${BASE_URL}/api/chats`, JSON.stringify({}), {
-			headers: getHeaders(true),
+			headers: buildHeaders(true),
 			tags: { name: "CreateChat" },
 		});
 
