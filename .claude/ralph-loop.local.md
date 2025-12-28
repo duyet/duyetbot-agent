@@ -1,10 +1,10 @@
 ---
 
 active: true
-iteration: 36
+iteration: 37
 max_iterations: 0
 completion_promise: null
-started_at: "2025-12-29T03:30:00Z"
+started_at: "2025-12-29T03:45:00Z"
 ---
 
 If everything is complete then
@@ -194,6 +194,109 @@ const hasMetaOrCtrl = isMac ? e.metaKey : e.ctrlKey;
 - Radix UI Dialog has built-in focus trap via `FocusScope`
 - Explicit handlers ensure first focusable element receives focus on open
 - Focus returns to trigger element on close (default behavior)
+
+---
+
+## Iteration 35/36 Summary (Dec 29, 2025)
+
+### Completed
+
+#### Iteration 34 Finalization
+- **Commit**: `ed25102` "feat(web): add keyboard navigation and command palette"
+- **Push**: All changes successfully pushed to `feature/web-ui-improvements`
+- **Files Changed**: 6 files, 269 insertions, 10 deletions
+- **Pre-Push Validation**: All checks passed (lint, type-check, build, tests)
+
+### Next Steps - Planned for Iteration 37+
+
+Based on TODO.md priorities, the next areas to focus on:
+
+#### High Priority: Loading States Enhancement
+1. **Create Skeleton Components**
+   - ChatSkeleton component for loading chat messages
+   - MessageSkeleton component for streaming messages
+   - ArtifactGallerySkeleton for progressive loading
+   - DashboardSkeleton for analytics pages
+
+2. **Loading Spinners for Async Operations**
+   - Save operation loading indicators
+   - Share action loading states
+   - Export functionality loading feedback
+
+3. **Progressive Loading Implementation**
+   - Lazy load images in artifact galleries
+   - Progressive loading for heavy components
+   - Code splitting for large components (artifacts, dashboard)
+
+#### Medium Priority: Error Recovery UI
+1. **Retry Buttons for Failed API Calls**
+   - Add retry button to error messages
+   - Exponential backoff for retries
+   - Automatic retry with user override
+
+2. **Optimistic UI Updates with Rollback**
+   - Immediate UI feedback for user actions
+   - Automatic rollback on API failure
+   - Visual indicators for pending operations
+
+3. **Error Boundary Fallbacks**
+   - Per-component error boundaries
+   - User-friendly error messages
+   - "Report Issue" button with error context
+
+#### Medium Priority: E2E Testing
+1. **Playwright Setup**
+   - Install and configure Playwright
+   - Set up test fixtures and helpers
+   - Configure browsers (Chrome, Firefox, Safari)
+
+2. **Critical User Flow Tests**
+   - Chat conversation flow (send message, receive response)
+   - Document creation and editing
+   - Artifact generation (code, image, chart, sheet)
+   - User authentication (login/logout)
+
+3. **Visual Regression Tests**
+   - Screenshot comparison for UI consistency
+   - Cross-browser compatibility testing
+   - Responsive design validation
+
+#### Lower Priority: Security Enhancements
+1. **CSP Headers for All Routes**
+   - Content Security Policy configuration
+   - Inline script/style whitelisting
+   - Report-uri for CSP violations
+
+2. **CSRF Protection**
+   - Token-based CSRF protection for state-changing operations
+   - SameSite cookie configuration
+   - Origin header validation
+
+3. **Rate Limiting Per User**
+   - User-based rate limiting (not just IP)
+   - Tiered limits for different user types
+   - Graceful degradation when limits exceeded
+
+### Blockers
+
+**None Currently** - All systems operational, tests passing, builds successful.
+
+### Technical Considerations
+
+**Web App Bundle Size**:
+- Current: 1.28 MB for main route
+- Target: <1 MB
+- Strategy: Code splitting, tree shaking, dynamic imports
+
+**Test Coverage**:
+- Current: ~40% for web app
+- Target: 80%+
+- Strategy: Add unit tests for components, integration tests for flows
+
+**Performance Metrics**:
+- Current LCP: ~2s
+- Target: <1.5s
+- Strategy: Image optimization, lazy loading, CDN caching
 
 ---
 
