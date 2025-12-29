@@ -282,17 +282,17 @@ This is a continuous improvement project with a focus on building a multi-agent 
 
 ## ✅ Completed (Recent Iterations)
 
-### Iteration 61 (Dec 29, 2025) - PLANNING
-- [ ] Continue Phase 1: Critical Hooks unit tests
-  - [ ] Test use-chat-transport hook (WebSocket/streaming transport layer)
-  - [ ] Test use-artifact hook (Artifact state management)
-  - [ ] Test use-auth hook (Authentication state)
-  - [ ] Test use-file-upload hook (File attachment handling)
-- [ ] Begin Phase 2: Core Utilities unit tests
-  - [ ] Test lib/api-client.ts (All API calls depend on this - 150+ lines, retry logic, Zod validation)
-  - [ ] Test lib/chat-memory.ts (Memory system with importance scoring)
-  - [ ] Test lib/chat-search.ts (Search across conversations)
-- [ ] Improve test coverage from 3.3% toward 80% target
+### Iteration 61 (Dec 29, 2025) - Unit Tests for Critical Hooks
+- ✅ Created comprehensive unit tests for 6 critical hooks: use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation
+- ✅ Fixed vitest.hooks.config.ts to resolve @/ path aliases with new URL(".", import.meta.url).pathname
+- ✅ Established proper mock patterns: vi.hoisted() for stable mocks, vi.mocked() with proper imports
+- ✅ Test results: 108/135 tests passing (80% pass rate)
+- ✅ use-speech-recognition: 27/27 passing (Web Speech API class mock with EventTarget)
+- ✅ use-chat-transport: 18/18 passing (factory function with tool approval detection)
+- ✅ use-artifact: 17/22 passing (SWR cache pollution in selector tests)
+- ✅ use-optimistic-update: 22/22 passing (existing, iteration 60)
+- ⚠️ Remaining failures due to SWR cache pollution and mock call count expectations
+- ✅ Hook test infrastructure now supports 135 total tests across 7 files
 
 ### Iteration 60 (Dec 29, 2025)
 - ✅ Created hook testing infrastructure for React hooks with @testing-library/react

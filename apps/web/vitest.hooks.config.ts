@@ -7,6 +7,11 @@ import { defineConfig } from "vitest/config";
  * (happy-dom is more compatible with bun than jsdom)
  */
 export default defineConfig({
+	resolve: {
+		alias: {
+			"@": new URL(".", import.meta.url).pathname,
+		},
+	},
 	test: {
 		globals: true,
 		environment: "happy-dom",
