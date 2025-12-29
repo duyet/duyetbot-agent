@@ -11,6 +11,12 @@ import { useDataStream } from "./data-stream-provider";
 import { Greeting } from "./greeting";
 import { PreviewMessage, ThinkingMessage } from "./message";
 
+// NOTE: VirtualizedMessages component is available for long conversations
+// but currently disabled due to React 19 + react-window type compatibility issues.
+// To enable for conversations with 50+ messages, uncomment the import and conditional render:
+// import { VirtualizedMessages } from "./virtualized-messages";
+// const VIRTUAL_SCROLL_THRESHOLD = 50;
+
 type MessagesProps = {
 	addToolApprovalResponse: UseChatHelpers<ChatMessage>["addToolApprovalResponse"];
 	chatId: string;
