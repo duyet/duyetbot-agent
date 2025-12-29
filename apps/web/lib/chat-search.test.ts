@@ -28,14 +28,43 @@ vi.mock("@/lib/db", () => ({
 	createDb: vi.fn(() => mockDb),
 }));
 
-vi.mock("@/lib/db/schema", () => ({
-	chat: {},
-	chatFolder: {},
-	chatTag: {},
-	chatToFolder: {},
-	chatToTag: {},
-	message: {},
-}));
+vi.mock("@/lib/db/schema", () => {
+	const mockColumn = { _column: true };
+	return {
+		chat: {
+			id: mockColumn,
+			userId: mockColumn,
+			title: mockColumn,
+			createdAt: mockColumn,
+			updatedAt: mockColumn,
+			visibility: mockColumn,
+		},
+		chatFolder: {
+			id: mockColumn,
+			name: mockColumn,
+			color: mockColumn,
+		},
+		chatTag: {
+			id: mockColumn,
+			name: mockColumn,
+			color: mockColumn,
+		},
+		chatToFolder: {
+			chatId: mockColumn,
+			folderId: mockColumn,
+		},
+		chatToTag: {
+			chatId: mockColumn,
+			tagId: mockColumn,
+		},
+		message: {
+			id: mockColumn,
+			chatId: mockColumn,
+			parts: mockColumn,
+			createdAt: mockColumn,
+		},
+	};
+});
 
 import { eq, and, desc, inArray, like, sql } from "drizzle-orm";
 
@@ -49,15 +78,32 @@ vi.mock("drizzle-orm", () => ({
 	sql: vi.fn((frag: any) => ({ _type: "sql", frag })),
 }));
 
+// Helper to create a resolved promise for query results
+const createQueryMock = (result: any[] = []) =>
+	Promise.resolve(result) as any;
+
 // Mock database interface with proper chaining
 const mockDb = {
-	select: vi.fn(() => mockDb),
-	from: vi.fn(() => mockDb),
+	select: vi.fn(function(this: any) {
+		this._queryType = "select";
+		return mockDb;
+	}),
+	from: vi.fn(function(this: any) {
+		this._queryType = "select";
+		return mockDb;
+	}),
 	where: vi.fn(() => mockDb),
 	orderBy: vi.fn(() => mockDb),
-	limit: vi.fn(() => mockDb),
+	limit: vi.fn(function(this: any, limit: number) {
+		this._limit = limit;
+		// Return a promise that resolves to an array (simulating drizzle query execution)
+		return createQueryMock([]);
+	}),
 	innerJoin: vi.fn(() => mockDb),
-	selectDistinct: vi.fn(() => mockDb),
+	selectDistinct: vi.fn(function(this: any) {
+		this._queryType = "selectDistinct";
+		return mockDb;
+	}),
 	execute: vi.fn(async () => []),
 };
 
@@ -71,7 +117,8 @@ describe("chat-search - searchChats", () => {
 	});
 
 	it("builds query with LIKE operator for title search", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		// Reset the limit mock to return empty array
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await searchChats({
 			userId: "user-123",
@@ -83,7 +130,7 @@ describe("chat-search - searchChats", () => {
 	});
 
 	it("builds query with eq for userId", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await searchChats({
 			userId: "user-123",
@@ -95,7 +142,7 @@ describe("chat-search - searchChats", () => {
 	});
 
 	it("returns empty array when no matches", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		const results = await searchChats({
 			userId: "user-123",
@@ -106,18 +153,18 @@ describe("chat-search - searchChats", () => {
 	});
 
 	it("calls execute on database", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await searchChats({
 			userId: "user-123",
 			query: "test",
 		});
 
-		expect(mockDb.execute).toHaveBeenCalled();
+		expect(mockDb.limit).toHaveBeenCalled();
 	});
 
 	it("respects limit parameter", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await searchChats({
 			userId: "user-123",
@@ -151,7 +198,7 @@ describe("chat-search - getSearchSuggestions", () => {
 	});
 
 	it("builds query with LIKE for partial match", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getSearchSuggestions("user-123", "react");
 
@@ -159,7 +206,7 @@ describe("chat-search - getSearchSuggestions", () => {
 	});
 
 	it("respects limit parameter", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getSearchSuggestions("user-123", "test", 5);
 
@@ -167,7 +214,7 @@ describe("chat-search - getSearchSuggestions", () => {
 	});
 
 	it("uses default limit of 5 when not specified", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getSearchSuggestions("user-123", "test");
 
@@ -185,7 +232,7 @@ describe("chat-search - getRecentChats", () => {
 	});
 
 	it("builds query with eq for userId", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getRecentChats("user-123");
 
@@ -193,7 +240,7 @@ describe("chat-search - getRecentChats", () => {
 	});
 
 	it("orders by creation date descending", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getRecentChats("user-123");
 
@@ -201,7 +248,7 @@ describe("chat-search - getRecentChats", () => {
 	});
 
 	it("respects limit parameter", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getRecentChats("user-123", 20);
 
@@ -209,18 +256,18 @@ describe("chat-search - getRecentChats", () => {
 	});
 
 	it("uses default limit of 10 when not specified", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getRecentChats("user-123");
 
 		expect(mockDb.limit).toHaveBeenCalledWith(10);
 	});
 
-	it("calls execute on database", async () => {
-		mockDb.execute.mockResolvedValueOnce([]);
+	it("calls limit on database query", async () => {
+		mockDb.limit = vi.fn(() => createQueryMock([]));
 
 		await getRecentChats("user-123");
 
-		expect(mockDb.execute).toHaveBeenCalled();
+		expect(mockDb.limit).toHaveBeenCalled();
 	});
 });
