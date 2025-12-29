@@ -9,11 +9,48 @@
  * - Images: Allow data: images for inline content (needed for some AI responses)
  * - HTML: Disabled entirely - all HTML is escaped by default
  *
+ * ENVIRONMENT VARIABLES:
+ * - NEXT_PUBLIC_ALLOWED_LINK_DOMAINS: Comma-separated list of allowed link domains
+ *   Example: "github.com,duyet.workers.dev,anthropic.com"
+ *   Default: "*" (all domains allowed) for development flexibility
+ *   Production should explicitly set trusted domains
+ *
  * @see https://streamdown.ai/docs/security
  */
 
 import { harden } from "rehype-harden";
 import { defaultRehypePlugins, type StreamdownProps } from "streamdown";
+
+/**
+ * Parse allowed link domains from environment variable
+ *
+ * @returns Array of allowed domain prefixes (e.g., "github.com", "*.duyet.workers.dev")
+ *          Defaults to ["*"] for all domains if not configured
+ */
+function getAllowedLinkDomains(): string[] {
+	const envDomains = process.env.NEXT_PUBLIC_ALLOWED_LINK_DOMAINS;
+
+	if (!envDomains || envDomains.trim() === "") {
+		// Default: allow all domains in development/unconfigured environments
+		if (process.env.NODE_ENV !== "production") {
+			return ["*"];
+		}
+		// In production, default to a conservative whitelist
+		return [
+			"github.com",
+			"*.github.com",
+			"*.githubusercontent.com",
+			"anthropic.com",
+			"docs.anthropic.com",
+		];
+	}
+
+	// Parse comma-separated domains and trim whitespace
+	return envDomains
+		.split(",")
+		.map((domain) => domain.trim())
+		.filter((domain) => domain.length > 0);
+}
 
 /**
  * Hardened security configuration for AI-generated content
@@ -23,15 +60,19 @@ import { defaultRehypePlugins, type StreamdownProps } from "streamdown";
  * - Restrict link domains to prevent phishing/malware distribution
  * - Allow data: images for inline charts/graphs (common in AI responses)
  * - Block dangerous protocols (javascript:, data: for links, etc.)
+ *
+ * Configuration via NEXT_PUBLIC_ALLOWED_LINK_DOMAINS environment variable:
+ * - Development: Defaults to "*" (all domains) for flexibility
+ * - Production: Defaults to conservative whitelist if not explicitly set
+ * - Custom: Set NEXT_PUBLIC_ALLOWED_LINK_DOMAINS="github.com,anthropic.com"
  */
 const aiContentSecurityConfig = {
 	// Safe protocols only - block javascript:, data:, vbscript:, etc.
 	allowedProtocols: ["http", "https", "mailto", "tel"],
 
-	// Restrict links to trusted domains
-	// Note: Using wildcards for now since AI may need to reference various sources
-	// In production, consider limiting to specific domains or implementing link validation
-	allowedLinkPrefixes: ["*"], // TODO: Make configurable per environment
+	// Restrict links to configured trusted domains
+	// Configure via NEXT_PUBLIC_ALLOWED_LINK_DOMAINS environment variable
+	allowedLinkPrefixes: getAllowedLinkDomains(),
 
 	// Allow data: images for inline content (charts, graphs, etc.)
 	allowedImagePrefixes: ["*", "data:"],
