@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 98
+iteration: 100
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -22,7 +22,7 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 **Branch**: `feature/web-ui-improvements` (based on `claude/init-bot-agent-project-011Ao8Z9aEoAwxQ3D99gkfpQ`)
 - ✅ TypeScript: All passing
 - ✅ Build: All successful
-- ✅ Tests: 921+ passing (757 core + 164 hook/lib tests)
+- ✅ Tests: 981+ passing (757 core + 224 hook/lib/component tests)
 - ✅ Lint: Biome clean
 - ⚠️ memory-mcp: Type-check fails but builds/runs (deferred)
 
@@ -34,9 +34,10 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 1. **Unit Test Coverage** (40% → 80%)
    - [x] use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation (108/135 passing)
    - [x] lib/api-client.ts (24/24 passing)
-   - [x] lib/chat-memory.ts (32/32 passing, moved to hooks/ for happy-dom)
+   - [x] lib/chat-memory.ts (32/32 passing)
+   - [x] Components: auth-form, keyboard-shortcuts (60/60 passing)
+   - [ ] Components: multimodal-input, chat-message
    - [ ] lib/chat-search.ts (integration tests recommended due to server-only)
-   - [ ] Components: multimodal-input, keyboard-shortcuts, auth-form, chat-message
 
 2. **Integration Tests** (0 coverage)
    - [ ] Telegram bot webhooks, GitHub bot webhooks, MCP integrations, cross-app workflows
@@ -56,6 +57,14 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 
 # Recent Iterations
 
+### Iteration 99 (Dec 29, 2025)
+- ✅ Unit tests for 2 UI components (auth-form, keyboard-shortcuts)
+- ✅ auth-form.test.tsx: 15/15 passing - tests form rendering, attributes, submission, accessibility
+- ✅ keyboard-shortcuts.test.tsx: 45/45 passing - tests platform detection, formatting, dialog, hook
+- ✅ Added React global to test setup for JSX support in component tests
+- ✅ Updated vitest.hooks.config.ts to include components/**/*.test.tsx
+- ✅ Total test count: 981+ passing (757 core + 224 hook/lib/component tests)
+
 ### Iteration 98 (Dec 29, 2025)
 - ✅ Unit tests for 3 critical lib modules (api-client, chat-memory, chat-search)
 - ✅ api-client.test.ts: 24/24 passing - tests retry logic, auth, chat ops, agents
@@ -63,13 +72,6 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 - ✅ chat-search.test.ts: Server-only database module - integration tests recommended
 - ✅ Total test count: 921+ passing (757 core + 164 hook/lib tests)
 - ✅ Fixed window.global stubbing for browser APIs in node test environment
-
-### Iteration 97 (Dec 29, 2025)
-- ✅ Unit tests for 6 critical hooks (use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation)
-- ✅ 108/135 hook tests passing (80% pass rate) - use-speech-recognition fully passing (27/27)
-- ✅ Fixed vitest path alias resolution with new URL(".", import.meta.url).pathname
-- ✅ Established mock patterns: vi.hoisted() for stable mocks, proper import patterns for vi.mocked()
-- ⚠️ 27 tests failing due to SWR cache pollution and mock call count issues
 
 ---
 

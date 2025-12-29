@@ -15,7 +15,12 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: "happy-dom",
-		include: ["hooks/**/*.test.ts", "hooks/**/*.test.tsx"],
+		include: [
+			"hooks/**/*.test.ts",
+			"hooks/**/*.test.tsx",
+			"components/**/*.test.ts",
+			"components/**/*.test.tsx",
+		],
 		setupFiles: ["./tests/setup/hooks-test-setup.ts"],
 		testTimeout: 10_000,
 		hookTimeout: 10_000,
