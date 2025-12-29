@@ -3,7 +3,7 @@
 import { isToday, isYesterday, subMonths, subWeeks } from "date-fns";
 import { motion } from "framer-motion";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import useSWRInfinite from "swr/infinite";
 import {
@@ -118,6 +118,7 @@ export function SidebarHistory({ user }: { user: AuthUser | undefined }) {
 	const router = useRouter();
 	const [deleteId, setDeleteId] = useState<string | null>(null);
 	const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+	const historySnapshotRef = useRef<ChatHistory[] | null>(null);
 
 	const hasReachedEnd = paginatedChatHistories
 		? paginatedChatHistories.some((page) => page.hasMore === false)
@@ -127,46 +128,58 @@ export function SidebarHistory({ user }: { user: AuthUser | undefined }) {
 		? paginatedChatHistories.every((page) => page.chats.length === 0)
 		: false;
 
-	const handleDelete = () => {
+	const handleDelete = useCallback(async () => {
 		const chatToDelete = deleteId;
 		const isCurrentChat = pathname === `/chat/${chatToDelete}`;
 
+		if (!chatToDelete) return;
+
 		setShowDeleteDialog(false);
 
-		const deleteChat = async () => {
+		// Optimistic update: remove chat from sidebar immediately
+		mutate((chatHistories) => {
+			if (chatHistories) {
+				// Store snapshot for rollback
+				historySnapshotRef.current = [...chatHistories];
+				// Remove the chat optimistically
+				return chatHistories.map((chatHistory) => ({
+					...chatHistory,
+					chats: chatHistory.chats.filter(
+						(chat) => chat.id !== chatToDelete,
+					),
+				}));
+			}
+			return chatHistories;
+		}, false);
+
+		// Navigate away if deleting current chat
+		if (isCurrentChat) {
+			router.replace("/");
+		}
+
+		try {
 			const response = await fetch(`/api/chat?id=${chatToDelete}`, {
 				method: "DELETE",
 			});
+
 			if (!response.ok) {
 				throw new Error("Failed to delete chat");
 			}
-			return response;
-		};
 
-		toast.promise(deleteChat(), {
-			loading: "Deleting chat...",
-			success: () => {
-				mutate((chatHistories) => {
-					if (chatHistories) {
-						return chatHistories.map((chatHistory) => ({
-							...chatHistory,
-							chats: chatHistory.chats.filter(
-								(chat) => chat.id !== chatToDelete,
-							),
-						}));
-					}
-				});
-
-				if (isCurrentChat) {
-					router.replace("/");
-					router.refresh();
-				}
-
-				return "Chat deleted successfully";
-			},
-			error: "Failed to delete chat",
-		});
-	};
+			// Clear snapshot on success
+			historySnapshotRef.current = null;
+			toast.success("Chat deleted successfully");
+		} catch (error) {
+			// Rollback: restore the chat history
+			if (historySnapshotRef.current) {
+				mutate(historySnapshotRef.current, false);
+				historySnapshotRef.current = null;
+			}
+			toast.error(
+				error instanceof Error ? error.message : "Failed to delete chat",
+			);
+		}
+	}, [deleteId, pathname, mutate, router]);
 
 	if (!user) {
 		return (

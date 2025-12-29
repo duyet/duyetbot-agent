@@ -1,7 +1,7 @@
 import type { UseChatHelpers } from "@ai-sdk/react";
 import equal from "fast-deep-equal";
 import { Volume2Icon, VolumeXIcon } from "lucide-react";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useSWRConfig } from "swr";
 import { unstable_serialize } from "swr/infinite";
@@ -40,6 +40,7 @@ export function PureMessageActions({
 	const { mutate } = useSWRConfig();
 	const [_, copyToClipboard] = useCopyToClipboard();
 	const [isDeleting, setIsDeleting] = useState(false);
+	const messagesSnapshotRef = useRef<ChatMessage[] | null>(null);
 	const { speak, cancel, isSpeaking, isSupported } = useSpeechSynthesis();
 	const { settings: voiceSettings } = useVoiceSettings();
 
@@ -63,30 +64,41 @@ export function PureMessageActions({
 		return null;
 	}
 
-	const handleDelete = async () => {
+	const handleDelete = useCallback(async () => {
 		if (!setMessages) {
 			return;
 		}
+
+		// Snapshot current messages for potential rollback
+		setMessages((currentMessages) => {
+			messagesSnapshotRef.current = [...currentMessages];
+			// Optimistic update: remove message immediately
+			return currentMessages.filter((m) => m.id !== message.id);
+		});
 
 		setIsDeleting(true);
 		try {
 			await deleteMessage({ id: message.id });
 
-			// Remove the message from local state
-			setMessages((messages) => messages.filter((m) => m.id !== message.id));
-
 			// Refresh sidebar in case this was the last message
 			mutate(unstable_serialize(getChatHistoryPaginationKey));
 
+			// Clear snapshot on success
+			messagesSnapshotRef.current = null;
 			toast.success("Message deleted");
 		} catch (error) {
+			// Rollback: restore the deleted message
+			if (messagesSnapshotRef.current) {
+				setMessages(messagesSnapshotRef.current);
+				messagesSnapshotRef.current = null;
+			}
 			toast.error(
 				error instanceof Error ? error.message : "Failed to delete message",
 			);
 		} finally {
 			setIsDeleting(false);
 		}
-	};
+	}, [message.id, setMessages, mutate]);
 
 	const handleCopy = async () => {
 		if (!textFromParts) {

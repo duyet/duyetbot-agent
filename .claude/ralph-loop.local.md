@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 115
+iteration: 117
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -44,7 +44,7 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 
 3. **Performance**
    - [x] Virtual scrolling infrastructure (VirtualizedMessages component created, documented for future use)
-   - [ ] Optimistic UI implementation
+   - [x] Optimistic UI implementation (message delete, chat delete with rollback)
    - [x] React.memo optimization for expensive components (Suggestion, PreviewAttachment, VersionFooter, DiffView)
 
 ## Medium Priority
@@ -58,6 +58,13 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 ---
 
 # Recent Iterations
+
+### Iteration 115 (Dec 29, 2025)
+- ✅ Optimistic UI for message delete (snapshot via useRef, immediate removal, rollback on error)
+- ✅ Optimistic UI for chat delete (sidebar removal via SWR mutate, rollback on error)
+- ✅ Found existing optimistic update in use-chat-visibility.ts (already implemented)
+- ✅ Pattern: useRef snapshot → optimistic update → API call → rollback on error
+- ✅ Build passing, type-check clean
 
 ### Iteration 114 (Dec 29, 2025)
 - ✅ React.memo optimization for 4 expensive components (Suggestion, PreviewAttachment, VersionFooter, DiffView)
