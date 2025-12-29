@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 120
+iteration: 122
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -22,7 +22,7 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 **Branch**: `feature/web-ui-improvements` (based on `claude/init-bot-agent-project-011Ao8Z9aEoAwxQ3D99gkfpQ`)
 - ✅ TypeScript: All passing
 - ✅ Build: All successful
-- ✅ Tests: 981+ passing (757 core + 224 hook/lib/component tests)
+- ✅ Tests: 1052+ passing (757 core + 295 hook/lib/component tests)
 - ✅ Lint: Biome clean
 - ⚠️ memory-mcp: Type-check fails but builds/runs (deferred)
 
@@ -59,57 +59,26 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 
 # Recent Iterations
 
+### Iteration 118 (Dec 29, 2025)
+- ✅ Component tests: ConnectionStatusIndicator (23 tests) and PendingIndicator (25 tests)
+- ✅ Tests: pure components with no hooks, status mapping, position variants, rollback warnings
+- ✅ Total component tests: 160 passing (112 + 48 new tests)
+- ✅ Fixed toHaveClass assertions and status label mapping
+- ✅ Build passing, type-check clean
+
+### Iteration 117 (Dec 29, 2025)
+- ✅ Component tests: OfflineBanner (7 tests) and TypingIndicator (16 tests)
+- ✅ Tests: hook mocking with vi.mocked, animation delay verification, accessibility checks
+- ✅ Total component tests: 112 passing (89 + 23 new tests)
+- ✅ react-window dependency added for VirtualizedMessages
+- ✅ Build passing, type-check clean
+
 ### Iteration 116 (Dec 29, 2025)
 - ✅ Environment-based link domain security (NEXT_PUBLIC_ALLOWED_LINK_DOMAINS)
 - ✅ getAllowedLinkDomains() function with dev/prod defaults and custom parsing
 - ✅ Security improvement: Production can restrict AI links to trusted domains
 - ✅ Streamdown security tests (12/12 passing)
 - ✅ Resolved TODO from streamdown-security.ts
-
-### Iteration 115 (Dec 29, 2025)
-- ✅ Optimistic UI for message delete (snapshot via useRef, immediate removal, rollback on error)
-- ✅ Optimistic UI for chat delete (sidebar removal via SWR mutate, rollback on error)
-- ✅ Found existing optimistic update in use-chat-visibility.ts (already implemented)
-- ✅ Pattern: useRef snapshot → optimistic update → API call → rollback on error
-- ✅ Build passing, type-check clean
-
-### Iteration 114 (Dec 29, 2025)
-- ✅ React.memo optimization for 4 expensive components (Suggestion, PreviewAttachment, VersionFooter, DiffView)
-- ✅ Custom comparison functions tailored to each component's prop requirements
-- ✅ Pattern: PureX function + memo wrapper + targeted prop comparison
-- ✅ Build passing, no new test failures (9 pre-existing in chat-search.test.ts)
-- ✅ Performance: Skips re-renders when props haven't changed for frequently-rendering components
-
-### Iteration 113 (Dec 29, 2025)
-- ✅ Virtual scrolling infrastructure - Created VirtualizedMessages component with react-window
-- ✅ Dynamic height tracking with ResizeObserver for variable message sizes
-- ✅ Keyboard navigation, auto-read, and scroll-to-bottom preserved
-- ⏭️ Integration deferred due to React 19 + react-window type compatibility issues
-- ✅ Component documented in messages.tsx for future use when types align
-- ✅ Build passing, no breaking changes
-
-### Iteration 108 (Dec 29, 2025)
-- ✅ Unit tests for MultimodalInput component (29/29 passing)
-- ✅ multimodal-input.test.tsx: tests textarea, send/stop buttons, attachments, voice input, model selector, memoization
-- ✅ Total component test count: 89 passing (60 from previous + 29 new)
-- ✅ Tests cover upload queue states, reasoning model restrictions, speech recognition support detection
-- ⏭️ Deferred message.tsx and messages.tsx tests due to complexity (many dependencies, sub-components)
-
-### Iteration 99 (Dec 29, 2025)
-- ✅ Unit tests for 2 UI components (auth-form, keyboard-shortcuts)
-- ✅ auth-form.test.tsx: 15/15 passing - tests form rendering, attributes, submission, accessibility
-- ✅ keyboard-shortcuts.test.tsx: 45/45 passing - tests platform detection, formatting, dialog, hook
-- ✅ Added React global to test setup for JSX support in component tests
-- ✅ Updated vitest.hooks.config.ts to include components/**/*.test.tsx
-- ✅ Total test count: 981+ passing (757 core + 224 hook/lib/component tests)
-
-### Iteration 98 (Dec 29, 2025)
-- ✅ Unit tests for 3 critical lib modules (api-client, chat-memory, chat-search)
-- ✅ api-client.test.ts: 24/24 passing - tests retry logic, auth, chat ops, agents
-- ✅ chat-memory.test.ts: 32/32 passing - tests localStorage persistence, hook, import/export
-- ✅ chat-search.test.ts: Server-only database module - integration tests recommended
-- ✅ Total test count: 921+ passing (757 core + 164 hook/lib tests)
-- ✅ Fixed window.global stubbing for browser APIs in node test environment
 
 ---
 
