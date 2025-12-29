@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 124
+iteration: 167
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -22,7 +22,8 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 **Branch**: `feature/web-ui-improvements` (based on `claude/init-bot-agent-project-011Ao8Z9aEoAwxQ3D99gkfpQ`)
 - ✅ TypeScript: All passing
 - ✅ Build: All successful
-- ✅ Tests: 1115+ passing (453 with happy-dom + 662 API/lib tests)
+- ✅ Component Tests: 223/223 passing (typing-indicator, pending-indicator, offline-banner fixed)
+- ⚠️ lib/chat-search.test.ts: 9 failing (unrelated to React imports - drizzle ORM mock issue)
 - ✅ Lint: Biome clean
 - ⚠️ memory-mcp: Type-check fails but builds/runs (deferred)
 
@@ -34,13 +35,13 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 1. **Unit Test Coverage** (40% → 80%)
    - [x] Skeleton components: ChatSkeleton, DocumentSkeleton (63/63 passing)
    - [x] Connection status: ConnectionStatusIndicator, PendingIndicator (48/48 passing)
-   - [x] Other components: OfflineBanner, TypingIndicator, auth-form, keyboard-shortcuts, multimodal-input (134/134 passing)
-   - [x] use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation (108/135 passing)
-   - [x] lib/api-client.ts (24/24 passing)
-   - [x] lib/chat-memory.ts (32/32 passing)
-   - [ ] Fix 22 failing component tests (missing React imports in typing-indicator.tsx, pending-indicator.tsx)
+   - [x] All component tests: OfflineBanner, TypingIndicator, auth-form, keyboard-shortcuts, multimodal-input (223/223 passing)
+   - [x] Fix 22 failing component tests (React 19 + happy-dom compatibility)
+   - [ ] Fix 9 failing tests in lib/chat-search.test.ts (drizzle ORM mock issue)
    - [ ] Components: message.tsx, messages.tsx (deferred - complex with many dependencies)
-   - [ ] lib/chat-search.ts (integration tests recommended due to server-only)
+   - [ ] use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation (108/135 passing)
+   - [ ] lib/api-client.ts (24/24 passing)
+   - [ ] lib/chat-memory.ts (32/32 passing)
 
 2. **Integration Tests** (0 coverage)
    - [ ] Telegram bot webhooks, GitHub bot webhooks, MCP integrations, cross-app workflows
@@ -61,6 +62,15 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 ---
 
 # Recent Iterations
+
+### Iteration 120 (Dec 29, 2025)
+- ✅ Fixed component tests for happy-dom + React 19 compatibility
+- ✅ Added React imports to typing-indicator.tsx, pending-indicator.tsx, offline-banner.tsx
+- ✅ Added React imports to test files (pending-indicator.test.tsx, offline-banner.test.tsx)
+- ✅ Updated tests to use container-based queries instead of text queries (screen.getByText → container.textContent)
+- ✅ All 223 component tests passing
+- ✅ Committed fixes (46bdde4) to feature/web-ui-improvements
+- ⚠️ 9 failing tests in lib/chat-search.test.ts (unrelated drizzle ORM mock issue)
 
 ### Iteration 119 (Dec 29, 2025)
 - ✅ Component tests: ChatSkeleton (29 tests) and DocumentSkeleton (34 tests)
@@ -104,6 +114,14 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 - `Memory MCP`: Digital twin of @duyet (blog, GitHub, style, personality in Vietnamese+English)
 
 **Self-Upgrade**: Repo can self-analyze, identify improvements, plan changes, implement automatically.
+
+
+apps/web :add supporet prompt queue. The agent mode look like v0.dev UI
+
+
+I have an idea of running Claude Code SDK on github actions as free runner. Similar to Claude Code Github Actions with custom prompts. We can push the tasks to github actions to self improve the codebase, run tests, deploy, and commit changes.
+
+
 
 ---
 
