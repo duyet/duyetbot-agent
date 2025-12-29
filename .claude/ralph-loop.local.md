@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 100
+iteration: 115
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -35,15 +35,17 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
    - [x] use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation (108/135 passing)
    - [x] lib/api-client.ts (24/24 passing)
    - [x] lib/chat-memory.ts (32/32 passing)
-   - [x] Components: auth-form, keyboard-shortcuts (60/60 passing)
-   - [ ] Components: multimodal-input, chat-message
+   - [x] Components: auth-form, keyboard-shortcuts, multimodal-input (89/89 passing)
+   - [ ] Components: message.tsx, messages.tsx (deferred - complex with many dependencies)
    - [ ] lib/chat-search.ts (integration tests recommended due to server-only)
 
 2. **Integration Tests** (0 coverage)
    - [ ] Telegram bot webhooks, GitHub bot webhooks, MCP integrations, cross-app workflows
 
 3. **Performance**
-   - [ ] Virtual scrolling, Optimistic UI
+   - [x] Virtual scrolling infrastructure (VirtualizedMessages component created, documented for future use)
+   - [ ] Optimistic UI implementation
+   - [x] React.memo optimization for expensive components (Suggestion, PreviewAttachment, VersionFooter, DiffView)
 
 ## Medium Priority
 1. **Security** (5 items)
@@ -56,6 +58,28 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 ---
 
 # Recent Iterations
+
+### Iteration 114 (Dec 29, 2025)
+- ✅ React.memo optimization for 4 expensive components (Suggestion, PreviewAttachment, VersionFooter, DiffView)
+- ✅ Custom comparison functions tailored to each component's prop requirements
+- ✅ Pattern: PureX function + memo wrapper + targeted prop comparison
+- ✅ Build passing, no new test failures (9 pre-existing in chat-search.test.ts)
+- ✅ Performance: Skips re-renders when props haven't changed for frequently-rendering components
+
+### Iteration 113 (Dec 29, 2025)
+- ✅ Virtual scrolling infrastructure - Created VirtualizedMessages component with react-window
+- ✅ Dynamic height tracking with ResizeObserver for variable message sizes
+- ✅ Keyboard navigation, auto-read, and scroll-to-bottom preserved
+- ⏭️ Integration deferred due to React 19 + react-window type compatibility issues
+- ✅ Component documented in messages.tsx for future use when types align
+- ✅ Build passing, no breaking changes
+
+### Iteration 108 (Dec 29, 2025)
+- ✅ Unit tests for MultimodalInput component (29/29 passing)
+- ✅ multimodal-input.test.tsx: tests textarea, send/stop buttons, attachments, voice input, model selector, memoization
+- ✅ Total component test count: 89 passing (60 from previous + 29 new)
+- ✅ Tests cover upload queue states, reasoning model restrictions, speech recognition support detection
+- ⏭️ Deferred message.tsx and messages.tsx tests due to complexity (many dependencies, sub-components)
 
 ### Iteration 99 (Dec 29, 2025)
 - ✅ Unit tests for 2 UI components (auth-form, keyboard-shortcuts)

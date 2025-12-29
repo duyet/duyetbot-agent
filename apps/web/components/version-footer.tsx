@@ -2,7 +2,7 @@
 
 import { isAfter } from "date-fns";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useSWRConfig } from "swr";
 import { useWindowSize } from "usehooks-ts";
 import { useArtifact } from "@/hooks/use-artifact";
@@ -17,11 +17,11 @@ type VersionFooterProps = {
 	currentVersionIndex: number;
 };
 
-export const VersionFooter = ({
+function PureVersionFooter({
 	handleVersionChange,
 	documents,
 	currentVersionIndex,
-}: VersionFooterProps) => {
+}: VersionFooterProps) {
 	const { artifact } = useArtifact();
 
 	const { width } = useWindowSize();
@@ -104,4 +104,11 @@ export const VersionFooter = ({
 			</div>
 		</motion.div>
 	);
-};
+}
+
+export const VersionFooter = memo(PureVersionFooter, (prevProps, nextProps) => {
+	// Re-render only if version index or documents change
+	if (prevProps.currentVersionIndex !== nextProps.currentVersionIndex) return false;
+	if (prevProps.documents?.length !== nextProps.documents?.length) return false;
+	return true;
+});

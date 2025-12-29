@@ -1,7 +1,7 @@
 "use client";
 
 import { AnimatePresence, motion } from "framer-motion";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { useWindowSize } from "usehooks-ts";
 
 import type { UISuggestion } from "@/lib/editor/suggestions";
@@ -10,7 +10,7 @@ import type { ArtifactKind } from "./artifact";
 import { CrossIcon, MessageIcon } from "./icons";
 import { Button } from "./ui/button";
 
-export const Suggestion = ({
+function PureSuggestion({
 	suggestion,
 	onApply,
 	artifactKind,
@@ -18,7 +18,7 @@ export const Suggestion = ({
 	suggestion: UISuggestion;
 	onApply: () => void;
 	artifactKind: ArtifactKind;
-}) => {
+}) {
 	const [isExpanded, setIsExpanded] = useState(false);
 	const { width: windowWidth } = useWindowSize();
 
@@ -74,4 +74,11 @@ export const Suggestion = ({
 			)}
 		</AnimatePresence>
 	);
-};
+}
+
+export const Suggestion = memo(PureSuggestion, (prevProps, nextProps) => {
+	// Re-render only if suggestion.id or artifactKind changes
+	if (prevProps.suggestion.id !== nextProps.suggestion.id) return false;
+	if (prevProps.artifactKind !== nextProps.artifactKind) return false;
+	return true;
+});

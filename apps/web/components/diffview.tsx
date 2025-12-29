@@ -10,6 +10,7 @@ import { addListNodes } from "prosemirror-schema-list";
 import { EditorState } from "prosemirror-state";
 import { EditorView } from "prosemirror-view";
 import { useEffect, useRef } from "react";
+import { memo } from "react";
 import { renderToString } from "react-dom/server";
 import { Streamdown } from "streamdown";
 import { DiffType, diffEditor } from "@/lib/editor/diff";
@@ -51,7 +52,7 @@ type DiffEditorProps = {
 	newContent: string;
 };
 
-export const DiffView = ({ oldContent, newContent }: DiffEditorProps) => {
+function PureDiffView({ oldContent, newContent }: DiffEditorProps) {
 	const editorRef = useRef<HTMLDivElement>(null);
 	const viewRef = useRef<EditorView | null>(null);
 
@@ -101,4 +102,13 @@ export const DiffView = ({ oldContent, newContent }: DiffEditorProps) => {
 	}, [oldContent, newContent]);
 
 	return <div className="diff-editor" ref={editorRef} />;
-};
+}
+
+// DiffView is expensive due to ProseMirror diff computation
+// Memoize to avoid re-computing when content hasn't changed
+export const DiffView = memo(PureDiffView, (prevProps, nextProps) => {
+	// Re-render only if content actually changes
+	if (prevProps.oldContent !== nextProps.oldContent) return false;
+	if (prevProps.newContent !== nextProps.newContent) return false;
+	return true;
+});
