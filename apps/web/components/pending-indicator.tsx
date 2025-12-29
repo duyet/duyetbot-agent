@@ -5,6 +5,7 @@
  * allowing users to see that their action is being processed.
  */
 
+import React from "react";
 import type { PendingOperation } from "@/hooks/use-optimistic-update";
 import { cn } from "@/lib/utils";
 

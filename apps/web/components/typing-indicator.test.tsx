@@ -39,9 +39,10 @@ describe("TypingIndicator", () => {
 		});
 
 		it("has proper aria-label for accessibility", () => {
-			render(<TypingIndicator />);
-			const indicator = screen.getByLabelText("AI is typing");
+			const { container } = render(<TypingIndicator />);
+			const indicator = container.firstChild as HTMLElement;
 			expect(indicator).toBeInTheDocument();
+			expect(indicator).toHaveAttribute("aria-label", "AI is typing");
 		});
 	});
 
@@ -148,9 +149,10 @@ describe("TypingIndicator", () => {
 		});
 
 		it("does not have aria-label (decorative only)", () => {
-			render(<CompactTypingIndicator />);
-			const indicator = screen.queryByLabelText("AI is typing");
-			expect(indicator).not.toBeInTheDocument();
+			const { container } = render(<CompactTypingIndicator />);
+			const indicator = container.firstChild as HTMLElement;
+			expect(indicator).toBeInTheDocument();
+			expect(indicator).not.toHaveAttribute("aria-label");
 		});
 	});
 });
