@@ -6,13 +6,15 @@ import path from "node:path";
  *
  * - API tests: Run directly against production Workers API or local dev server
  * - Unit tests: Run in isolation with mocked dependencies
- * - Component tests: React component tests using jsdom environment
+ * - Component tests: React component tests using happy-dom environment (Bun compatible)
  */
 export default defineConfig({
 	test: {
 		globals: true,
 		environment: "happy-dom", // happy-dom for React component tests (Bun compatible)
 		include: ["tests/api/**/*.test.ts", "lib/**/*.test.ts", "components/**/*.test.tsx"],
+		// Note: hooks/ tests excluded due to SWR cache pollution issues
+		// TODO: Fix hook tests with proper cache isolation
 		testTimeout: 60_000, // 60 seconds for API calls
 		hookTimeout: 60_000,
 		teardownTimeout: 30_000,
