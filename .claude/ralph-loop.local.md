@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 118
+iteration: 119
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -58,6 +58,13 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 ---
 
 # Recent Iterations
+
+### Iteration 116 (Dec 29, 2025)
+- ✅ Environment-based link domain security (NEXT_PUBLIC_ALLOWED_LINK_DOMAINS)
+- ✅ getAllowedLinkDomains() function with dev/prod defaults and custom parsing
+- ✅ Security improvement: Production can restrict AI links to trusted domains
+- ✅ Streamdown security tests (12/12 passing)
+- ✅ Resolved TODO from streamdown-security.ts
 
 ### Iteration 115 (Dec 29, 2025)
 - ✅ Optimistic UI for message delete (snapshot via useRef, immediate removal, rollback on error)
