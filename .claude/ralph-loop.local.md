@@ -1,7 +1,7 @@
 ---
 
 active: true
-iteration: 167
+iteration: 168
 max_iterations: 0
 completion_promise: null
 started_at: "2025-12-29T03:50:00Z"
@@ -22,8 +22,7 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 **Branch**: `feature/web-ui-improvements` (based on `claude/init-bot-agent-project-011Ao8Z9aEoAwxQ3D99gkfpQ`)
 - ✅ TypeScript: All passing
 - ✅ Build: All successful
-- ✅ Component Tests: 223/223 passing (typing-indicator, pending-indicator, offline-banner fixed)
-- ⚠️ lib/chat-search.test.ts: 9 failing (unrelated to React imports - drizzle ORM mock issue)
+- ✅ All Tests: 476/476 passing (223 component + 15 chat-search + 238 other tests)
 - ✅ Lint: Biome clean
 - ⚠️ memory-mcp: Type-check fails but builds/runs (deferred)
 
@@ -32,16 +31,11 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 # Next Priorities
 
 ## High Priority
-1. **Unit Test Coverage** (40% → 80%)
-   - [x] Skeleton components: ChatSkeleton, DocumentSkeleton (63/63 passing)
-   - [x] Connection status: ConnectionStatusIndicator, PendingIndicator (48/48 passing)
-   - [x] All component tests: OfflineBanner, TypingIndicator, auth-form, keyboard-shortcuts, multimodal-input (223/223 passing)
-   - [x] Fix 22 failing component tests (React 19 + happy-dom compatibility)
-   - [ ] Fix 9 failing tests in lib/chat-search.test.ts (drizzle ORM mock issue)
+1. **Unit Test Coverage** (476/476 tests passing ✅)
+   - [x] All component tests: 223/223 passing
+   - [x] Fixed chat-search tests: 15/15 passing (drizzle ORM mock fixes)
    - [ ] Components: message.tsx, messages.tsx (deferred - complex with many dependencies)
-   - [ ] use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation (108/135 passing)
-   - [ ] lib/api-client.ts (24/24 passing)
-   - [ ] lib/chat-memory.ts (32/32 passing)
+   - [ ] Hooks: use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation
 
 2. **Integration Tests** (0 coverage)
    - [ ] Telegram bot webhooks, GitHub bot webhooks, MCP integrations, cross-app workflows
@@ -62,6 +56,13 @@ If nothing to improve → Brainstorm new features → Plan → add to TODO.md �
 ---
 
 # Recent Iterations
+
+### Iteration 121 (Dec 29, 2025)
+- ✅ Fixed 9 failing tests in lib/chat-search.test.ts
+- ✅ Updated drizzle ORM mocks to return resolved promises for query results
+- ✅ Added proper column references to schema mocks (chat, message, chatTag, etc.)
+- ✅ All 476 tests passing (223 component + 15 chat-search + 238 other)
+- ✅ Committed fixes (eb518d7) to feature/web-ui-improvements
 
 ### Iteration 120 (Dec 29, 2025)
 - ✅ Fixed component tests for happy-dom + React 19 compatibility
