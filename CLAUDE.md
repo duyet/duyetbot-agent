@@ -4,9 +4,44 @@ Guidance for Claude Code when working in this repository.
 
 ## Project Overview
 
-**duyetbot-agent** is a personal AI agent system built as a monorepo. It implements a **Hybrid Supervisor-Worker Architecture** with Cloudflare Workers for edge deployment and Durable Objects for stateful agent persistence.
+**duyetbot-agent** is a **fully autonomous AI agent system** built as a monorepo. It implements a **Hybrid Supervisor-Worker Architecture** with Cloudflare Workers for edge deployment and Durable Objects for stateful agent persistence.
+
+**Vision**: Build a fully autonomous agent system that can plan, implement, and deploy solutions across multiple interfaces and platforms - from GitHub workflows to Telegram chat, from web dashboards to CLI tools.
 
 **Stack**: Bun + TypeScript + Hono + Cloudflare Workers + Vitest
+
+## Vision & Principles
+
+### Core Vision Statement
+
+The goal of **duyetbot-agent** is to create a **fully autonomous AI agent system** that:
+
+1. **Plans autonomously** - Breaks down complex tasks into actionable steps without human intervention
+2. **Implements independently** - Writes, tests, and deploys code across the full stack
+3. **Operates across multiple interfaces** - Seamlessly works through:
+   - **GitHub**: @mentions, PR reviews, issue management, Actions workflows
+   - **Telegram**: Chat interface for queries and notifications
+   - **Web**: Dashboard for monitoring and management
+   - **CLI**: Local development tools and commands
+   - **MCP**: Extensible tool integration
+
+### Autonomous Capabilities
+
+- **Multi-Agent Routing**: 8 specialized agents (Router, Simple, Orchestrator, HITL, CodeWorker, ResearchWorker, GitHubWorker, DuyetInfo)
+- **Task Decomposition**: OrchestratorAgent breaks complex tasks into parallel workstreams
+- **Human-in-the-Loop**: HITLAgent for sensitive operations requiring approval
+- **Persistent Memory**: Cross-session context via MCP + D1/KV storage
+- **Edge Deployment**: Cloudflare Workers + Durable Objects for global scalability
+
+### Architecture Principles
+
+| Principle | Implementation |
+|-----------|----------------|
+| **Fire-and-Forget** | Webhooks return immediately, DOs process independently |
+| **Dual-Batch Queue** | pendingBatch (collecting) + activeBatch (processing) for reliability |
+| **Transport Abstraction** | Platform-agnostic agent logic, pluggable platform transports |
+| **Hybrid Classification** | Pattern match (fast) + LLM fallback (semantic) |
+| **Heartbeat Recovery** | Rotating messages prove liveness, auto-recover from stuck batches |
 
 ## Quick Reference
 
@@ -58,8 +93,13 @@ interface Transport<TContext> {
 |-----|---------|---------|
 | `apps/telegram-bot` | Workers + DO | Telegram chat interface |
 | `apps/github-bot` | Workers + DO | GitHub @mentions and webhooks |
+| `apps/shared-agents` | Workers + DO | 8 shared Durable Objects (Router, Orchestrator, Workers) |
 | `apps/memory-mcp` | Workers + D1 | Cross-session memory (MCP server) |
-| `apps/docs` | Cloudflare Pages | Docs page |
+| `apps/duyetbot-action` | Workers | GitHub Actions integration for autonomous workflows |
+| `apps/safety-kernel` | Workers | Safety layer for agent operations |
+| `apps/dashboard` | Cloudflare Pages | Web dashboard for monitoring and management |
+| `apps/web` | Cloudflare Pages | Web interface |
+| `apps/docs` | Cloudflare Pages | Documentation site |
 
 ## Development Workflow
 
