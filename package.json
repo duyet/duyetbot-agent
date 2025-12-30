@@ -37,7 +37,9 @@
     "config:github": "bun scripts/config.ts github",
     "config:shared-agents": "bun scripts/config.ts agents",
     "config:memory-mcp": "bun scripts/config.ts memory",
-    "config:show": "bun scripts/config.ts show"
+    "config:show": "bun scripts/config.ts show",
+    "agent": "./scripts/trigger-agent.sh",
+    "duyetbot-action": "bun run apps/duyetbot-action/src/index.ts"
   },
   "keywords": [
     "agent",
