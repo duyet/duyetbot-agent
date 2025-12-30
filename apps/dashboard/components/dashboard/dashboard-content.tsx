@@ -1,9 +1,10 @@
 'use client';
 
-import { Activity, Brain, Calendar, Clock, Database, FileText, Server, Zap } from 'lucide-react';
+import { Activity, Brain, Calendar, Clock, Database, DollarSign, FileText, Server, Zap } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useStats } from '@/lib/hooks/use-dashboard-data';
+import { CostDistributionCard } from './CostDistributionCard';
 import { QuickLinkCard } from './quick-link-card';
 
 function formatNumber(num: number): string {
@@ -124,6 +125,9 @@ export function DashboardContent() {
           </div>
         </Card>
 
+        {/* Cost Distribution Card */}
+        <CostDistributionCard />
+
         {/* Quick Links Grid - Focused on Management & Monitoring */}
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
           <QuickLinkCard
@@ -131,6 +135,12 @@ export function DashboardContent() {
             description="Monitor detailed logs and messages"
             icon={Activity}
             href="/messages"
+          />
+          <QuickLinkCard
+            title="Cost Analysis"
+            description="View detailed cost breakdown"
+            icon={DollarSign}
+            href="/tokens/cost"
           />
           <QuickLinkCard
             title="Analytics"

@@ -16,7 +16,8 @@ AI assistant with intelligent routing and specialized handlers across GitHub, Te
 - 💾 **Persistent Memory**: Cross-session context via MCP + D1/KV
 - 🚀 **Edge Deployment**: Cloudflare Workers + Durable Objects
 - 🔧 **Multi-LLM**: OpenRouter via AI Gateway
-- 📦 **Monorepo**: Bun + TypeScript + Vitest (969+ tests)
+- 📊 **Analytics Dashboard**: Real-time monitoring and cost tracking
+- 📦 **Monorepo**: Bun + TypeScript + Vitest (1019+ tests)
 
 ## Architecture
 
@@ -82,6 +83,7 @@ apps/
 ├── telegram-bot    # Telegram interface + webhook handler
 ├── github-bot      # GitHub webhook + webhook handler
 ├── memory-mcp      # Memory persistence (D1 + KV)
+├── dashboard       # Analytics dashboard (Next.js + D1)
 └── agent-server    # Heavy compute (future: Claude Agent SDK)
 ```
 
@@ -92,6 +94,8 @@ apps/
 - **[API Reference](./docs/api.md)** - API endpoints
 - **[Deployment](./docs/deployment.md)** - Deploy guide
 - **[PLAN.md](./PLAN.md)** - Roadmap + progress
+- **[Code Browse](https://zread.ai/duyet/duyetbot-agent)** - Browse code on zread.ai
+- **[Dashboard](./apps/dashboard)** - Analytics dashboard with cost tracking
 
 ## License
 
