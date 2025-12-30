@@ -20,7 +20,7 @@
     "build": "tsc",
     "dev": "wrangler dev",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit",
+    "type-check": "node --max-old-space-size=8192 $(which tsc) --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy": "bun scripts/deploy.ts",

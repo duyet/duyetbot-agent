@@ -7,6 +7,7 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import type { Agent } from 'agents';
+import type { CloudflareEnv } from '../core/types.js';
 import type { LLMProvider, Message } from '../types.js';
 
 /**
@@ -328,14 +329,16 @@ export const AgentMixin = {
 /**
  * Type guard to check if an object is an Agent
  */
-export function isAgent<TEnv, TState>(obj: unknown): obj is Agent<TEnv, TState> {
+export function isAgent<TEnv extends CloudflareEnv, TState>(
+  obj: unknown
+): obj is Agent<TEnv, TState> {
   return typeof obj === 'object' && obj !== null && 'state' in obj && 'setState' in obj;
 }
 
 /**
  * Helper to safely get agent by name with proper typing
  */
-export async function getTypedAgent<TAgent extends Agent<unknown, unknown>>(
+export async function getTypedAgent<TAgent extends Agent<CloudflareEnv, unknown>>(
   namespace: {
     idFromName: (name: string) => unknown;
     get: (id: unknown) => TAgent;

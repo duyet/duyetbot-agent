@@ -18,9 +18,11 @@ import {
 } from '@duyetbot/observability';
 import { type Env, TelegramAgent } from './agent.js';
 import {
+  createRateLimitMiddleware,
   createTelegramAuthMiddleware,
   createTelegramParserMiddleware,
 } from './middlewares/index.js';
+import { processEventNotifications } from './notifications/index.js';
 import { answerCallbackQuery, createTelegramContext, telegramTransport } from './transport.js';
 
 // Extend Env with agent bindings and observability
@@ -47,6 +49,7 @@ app.post(
   createTelegramWebhookAuth<EnvWithAgent>(),
   createTelegramParserMiddleware(),
   createTelegramAuthMiddleware(),
+  createRateLimitMiddleware(),
   async (c) => {
     const env = c.env;
     const startTime = Date.now();
@@ -102,6 +105,8 @@ app.post(
       let reason = 'skip_flag';
       if (c.get('unauthorized')) {
         reason = 'unauthorized';
+      } else if (c.get('rateLimited')) {
+        reason = 'rate_limited';
       } else if (webhookCtx?.isGroupChat && !webhookCtx.hasBotMention && !webhookCtx.isReply) {
         reason = 'group_not_mentioned_or_reply';
       }
@@ -135,6 +140,29 @@ app.post(
           });
         }
       }
+
+      // Handle rate-limited users - send friendly message explaining the limit
+      if (c.get('rateLimited') && webhookCtx) {
+        const rateLimitReason = c.get('rateLimitReason') ?? 'Please slow down.';
+        const ctx = createTelegramContext(
+          env.TELEGRAM_BOT_TOKEN,
+          webhookCtx,
+          env.TELEGRAM_ADMIN,
+          requestId,
+          env.TELEGRAM_PARSE_MODE ?? 'MarkdownV2'
+        );
+        try {
+          assertContextComplete(ctx);
+          await telegramTransport.send(ctx, `⚠️ ${rateLimitReason}`);
+        } catch (validationError) {
+          logger.error(`[${requestId}] [VALIDATION] Context incomplete (rate-limited user)`, {
+            requestId,
+            error:
+              validationError instanceof Error ? validationError.message : String(validationError),
+          });
+        }
+      }
+
       return c.text('OK');
     }
 
@@ -510,4 +538,62 @@ app.post('/internal/forward', async (c) => {
   }
 });
 
-export default app;
+/**
+ * Scheduled handler for Event Bridge notification processing
+ *
+ * Runs on cron schedule (every 5 minutes) to:
+ * 1. Poll Event Bridge for new cross-agent events
+ * 2. Filter events based on admin preferences
+ * 3. Send formatted notifications to admin chat
+ *
+ * This enables the Telegram bot to receive notifications about:
+ * - GitHub PR events (opened, merged, review_requested, etc.)
+ * - Task completions and approvals
+ * - System events from other agents
+ */
+async function scheduled(
+  _event: ScheduledEvent,
+  env: EnvWithAgent,
+  _ctx: ExecutionContext
+): Promise<void> {
+  logger.info('[SCHEDULED] Event Bridge notification processing started');
+
+  // Skip if D1 not configured
+  if (!env.OBSERVABILITY_DB) {
+    logger.debug('[SCHEDULED] D1 not configured, skipping');
+    return;
+  }
+
+  // Get admin chat ID from env
+  const adminChatId = env.TELEGRAM_FORWARD_CHAT_ID ?? env.TELEGRAM_ADMIN_CHAT_ID;
+  if (!adminChatId) {
+    logger.debug('[SCHEDULED] No admin chat ID configured, skipping');
+    return;
+  }
+
+  try {
+    // Type assertion needed: D1Database types from different packages
+    // are structurally identical but TypeScript sees them as distinct
+    const result = await processEventNotifications(
+      env.OBSERVABILITY_DB as unknown as D1Database,
+      env.TELEGRAM_BOT_TOKEN,
+      Number(adminChatId)
+    );
+
+    logger.info('[SCHEDULED] Event Bridge processing complete', {
+      eventsProcessed: result.eventsProcessed,
+      notificationsSent: result.notificationsSent,
+      lastSequence: result.lastSequence,
+      errors: result.errors.length,
+    });
+  } catch (error) {
+    logger.error('[SCHEDULED] Event Bridge processing failed', {
+      error: error instanceof Error ? error.message : String(error),
+    });
+  }
+}
+
+export default {
+  fetch: app.fetch,
+  scheduled,
+};

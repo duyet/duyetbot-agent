@@ -42,6 +42,7 @@ import {
   handleBuiltinCommand,
   transformSlashCommand,
 } from './commands/index.js';
+import type { CloudflareEnv } from './core/types.js';
 import { trimHistory } from './history.js';
 import { MCPInitializer } from './mcp/mcp-initializer.js';
 import type { ParsedInput, Transport, TransportHooks } from './transport.js';
@@ -245,7 +246,7 @@ export interface CloudflareChatAgentMethods<TContext = unknown> {
  * Type for the CloudflareChatAgent class constructor
  * Extends typeof Agent to maintain compatibility with AgentNamespace
  */
-export type CloudflareChatAgentClass<TEnv, TContext = unknown> = typeof Agent<
+export type CloudflareChatAgentClass<TEnv extends CloudflareEnv, TContext = unknown> = typeof Agent<
   TEnv,
   CloudflareAgentState
 > & {
@@ -272,7 +273,7 @@ import type { QuotedContext } from './workflow/types.js';
  * });
  * ```
  */
-export function createCloudflareChatAgent<TEnv, TContext = unknown>(
+export function createCloudflareChatAgent<TEnv extends CloudflareEnv, TContext = unknown>(
   config: CloudflareAgentConfig<TEnv, TContext>
 ): CloudflareChatAgentClass<TEnv, TContext> {
   const maxHistory = config.maxHistory ?? 100;
@@ -1869,9 +1870,9 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
 
         try {
           if (transport.edit) {
-            await transport.edit(ctx, execution.messageRef, response);
+            await transport.edit(ctxWithDebug as TContext, execution.messageRef, response);
           } else {
-            await transport.send(ctx, response);
+            await transport.send(ctxWithDebug as TContext, response);
           }
         } catch (err) {
           logger.error(`[CloudflareAgent][CHATLOOP] Failed to send response: ${err}`);
@@ -2013,9 +2014,10 @@ export function createCloudflareChatAgent<TEnv, TContext = unknown>(
  * Type helper for agent namespaces
  * Use this for the Env interface to get proper typing for agent stubs
  */
-export type CloudflareChatAgentNamespace<TEnv, TContext = unknown> = AgentNamespace<
-  Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>
->;
+export type CloudflareChatAgentNamespace<
+  TEnv extends CloudflareEnv,
+  TContext = unknown,
+> = AgentNamespace<Agent<TEnv, CloudflareAgentState> & CloudflareChatAgentMethods<TContext>>;
 
 /**
  * Type-safe helper to get a CloudflareChatAgent by name

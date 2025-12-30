@@ -61,3 +61,8 @@ database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
 [[kv_namespaces]]
 binding = "HEARTBEAT_KV"
 id = "f86303f7fa3a45dd986c0c6bf835c8e1"
+
+# Scheduled triggers for Event Bridge polling
+# Processes cross-agent events and sends admin notifications
+[triggers]
+crons = ["*/5 * * * *"]  # Every 5 minutes

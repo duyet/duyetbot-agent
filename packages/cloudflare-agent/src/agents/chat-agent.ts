@@ -22,6 +22,7 @@
 
 import { logger } from '@duyetbot/hono-middleware';
 import { Agent, type AgentNamespace } from 'agents';
+import type { CloudflareEnv } from '../core/types.js';
 import type { Message } from '../types.js';
 
 // =============================================================================
@@ -51,7 +52,7 @@ export interface ChatAgentState {
  * Environment bindings for ChatAgent
  * @deprecated Use RouterAgentEnv instead
  */
-export interface ChatAgentEnv {
+export interface ChatAgentEnv extends CloudflareEnv {
   /** RouterAgent for query classification and routing */
   RouterAgent?: AgentNamespace<Agent<ChatAgentEnv, unknown>>;
 }

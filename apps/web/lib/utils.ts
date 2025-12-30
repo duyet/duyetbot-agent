@@ -16,7 +16,17 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const fetcher = async (url: string) => {
-  const response = await fetch(url);
+  // Add Authorization header if token exists
+  const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+  const headers: HeadersInit = {};
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(url, {
+    headers,
+    credentials: 'include', // Keep during migration for cookie backward compatibility
+  });
 
   if (!response.ok) {
     const { code, cause } = await response.json() as { code: string; cause: string };
@@ -31,7 +41,18 @@ export async function fetchWithErrorHandlers(
   init?: RequestInit,
 ) {
   try {
-    const response = await fetch(input, init);
+    // Add Authorization header if token exists
+    const token = typeof window !== 'undefined' ? localStorage.getItem('auth_token') : null;
+    const headers = new Headers(init?.headers);
+    if (token) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+
+    const response = await fetch(input, {
+      ...init,
+      headers,
+      credentials: 'include', // Keep during migration for cookie backward compatibility
+    });
 
     if (!response.ok) {
       const { code, cause } = await response.json() as { code: string; cause: string };
@@ -48,11 +69,46 @@ export async function fetchWithErrorHandlers(
   }
 }
 
-export function getLocalStorage(key: string) {
-  if (typeof window !== 'undefined') {
-    return JSON.parse(localStorage.getItem(key) || '[]');
+/**
+ * Safe localStorage access with error handling
+ * Returns empty array on any error (including access denied)
+ */
+export function getLocalStorage(key: string): unknown[] {
+  if (typeof window === 'undefined') {
+    return [];
   }
-  return [];
+
+  try {
+    const item = localStorage.getItem(key);
+    if (item === null) {
+      return [];
+    }
+    return JSON.parse(item);
+  } catch (error) {
+    // Silently fail on:
+    // - Storage access denied (private browsing, cookies disabled)
+    // - Quota exceeded
+    // - Invalid JSON
+    console.debug(`[getLocalStorage] Failed to read key "${key}":`, error);
+    return [];
+  }
+}
+
+/**
+ * Safe localStorage set with error handling
+ */
+export function setLocalStorage(key: string, value: unknown): boolean {
+  if (typeof window === 'undefined') {
+    return false;
+  }
+
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    return true;
+  } catch (error) {
+    console.debug(`[setLocalStorage] Failed to write key "${key}":`, error);
+    return false;
+  }
 }
 
 export function generateUUID(): string {
@@ -94,7 +150,7 @@ export function getTrailingMessageId({
 }
 
 export function sanitizeText(text: string) {
-  return text.replace('<has_function_call>', '');
+  return text.replaceAll('<has_function_call>', '');
 }
 
 export function convertToUIMessages(messages: DBMessage[]): ChatMessage[] {

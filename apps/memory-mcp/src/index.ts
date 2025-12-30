@@ -35,6 +35,18 @@ import {
   setShortTermMemory,
   setShortTermMemorySchema,
 } from './tools/short-term-memory.js';
+import {
+  addTask,
+  addTaskSchema,
+  completeTask,
+  completeTaskSchema,
+  deleteTask,
+  deleteTaskSchema,
+  listTasks,
+  listTasksSchema,
+  updateTask,
+  updateTaskSchema,
+} from './tools/todo-tasks.js';
 import type { Env } from './types.js';
 
 // Export MCP agent for Durable Object binding
@@ -91,6 +103,7 @@ const authMiddleware = createAuth({
 
 app.use('/api/memory/*', authMiddleware);
 app.use('/api/sessions/*', authMiddleware);
+app.use('/api/tasks/*', authMiddleware);
 
 // Protected endpoints
 app.post('/api/memory/get', async (c: any) => {
@@ -266,6 +279,82 @@ app.post('/api/memory/search', async (c: any) => {
     const d1Storage = new D1Storage(c.env.DB);
     const user = c.get('user') as { userId: string };
     const result = await searchMemoryTool(input, d1Storage, user.userId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// ============================================================================
+// Todo/Task Management Endpoints
+// ============================================================================
+
+// Add task
+app.post('/api/tasks/add', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = addTaskSchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const user = c.get('user') as { userId: string };
+    const result = await addTask(input, d1Storage, user.userId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// List tasks
+app.post('/api/tasks/list', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = listTasksSchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const user = c.get('user') as { userId: string };
+    const result = await listTasks(input, d1Storage, user.userId);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// Update task
+app.post('/api/tasks/update', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = updateTaskSchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await updateTask(input, d1Storage);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// Complete task
+app.post('/api/tasks/complete', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = completeTaskSchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await completeTask(input, d1Storage);
+    return c.json(result);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return c.json({ error: message }, 400);
+  }
+});
+
+// Delete task
+app.post('/api/tasks/delete', async (c: any) => {
+  try {
+    const body = await c.req.json();
+    const input = deleteTaskSchema.parse(body);
+    const d1Storage = new D1Storage(c.env.DB);
+    const result = await deleteTask(input, d1Storage);
     return c.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';

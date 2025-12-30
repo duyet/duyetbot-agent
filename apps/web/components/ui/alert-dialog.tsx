@@ -29,10 +29,30 @@ AlertDialogOverlay.displayName = AlertDialogPrimitive.Overlay.displayName;
 const AlertDialogContent = React.forwardRef<
   React.ElementRef<typeof AlertDialogPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Content>
->(({ className, ...props }, ref) => (
+>(({ className, onEscapeKeyDown, ...props }, ref) => (
   <AlertDialogPortal>
     <AlertDialogOverlay />
     <AlertDialogPrimitive.Content
+      onEscapeKeyDown={(event) => {
+        // Allow custom escape key handling or use default close behavior
+        onEscapeKeyDown?.(event);
+      }}
+      onOpenAutoFocus={(event) => {
+        // Focus the first focusable element when alert opens
+        event.preventDefault();
+        setTimeout(() => {
+          const content = (ref as React.RefObject<HTMLDivElement>).current;
+          if (!content) return;
+          const firstFocusable = content.querySelector<HTMLElement>(
+            'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+          );
+          firstFocusable?.focus();
+        }, 0);
+      }}
+      onCloseAutoFocus={(event) => {
+        // Return focus to trigger element when alert closes
+        // This is default Radix UI behavior, kept for clarity
+      }}
       className={cn(
         "data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-background p-6 shadow-lg duration-200 data-[state=closed]:animate-out data-[state=open]:animate-in sm:rounded-lg",
         className

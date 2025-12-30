@@ -33,7 +33,7 @@
   "license": "MIT",
   "dependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",
-    "hono": "^4.7.7"
+    "hono": "catalog:"
   },
   "devDependencies": {
     "@types/node": "catalog:",

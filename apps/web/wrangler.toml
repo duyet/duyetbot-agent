@@ -1,6 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "duyetbot-web"
-main = ".open-next/worker.js"
+main = "worker/index.ts"
 compatibility_date = "2025-01-01"
 compatibility_flags = ["nodejs_compat"]
 
@@ -8,7 +8,7 @@ compatibility_flags = ["nodejs_compat"]
 binding = "AI"
 
 [assets]
-directory = ".open-next/assets"
+directory = "out"
 binding = "ASSETS"
 
 [vars]
@@ -35,3 +35,7 @@ migrations_dir = "lib/db/migrations"
 [[r2_buckets]]
 binding = "UPLOADS_BUCKET"
 bucket_name = "duyetbot-web-uploads"
+
+[[kv_namespaces]]
+binding = "RATE_LIMIT_KV"
+id = "39e4c4b5055d47adbaf79cf3579d02aa"

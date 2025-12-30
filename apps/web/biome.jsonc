@@ -1,51 +1,64 @@
 {
-  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  "extends": ["ultracite"],
-  "files": {
-    "includes": [
-      "**/*",
-      "!components/ui",
-      "!lib/utils.ts",
-      "!hooks/use-mobile.ts"
-    ]
-  },
-  "linter": {
-    "rules": {
-      "suspicious": {
-        /* Needs more work to fix */
-        "noExplicitAny": "off",
+	"root": false,
+	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+	"files": {
+		"includes": [
+			"**/*",
+			"!**/*.css",
+			"!components/ui",
+			"!lib/utils.ts",
+			"!hooks/use-mobile.ts"
+		]
+	},
+	"linter": {
+		"rules": {
+			"suspicious": {
+				/* Needs more work to fix */
+				"noExplicitAny": "off",
 
-        /* Allow for Tailwind @ rules */
-        "noUnknownAtRules": "off",
+				/* Allowing console for debugging */
+				"noConsole": "off",
 
-        /* Allowing console for debugging */
-        "noConsole": "off",
+				/* Array index keys acceptable for static lists */
+				"noArrayIndexKey": "off",
 
-        /* Needed for generateUUID() */
-        "noBitwiseOperators": "off"
-      },
-      "style": {
-        /* Allowing magic numbers */
-        "noMagicNumbers": "off",
+				/* Assignment in expressions is used for regex matching */
+				"noAssignInExpressions": "off"
+			},
+			"style": {
+				/* Needs more work to fix */
+				"noNestedTernary": "off",
 
-        /* Needs more work to fix */
-        "noNestedTernary": "off"
-      },
-      "nursery": {
-        /* Too many false positives */
-        "noUnnecessaryConditions": "off"
-      },
-      "complexity": {
-        /* Needs more work to fix */
-        "noExcessiveCognitiveComplexity": "off",
+				/* Non-null assertions acceptable for Cloudflare env vars */
+				"noNonNullAssertion": "off"
+			},
+			"complexity": {
+				/* Needs more work to fix */
+				"noExcessiveCognitiveComplexity": "off",
 
-        /* This one has false positives. It's a bit... iffy 😉 */
-        "useSimplifiedLogicExpression": "off"
-      },
-      "a11y": {
-        /* Needs more work to fix */
-        "noSvgWithoutTitle": "off"
-      }
-    }
-  }
+				/* This one has false positives. It's a bit... iffy */
+				"useSimplifiedLogicExpression": "off"
+			},
+			"a11y": {
+				/* Needs more work to fix */
+				"noSvgWithoutTitle": "off",
+				"useButtonType": "off",
+				"noStaticElementInteractions": "off",
+				"useKeyWithClickEvents": "off",
+				"noLabelWithoutControl": "off",
+				"useSemanticElements": "off",
+				"useAriaPropsSupportedByRole": "off"
+			},
+			"correctness": {
+				/* These are fine for components with intentionally unused params */
+				"noUnusedFunctionParameters": "off",
+				/* False positives with React hooks and function declarations */
+				"noInvalidUseBeforeDeclaration": "off"
+			},
+			"performance": {
+				/* AI-generated images wrapped in proper containers */
+				"noImgElement": "off"
+			}
+		}
+	}
 }

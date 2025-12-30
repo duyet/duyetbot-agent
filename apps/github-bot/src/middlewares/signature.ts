@@ -1,8 +1,10 @@
 /**
- * Signature verification middleware for GitHub webhook
+ * Enhanced signature verification middleware for GitHub webhook
  *
  * Verifies the HMAC-SHA256 signature of incoming webhook requests
  * to ensure they originated from GitHub and haven't been tampered with.
+ *
+ * ENHANCED: Now includes timestamp validation to prevent replay attacks.
  *
  * This middleware is responsible only for signature verification -
  * parsing and processing are handled by subsequent middlewares.
@@ -12,6 +14,11 @@
  * @see https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
  */
 
+import {
+  createSignatureOptions,
+  extractTimestamp,
+  verifySignatureWithTimestamp,
+} from '@duyetbot/api-security';
 import { logger } from '@duyetbot/hono-middleware';
 import type { MiddlewareHandler } from 'hono';
 
@@ -19,6 +26,9 @@ import type { Env, SignatureVariables } from './types.js';
 
 /**
  * Verify GitHub webhook signature using HMAC-SHA256
+ *
+ * DEPRECATED: Use verifySignatureWithTimestamp from @duyetbot/api-security instead.
+ * This function is kept for backward compatibility but internally uses the enhanced version.
  *
  * Uses Web Crypto API for Cloudflare Workers compatibility.
  * Computes HMAC-SHA256 and compares using timing-safe comparison.
@@ -42,63 +52,24 @@ export async function verifySignature(
   signature: string,
   secret: string
 ): Promise<boolean> {
-  try {
-    // Import crypto from global scope (Cloudflare Workers provides this)
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode(secret);
-    const payloadData = encoder.encode(payload);
-
-    // Import key for HMAC
-    const key = await crypto.subtle.importKey(
-      'raw',
-      keyData,
-      { name: 'HMAC', hash: 'SHA-256' },
-      false,
-      ['sign']
-    );
-
-    // Compute HMAC
-    const signature_bytes = await crypto.subtle.sign('HMAC', key, payloadData);
-
-    // Convert to hex string
-    const digest = `sha256=${Array.from(new Uint8Array(signature_bytes))
-      .map((b) => b.toString(16).padStart(2, '0'))
-      .join('')}`;
-
-    // Use timing-safe comparison to prevent timing attacks
-    // For constant-time comparison, compare byte lengths first
-    if (digest.length !== signature.length) {
-      return false;
-    }
-
-    // Convert both to ArrayBuffers for timing-safe comparison
-    const digestBytes = new TextEncoder().encode(digest);
-    const signatureBytes = new TextEncoder().encode(signature);
-
-    // Timing-safe comparison
-    let result = 0;
-    for (let i = 0; i < digestBytes.length; i++) {
-      result |= digestBytes[i] ^ signatureBytes[i];
-    }
-
-    return result === 0;
-  } catch (error) {
-    logger.error('[SIGNATURE] Verification error', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    return false;
-  }
+  // Use enhanced verification without timestamp requirement for backward compatibility
+  return verifySignatureWithTimestamp(payload, signature, secret, undefined, {
+    requireTimestamp: false,
+  });
 }
 
 /**
  * Create signature verification middleware for GitHub webhook
  *
+ * ENHANCED: Now validates timestamps from delivery ID to prevent replay attacks.
+ *
  * The signature middleware:
  * 1. Reads the raw request body
  * 2. Gets the signature from x-hub-signature-256 header
- * 3. Verifies signature using HMAC-SHA256
- * 4. Returns 401 if signature is invalid
- * 5. Sets rawBody in context for downstream middlewares
+ * 3. Extracts timestamp from x-github-delivery header
+ * 4. Verifies signature using HMAC-SHA256 with timestamp validation
+ * 5. Returns 401 if signature is invalid or timestamp is too old
+ * 6. Sets rawBody in context for downstream middlewares
  *
  * @returns Hono middleware handler
  *
@@ -140,11 +111,28 @@ export function createGitHubSignatureMiddleware(): MiddlewareHandler<{
 
     // Verify signature if both signature and secret are present
     if (signature && c.env.GITHUB_WEBHOOK_SECRET) {
-      const isValid = await verifySignature(rawBody, signature, c.env.GITHUB_WEBHOOK_SECRET);
+      // Extract timestamp from delivery ID (format: unix-timestamp-uuid)
+      const timestamp = extractTimestamp(c.req.raw.headers);
+
+      // Use enhanced verification with timestamp validation
+      const options = createSignatureOptions({
+        maxAge: 5 * 60 * 1000, // 5 minutes
+        requireTimestamp: false, // Don't require timestamp for backward compatibility
+      });
+
+      const isValid = await verifySignatureWithTimestamp(
+        rawBody,
+        signature,
+        c.env.GITHUB_WEBHOOK_SECRET,
+        timestamp,
+        options
+      );
+
       if (!isValid) {
-        logger.warn(`[${requestId}] [SIGNATURE] Invalid webhook signature`, {
+        logger.warn(`[${requestId}] [SIGNATURE] Invalid webhook signature or expired timestamp`, {
           requestId,
           deliveryId,
+          hasTimestamp: !!timestamp,
         });
         return c.json({ error: 'Invalid signature' }, 401);
       }
@@ -152,6 +140,7 @@ export function createGitHubSignatureMiddleware(): MiddlewareHandler<{
       logger.debug(`[${requestId}] [SIGNATURE] Signature verified`, {
         requestId,
         deliveryId,
+        timestampAge: timestamp ? Date.now() - timestamp : undefined,
       });
     } else if (!signature && c.env.GITHUB_WEBHOOK_SECRET) {
       // Secret is configured but no signature provided - reject

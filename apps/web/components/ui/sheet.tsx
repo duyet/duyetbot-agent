@@ -56,11 +56,37 @@ interface SheetContentProps
 const SheetContent = React.forwardRef<
   React.ElementRef<typeof SheetPrimitive.Content>,
   SheetContentProps
->(({ side = "right", className, children, ...props }, ref) => (
+>(({ side = "right", className, children, onEscapeKeyDown, onPointerDownOutside, ...props }, ref) => (
   <SheetPortal>
     <SheetOverlay />
     <SheetPrimitive.Content
       ref={ref}
+      onEscapeKeyDown={(event) => {
+        // Allow custom escape key handling or use default close behavior
+        onEscapeKeyDown?.(event);
+      }}
+      onPointerDownOutside={onPointerDownOutside}
+      onInteractOutside={(event) => {
+        // Prevent closing when clicking inside scrollable areas
+        const target = event.target as HTMLElement;
+        if (target.closest('[data-scrollable]')) {
+          event.preventDefault();
+        }
+      }}
+      onOpenAutoFocus={(event) => {
+        // Focus the first focusable element when sheet opens
+        event.preventDefault();
+        const firstFocusable = (
+          event.target as HTMLElement
+        ).querySelector<HTMLElement>(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+        );
+        firstFocusable?.focus();
+      }}
+      onCloseAutoFocus={(event) => {
+        // Return focus to trigger element when sheet closes
+        // This is default Radix UI behavior, kept for clarity
+      }}
       className={cn(sheetVariants({ side }), className)}
       {...props}
     >

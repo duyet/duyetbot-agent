@@ -12,5 +12,6 @@ mock.module('cloudflare:workers', () => {
   return {
     DurableObject: class NonDurableObject {},
     WorkerEntrypoint: class NonWorkerEntrypoint {},
+    env: {},
   };
 });

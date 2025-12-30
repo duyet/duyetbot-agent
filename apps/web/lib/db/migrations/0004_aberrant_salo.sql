@@ -1,0 +1,23 @@
+CREATE TABLE `Agent` (
+	`id` text PRIMARY KEY NOT NULL,
+	`name` text NOT NULL,
+	`description` text NOT NULL,
+	`avatar` text,
+	`systemPrompt` text NOT NULL,
+	`guidelines` text DEFAULT '' NOT NULL,
+	`outputFormat` text DEFAULT '' NOT NULL,
+	`modelId` text DEFAULT 'anthropic/claude-sonnet-4-20250514' NOT NULL,
+	`temperature` text DEFAULT '0.7' NOT NULL,
+	`maxTokens` text DEFAULT '4096' NOT NULL,
+	`topP` text DEFAULT '1' NOT NULL,
+	`frequencyPenalty` text DEFAULT '0' NOT NULL,
+	`presencePenalty` text DEFAULT '0' NOT NULL,
+	`enabledTools` text DEFAULT '[]',
+	`needsApproval` integer DEFAULT false NOT NULL,
+	`isEnabled` integer DEFAULT true NOT NULL,
+	`category` text DEFAULT 'custom' NOT NULL,
+	`userId` text NOT NULL,
+	`createdAt` integer NOT NULL,
+	`updatedAt` integer NOT NULL,
+	FOREIGN KEY (`userId`) REFERENCES `User`(`id`) ON UPDATE no action ON DELETE cascade
+);

@@ -7,6 +7,14 @@
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { D1Storage } from './storage/d1.js';
+import {
+  addTask,
+  completeTask,
+  deleteTask,
+  listTasks,
+  type TaskItem,
+  updateTask,
+} from './tools/todo-tasks.js';
 import type { Env, LLMMessage } from './types.js';
 
 /**
@@ -375,5 +383,97 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
   async cleanupExpiredMemory(): Promise<number> {
     const storage = this.getStorage();
     return storage.cleanupExpiredShortTermMemory();
+  }
+
+  // ========================================================================
+  // Todo/Task Management RPC Methods
+  // ========================================================================
+
+  /**
+   * Add a new task
+   */
+  async addTask(
+    userId: string,
+    description: string,
+    options?: {
+      priority?: number;
+      due_date?: number;
+      tags?: string[];
+      parent_task_id?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<TaskItem> {
+    const storage = this.getStorage();
+    return addTask(
+      {
+        description,
+        priority: options?.priority ?? 5,
+        due_date: options?.due_date,
+        tags: options?.tags ?? [],
+        parent_task_id: options?.parent_task_id,
+        metadata: options?.metadata,
+      },
+      storage,
+      userId
+    );
+  }
+
+  /**
+   * List tasks for a user
+   */
+  async listTasks(
+    userId: string,
+    options?: {
+      status?: 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
+      limit?: number;
+      offset?: number;
+      parent_task_id?: string;
+    }
+  ): Promise<{ tasks: TaskItem[]; total: number }> {
+    const storage = this.getStorage();
+    return listTasks(
+      {
+        status: options?.status,
+        limit: options?.limit ?? 20,
+        offset: options?.offset ?? 0,
+        parent_task_id: options?.parent_task_id,
+      },
+      storage,
+      userId
+    );
+  }
+
+  /**
+   * Update an existing task
+   */
+  async updateTask(
+    taskId: string,
+    updates: {
+      description?: string;
+      status?: 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
+      priority?: number;
+      due_date?: number;
+      tags?: string[];
+      completed_at?: number;
+    }
+  ): Promise<TaskItem> {
+    const storage = this.getStorage();
+    return updateTask({ id: taskId, ...updates }, storage);
+  }
+
+  /**
+   * Mark a task as completed
+   */
+  async completeTask(taskId: string): Promise<TaskItem> {
+    const storage = this.getStorage();
+    return completeTask({ id: taskId }, storage);
+  }
+
+  /**
+   * Delete a task
+   */
+  async deleteTask(taskId: string): Promise<{ success: boolean; id: string }> {
+    const storage = this.getStorage();
+    return deleteTask({ id: taskId }, storage);
   }
 }
