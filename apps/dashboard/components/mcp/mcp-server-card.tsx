@@ -48,7 +48,10 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
 
   return (
     <Card
-      className={cn('transition-all duration-200', getCardBorderClass(server.status, server.enabled))}
+      className={cn(
+        'transition-all duration-200',
+        getCardBorderClass(server.status, server.enabled ?? true)
+      )}
     >
       <CardHeader>
         <div className="flex items-start justify-between">
@@ -58,7 +61,9 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
               <CardTitle className="flex items-center gap-2">{server.displayName}</CardTitle>
             </div>
           </div>
-          <Badge variant={getStatusBadgeVariant(server.status)}>{getServerStatusLabel(server.status)}</Badge>
+          <Badge variant={getStatusBadgeVariant(server.status)}>
+            {getServerStatusLabel(server.status)}
+          </Badge>
         </div>
         <CardDescription>{truncateUrl(server.url)}</CardDescription>
       </CardHeader>

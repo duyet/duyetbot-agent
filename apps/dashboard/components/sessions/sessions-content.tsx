@@ -6,45 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRecentSessions, useStats } from '@/lib/hooks/use-dashboard-data';
-
-function formatTimestamp(ts: number | undefined): string {
-  if (!ts) {
-    return 'Unknown';
-  }
-  const date = new Date(ts);
-  if (Number.isNaN(date.getTime())) {
-    return 'Unknown';
-  }
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / (1000 * 60));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-  const days = Math.floor(hours / 24);
-
-  if (minutes < 1) {
-    return 'Just now';
-  }
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  }
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-  if (days < 7) {
-    return `${days}d ago`;
-  }
-  return date.toLocaleDateString();
-}
-
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)}M`;
-  }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}K`;
-  }
-  return num.toString();
-}
+import { formatSessionNumber, formatSessionTimestamp } from './session-utils';
 
 function StatsCardSkeleton() {
   return (
@@ -102,7 +64,7 @@ export function SessionsContent() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {stats ? formatNumber(stats.totalSessions) : '—'}
+                  {stats ? formatSessionNumber(stats.totalSessions) : '—'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {stats ? 'All time' : 'No data yet'}
@@ -116,7 +78,7 @@ export function SessionsContent() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {stats ? formatNumber(stats.totalMessages) : '—'}
+                  {stats ? formatSessionNumber(stats.totalMessages) : '—'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {stats ? 'Across all sessions' : 'No data yet'}
@@ -130,7 +92,7 @@ export function SessionsContent() {
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">
-                  {stats ? formatNumber(stats.totalUsers) : '—'}
+                  {stats ? formatSessionNumber(stats.totalUsers) : '—'}
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
                   {stats ? 'Unique users' : 'No data yet'}
@@ -184,9 +146,9 @@ export function SessionsContent() {
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       <span>{session.messageCount} messages</span>
                       <span>•</span>
-                      <span>{formatNumber(session.totalTokens)} tokens</span>
+                      <span>{formatSessionNumber(session.totalTokens)} tokens</span>
                       <span>•</span>
-                      <span>{formatTimestamp(session.lastMessageAt)}</span>
+                      <span>{formatSessionTimestamp(session.lastMessageAt)}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">

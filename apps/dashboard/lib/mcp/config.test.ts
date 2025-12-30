@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'vitest';
 import {
-  HEALTH_CHECK_TIMEOUT,
-  MCP_SERVERS,
   getEnabledServers,
   getServerConfig,
   getServerNames,
+  HEALTH_CHECK_TIMEOUT,
+  MCP_SERVERS,
 } from './config';
 
 describe('MCP_SERVERS constant', () => {

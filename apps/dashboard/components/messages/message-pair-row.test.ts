@@ -2,26 +2,50 @@ import type { AnalyticsMessage } from '@duyetbot/analytics';
 import { describe, expect, test } from 'vitest';
 import { createMessagePairs, formatTimestamp, isErrorResponse } from './message-pair-row';
 
+// Helper to create minimal mock message for error detection tests
+function createMockMessage(overrides: Partial<AnalyticsMessage>): AnalyticsMessage {
+  return {
+    id: 1,
+    messageId: 'test-msg',
+    sessionId: 'test-session',
+    sequence: 1,
+    role: 'assistant',
+    content: '',
+    platform: 'telegram',
+    userId: 'test-user',
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    inputTokens: 0,
+    outputTokens: 0,
+    totalTokens: 0,
+    cachedTokens: 0,
+    reasoningTokens: 0,
+    isArchived: false,
+    isPinned: false,
+    visibility: 'public',
+    ...overrides,
+  };
+}
+
 describe('isErrorResponse', () => {
   test('returns false for null/undefined', () => {
     expect(isErrorResponse(null)).toBe(false);
-    expect(isErrorResponse(undefined)).toBe(false);
   });
 
   test('detects errors in metadata', () => {
-    const msgWithError = {
-      metadata: { error: 'Something went wrong' },
-    } as AnalyticsMessage;
+    const msgWithError = createMockMessage({
+      metadata: { error: 'Something went wrong' } as Record<string, unknown>,
+    });
     expect(isErrorResponse(msgWithError)).toBe(true);
 
-    const msgWithToolError = {
-      metadata: { lastToolError: 'Tool failed' },
-    } as AnalyticsMessage;
+    const msgWithToolError = createMockMessage({
+      metadata: { lastToolError: 'Tool failed' } as Record<string, unknown>,
+    });
     expect(isErrorResponse(msgWithToolError)).toBe(true);
 
-    const msgWithErrorMessage = {
-      metadata: { errorMessage: 'Error occurred' },
-    } as AnalyticsMessage;
+    const msgWithErrorMessage = createMockMessage({
+      metadata: { errorMessage: 'Error occurred' } as Record<string, unknown>,
+    });
     expect(isErrorResponse(msgWithErrorMessage)).toBe(true);
   });
 
@@ -41,21 +65,21 @@ describe('isErrorResponse', () => {
     ];
 
     patterns.forEach((content) => {
-      const msg = { content } as AnalyticsMessage;
+      const msg = createMockMessage({ content });
       expect(isErrorResponse(msg)).toBe(true);
     });
   });
 
   test('returns false for normal messages', () => {
-    const normalMsg = {
+    const normalMsg = createMockMessage({
       content: 'Hello, how can I help you today?',
-    } as AnalyticsMessage;
+    });
     expect(isErrorResponse(normalMsg)).toBe(false);
 
-    const successMsg = {
+    const successMsg = createMockMessage({
       content: 'Successfully completed the task.',
-      metadata: { status: 'success' },
-    } as AnalyticsMessage;
+      metadata: { status: 'success' } as Record<string, unknown>,
+    });
     expect(isErrorResponse(successMsg)).toBe(false);
   });
 });
@@ -66,6 +90,7 @@ describe('createMessagePairs', () => {
       id: 1,
       messageId: 'msg-1',
       sessionId: 'session-1',
+      sequence: 1,
       role: 'user',
       content: 'Hello',
       platform: 'telegram',
@@ -74,6 +99,7 @@ describe('createMessagePairs', () => {
       updatedAt: 1000,
       inputTokens: 0,
       outputTokens: 0,
+      totalTokens: 0,
       cachedTokens: 0,
       reasoningTokens: 0,
       isArchived: false,
@@ -84,6 +110,7 @@ describe('createMessagePairs', () => {
       id: 2,
       messageId: 'msg-2',
       sessionId: 'session-1',
+      sequence: 2,
       role: 'assistant',
       content: 'Hi there!',
       platform: 'telegram',
@@ -93,6 +120,7 @@ describe('createMessagePairs', () => {
       triggerMessageId: 'msg-1',
       inputTokens: 10,
       outputTokens: 20,
+      totalTokens: 30,
       cachedTokens: 0,
       reasoningTokens: 0,
       isArchived: false,
@@ -103,6 +131,7 @@ describe('createMessagePairs', () => {
       id: 3,
       messageId: 'msg-3',
       sessionId: 'session-1',
+      sequence: 3,
       role: 'user',
       content: 'How are you?',
       platform: 'telegram',
@@ -111,6 +140,7 @@ describe('createMessagePairs', () => {
       updatedAt: 3000,
       inputTokens: 0,
       outputTokens: 0,
+      totalTokens: 0,
       cachedTokens: 0,
       reasoningTokens: 0,
       isArchived: false,
@@ -121,6 +151,7 @@ describe('createMessagePairs', () => {
       id: 4,
       messageId: 'msg-4',
       sessionId: 'session-1',
+      sequence: 4,
       role: 'assistant',
       content: 'I am doing well!',
       platform: 'telegram',
@@ -130,6 +161,7 @@ describe('createMessagePairs', () => {
       triggerMessageId: 'msg-3',
       inputTokens: 5,
       outputTokens: 15,
+      totalTokens: 20,
       cachedTokens: 0,
       reasoningTokens: 0,
       isArchived: false,

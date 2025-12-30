@@ -29,7 +29,9 @@ export function getCardBorderClass(status: ServerStatus, enabled: boolean): stri
 /**
  * Get badge variant for status badge
  */
-export function getStatusBadgeVariant(status: ServerStatus): 'success' | 'destructive' | 'secondary' {
+export function getStatusBadgeVariant(
+  status: ServerStatus
+): 'success' | 'destructive' | 'secondary' {
   switch (status) {
     case 'online':
       return 'success';
