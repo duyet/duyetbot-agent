@@ -1,6 +1,13 @@
 import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Clock, Loader2 } from 'lucide-react';
 import React from 'react';
-import { AgentStep } from '@/types';
+import {
+  calculatePaddingLeft,
+  formatDuration,
+  formatTokenCount,
+  getStatusBgClass,
+  hasChildren as hasAgentStepChildren,
+} from '@/lib/agent-step-utils';
+import type { AgentStep } from '@/types';
 
 interface AgentStepNodeProps {
   step: AgentStep;
@@ -15,29 +22,18 @@ export const AgentStepNode: React.FC<AgentStepNodeProps> = ({
   onToggle,
   expanded = true,
 }) => {
-  const hasChildren = step.children.length > 0;
-  const paddingLeft = `${level * 1.5}rem`;
+  const hasChildren = hasAgentStepChildren(step);
+  const paddingLeft = calculatePaddingLeft(level);
 
-  const statusConfig = {
-    success: {
-      icon: <CheckCircle className="h-5 w-5 text-success" />,
-      bgClass: 'bg-success/10 border-success/20',
-    },
-    error: {
-      icon: <AlertCircle className="h-5 w-5 text-destructive" />,
-      bgClass: 'bg-destructive/10 border-destructive/20',
-    },
-    pending: {
-      icon: <Clock className="h-5 w-5 text-muted-foreground" />,
-      bgClass: 'bg-muted/50 border-muted',
-    },
-    running: {
-      icon: <Loader2 className="h-5 w-5 text-primary animate-spin" />,
-      bgClass: 'bg-primary/10 border-primary/20',
-    },
+  const statusIcons = {
+    success: <CheckCircle className="h-5 w-5 text-success" />,
+    error: <AlertCircle className="h-5 w-5 text-destructive" />,
+    pending: <Clock className="h-5 w-5 text-muted-foreground" />,
+    running: <Loader2 className="h-5 w-5 text-primary animate-spin" />,
   };
 
-  const { icon: statusIcon, bgClass } = statusConfig[step.status] || statusConfig.pending;
+  const statusIcon = statusIcons[step.status] ?? statusIcons.pending;
+  const bgClass = getStatusBgClass(step.status);
 
   return (
     <div>
@@ -70,8 +66,8 @@ export const AgentStepNode: React.FC<AgentStepNodeProps> = ({
         </div>
 
         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-          <span className="font-mono">{step.duration}ms</span>
-          <span>{step.tokens.toLocaleString()} tokens</span>
+          <span className="font-mono">{formatDuration(step.duration)}</span>
+          <span>{formatTokenCount(step.tokens)} tokens</span>
         </div>
       </div>
 
