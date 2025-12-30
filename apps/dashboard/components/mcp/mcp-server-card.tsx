@@ -13,6 +13,13 @@ import {
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  formatResponseTime,
+  getCardBorderClass,
+  getServerStatusLabel,
+  getStatusBadgeVariant,
+  truncateUrl,
+} from '@/lib/mcp';
 import type { MCPServerStatus } from '@/lib/mcp/types';
 import { cn } from '@/lib/utils';
 
@@ -23,7 +30,7 @@ interface MCPServerCardProps {
 export function MCPServerCard({ server }: MCPServerCardProps) {
   const [toolsExpanded, setToolsExpanded] = useState(false);
 
-  // Determine status icon and colors
+  // Determine status icon and colors (kept inline as it returns JSX)
   const getStatusIcon = () => {
     switch (server.status) {
       case 'online':
@@ -39,69 +46,10 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
     }
   };
 
-  // Determine card border color based on status
-  const getCardBorderClass = () => {
-    if (!server.enabled) {
-      return 'opacity-60';
-    }
-    switch (server.status) {
-      case 'online':
-        return 'border-success/30';
-      case 'offline':
-        return 'border-destructive/30';
-      default:
-        return '';
-    }
-  };
-
-  // Get status badge variant
-  const getStatusBadgeVariant = () => {
-    switch (server.status) {
-      case 'online':
-        return 'success' as const;
-      case 'offline':
-        return 'destructive' as const;
-      case 'disabled':
-        return 'secondary' as const;
-      default:
-        return 'secondary' as const;
-    }
-  };
-
-  // Get status label
-  const getStatusLabel = () => {
-    switch (server.status) {
-      case 'online':
-        return 'Online';
-      case 'offline':
-        return 'Offline';
-      case 'disabled':
-        return 'Disabled';
-      case 'checking':
-        return 'Checking...';
-      default:
-        return 'Unknown';
-    }
-  };
-
-  // Format response time
-  const formatResponseTime = (ms?: number) => {
-    if (!ms) {
-      return 'N/A';
-    }
-    return `${ms}ms`;
-  };
-
-  // Truncate URL
-  const truncateUrl = (url: string) => {
-    if (url.length > 50) {
-      return `${url.substring(0, 47)}...`;
-    }
-    return url;
-  };
-
   return (
-    <Card className={cn('transition-all duration-200', getCardBorderClass())}>
+    <Card
+      className={cn('transition-all duration-200', getCardBorderClass(server.status, server.enabled))}
+    >
       <CardHeader>
         <div className="flex items-start justify-between">
           <div className="flex items-center gap-3 flex-1">
@@ -110,7 +58,7 @@ export function MCPServerCard({ server }: MCPServerCardProps) {
               <CardTitle className="flex items-center gap-2">{server.displayName}</CardTitle>
             </div>
           </div>
-          <Badge variant={getStatusBadgeVariant()}>{getStatusLabel()}</Badge>
+          <Badge variant={getStatusBadgeVariant(server.status)}>{getServerStatusLabel(server.status)}</Badge>
         </div>
         <CardDescription>{truncateUrl(server.url)}</CardDescription>
       </CardHeader>
