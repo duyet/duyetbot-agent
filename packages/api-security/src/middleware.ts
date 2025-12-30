@@ -7,7 +7,9 @@
 import type {
   MiddlewareHandler,
   Context as HonoContext,
+  Env,
 } from 'hono';
+import type { D1Database } from '@cloudflare/workers-types';
 import type {
   SignatureVerificationOptions,
   PerKeyRateLimitConfig,
@@ -24,11 +26,11 @@ import { executeThrottled } from './throttle.js';
 /**
  * Environment bindings for security middleware
  */
-export interface SecurityEnv {
+export interface SecurityEnv extends Env {
   /** D1 database for rate limiting and API keys */
-  SECURITY_DB?: D1Database;
-  /** API key header name (default: x-api-key) */
-  API_KEY_HEADER?: string;
+  Bindings: {
+    SECURITY_DB?: D1Database;
+  };
 }
 
 /**
@@ -57,13 +59,13 @@ export function createSignatureMiddleware<E extends SecurityEnv>(
 ): MiddlewareHandler<E> {
   const opts = createSignatureOptions(options);
 
-  return async (c, next) => {
+  return async (c: HonoContext<E>, next: () => Promise<void>) => {
     const rawBody = await c.req.text();
     const signature = c.req.header('x-hub-signature-256') || c.req.header('x-webhook-signature') || '';
     const timestamp = extractTimestamp(c.req.raw.headers);
 
     // Re-set raw body for downstream middlewares
-    c.set('rawBody', rawBody);
+    (c as any).set('rawBody', rawBody);
 
     const secret = getSecret(c);
 
@@ -111,9 +113,9 @@ export function createAPIKeyAuthMiddleware<E extends SecurityEnv>(
     skipPaths?: string[];
   } = {}
 ): MiddlewareHandler<E> {
-  const headerName = options.headerName || 'x-api-key';
+  const headerName = options.headerName ?? 'x-api-key';
 
-  return async (c, next) => {
+  return async (c: HonoContext<E>, next: () => Promise<void>) => {
     // Check if path should be skipped
     if (options.skipPaths?.includes(c.req.path)) {
       return next();
@@ -141,8 +143,8 @@ export function createAPIKeyAuthMiddleware<E extends SecurityEnv>(
     }
 
     // Set API key info in context
-    c.set('apiKey', apiKey);
-    c.set('apiKeyRecord', result.record);
+    (c as any).set('apiKey', apiKey);
+    (c as any).set('apiKeyRecord', result.record);
 
     return next();
   };
@@ -169,14 +171,14 @@ export function createAPIKeyAuthMiddleware<E extends SecurityEnv>(
 export function createRateLimitMiddleware<E extends SecurityEnv>(
   getConfig: (c: HonoContext<E>) => Partial<PerKeyRateLimitConfig> | Promise<Partial<PerKeyRateLimitConfig>>
 ): MiddlewareHandler<E> {
-  return async (c, next) => {
+  return async (c: HonoContext<E>, next: () => Promise<void>) => {
     if (!c.env.SECURITY_DB) {
       // No database - skip rate limiting
       return next();
     }
 
     // Get API key record from auth middleware
-    const record = c.get('apiKeyRecord');
+    const record = (c as any).get('apiKeyRecord');
     if (!record) {
       // No API key - skip rate limiting or use IP-based
       return next();
@@ -237,7 +239,7 @@ export function createThrottleMiddleware<E extends SecurityEnv>(
   operationType: string,
   config?: Parameters<typeof executeThrottled>[2]
 ): MiddlewareHandler<E> {
-  return async (c, next) => {
+  return async (_c: HonoContext<E>, next: () => Promise<void>) => {
     // Wrap next() in throttled execution
     await executeThrottled(operationType, async () => next(), config);
   };
@@ -273,10 +275,13 @@ export function createSecurityMiddleware<E extends SecurityEnv>(
   const middlewares: MiddlewareHandler<E>[] = [];
 
   // API key auth
-  middlewares.push(createAPIKeyAuthMiddleware<E>({
-    headerName: options.apiKeyHeaderName,
-    required: options.apiKeyRequired ?? true,
-  }));
+  const authOptions: { headerName?: string; required?: boolean; skipPaths?: string[] } = {};
+  if (options.apiKeyHeaderName !== undefined) {
+    authOptions.headerName = options.apiKeyHeaderName;
+  }
+  authOptions.required = options.apiKeyRequired ?? true;
+
+  middlewares.push(createAPIKeyAuthMiddleware<E>(authOptions));
 
   // Rate limiting
   if (options.rateLimitConfig) {

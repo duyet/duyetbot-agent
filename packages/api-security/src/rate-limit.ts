@@ -5,6 +5,7 @@
  * burst detection, and priority queuing.
  */
 
+import type { D1Database } from '@cloudflare/workers-types';
 import type {
   PerKeyRateLimitConfig,
   RateLimitState,

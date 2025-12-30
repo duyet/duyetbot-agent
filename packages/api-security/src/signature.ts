@@ -136,7 +136,7 @@ export function timingSafeEqual(a: string, b: string): boolean {
   // XOR all bytes together
   let result = 0;
   for (let i = 0; i < aBytes.length; i++) {
-    result |= aBytes[i] ^ bBytes[i];
+    result |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
   }
 
   // If result is 0, strings are equal
@@ -158,16 +158,16 @@ export function extractTimestamp(headers: Headers): number | undefined {
   if (deliveryId) {
     // Format: unix-timestamp-uuid
     const match = deliveryId.match(/^(\d+)-/);
-    if (match) {
-      return parseInt(match[1], 10) * 1000; // Convert to milliseconds
+    if (match?.[1]) {
+      return Number.parseInt(match[1], 10) * 1000; // Convert to milliseconds
     }
   }
 
   // Custom timestamp header (can be used by any service)
   const customTimestamp = headers.get('x-webhook-timestamp');
   if (customTimestamp) {
-    const parsed = parseInt(customTimestamp, 10);
-    if (!isNaN(parsed)) {
+    const parsed = Number.parseInt(customTimestamp, 10);
+    if (!Number.isNaN(parsed)) {
       return parsed;
     }
   }

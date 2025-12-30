@@ -65,7 +65,8 @@ export function validateAPIKeyFormat(apiKey: string): boolean {
     return false;
   }
 
-  const [, version, randomHex, checksum] = match;
+  const randomHex = match[2] ?? '';
+  const checksum = match[3] ?? '';
 
   // Verify checksum
   const expectedChecksum = generateChecksum(randomHex);
@@ -88,10 +89,10 @@ export function parseAPIKey(apiKey: string): { version: number; randomHex: strin
     return undefined;
   }
 
-  return {
-    version: parseInt(match[1], 10),
-    randomHex: match[2],
-  };
+  const version = Number.parseInt(match[1] ?? '1', 10);
+  const randomHex = match[2] ?? '';
+
+  return { version, randomHex };
 }
 
 /**
@@ -258,7 +259,7 @@ export async function rotateAPIKey(
   const resolvedOptions: Required<RotationOptions> = {
     gracePeriodMs: options.gracePeriodMs ?? 7 * 24 * 60 * 60 * 1000, // 7 days
     autoRevoke: options.autoRevoke ?? true,
-    onRotation: options.onRotation ?? undefined,
+    onRotation: options.onRotation ?? (() => {}),
   };
 
   // Create new key with incremented version

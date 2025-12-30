@@ -4,6 +4,7 @@
  * Database schema and CRUD operations for API key management.
  */
 
+import type { D1Database } from '@cloudflare/workers-types';
 import type {
   APIKeyRecord,
   KeyValidationResult,
@@ -11,10 +12,7 @@ import type {
 } from './types.js';
 import {
   createAPIKeyRecord,
-  generateAPIKey,
-  hashAPIKey,
   rotateAPIKey,
-  shouldRotateKey,
   validateAPIKey,
 } from './api-keys.js';
 
@@ -254,7 +252,7 @@ export async function rotateAPIKeyInStorage(
   const resolvedOptions: Required<RotationOptions> = {
     gracePeriodMs: options.gracePeriodMs ?? 7 * 24 * 60 * 60 * 1000, // 7 days
     autoRevoke: options.autoRevoke ?? true,
-    onRotation: options.onRotation ?? undefined,
+    onRotation: options.onRotation ?? (() => {}),
   };
   // Fetch old record
   const oldResult = await db
@@ -278,7 +276,7 @@ export async function rotateAPIKeyInStorage(
     lastUsedAt: oldResult.last_used_at as number,
     usageCount: oldResult.usage_count as number,
     version: oldResult.version as number,
-    replacesId: oldResult.replaces_id as string | undefined,
+    replacesId: (oldResult.replaces_id as string | null) ?? undefined,
   };
 
   // Rotate key
@@ -385,7 +383,7 @@ export async function getAPIKey(db: D1Database, keyId: string): Promise<APIKeyRe
     lastUsedAt: result.last_used_at as number,
     usageCount: result.usage_count as number,
     version: result.version as number,
-    replacesId: result.replaces_id as string | undefined,
+    replacesId: (result.replaces_id as string | null) ?? undefined,
   };
 }
 

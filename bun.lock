@@ -317,7 +317,11 @@
     "packages/api-security": {
       "name": "@duyetbot/api-security",
       "version": "1.0.0",
+      "dependencies": {
+        "hono": "catalog:",
+      },
       "devDependencies": {
+        "@cloudflare/workers-types": "^4.20241127.0",
         "@duyetbot/config-vitest": "workspace:*",
         "@types/node": "catalog:",
         "typescript": "catalog:",

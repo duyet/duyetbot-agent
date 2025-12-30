@@ -31,7 +31,7 @@ export interface APIKeyRecord {
   /** Key version for rotation support */
   version: number;
   /** ID of the key this replaces (for rotation) */
-  replacesId?: string;
+  replacesId?: string | undefined;
 }
 
 /**
@@ -45,7 +45,7 @@ export interface RateLimitState {
   /** Current throttle expiration */
   throttleUntil: number;
   /** Burst detection state */
-  burstStart?: number;
+  burstStart?: number | undefined;
   /** Burst message count */
   burstCount: number;
 }
@@ -95,7 +95,7 @@ export interface RotationOptions {
   /** Whether to automatically revoke old key after grace period */
   autoRevoke: boolean;
   /** Notification callback for rotation events */
-  onRotation?: (oldKeyId: string, newKeyId: string) => void | Promise<void>;
+  onRotation: ((oldKeyId: string, newKeyId: string) => void | Promise<void>) | undefined;
 }
 
 /**
