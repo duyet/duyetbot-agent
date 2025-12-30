@@ -26,3 +26,5 @@ Cost Distribution
 Estimated cost by AI model -> most using glm-4.7, opus, ...
 
 commit and push for each iter
+
+update README.md to reflect the new state of the project, full diagram of all components and how they interact.

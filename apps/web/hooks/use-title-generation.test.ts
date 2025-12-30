@@ -30,10 +30,7 @@ import { useRouter } from "next/navigation";
 // Mock API client
 vi.mock("@/lib/api-client", () => ({
 	generateTitleFromUserMessage: vi.fn(({ chatId, message }) =>
-		Promise.resolve({
-			success: true,
-			title: `Generated: ${message.slice(0, 20)}...`,
-		}),
+		Promise.resolve(`Generated: ${message.slice(0, 20)}...`),
 	),
 }));
 
@@ -72,10 +69,12 @@ describe("useTitleGeneration - Trigger Conditions", () => {
 
 		const messages: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "Hello world" }],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Hi there!" }],
 			},
@@ -98,6 +97,7 @@ describe("useTitleGeneration - Trigger Conditions", () => {
 
 		const messages: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "Only user message" }],
 			},
@@ -142,6 +142,7 @@ describe("useTitleGeneration - Title Generation", () => {
 				initialProps: {
 					messages: [
 						{
+							id: "msg-1",
 							role: "user",
 							parts: [{ type: "text", text: "First message" }],
 						},
@@ -156,10 +157,12 @@ describe("useTitleGeneration - Title Generation", () => {
 		// Add second message
 		const messagesWithTwo: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "First message" }],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Response" }],
 			},
@@ -179,10 +182,12 @@ describe("useTitleGeneration - Title Generation", () => {
 
 		const messages: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "This is my question about React hooks" }],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Let me help you with that" }],
 			},
@@ -209,10 +214,12 @@ describe("useTitleGeneration - Title Generation", () => {
 
 		const messages: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "Test message" }],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Response" }],
 			},
@@ -246,6 +253,7 @@ describe("useTitleGeneration - Duplicate Prevention", () => {
 				initialProps: {
 					messages: [
 						{
+							id: "msg-1",
 							role: "user",
 							parts: [{ type: "text", text: "Initial message" }],
 						},
@@ -257,10 +265,12 @@ describe("useTitleGeneration - Duplicate Prevention", () => {
 		// Trigger generation by adding second message
 		const messagesWithTwo: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "Initial message" }],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Response" }],
 			},
@@ -283,16 +293,18 @@ describe("useTitleGeneration - Duplicate Prevention", () => {
 
 		const messages: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [
 					{
-						type: "tool",
+						type: "tool-search",
 						toolCallId: "call-1",
 						toolName: "search",
-					},
+					} as any,
 				],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Response" }],
 			},
@@ -330,10 +342,12 @@ describe("useTitleGeneration - Error Handling", () => {
 				initialProps: {
 					messages: [
 						{
+							id: "msg-1",
 							role: "user",
 							parts: [{ type: "text", text: "Test" }],
 						},
 						{
+							id: "msg-2",
 							role: "assistant",
 							parts: [{ type: "text", text: "Response" }],
 						},
@@ -352,24 +366,24 @@ describe("useTitleGeneration - Error Handling", () => {
 		// After failure, ref should be reset - a new message could trigger retry
 		const messagesWithThree: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "Test" }],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Response" }],
 			},
 			{
+				id: "msg-3",
 				role: "user",
 				parts: [{ type: "text", text: "Follow up" }],
 			},
 		];
 
 		// Reset mock to succeed this time
-		generateTitleMock.mockResolvedValueOnce({
-			success: true,
-			title: "Generated Title",
-		});
+		generateTitleMock.mockResolvedValueOnce("Generated Title");
 
 		rerender({ messages: messagesWithThree });
 
@@ -386,10 +400,12 @@ describe("useTitleGeneration - Edge Cases", () => {
 
 		const messages: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: [{ type: "text", text: "" }],
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Response" }],
 			},
@@ -411,10 +427,12 @@ describe("useTitleGeneration - Edge Cases", () => {
 
 		const messages: UIMessage[] = [
 			{
+				id: "msg-1",
 				role: "user",
 				parts: undefined as any,
 			},
 			{
+				id: "msg-2",
 				role: "assistant",
 				parts: [{ type: "text", text: "Response" }],
 			},

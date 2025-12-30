@@ -14,6 +14,7 @@ import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import type { Attachment } from "@/lib/types";
 import { useFileUpload } from "./use-file-upload";
+import type { ChangeEvent } from "react";
 
 // Mock sonner toast - use vi.hoisted to make the mock functions available
 const mockToast = vi.hoisted(() => ({
@@ -38,7 +39,7 @@ const createMockChangeEvent = (files: File[]): ChangeEvent<HTMLInputElement> => 
 			files: files as any,
 			value: "",
 		},
-	} as ChangeEvent<HTMLInputElement>;
+	} as any;
 };
 
 // Helper to create a mock ClipboardEvent
@@ -48,7 +49,7 @@ const createMockClipboardEvent = (items: DataTransferItem[]): ClipboardEvent => 
 			items: items as any,
 		} as DataTransfer,
 		preventDefault: vi.fn(),
-	} as ClipboardEvent;
+	} as any;
 };
 
 // Helper to create a mock DataTransferItem
@@ -258,7 +259,7 @@ describe("useFileUpload - Paste-to-Upload", () => {
 		const mockEvent = {
 			clipboardData: null,
 			preventDefault: vi.fn(),
-		} as ClipboardEvent;
+		} as any;
 
 		await act(async () => {
 			await result.current.handlePaste(mockEvent);

@@ -127,13 +127,13 @@ describe("useArtifact - Artifact State Management", () => {
 				...current,
 				documentId: "multi-update",
 				isVisible: true,
-				status: "loading" as const,
+				status: "streaming" as const,
 			}));
 		});
 
 		expect(result.current.artifact.documentId).toBe("multi-update");
 		expect(result.current.artifact.isVisible).toBe(true);
-		expect(result.current.artifact.status).toBe("loading");
+		expect(result.current.artifact.status).toBe("streaming");
 	});
 });
 
@@ -296,9 +296,7 @@ describe("useArtifact - Edge Cases", () => {
 		const { result } = renderHook(() => useArtifact());
 		const statuses: Array<UIArtifact["status"]> = [
 			"idle",
-			"loading",
-			"success",
-			"error",
+			"streaming",
 		];
 
 		for (const status of statuses) {

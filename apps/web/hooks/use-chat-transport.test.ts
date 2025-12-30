@@ -33,10 +33,15 @@ vi.mock("@/lib/utils", () => ({
 }));
 
 // Mock DefaultChatTransport from 'ai'
+const MockDefaultChatTransport = class {
+	public config: any;
+	constructor(config: any) {
+		this.config = config;
+	}
+};
+
 vi.mock("ai", () => ({
-	DefaultChatTransport: class {
-		constructor(public config: any) {}
-	},
+	DefaultChatTransport: MockDefaultChatTransport as any,
 }));
 
 describe("createChatTransport - Transport Initialization", () => {
@@ -49,7 +54,7 @@ describe("createChatTransport - Transport Initialization", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		expect(transport).toBeDefined();
 		expect(transport.config).toBeDefined();
@@ -65,21 +70,21 @@ describe("createChatTransport - Transport Initialization", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		expect(transport.config.fetch).toBeDefined();
 	});
 
 	it("stores chatId and visibilityType for use in prepareSendMessagesRequest", () => {
 		const chatId = "test-chat-3";
-		const visibilityType: VisibilityType = "workspace";
+		const visibilityType: VisibilityType = "public";
 		const currentModelIdRef: RefObject<string> = { current: "gpt-4" };
 
 		const transport = createChatTransport({
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		// Transport should have these values accessible via closure
 		expect(transport.config.prepareSendMessagesRequest).toBeDefined();
@@ -96,7 +101,7 @@ describe("createChatTransport - Tool Approval Continuation Detection", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-1",
@@ -129,7 +134,7 @@ describe("createChatTransport - Tool Approval Continuation Detection", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-2",
@@ -166,7 +171,7 @@ describe("createChatTransport - Tool Approval Continuation Detection", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-3",
@@ -203,7 +208,7 @@ describe("createChatTransport - Tool Approval Continuation Detection", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-4",
@@ -242,7 +247,7 @@ describe("createChatTransport - Request Body Configuration", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-5",
@@ -269,7 +274,7 @@ describe("createChatTransport - Request Body Configuration", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-6",
@@ -289,14 +294,14 @@ describe("createChatTransport - Request Body Configuration", () => {
 
 	it("includes selectedVisibilityType", () => {
 		const chatId = "test-chat-10";
-		const visibilityType: VisibilityType = "workspace";
+		const visibilityType: VisibilityType = "public";
 		const currentModelIdRef: RefObject<string> = { current: "gpt-4" };
 
 		const transport = createChatTransport({
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-7",
@@ -311,7 +316,7 @@ describe("createChatTransport - Request Body Configuration", () => {
 
 		const result = transport.config.prepareSendMessagesRequest(request);
 
-		expect(result.body.selectedVisibilityType).toBe("workspace");
+		expect(result.body.selectedVisibilityType).toBe("public");
 	});
 
 	it("merges existing request.body", () => {
@@ -323,7 +328,7 @@ describe("createChatTransport - Request Body Configuration", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const existingBodyData = { customField: "custom-value" };
 
@@ -355,7 +360,7 @@ describe("createChatTransport - AI Settings", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-9",
@@ -385,7 +390,7 @@ describe("createChatTransport - AI Settings", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-10",
@@ -418,7 +423,7 @@ describe("createChatTransport - Edge Cases", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-11",
@@ -441,7 +446,7 @@ describe("createChatTransport - Edge Cases", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-12",
@@ -469,7 +474,7 @@ describe("createChatTransport - Edge Cases", () => {
 			chatId,
 			visibilityType,
 			currentModelIdRef,
-		});
+		}) as any;
 
 		const request = {
 			id: "msg-13",

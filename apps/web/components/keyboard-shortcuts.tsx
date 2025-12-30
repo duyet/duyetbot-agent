@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
  * Platform detection for keyboard shortcuts
  * Returns true if the user is on a Mac (Darwin) platform
  */
-function isMacPlatform(): boolean {
+export function isMacPlatform(): boolean {
 	if (typeof window === "undefined") return false;
 	return (
 		navigator.platform.toUpperCase().indexOf("MAC") >= 0 ||
@@ -25,7 +25,7 @@ function isMacPlatform(): boolean {
 /**
  * Get the platform-appropriate modifier key label
  */
-function getModifierKeyLabel(): string {
+export function getModifierKeyLabel(): string {
 	return isMacPlatform() ? "⌘" : "Ctrl";
 }
 

@@ -24,6 +24,7 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
+    "@duyetbot/api-security": "workspace:*",
     "@duyetbot/cloudflare-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/mcp-servers": "workspace:*",
