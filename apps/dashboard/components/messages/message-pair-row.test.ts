@@ -1,10 +1,6 @@
 import type { AnalyticsMessage } from '@duyetbot/analytics';
 import { describe, expect, test } from 'vitest';
-import {
-  createMessagePairs,
-  formatTimestamp,
-  isErrorResponse,
-} from './message-pair-row';
+import { createMessagePairs, formatTimestamp, isErrorResponse } from './message-pair-row';
 
 describe('isErrorResponse', () => {
   test('returns false for null/undefined', () => {
