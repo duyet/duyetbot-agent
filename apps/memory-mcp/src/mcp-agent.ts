@@ -8,13 +8,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { McpAgent } from 'agents/mcp';
 import { z } from 'zod';
 import { D1Storage } from './storage/d1.js';
+import {
+  addTask,
+  completeTask,
+  deleteTask,
+  listTasks,
+  taskStatusEnum,
+  updateTask,
+} from './tools/todo-tasks.js';
 import type { Env, LLMMessage } from './types.js';
-import { addTask } from './tools/todo-tasks.js';
-import { completeTask } from './tools/todo-tasks.js';
-import { deleteTask } from './tools/todo-tasks.js';
-import { listTasks } from './tools/todo-tasks.js';
-import { taskStatusEnum } from './tools/todo-tasks.js';
-import { updateTask } from './tools/todo-tasks.js';
 
 /**
  * Agent state - tracks authenticated user
@@ -372,7 +374,7 @@ export class MemoryMcpAgent extends McpAgent<Env, MemoryAgentState, Record<strin
               priority: priority ?? 5,
               due_date,
               tags: tags ?? [],
-              parent_task_id
+              parent_task_id,
             },
             storage,
             this.state.userId
@@ -421,7 +423,7 @@ export class MemoryMcpAgent extends McpAgent<Env, MemoryAgentState, Record<strin
               status,
               limit: limit ?? 20,
               offset: offset ?? 0,
-              parent_task_id
+              parent_task_id,
             },
             storage,
             this.state.userId

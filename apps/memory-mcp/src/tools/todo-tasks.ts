@@ -152,7 +152,11 @@ function rowToTaskItem(row: any): TaskItem {
     tags: (metadata.tags as string[]) ?? [],
     created_at: row.created_at ?? Date.now(),
     updated_at: row.updated_at ?? Date.now(),
-    metadata: row.metadata ? (typeof row.metadata === 'string' ? JSON.parse(row.metadata) : row.metadata) : null,
+    metadata: row.metadata
+      ? typeof row.metadata === 'string'
+        ? JSON.parse(row.metadata)
+        : row.metadata
+      : null,
   };
 }
 
@@ -229,7 +233,7 @@ export async function listTasks(
   });
 
   // Filter and transform
-  let filtered = items
+  const filtered = items
     .map((item) => {
       const metadata = parseTaskMetadata(item.metadata);
       return {
@@ -280,10 +284,7 @@ export async function listTasks(
  *
  * Updates the specified fields of a task. Only provided fields are updated.
  */
-export async function updateTask(
-  input: UpdateTaskInput,
-  d1Storage: D1Storage
-): Promise<TaskItem> {
+export async function updateTask(input: UpdateTaskInput, d1Storage: D1Storage): Promise<TaskItem> {
   const { id, description, status, priority, due_date, tags, completed_at } =
     updateTaskSchema.parse(input);
 
@@ -309,7 +310,7 @@ export async function updateTask(
   const updateOptions: {
     value?: string;
     importance?: number;
-    metadata: Record<string, unknown>;
+    metadata?: Record<string, unknown>;
   } = { metadata: updatedMetadata };
 
   if (description !== undefined) {

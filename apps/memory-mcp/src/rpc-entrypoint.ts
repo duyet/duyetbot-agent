@@ -7,15 +7,15 @@
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { D1Storage } from './storage/d1.js';
-import type { Env, LLMMessage } from './types.js';
 import {
   addTask,
   completeTask,
   deleteTask,
   listTasks,
-  updateTask,
   type TaskItem,
+  updateTask,
 } from './tools/todo-tasks.js';
+import type { Env, LLMMessage } from './types.js';
 
 /**
  * Memory data returned from getMemory

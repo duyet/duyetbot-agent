@@ -10,18 +10,6 @@ import { authenticate, authenticateSchema } from './tools/authenticate.js';
 import { getMemory, getMemorySchema } from './tools/get-memory.js';
 import { listSessions, listSessionsSchema } from './tools/list-sessions.js';
 import {
-  addTask,
-  addTaskSchema,
-  completeTask,
-  completeTaskSchema,
-  deleteTask,
-  deleteTaskSchema,
-  listTasks,
-  listTasksSchema,
-  updateTask,
-  updateTaskSchema,
-} from './tools/todo-tasks.js';
-import {
   deleteLongTermMemory,
   deleteLongTermMemorySchema,
   getLongTermMemory,
@@ -47,6 +35,18 @@ import {
   setShortTermMemory,
   setShortTermMemorySchema,
 } from './tools/short-term-memory.js';
+import {
+  addTask,
+  addTaskSchema,
+  completeTask,
+  completeTaskSchema,
+  deleteTask,
+  deleteTaskSchema,
+  listTasks,
+  listTasksSchema,
+  updateTask,
+  updateTaskSchema,
+} from './tools/todo-tasks.js';
 import type { Env } from './types.js';
 
 // Export MCP agent for Durable Object binding
