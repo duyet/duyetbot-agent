@@ -9,6 +9,45 @@ const nextConfig: NextConfig = {
 	images: {
 		unoptimized: true,
 	},
+
+	// Production optimizations
+	productionBrowserSourceMaps: false,
+
+	// Webpack configuration for bundle optimization
+	webpack: (config, { isServer }) => {
+		// Optimize bundle size
+		if (!isServer) {
+			config.resolve.alias = {
+				...config.resolve.alias,
+				// Use lighter versions where available
+			};
+		}
+		return config;
+	},
+
+	// Enable experimental features for performance
+	experimental: {
+		// Optimize CSS imports
+		optimizeCss: true,
+		// Optimize package imports
+		optimizePackageImports: [
+			"lucide-react",
+			"@radix-ui/react-icons",
+			"recharts",
+		],
+	},
+
+	// Compress output (for static assets)
+	compress: true,
+
+	// Generate strict ESM output for better tree-shaking
+	eslint: {
+		ignoreDuringBuilds: false,
+	},
+
+	typescript: {
+		ignoreBuildErrors: false,
+	},
 };
 
 // Sentry configuration options

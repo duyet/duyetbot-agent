@@ -1,7 +1,7 @@
 # DuyetBot Agent - TODO & Roadmap
 
-**Last Updated**: December 29, 2025
-**Iteration**: 61
+**Last Updated**: December 30, 2025
+**Iteration**: 62
 **Branch**: `feature/web-ui-improvements`
 
 ---
@@ -15,6 +15,13 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## 🎯 Active Focus Areas
+
+### 0. Production Readiness (Priority: CRITICAL)
+- [x] Remove all .DS_Store files and build artifacts from git
+- [x] Ensure .gitignore covers all temporary files
+- [ ] Run type-check across all packages
+- [ ] Fix any broken imports
+- [ ] Verify all workspace packages in package.json
 
 ### 1. Web App UI/UX Enhancements (Priority: HIGH)
 
@@ -281,6 +288,22 @@ This is a continuous improvement project with a focus on building a multi-agent 
 ---
 
 ## ✅ Completed (Recent Iterations)
+
+### Iteration 62 (Dec 30, 2025) - Repository Cleanup
+- ✅ Removed .DS_Store files from root, apps/, apps/web/, apps/web/lib/
+- ✅ Removed "untitled folder" from apps/
+- ✅ Removed deploy.log and test-output.log
+- ✅ Cleaned up .next build artifacts
+- ✅ Removed all .old and .bak files from .next cache directories
+- ✅ Updated .gitignore with additional exclusions:
+  - Playwright test outputs
+  - Vercel build outputs
+  - Ralph Wiggum state
+  - Deploy logs
+  - Additional temp files (*.bak, *.old)
+  - Turbo build logs
+  - Webpack cache old files
+- ✅ Updated TODO.md with latest state
 
 ### Iteration 61 (Dec 29, 2025) - Unit Tests for Critical Hooks
 - ✅ Created comprehensive unit tests for 6 critical hooks: use-chat-transport, use-artifact, use-auth, use-file-upload, use-speech-recognition, use-title-generation
