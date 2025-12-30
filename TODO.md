@@ -37,7 +37,7 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 - [x] Service worker for offline support
 
 #### Pending
-- [ ] Virtual scrolling for long message lists
+- [x] Virtual scrolling for long message lists
 - [ ] Skeleton screens for dashboard pages
 - [ ] Optimistic UI for real-time updates
 
@@ -116,6 +116,7 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 
 ## ✅ Recent Completions
 
+**Iteration 9**: Virtual scrolling for dashboard messages - GroupedVirtuoso implementation with smart switching for 10+ groups or 100+ messages
 **Iteration 8**: GitHub Actions Agent - self-improving AI agent with Claude SDK wrapper, multi-source task picker, checkpoint-based state persistence
 **Iteration 7**: Web test isolation fix - enabled vitest isolation to prevent DOM pollution
 **Iteration 62**: Repository cleanup - removed temp files, updated .gitignore
