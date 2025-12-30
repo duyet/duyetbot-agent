@@ -392,4 +392,122 @@ app.post(
   }
 );
 
+/**
+ * Request body for internal forward endpoint
+ */
+interface ForwardRequestBody {
+  message: string;
+  priority?: 'low' | 'normal' | 'high';
+  source?: string;
+}
+
+/**
+ * Response for successful forward
+ */
+interface ForwardSuccessResponse {
+  success: true;
+  message_id: number;
+}
+
+/**
+ * Response for failed forward
+ */
+interface ForwardErrorResponse {
+  success: false;
+  error: string;
+}
+
+// Internal endpoint for receiving forwarded messages from web app
+// Secured with shared secret authentication
+app.post('/internal/forward', async (c) => {
+  // Verify shared secret for authentication
+  const forwardSecret = c.req.header('X-Forward-Secret');
+  if (forwardSecret !== c.env.FORWARD_SECRET) {
+    logger.warn('[INTERNAL/FORWARD] Unauthorized forward attempt', {
+      hasSecret: !!forwardSecret,
+      source: c.req.header('X-Forward-Source'),
+    });
+    return c.json<ForwardErrorResponse>({ success: false, error: 'Unauthorized' }, 401);
+  }
+
+  // Parse and validate request body
+  let body: ForwardRequestBody;
+  try {
+    body = await c.req.json<ForwardRequestBody>();
+  } catch {
+    return c.json<ForwardErrorResponse>({ success: false, error: 'Invalid JSON body' }, 400);
+  }
+
+  const { message, priority = 'normal', source = 'web' } = body;
+
+  // Validate required fields
+  if (!message || typeof message !== 'string') {
+    return c.json<ForwardErrorResponse>(
+      { success: false, error: 'Message is required and must be a string' },
+      400
+    );
+  }
+
+  // Get forward chat ID from environment
+  const forwardChatId = c.env.TELEGRAM_FORWARD_CHAT_ID;
+  if (!forwardChatId) {
+    logger.error('[INTERNAL/FORWARD] TELEGRAM_FORWARD_CHAT_ID not configured');
+    return c.json<ForwardErrorResponse>(
+      { success: false, error: 'Forward destination not configured' },
+      500
+    );
+  }
+
+  // Format message with prefix and metadata
+  const priorityEmoji = priority === 'high' ? '' : priority === 'low' ? '' : '';
+  const messageText = `[Web Forward]${priorityEmoji}\n${message}`;
+
+  try {
+    // Send message to Telegram via Bot API
+    const response = await fetch(
+      `https://api.telegram.org/bot${c.env.TELEGRAM_BOT_TOKEN}/sendMessage`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: forwardChatId,
+          text: messageText,
+          parse_mode: 'HTML',
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const error = await response.text();
+      logger.error('[INTERNAL/FORWARD] Telegram API error', {
+        status: response.status,
+        error,
+        chatId: forwardChatId,
+      });
+      return c.json<ForwardErrorResponse>({ success: false, error: 'Failed to send message' }, 502);
+    }
+
+    const result = await response.json<{ result: { message_id: number } }>();
+    const messageId = result.result.message_id;
+
+    logger.info('[INTERNAL/FORWARD] Message forwarded successfully', {
+      messageId,
+      source,
+      priority,
+      messageLength: message.length,
+    });
+
+    return c.json<ForwardSuccessResponse>({
+      success: true,
+      message_id: messageId,
+    });
+  } catch (error) {
+    logger.error('[INTERNAL/FORWARD] Failed to send message', {
+      error: error instanceof Error ? error.message : String(error),
+      source,
+    });
+    return c.json<ForwardErrorResponse>({ success: false, error: 'Internal server error' }, 500);
+  }
+});
+
 export default app;

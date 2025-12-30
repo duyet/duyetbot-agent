@@ -1,17 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { CompositeMemoryAdapter } from '../composite-memory-adapter.js';
 import type {
-  LongTermMemoryEntry,
   MemoryAdapter,
   MemoryData,
   MemorySearchResult,
-  SaveLongTermMemoryResult,
-  SaveMemoryResult,
-  SaveShortTermMemoryResult,
   SessionInfo,
   ShortTermMemoryEntry,
 } from '../memory-adapter.js';
-import type { Message } from '../types.js';
 
 // Create mock adapters
 const createMockAdapter = (): MemoryAdapter => ({

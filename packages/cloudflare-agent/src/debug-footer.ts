@@ -465,6 +465,9 @@ function formatClassification(classification?: DebugContext['classification']): 
   if (!classification) {
     return '';
   }
+  if (typeof classification === 'string') {
+    return `[${classification}]`;
+  }
   return `[${classification.type}/${classification.category}/${classification.complexity}]`;
 }
 
@@ -580,8 +583,12 @@ function formatRoutingFlow(debugContext: DebugContext): string {
   const { routingFlow, routerDurationMs, classification } = debugContext;
 
   // Find router and target agent steps
-  const routerStep = routingFlow.find((s) => s.agent === 'router' || s.agent === 'router-agent');
-  const targetStep = routingFlow.find((s) => s.agent !== 'router' && s.agent !== 'router-agent');
+  const routerStep = routingFlow?.find(
+    (s: { agent: string }) => s.agent === 'router' || s.agent === 'router-agent'
+  );
+  const targetStep = routingFlow?.find(
+    (s: { agent: string }) => s.agent !== 'router' && s.agent !== 'router-agent'
+  );
 
   // Build router part with timing and tokens
   const routerDuration = routerDurationMs ?? routerStep?.durationMs;
@@ -684,8 +691,10 @@ function formatExecutionChain(steps: DebugContext['steps']): string {
       const argStr = formatToolArgs(step.args);
       lines.push(`⏺ ${step.toolName}(${argStr})`);
       const errorText = step.error;
-      const truncated = errorText.length > 50 ? `${errorText.slice(0, 50)}...` : errorText;
-      lines.push(`  ⎿ ❌ ${truncated}`);
+      if (errorText) {
+        const truncated = errorText.length > 50 ? `${errorText.slice(0, 50)}...` : errorText;
+        lines.push(`  ⎿ ❌ ${truncated}`);
+      }
     }
   }
 

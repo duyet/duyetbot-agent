@@ -28,6 +28,36 @@ export interface DebugContext {
     thinking?: string;
     maxIterations?: number;
   }>;
+  routingFlow?: Array<{
+    agent: string;
+    durationMs?: number;
+    status?: 'running' | 'completed' | 'error';
+    tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+    toolChain?: string[];
+  }>;
+  routerDurationMs?: number;
+  classification?: { type?: string; category?: string; complexity?: string } | string;
+  totalDurationMs?: number;
+  metadata?: {
+    traceId?: string;
+    model?: string;
+    tokenUsage?: {
+      inputTokens: number;
+      outputTokens: number;
+      totalTokens: number;
+      cachedTokens?: number;
+      actualCostUsd?: number;
+      estimatedCostUsd?: number;
+    };
+    lastToolError?: string;
+    webSearchEnabled?: boolean;
+  };
+  workers?: Array<{
+    name: string;
+    durationMs?: number;
+    status?: 'running' | 'completed' | 'error';
+    tokenUsage?: { inputTokens: number; outputTokens: number; totalTokens: number };
+  }>;
 }
 
 export interface WorkflowResult {

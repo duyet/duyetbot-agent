@@ -1,0 +1,37 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "duyetbot-web"
+main = ".open-next/worker.js"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+[ai]
+binding = "AI"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[vars]
+ENVIRONMENT = "production"
+AI_GATEWAY_NAME = "duyetbot"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1
+
+[placement]
+mode = "smart"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+migrations_dir = "lib/db/migrations"
+
+[[r2_buckets]]
+binding = "UPLOADS_BUCKET"
+bucket_name = "duyetbot-web-uploads"

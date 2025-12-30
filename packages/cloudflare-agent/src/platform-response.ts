@@ -160,7 +160,7 @@ export async function sendPlatformResponse(
 
         logger.debug('[sendPlatformResponse] Debug footer applied', {
           username: target.username,
-          flowLength: debugContext.routingFlow.length,
+          flowLength: debugContext.routingFlow?.length ?? 0,
           parseMode, // Log actual parseMode used
         });
       }
@@ -294,7 +294,7 @@ async function sendGitHubResponse(
       finalText = text + debugFooter;
       logger.debug('[sendGitHubResponse] Debug footer applied', {
         username: target.username,
-        flowLength: debugContext.routingFlow.length,
+        flowLength: debugContext.routingFlow?.length ?? 0,
       });
     }
   }
@@ -353,8 +353,8 @@ function formatGitHubDebugFooter(debugContext: DebugContext): string {
   const { routingFlow, classification, totalDurationMs } = debugContext;
 
   // Build agent chain with tools
-  const agentChain = routingFlow
-    .map((step) => {
+  const agentChain = (routingFlow ?? [])
+    .map((step: { agent: string; tools?: string[] }) => {
       let entry = step.agent;
       if (step.tools && step.tools.length > 0) {
         entry += ` (${step.tools.join(', ')})`;
@@ -365,9 +365,13 @@ function formatGitHubDebugFooter(debugContext: DebugContext): string {
 
   // Build classification info
   const classInfo = [
-    classification?.type && `type: ${classification.type}`,
-    classification?.category && `category: ${classification.category}`,
-    classification?.complexity && `complexity: ${classification.complexity}`,
+    typeof classification === 'object' && classification?.type && `type: ${classification.type}`,
+    typeof classification === 'object' &&
+      classification?.category &&
+      `category: ${classification.category}`,
+    typeof classification === 'object' &&
+      classification?.complexity &&
+      `complexity: ${classification.complexity}`,
   ]
     .filter(Boolean)
     .join(', ');

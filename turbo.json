@@ -69,6 +69,14 @@
     "@duyetbot/github-bot#config": {
       "dependsOn": ["@duyetbot/github-bot#deploy"],
       "cache": false
+    },
+    "@duyetbot/web#deploy": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@duyetbot/web#config": {
+      "dependsOn": ["@duyetbot/web#deploy"],
+      "cache": false
     }
   }
 }

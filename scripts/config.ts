@@ -92,6 +92,18 @@ const APPS: Record<string, AppConfig> = {
       { name: 'TELEGRAM_ADMIN_CHAT_ID', required: true },
     ],
   },
+  web: {
+    name: 'Web App',
+    dir: 'apps/web',
+    workerName: 'duyetbot-web',
+    secrets: [
+      { name: 'SESSION_SECRET', required: false },
+      { name: 'AI_GATEWAY_API_KEY', required: true },
+      { name: 'GITHUB_TOKEN', required: true },
+      { name: 'GITHUB_CLIENT_ID', required: true },
+      { name: 'GITHUB_CLIENT_SECRET', required: true },
+    ],
+  },
 };
 
 async function loadEnvFile(): Promise<Record<string, string>> {
@@ -368,6 +380,7 @@ switch (app) {
   case 'memory-mcp':
   case 'agents':
   case 'safety-kernel':
+  case 'web':
     await configureApp(app, subCommand);
     break;
   case 'show':
@@ -379,6 +392,7 @@ switch (app) {
     console.log('Usage:');
     console.log('  bun scripts/config.ts telegram        - Set secrets + configure webhook');
     console.log('  bun scripts/config.ts github          - Set secrets');
+    console.log('  bun scripts/config.ts web             - Set secrets');
     console.log('  bun scripts/config.ts telegram info   - Get webhook info');
     console.log('  bun scripts/config.ts telegram delete - Delete webhook');
     console.log('  bun scripts/config.ts show            - Show all config status');
