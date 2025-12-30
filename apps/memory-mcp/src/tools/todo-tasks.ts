@@ -121,11 +121,11 @@ function parseTaskMetadata(
   try {
     const parsed = typeof metadata === 'string' ? JSON.parse(metadata) : metadata;
     return {
-      status: (parsed.status || 'pending') as TaskStatus,
-      tags: (parsed.tags as string[]) || [],
-      parent_task_id: (parsed.parent_task_id as string | null) || null,
-      due_date: (parsed.due_date as number | null) || null,
-      completed_at: (parsed.completed_at as number | null) || null,
+      status: ((parsed.status as string | undefined) ?? 'pending') as TaskStatus,
+      tags: (parsed.tags as string[] | undefined) ?? [],
+      parent_task_id: (parsed.parent_task_id as string | null | undefined) ?? null,
+      due_date: (parsed.due_date as number | null | undefined) ?? null,
+      completed_at: (parsed.completed_at as number | null | undefined) ?? null,
       ...parsed,
     };
   } catch {
@@ -143,8 +143,8 @@ function rowToTaskItem(row: any): TaskItem {
   const metadata = parseTaskMetadata(row.metadata);
   return {
     id: row.id,
-    description: row.value, // Tasks store description in 'value' column
-    status: (metadata.status as TaskStatus) || 'pending',
+    description: row.value ?? '', // Tasks store description in 'value' column
+    status: (metadata.status as TaskStatus | undefined) ?? 'pending',
     priority: row.importance ?? 5, // Priority stored in 'importance' column
     due_date: (metadata.due_date as number | null) ?? null,
     completed_at: (metadata.completed_at as number | null) ?? null,
