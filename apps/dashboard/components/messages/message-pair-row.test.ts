@@ -1,10 +1,9 @@
-import { describe, expect, test } from 'vitest';
 import type { AnalyticsMessage } from '@duyetbot/analytics';
+import { describe, expect, test } from 'vitest';
 import {
   createMessagePairs,
   formatTimestamp,
   isErrorResponse,
-  MessagePair,
 } from './message-pair-row';
 
 describe('isErrorResponse', () => {
@@ -195,10 +194,7 @@ describe('createMessagePairs', () => {
   });
 
   test('handles only user messages', () => {
-    const onlyUserMessages: AnalyticsMessage[] = [
-      { ...mockMessages[0]! },
-      { ...mockMessages[2]! },
-    ];
+    const onlyUserMessages: AnalyticsMessage[] = [{ ...mockMessages[0]! }, { ...mockMessages[2]! }];
 
     const pairs = createMessagePairs(onlyUserMessages);
     expect(pairs).toHaveLength(2);
