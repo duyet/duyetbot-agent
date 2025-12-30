@@ -48,6 +48,52 @@ const nextConfig: NextConfig = {
 	typescript: {
 		ignoreBuildErrors: false,
 	},
+
+	// Caching headers for static assets
+	// Note: For static export, headers are configured via Cloudflare Workers/Pages
+	// This documents the intended caching strategy
+	async headers() {
+		return [
+			{
+				source: "/:all*(svg|jpg|jpeg|png|gif|webp|ico)",
+				headers: [
+					{
+						key: "Cache-Control",
+						value: "public, max-age=31536000, immutable",
+					},
+				],
+			},
+			{
+				source: "/static/:path*",
+				headers: [
+					{
+						key: "Cache-Control",
+						value: "public, max-age=31536000, immutable",
+					},
+				],
+			},
+			{
+				// Cache JS/CSS with hashes for 1 year
+				source: "/_next/static/:path*",
+				headers: [
+					{
+						key: "Cache-Control",
+						value: "public, max-age=31536000, immutable",
+					},
+				],
+			},
+			{
+				// Don't cache HTML files - allow revalidation
+				source: "/:path*.html",
+				headers: [
+					{
+						key: "Cache-Control",
+						value: "public, max-age=0, must-revalidate",
+					},
+				],
+			},
+		];
+	},
 };
 
 // Sentry configuration options
