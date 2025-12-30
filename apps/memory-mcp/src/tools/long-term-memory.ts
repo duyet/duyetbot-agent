@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import type { D1Storage } from '../storage/d1.js';
 
-const categoryEnum = z.enum(['fact', 'preference', 'pattern', 'decision', 'note']);
+const categoryEnum = z.enum(['fact', 'preference', 'pattern', 'decision', 'note', 'task']);
 
 // Save operation
 export const saveLongTermMemorySchema = z.object({

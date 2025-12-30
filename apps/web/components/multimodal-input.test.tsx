@@ -219,7 +219,7 @@ describe("multimodal-input - MultimodalInput Component", () => {
 
 	it("does not render suggested actions when there are messages", () => {
 		const props = createMockProps();
-		props.messages = [{ role: "user", content: "Existing message" }] as UIMessage[];
+		props.messages = [{ id: "1", role: "user", parts: [{ type: "text", text: "Existing message" }] }] as UIMessage[];
 		render(<MultimodalInput {...props} />);
 
 		expect(screen.queryByTestId("suggested-actions")).not.toBeInTheDocument();
@@ -497,7 +497,7 @@ describe("multimodal-input - Memoization Behavior", () => {
 	it("memo comparison returns false when selectedVisibilityType changes", () => {
 		const props1 = createMockProps();
 		const props2 = createMockProps();
-		props2.selectedVisibilityType = "public";
+		props2.selectedVisibilityType = "private" as const;
 
 		expect(props1.selectedVisibilityType).not.toBe(props2.selectedVisibilityType);
 	});
