@@ -27,9 +27,9 @@ import { PreviewAttachment } from "./preview-attachment";
 import { ScratchpadViewer } from "./scratchpad-viewer";
 import { SearchResults } from "./search-results";
 import { type TokenUsage, TokenUsageDisplay } from "./token-usage-display";
-import { TypingIndicator } from "./typing-indicator";
 import { UrlFetchPreview } from "./url-fetch-preview";
 import { Weather } from "./weather";
+import { ToolRenderer } from "./tool-renderer";
 
 const PurePreviewMessage = ({
 	addToolApprovalResponse,
@@ -562,6 +562,17 @@ const PurePreviewMessage = ({
 							);
 						}
 
+						// Generic handler for all other tool-* parts
+						if (type.startsWith("tool-")) {
+							return (
+								<ToolRenderer
+									addToolApprovalResponse={addToolApprovalResponse}
+									key={key}
+									part={part as any}
+								/>
+							);
+						}
+
 						return null;
 					})}
 
@@ -628,7 +639,11 @@ export const ThinkingMessage = () => {
 				<div className="flex w-full flex-col gap-2 md:gap-4">
 					<div className="flex items-center gap-2 p-0 text-muted-foreground text-sm">
 						<span>Thinking</span>
-						<TypingIndicator className="scale-75" variant="dots" />
+						<span className="inline-flex gap-0.5">
+							<span className="size-1 animate-bounce rounded-full bg-muted-foreground [animation-delay:0ms]" />
+							<span className="size-1 animate-bounce rounded-full bg-muted-foreground [animation-delay:150ms]" />
+							<span className="size-1 animate-bounce rounded-full bg-muted-foreground [animation-delay:300ms]" />
+						</span>
 					</div>
 				</div>
 			</div>

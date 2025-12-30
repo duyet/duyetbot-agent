@@ -2,7 +2,7 @@
 
 import { useControllableState } from "@radix-ui/react-use-controllable-state";
 import { BrainIcon, ChevronDownIcon } from "lucide-react";
-import type { ComponentProps } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { createContext, memo, useContext, useEffect, useState } from "react";
 import {
 	Collapsible,
@@ -148,7 +148,7 @@ export const ReasoningTrigger = memo(
 export type ReasoningContentProps = ComponentProps<
 	typeof CollapsibleContent
 > & {
-	children: string;
+	children: ReactNode;
 };
 
 export const ReasoningContent = memo(
@@ -162,9 +162,15 @@ export const ReasoningContent = memo(
 			{...props}
 		>
 			<div className="max-h-48 overflow-y-auto rounded-md border border-border/50 bg-muted/30 p-2.5">
-				<Response className="grid gap-1 text-[11px] **:text-[11px] [&_li]:my-0 [&_ol]:my-1 [&_p]:my-0 [&_ul]:my-1">
-					{children}
-				</Response>
+				{typeof children === "string" ? (
+					<Response className="grid gap-1 text-[11px] **:text-[11px] [&_li]:my-0 [&_ol]:my-1 [&_p]:my-0 [&_ul]:my-1">
+						{children}
+					</Response>
+				) : (
+					<div className="grid gap-1 text-[11px] [&_li]:my-0 [&_ol]:my-1 [&_p]:my-0 [&_ul]:my-1">
+						{children}
+					</div>
+				)}
 			</div>
 		</CollapsibleContent>
 	),

@@ -6,6 +6,7 @@ import {
 	wrapLanguageModel,
 } from "ai";
 import { isTestEnvironment } from "../constants";
+import { chatModels, DEFAULT_CHAT_MODEL } from "./models";
 
 const THINKING_SUFFIX_REGEX = /-thinking$/;
 
@@ -46,6 +47,14 @@ export async function getLanguageModel(modelId: string) {
 		return testProvider.languageModel(modelId);
 	}
 
+	// Validate modelId exists in our configuration
+	const validModel = chatModels.find((m) => m.id === modelId);
+	if (!validModel) {
+		console.warn(
+			`[providers] Unknown model ID: ${modelId}. Falling back to default: ${DEFAULT_CHAT_MODEL}`,
+		);
+	}
+
 	const openai = await getOpenAIClient();
 	const isReasoningModel =
 		modelId.includes("reasoning") || modelId.endsWith("-thinking");
@@ -58,7 +67,7 @@ export async function getLanguageModel(modelId: string) {
 		});
 	}
 
-	return openai(modelId);
+	return openai(validModel ? modelId : DEFAULT_CHAT_MODEL);
 }
 
 export async function getTitleModel() {
