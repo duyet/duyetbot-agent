@@ -8,7 +8,7 @@
  * - Server URL validation
  */
 
-import { beforeEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import type { MCPServerConfig } from '../types.js';
 import { duyetMcp, githubMcp } from './servers.js';
 

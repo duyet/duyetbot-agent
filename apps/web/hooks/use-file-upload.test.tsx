@@ -12,7 +12,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import type { ChangeEvent } from "react";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Attachment } from "@/lib/types";
 import { useFileUpload } from "./use-file-upload";
 

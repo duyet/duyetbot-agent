@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 4
+iteration: 5
 max_iterations: 0
 completion_promise: null
 circuit_breaker: true
@@ -9,22 +9,59 @@ rate_limit_handler: true
 started_at: "2025-12-30T06:37:44Z"
 ---
 
-enhace docs, codebase, make the git history look like autonoumous coding by AI 24/7 , commit co author as duyetbot. clean up repo, plan for todo, update to ralph state file
+## Ralph Loop Autonomous Development
+**Iteration**: 5
+**Status**: active
+**Mode**: 24/7 autonomous AI development
 
-update this file after each iters.
+### Current Mission
+Enhance docs, codebase, make git history look like autonomous coding by AI 24/7, commit co-author as duyetbot. Clean up repo, plan for TODO, update Ralph state file.
 
-Plan for new features, bugs to fix, improvements to make.
+### Task Sources
+- PLANS.md (high/medium/low priority items)
+- TODO.md (if exists)
+- MCP tool suggestions
+- Code quality issues (lint/type errors)
+- Documentation gaps
 
-plan and adding new app claude agent sdk on long runner server.
-pick the tasks from somewhere (mcp, TODO.md files, ...) then execute 24/7
-using ralph loop hooks
+### Workflow
+1. Pick task from PLANS.md or TODO.md
+2. Implement changes
+3. Run `bun run check` (lint + type-check)
+4. Run tests if affected
+5. Commit with semantic message + co-author
+6. Push to origin
+7. Update this state file
 
-Plan and continue improve apps/dashboard
+### Commit Pattern
+```
+<type>: <description>
 
+<optional detailed description>
 
-Cost Distribution
-Estimated cost by AI model -> most using glm-4.7, opus, ...
+Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
+```
 
-commit and push for each iter
+### Stop Hooks
+- 5+ consecutive test failures
+- 3+ consecutive push failures
+- Unresolvable type check errors
+- Unresolvable lint errors
+- User interruption (Ctrl+C)
 
-update README.md to reflect the new state of the project, full diagram of all components and how they interact.
+### Cost Tracking
+- Primary model: glm-4.7, opus
+- Monitor cost distribution by model
+- Optimize for cost-effective model usage
+
+### Active Projects
+- [ ] Plan and add new app Claude Agent SDK on long-runner server
+- [ ] Continue improving apps/dashboard
+- [ ] Update README.md with full component diagrams
+- [ ] Clean up repository
+- [ ] Improve documentation
+
+### Last Update
+- **Time**: 2025-12-30
+- **Action**: Setup Ralph Loop infrastructure
+- **Next**: Review PLANS.md and pick first task

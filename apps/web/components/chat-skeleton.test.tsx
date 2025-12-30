@@ -8,8 +8,7 @@
  * 4. SidebarSkeleton - Sidebar loading skeleton
  */
 
-import { render, screen } from "@testing-library/react";
-import React from "react";
+import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
 	ChatSkeleton,
@@ -156,7 +155,7 @@ describe("MessagesListSkeleton", () => {
 		const { container } = render(<MessagesListSkeleton count={4} />);
 		// Look at direct children of the main container
 		const mainContainer = container.firstChild as HTMLElement;
-		const messageElements = mainContainer?.querySelector(":scope > div");
+		const _messageElements = mainContainer?.querySelector(":scope > div");
 
 		// Get all direct children divs
 		const children = Array.from(mainContainer?.children || []);

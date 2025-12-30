@@ -10,8 +10,7 @@
  * Text-based queries (screen.getByText) don't work properly in this environment.
  */
 
-import { render, screen } from "@testing-library/react";
-import React from "react";
+import { render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import type { PendingOperation } from "@/hooks/use-optimistic-update";
 import {

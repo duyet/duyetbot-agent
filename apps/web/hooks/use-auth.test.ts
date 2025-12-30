@@ -13,7 +13,7 @@
 
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type { AuthUser, Session } from "./use-auth";
+import type { Session } from "./use-auth";
 import { useAuth } from "./use-auth";
 
 // Mock Next.js router

@@ -12,12 +12,9 @@
  * 8. Configuration options
  */
 
-import { act, renderHook, waitFor } from "@testing-library/react";
+import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import type {
-	SpeechRecognitionOptions,
-	UseSpeechRecognitionResult,
-} from "./use-speech-recognition";
+import type { SpeechRecognitionOptions } from "./use-speech-recognition";
 import { useSpeechRecognition } from "./use-speech-recognition";
 
 // Store the current instance callbacks and methods for testing
@@ -218,7 +215,7 @@ describe("useSpeechRecognition - Start Listening", () => {
 		// Simulate onstart callback
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onstart) {
+			if (instance?.onstart) {
 				instance.onstart();
 			}
 		});
@@ -309,7 +306,7 @@ describe("useSpeechRecognition - Transcript Updates", () => {
 
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onresult) {
+			if (instance?.onresult) {
 				instance.onresult(mockEvent);
 			}
 		});
@@ -338,7 +335,7 @@ describe("useSpeechRecognition - Transcript Updates", () => {
 
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onresult) {
+			if (instance?.onresult) {
 				instance.onresult(mockEvent);
 			}
 		});
@@ -378,14 +375,14 @@ describe("useSpeechRecognition - Transcript Updates", () => {
 
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onresult) {
+			if (instance?.onresult) {
 				instance.onresult(mockEvent1);
 			}
 		});
 
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onresult) {
+			if (instance?.onresult) {
 				instance.onresult(mockEvent2);
 			}
 		});
@@ -426,7 +423,7 @@ describe("useSpeechRecognition - Error Handling", () => {
 
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onerror) {
+			if (instance?.onerror) {
 				instance.onerror(mockErrorEvent);
 			}
 		});
@@ -490,7 +487,7 @@ describe("useSpeechRecognition - Reset Transcript", () => {
 
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onresult) {
+			if (instance?.onresult) {
 				instance.onresult(mockEvent);
 			}
 		});
@@ -540,7 +537,7 @@ describe("useSpeechRecognition - Continuous Mode", () => {
 		// Simulate onend
 		act(() => {
 			const inst = getCurrentInstance();
-			if (inst && inst.onend) {
+			if (inst?.onend) {
 				inst.onend();
 			}
 		});
@@ -568,7 +565,7 @@ describe("useSpeechRecognition - Continuous Mode", () => {
 		// Simulate onend after stopping
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onend) {
+			if (instance?.onend) {
 				instance.onend();
 			}
 		});
@@ -668,7 +665,7 @@ describe("useSpeechRecognition - Cleanup", () => {
 		// After unmount, callbacks should not cause errors
 		act(() => {
 			const instance = getCurrentInstance();
-			if (instance && instance.onstart) {
+			if (instance?.onstart) {
 				instance.onstart();
 			}
 		});

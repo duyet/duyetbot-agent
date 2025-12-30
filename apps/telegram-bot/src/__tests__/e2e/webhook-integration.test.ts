@@ -6,7 +6,7 @@
  */
 
 import { SELF } from 'cloudflare:test';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { createUpdate, resetFixtureCounters } from './helpers/fixtures';
 import { resetMocks, setupMocks } from './helpers/mocks';

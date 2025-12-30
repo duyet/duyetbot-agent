@@ -17,12 +17,6 @@ import { describe, expect, it, vi } from "vitest";
 import type { ChatMessage } from "@/lib/types";
 import { useOptimisticUpdate } from "./use-optimistic-update";
 
-type MutationResult<T = void> = {
-	success: boolean;
-	error?: string;
-	data?: T;
-};
-
 // Helper to create a mock ChatMessage
 const createMockMessage = (id: string, text: string): ChatMessage => ({
 	id,

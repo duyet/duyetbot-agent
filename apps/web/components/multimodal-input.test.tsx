@@ -11,9 +11,8 @@
  */
 
 import type { UseChatHelpers } from "@ai-sdk/react";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import type { UIMessage } from "ai";
-import React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Attachment, ChatMessage } from "@/lib/types";
 import { MultimodalInput } from "./multimodal-input";
@@ -217,11 +216,12 @@ describe("multimodal-input - MultimodalInput Component", () => {
 
 	it("disables send button when uploadQueue has items", () => {
 		mockUseFileUpload.mockImplementation(
-			() => ({
-				uploadQueue: ["uploading-file.jpg"],
-				handleFileChange: mockHandleFileChange,
-				handlePaste: mockHandlePaste,
-			}) as any,
+			() =>
+				({
+					uploadQueue: ["uploading-file.jpg"],
+					handleFileChange: mockHandleFileChange,
+					handlePaste: mockHandlePaste,
+				}) as any,
 		);
 
 		const props = createMockProps();
@@ -287,11 +287,12 @@ describe("multimodal-input - MultimodalInput Component", () => {
 
 	it("renders uploading indicator for files in uploadQueue", () => {
 		mockUseFileUpload.mockImplementation(
-			() => ({
-				uploadQueue: ["uploading-file.jpg"],
-				handleFileChange: mockHandleFileChange,
-				handlePaste: mockHandlePaste,
-			}) as any,
+			() =>
+				({
+					uploadQueue: ["uploading-file.jpg"],
+					handleFileChange: mockHandleFileChange,
+					handlePaste: mockHandlePaste,
+				}) as any,
 		);
 
 		const props = createMockProps();

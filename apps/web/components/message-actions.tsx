@@ -60,10 +60,6 @@ export function PureMessageActions({
 		}
 	}, [isSpeaking, cancel, speak, textFromParts, voiceSettings]);
 
-	if (isLoading) {
-		return null;
-	}
-
 	const handleDelete = useCallback(async () => {
 		if (!setMessages) {
 			return;
@@ -99,6 +95,10 @@ export function PureMessageActions({
 			setIsDeleting(false);
 		}
 	}, [message.id, setMessages, mutate]);
+
+	if (isLoading) {
+		return null;
+	}
 
 	const handleCopy = async () => {
 		if (!textFromParts) {

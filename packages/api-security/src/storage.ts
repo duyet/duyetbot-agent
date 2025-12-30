@@ -242,7 +242,11 @@ export async function rotateAPIKeyInStorage(
   const resolvedOptions: Required<RotationOptions> = {
     gracePeriodMs: options.gracePeriodMs ?? 7 * 24 * 60 * 60 * 1000, // 7 days
     autoRevoke: options.autoRevoke ?? true,
-    onRotation: options.onRotation ?? (() => {}),
+    onRotation:
+      options.onRotation ??
+      (() => {
+        // Default no-op callback
+      }),
   };
   // Fetch old record
   const oldResult = await db.prepare('SELECT * FROM api_keys WHERE id = ?').bind(oldKeyId).first();

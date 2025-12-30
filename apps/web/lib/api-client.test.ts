@@ -9,7 +9,6 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
 import * as apiClient from "./api-client";
 
 describe("api-client - Retry Behavior", () => {

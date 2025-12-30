@@ -99,11 +99,15 @@ function getTaskTags(eventType: string, action: string): string[] {
   switch (eventType) {
     case 'pull_request':
       tags.push('pr');
-      if (action === 'opened') tags.push('review-needed');
+      if (action === 'opened') {
+        tags.push('review-needed');
+      }
       break;
     case 'issues':
       tags.push('issue');
-      if (action === 'opened') tags.push('investigation-needed');
+      if (action === 'opened') {
+        tags.push('investigation-needed');
+      }
       break;
     case 'push':
       tags.push('push');
@@ -116,11 +120,7 @@ function getTaskTags(eventType: string, action: string): string[] {
 /**
  * Create task description based on event type
  */
-function getTaskDescription(
-  eventType: string,
-  action: string,
-  ctx: WebhookContext
-): string {
+function getTaskDescription(eventType: string, action: string, ctx: WebhookContext): string {
   const { owner, repo, issue, sender } = ctx;
 
   switch (eventType) {
@@ -173,12 +173,24 @@ function getTaskMetadata(
 
   // Add PR-specific metadata
   if (eventType === 'pull_request') {
-    if (ctx.additions !== undefined) metadata.additions = ctx.additions;
-    if (ctx.deletions !== undefined) metadata.deletions = ctx.deletions;
-    if (ctx.commits !== undefined) metadata.commits = ctx.commits;
-    if (ctx.changedFiles !== undefined) metadata.changedFiles = ctx.changedFiles;
-    if (ctx.headRef !== undefined) metadata.headRef = ctx.headRef;
-    if (ctx.baseRef !== undefined) metadata.baseRef = ctx.baseRef;
+    if (ctx.additions !== undefined) {
+      metadata.additions = ctx.additions;
+    }
+    if (ctx.deletions !== undefined) {
+      metadata.deletions = ctx.deletions;
+    }
+    if (ctx.commits !== undefined) {
+      metadata.commits = ctx.commits;
+    }
+    if (ctx.changedFiles !== undefined) {
+      metadata.changedFiles = ctx.changedFiles;
+    }
+    if (ctx.headRef !== undefined) {
+      metadata.headRef = ctx.headRef;
+    }
+    if (ctx.baseRef !== undefined) {
+      metadata.baseRef = ctx.baseRef;
+    }
   }
 
   return metadata;
@@ -219,11 +231,15 @@ export async function handleTaskCreation(
 
     // Call memory service RPC to create task
     // Type assertion: Fetcher service bindings have RPC methods at runtime
-    const task = await (memoryService as unknown as MemoryServiceAddTask).addTask(GITHUB_USER_ID, description, {
-      priority,
-      tags,
-      metadata,
-    });
+    const task = await (memoryService as unknown as MemoryServiceAddTask).addTask(
+      GITHUB_USER_ID,
+      description,
+      {
+        priority,
+        tags,
+        metadata,
+      }
+    );
 
     return {
       success: true,

@@ -71,7 +71,7 @@ vi.mock("@/lib/db/schema", () => {
 	};
 });
 
-import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
+import { desc, eq, like } from "drizzle-orm";
 
 // Mock drizzle ORM functions
 vi.mock("drizzle-orm", () => ({

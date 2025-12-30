@@ -76,3 +76,7 @@ packages/*/dist/
 *.timestamp-*
 results/
 apps/web/logs
+
+# Claude local state
+.claude/*.local.md
+.claude/settings.local.json

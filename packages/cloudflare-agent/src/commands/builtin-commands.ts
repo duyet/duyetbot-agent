@@ -4,8 +4,8 @@ import { logger } from '@duyetbot/hono-middleware';
 // Assuming src/debug-footer.ts exists and exports these.
 import { escapeHtml, escapeMarkdownV2 } from '../debug-footer.js';
 import { EventBridge } from '../events/event-bridge.js';
-import type { CommandContext, CommandHandler } from './types.js';
 import { handleTodoCommand } from './todo.js';
+import type { CommandContext, CommandHandler } from './types.js';
 
 /**
  * Format uptime from milliseconds to human-readable string.

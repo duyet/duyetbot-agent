@@ -1,6 +1,5 @@
 "use client";
 
-import React from "react";
 import type { ArtifactKind } from "./artifact";
 
 export const DocumentSkeleton = ({

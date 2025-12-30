@@ -1,7 +1,7 @@
 'use client';
 
 import { DollarSign, TrendingUp } from 'lucide-react';
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
+import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { Card } from '@/components/ui/card';
 
 interface CostData {
@@ -52,8 +52,8 @@ export function CostDistributionCard() {
                   paddingAngle={2}
                   dataKey="value"
                 >
-                  {MOCK_COST_DATA.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                  {MOCK_COST_DATA.map((entry) => (
+                    <Cell key={`cell-${entry.name}`} fill={entry.color} />
                   ))}
                 </Pie>
                 <Tooltip

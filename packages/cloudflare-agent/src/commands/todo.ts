@@ -91,7 +91,9 @@ interface TodoCommandEnv {
  * Format timestamp to relative time string
  */
 function formatRelativeTime(timestamp: number | null): string {
-  if (!timestamp) return '-';
+  if (!timestamp) {
+    return '-';
+  }
 
   const now = Date.now();
   const diff = Math.abs(now - timestamp);
@@ -102,15 +104,27 @@ function formatRelativeTime(timestamp: number | null): string {
 
   if (timestamp > now) {
     // Future timestamp (due date)
-    if (days > 0) return `in ${days}d`;
-    if (hours > 0) return `in ${hours}h`;
-    if (minutes > 0) return `in ${minutes}m`;
+    if (days > 0) {
+      return `in ${days}d`;
+    }
+    if (hours > 0) {
+      return `in ${hours}h`;
+    }
+    if (minutes > 0) {
+      return `in ${minutes}m`;
+    }
     return 'soon';
   } else {
     // Past timestamp
-    if (days > 0) return `${days}d ago`;
-    if (hours > 0) return `${hours}h ago`;
-    if (minutes > 0) return `${minutes}m ago`;
+    if (days > 0) {
+      return `${days}d ago`;
+    }
+    if (hours > 0) {
+      return `${hours}h ago`;
+    }
+    if (minutes > 0) {
+      return `${minutes}m ago`;
+    }
     return 'just now';
   }
 }
@@ -137,9 +151,15 @@ function getStatusIcon(status: TaskItem['status']): string {
  * Format task priority icon
  */
 function getPriorityIcon(priority: number): string {
-  if (priority >= 8) return '🔴';
-  if (priority >= 6) return '🟠';
-  if (priority >= 4) return '🟡';
+  if (priority >= 8) {
+    return '🔴';
+  }
+  if (priority >= 6) {
+    return '🟠';
+  }
+  if (priority >= 4) {
+    return '🟡';
+  }
   return '🟢';
 }
 
@@ -179,9 +199,15 @@ function parseDueDate(args: string[]): number | undefined {
       // Handle relative dates
       const now = Date.now();
       const lower = value.toLowerCase();
-      if (lower === 'tomorrow') return now + 24 * 60 * 60 * 1000;
-      if (lower === 'today') return now + 12 * 60 * 60 * 1000; // End of today
-      if (lower === 'week') return now + 7 * 24 * 60 * 60 * 1000;
+      if (lower === 'tomorrow') {
+        return now + 24 * 60 * 60 * 1000;
+      }
+      if (lower === 'today') {
+        return now + 12 * 60 * 60 * 1000; // End of today
+      }
+      if (lower === 'week') {
+        return now + 7 * 24 * 60 * 60 * 1000;
+      }
     }
   }
   return undefined;
@@ -195,7 +221,9 @@ function parseTags(args: string[]): string[] | undefined {
     if (arg.startsWith('tags:')) {
       const tags = arg.slice(5).split(',');
       const cleaned = tags.map((t) => t.trim().toLowerCase()).filter(Boolean);
-      if (cleaned.length > 0) return cleaned;
+      if (cleaned.length > 0) {
+        return cleaned;
+      }
     }
   }
   return undefined;
@@ -206,7 +234,12 @@ function parseTags(args: string[]): string[] | undefined {
  */
 function extractTaskId(args: string[]): string | undefined {
   for (const arg of args) {
-    if (!arg.startsWith('priority:') && !arg.startsWith('due:') && !arg.startsWith('tags:') && !arg.startsWith('status:')) {
+    if (
+      !arg.startsWith('priority:') &&
+      !arg.startsWith('due:') &&
+      !arg.startsWith('tags:') &&
+      !arg.startsWith('status:')
+    ) {
       return arg;
     }
   }
@@ -218,7 +251,9 @@ function extractTaskId(args: string[]): string | undefined {
  */
 function extractDescription(args: string[]): string {
   return args
-    .filter((arg) => !arg.startsWith('priority:') && !arg.startsWith('due:') && !arg.startsWith('tags:'))
+    .filter(
+      (arg) => !arg.startsWith('priority:') && !arg.startsWith('due:') && !arg.startsWith('tags:')
+    )
     .join(' ');
 }
 
@@ -250,9 +285,15 @@ async function handleTodoAdd(args: string[], ctx: CommandContext): Promise<strin
       due_date?: number;
       tags?: string[];
     } = {};
-    if (priority !== undefined) options.priority = priority;
-    if (dueDate !== undefined) options.due_date = dueDate;
-    if (tags !== undefined) options.tags = tags;
+    if (priority !== undefined) {
+      options.priority = priority;
+    }
+    if (dueDate !== undefined) {
+      options.due_date = dueDate;
+    }
+    if (tags !== undefined) {
+      options.tags = tags;
+    }
 
     const task = await env.MEMORY_SERVICE.addTask(userId, description, options);
 
@@ -293,25 +334,37 @@ async function handleTodoList(args: string[], ctx: CommandContext): Promise<stri
       return `📋 No tasks found${statusText}`;
     }
 
-    const lines: string[] = [`📋 ${bold('Tasks')}${statusFilter ? ` (${esc(statusFilter)})` : ''} (${total} total)\n`];
+    const lines: string[] = [
+      `📋 ${bold('Tasks')}${statusFilter ? ` (${esc(statusFilter)})` : ''} (${total} total)\n`,
+    ];
 
     // Group by status
     const grouped = tasks.reduce(
       (acc, task) => {
-        if (!acc[task.status]) acc[task.status] = [];
+        if (!acc[task.status]) {
+          acc[task.status] = [];
+        }
         acc[task.status]!.push(task);
         return acc;
       },
       {} as Record<string, TaskItem[]>
     );
 
-    const statusOrder: TaskItem['status'][] = ['in_progress', 'pending', 'blocked', 'completed', 'cancelled'];
+    const statusOrder: TaskItem['status'][] = [
+      'in_progress',
+      'pending',
+      'blocked',
+      'completed',
+      'cancelled',
+    ];
 
     for (const status of statusOrder) {
       const statusTasks = grouped[status];
-      if (!statusTasks || statusTasks.length === 0) continue;
+      if (!statusTasks || statusTasks.length === 0) {
+        continue;
+      }
 
-      lines.push(`${bold(getStatusIcon(status) + ' ' + status.replace('_', ' ').toUpperCase())}`);
+      lines.push(`${bold(`${getStatusIcon(status)} ${status.replace('_', ' ').toUpperCase()}`)}`);
 
       for (const task of statusTasks) {
         const shortId = task.id.slice(0, 8);
@@ -491,7 +544,7 @@ export const handleTodoCommand: CommandHandler = async (text, ctx) => {
       return handleTodoUpdate(args.slice(1), ctx);
     case 'delete':
       return handleTodoDelete(args.slice(1), ctx);
-    default:
+    default: {
       // Show help
       const isHTML = ctx.parseMode === 'HTML';
       const bold = (text: string) => (isHTML ? `<b>${text}</b>` : `*${text}*`);
@@ -506,5 +559,6 @@ export const handleTodoCommand: CommandHandler = async (text, ctx) => {
         `${code('/todo update')} <task_id> [description] [priority:N] [status:STATUS]`,
         `${code('/todo delete')} <task_id>`,
       ].join('\n');
+    }
   }
 };
