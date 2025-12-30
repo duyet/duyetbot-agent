@@ -1,0 +1,86 @@
+name: Agent Nightly
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # 2 AM UTC daily
+  workflow_dispatch:
+    inputs:
+      task_source:
+        description: 'Task source (all, github-issues, file, memory)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - github-issues
+          - file
+          - memory
+      task_id:
+        description: 'Specific task ID (optional)'
+        required: false
+        type: string
+      dry_run:
+        description: 'Dry run mode (no real changes)'
+        required: false
+        default: false
+        type: boolean
+
+concurrency:
+  group: agent-nightly
+  cancel-in-progress: false
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+jobs:
+  run-agent:
+    name: Run Agent
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Run Agent
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          MODEL: ${{ vars.AGENT_MODEL || 'anthropic/claude-sonnet-4' }}
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+          TASK_SOURCE: ${{ inputs.task_source || 'all' }}
+          TASK_ID: ${{ inputs.task_id || '' }}
+        run: |
+          ARGS="--source=$TASK_SOURCE"
+          if [ -n "$TASK_ID" ]; then
+            ARGS="$ARGS --task=$TASK_ID"
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          bun run apps/github-actions-agent/src/index.ts $ARGS
+
+      - name: Upload Agent Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-logs-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
