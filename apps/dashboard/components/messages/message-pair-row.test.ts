@@ -2,9 +2,9 @@ import { describe, expect, test } from 'vitest';
 import type { AnalyticsMessage } from '@duyetbot/analytics';
 import {
   createMessagePairs,
+  formatTimestamp,
   isErrorResponse,
   MessagePair,
-  formatTimestamp,
 } from './message-pair-row';
 
 describe('isErrorResponse', () => {
