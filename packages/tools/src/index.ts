@@ -4,6 +4,8 @@
  * Built-in tools for agent operations:
  * - bash: Execute shell commands
  * - git: Git operations
+ * - file-ops: File read/write/edit operations (autonomous code editing)
+ * - github: GitHub API operations
  * - research: Web research (DuckDuckGo)
  * - plan: Task planning
  * - sleep: Delay execution
@@ -12,6 +14,24 @@
 
 import type { Tool } from '@duyetbot/types';
 import { bashTool } from './bash.js';
+import {
+  ciPipelineTool,
+  deployCloudflareTool,
+  healthCheckTool,
+  lintTool,
+  runBuildTool,
+  runTestsTool,
+  typeCheckTool,
+} from './deployment.js';
+import {
+  batchFileOpsTool,
+  editFileTool,
+  fileStatsTool,
+  listDirTool,
+  readFileTool,
+  searchFilesTool,
+  writeFileTool,
+} from './file-ops.js';
 import { gitTool } from './git.js';
 import { planTool } from './plan.js';
 import { researchTool } from './research.js';
@@ -19,6 +39,8 @@ import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
 
 export * from './bash.js';
+export * from './deployment.js';
+export * from './file-ops.js';
 export * from './git.js';
 export * from './github.js';
 export * from './plan.js';
@@ -39,7 +61,30 @@ export type AgentPlatform = 'cli' | 'server' | 'telegram' | 'github';
  * Note: github tool requires Octokit instance, use createGitHubTool() separately.
  */
 export function getAllBuiltinTools(): Tool[] {
-  return [bashTool, gitTool, planTool, researchTool, scratchpadTool, sleepTool];
+  return [
+    bashTool,
+    gitTool,
+    planTool,
+    researchTool,
+    scratchpadTool,
+    sleepTool,
+    // File operations
+    readFileTool,
+    writeFileTool,
+    editFileTool,
+    listDirTool,
+    searchFilesTool,
+    fileStatsTool,
+    batchFileOpsTool,
+    // Deployment
+    runBuildTool,
+    runTestsTool,
+    typeCheckTool,
+    lintTool,
+    deployCloudflareTool,
+    healthCheckTool,
+    ciPipelineTool,
+  ];
 }
 
 /**
