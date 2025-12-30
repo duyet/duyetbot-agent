@@ -24,3 +24,5 @@ Plan and continue improve apps/dashboard
 
 Cost Distribution
 Estimated cost by AI model -> most using glm-4.7, opus, ...
+
+commit and push for each iter
