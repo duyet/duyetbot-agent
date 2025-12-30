@@ -112,7 +112,7 @@ export interface ShortTermMemoryListItem {
 export interface LongTermMemoryItem {
   id: string;
   user_id: string;
-  category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note';
+  category: 'fact' | 'preference' | 'pattern' | 'decision' | 'note' | 'task';
   key: string;
   value: string;
   importance: number;
