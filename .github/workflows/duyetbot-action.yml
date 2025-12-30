@@ -1,0 +1,190 @@
+name: duyetbot-action
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description for the agent'
+        required: true
+        type: string
+      model:
+        description: 'AI model to use'
+        required: false
+        default: 'anthropic/claude-sonnet-4-20250514'
+        type: choice
+        options:
+          - anthropic/claude-sonnet-4-20250514
+          - anthropic/claude-opus-4-20250514
+          - anthropic/claude-haiku-4-20250514
+          - google/gemini-2.5-flash
+          - google/gemini-2.5-pro
+          - openai/gpt-4o
+          - openai/gpt-4o-mini
+      timeout:
+        description: 'Timeout in minutes'
+        required: false
+        default: '60'
+        type: string
+      dry_run:
+        description: 'Dry run (no git changes)'
+        required: false
+        default: false
+        type: boolean
+      task_source:
+        description: 'Task source for existing tasks'
+        required: false
+        default: 'github-issues'
+        type: choice
+        options:
+          - github-issues
+          - file
+          - memory
+          - all
+      task_id:
+        description: 'Specific task ID to run (optional, overrides creating new issue)'
+        required: false
+        type: string
+
+concurrency:
+  group: duyetbot-action-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+jobs:
+  run-agent:
+    name: Run duyetbot-action
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: ${{ inputs.timeout || 60 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build Project
+        run: bun run build
+
+      - name: Create GitHub Issue for Task
+        id: create_issue
+        if: inputs.task_id == ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use jq to safely construct the issue body JSON (prevents command injection)
+          ISSUE_BODY=$(jq -n \
+            --arg desc "${{ inputs.task }}" \
+            '"## Task Description\n\n\($desc)\n\n---\n\n*This issue was automatically created by duyetbot-action*"')
+
+          # Create GitHub issue using the safely escaped body
+          RESPONSE=$(gh issue create \
+            --title "🤖 duyetbot-action Task" \
+            --body "$ISSUE_BODY" \
+            --label "duyetbot-action" \
+            --json number,title \
+            --jq '{number: .number, title: .title}')
+
+          # Extract issue number and set output
+          ISSUE_NUMBER=$(echo "$RESPONSE" | jq -r '.number')
+          echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "✅ Created issue #${ISSUE_NUMBER}"
+
+      - name: Run duyetbot-action
+        env:
+          # Use OpenRouter with Anthropic-compatible API
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          ANTHROPIC_DEFAULT_OPUS_MODEL: '@preset/claude-code-github-action'
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: '@preset/claude-code-github-action'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          MODEL: ${{ inputs.model }}
+          DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
+          TASK_SOURCE: ${{ inputs.task_source }}
+          TASK_ID: ${{ inputs.task_id != '' && inputs.task_id || format('github-{0}', steps.create_issue.outputs.issue_number) }}
+        run: |
+          # Build arguments
+          ARGS="--source=$TASK_SOURCE"
+          if [ -n "$TASK_ID" ]; then
+            ARGS="$ARGS --task=$TASK_ID"
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+
+          echo "🤖 Running duyetbot-action..."
+          echo "   Model: ${MODEL}"
+          echo "   Source: ${TASK_SOURCE}"
+          echo "   Task ID: ${TASK_ID}"
+          echo "   Dry Run: ${DRY_RUN}"
+          echo ""
+
+          bun run apps/duyetbot-action/src/index.ts $ARGS
+
+      - name: Close Task Issue
+        if: inputs.task_id == '' && steps.create_issue.outputs.issue_number != '' && inputs.dry_run != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.create_issue.outputs.issue_number }}
+        run: |
+          # Close the issue after task completion
+          gh issue close "$ISSUE_NUMBER" \
+            --comment "✅ Task completed by duyetbot-action run #${{ github.run_number }}"
+
+      - name: Upload Agent Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-logs-${{ github.run_number }}
+          path: |
+            .agent/logs/
+            .agent/checkpoints/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        env:
+          TASK: ${{ inputs.task }}
+          MODEL: ${{ inputs.model }}
+          TASK_SOURCE: ${{ inputs.task_source }}
+          TASK_ID: ${{ inputs.task_id != '' && inputs.task_id || format('github-{0}', steps.create_issue.outputs.issue_number) }}
+          DRY_RUN: ${{ inputs.dry_run }}
+        run: |
+          {
+            echo "## duyetbot-action Run Summary"
+            echo ""
+            echo "| Setting | Value |"
+            echo "|---------|-------|"
+            echo "| Task | ${TASK} |"
+            echo "| Model | ${MODEL} |"
+            echo "| Task Source | ${TASK_SOURCE} |"
+            echo "| Task ID | ${TASK_ID} |"
+            echo "| Dry Run | ${DRY_RUN} |"
+            echo "| Status | ${{ job.status }} |"
+            echo ""
+            echo "### 🤖 Full Capabilities"
+            echo ""
+            echo "duyetbot-action runs with:"
+            echo "- ✅ **Full Skills**: bash, git, github, research, plan, and more"
+            echo "- ✅ **MCP Servers**: Memory MCP and other configured servers"
+            echo "- ✅ **Sub-Agents**: Autonomous task delegation and parallel execution"
+            echo "- ✅ **Checkpoint Support**: Resume from interrupted runs"
+            echo "- ✅ **Token Tracking**: Full usage and cost tracking"
+          } >> "$GITHUB_STEP_SUMMARY"
