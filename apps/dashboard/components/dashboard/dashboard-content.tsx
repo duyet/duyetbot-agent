@@ -13,20 +13,11 @@ import {
 } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { formatNumber } from '@/lib/chart-theme';
 import { useStats } from '@/lib/hooks/use-dashboard-data';
 import { CostDistributionCard } from './CostDistributionCard';
 import { DashboardSkeleton } from './dashboard-skeleton';
 import { QuickLinkCard } from './quick-link-card';
-
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(1)}M`;
-  }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}K`;
-  }
-  return num.toString();
-}
 
 export function DashboardContent() {
   const { data: stats, isLoading } = useStats();
