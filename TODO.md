@@ -16,9 +16,9 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 ### 1. Production Readiness (Priority: CRITICAL)
 - [x] Remove all .DS_Store files and build artifacts from git
 - [x] Ensure .gitignore covers all temporary files
-- [ ] Run type-check across all packages
-- [ ] Fix any broken imports
-- [ ] Verify all workspace packages in package.json
+- [x] Run type-check across all packages
+- [x] Fix any broken imports
+- [x] Verify all workspace packages in package.json
 
 ### 2. Web App Improvements (Priority: HIGH)
 
@@ -116,6 +116,8 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 
 ## ✅ Recent Completions
 
+**Iteration 8**: GitHub Actions Agent - self-improving AI agent with Claude SDK wrapper, multi-source task picker, checkpoint-based state persistence
+**Iteration 7**: Web test isolation fix - enabled vitest isolation to prevent DOM pollution
 **Iteration 62**: Repository cleanup - removed temp files, updated .gitignore
 **Iteration 61**: Unit tests for 6 critical hooks (80% pass rate)
 **Iteration 60**: Hook testing infrastructure with happy-dom
