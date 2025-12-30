@@ -79,7 +79,7 @@ export const localToolsMcp: MCPServerConfig = {
 			type: 'sse',
 			headers: {
 				Authorization: `Bearer ${env.TOOLS_API_KEY || 'insecure-dev-key'}`,
-				'X-Tool-Permissions': env.TOOL_PERMISSIONS || 'read,write,execute',
+				'X-Tool-Permissions': (env.TOOL_PERMISSIONS as string) || 'read,write,execute',
 			},
 		},
 	}),
