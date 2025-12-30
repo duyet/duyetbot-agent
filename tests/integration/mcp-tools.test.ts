@@ -8,8 +8,9 @@
  * - Error handling and edge cases
  */
 
-import { ToolExecutor } from '@duyetbot/cloudflare-agent/src/chat/tool-executor.js';
-import { MCPClientError, MCPMemoryClient } from '@duyetbot/core/src/mcp/client.js';
+// Import from specific paths to avoid cloudflare: protocol imports
+import { ToolExecutor } from '@duyetbot/cloudflare-agent/chat/tool-executor';
+import { MCPClientError, MCPMemoryClient } from '@duyetbot/core';
 import type { Tool } from '@duyetbot/types';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
@@ -91,7 +92,7 @@ describe('MCP Memory Client', () => {
       const secondCallArgs = mockFetch.mock.calls[1];
       expect(secondCallArgs[1]).toMatchObject({
         headers: expect.objectContaining({
-          authorization: 'Bearer token456',
+          Authorization: 'Bearer token456',
         }),
       });
     });
@@ -387,8 +388,9 @@ describe('ToolExecutor with MCP Tools', () => {
       expect(result).toEqual({
         result: 'Memory saved',
       });
+      // When no double-underscore separator, serverId defaults to tool name
       expect(mockMcpCallTool).toHaveBeenCalledWith({
-        serverId: '',
+        serverId: 'save_memory',
         name: 'save_memory',
         arguments: {
           messages: [{ role: 'user', content: 'Test' }],

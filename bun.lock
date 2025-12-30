@@ -526,10 +526,12 @@
       "name": "@duyetbot/integration-tests",
       "version": "0.1.0",
       "devDependencies": {
+        "@duyetbot/cloudflare-agent": "workspace:*",
         "@duyetbot/core": "workspace:*",
         "@duyetbot/tools": "workspace:*",
         "@duyetbot/types": "workspace:*",
         "vitest": "^2.0.0",
+        "zod": "^3.23.0",
       },
     },
   },
