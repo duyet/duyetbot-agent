@@ -6,7 +6,6 @@
   "scripts": {
     "start": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
-    "nightly": "bun run src/run-nightly.ts",
     "test": "vitest run",
     "type-check": "tsc --noEmit"
   },

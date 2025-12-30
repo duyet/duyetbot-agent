@@ -16,7 +16,6 @@ env:
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 # Define the prompt here in YAML for easy modification
-# This agent will: analyze repo, find improvements, implement, create PR
 vars:
   TASK_PROMPT: |
     Analyze the repository comprehensively and find things that need improvement.
@@ -63,7 +62,29 @@ jobs:
       - name: Build Project
         run: bun run build
 
-      - name: Run duyetbot-action Nightly
+      - name: Create GitHub Issue for Nightly Task
+        id: create_issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use jq to safely construct the issue body
+          ISSUE_BODY=$(jq -n \
+            --arg desc "${{ vars.TASK_PROMPT }}" \
+            '"## Task Description\n\n\($desc)\n\n---\n\n*This issue was automatically created by duyetbot-action Nightly*"')
+
+          # Create GitHub issue
+          RESPONSE=$(gh issue create \
+            --title "🌙 duyetbot-action Nightly: Repository Analysis" \
+            --body "$ISSUE_BODY" \
+            --label "duyetbot-action,scheduled" \
+            --json number,title \
+            --jq '{number: .number, title: .title}')
+
+          ISSUE_NUMBER=$(echo "$RESPONSE" | jq -r '.number')
+          echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "✅ Created nightly issue #${ISSUE_NUMBER}"
+
+      - name: Run duyetbot-action
         env:
           # OpenRouter with Anthropic-compatible API
           ANTHROPIC_BASE_URL: https://openrouter.ai/api
@@ -73,10 +94,19 @@ jobs:
           ANTHROPIC_DEFAULT_HAIKU_MODEL: '@preset/claude-code-github-action'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
-          TASK_DESCRIPTION: ${{ vars.TASK_PROMPT }}
           DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
         run: |
-          bun run apps/duyetbot-action/src/run-nightly.ts
+          TASK_ID="github-${{ steps.create_issue.outputs.issue_number }}"
+          bun run apps/duyetbot-action/src/index.ts --source github-issues --task "$TASK_ID"
+
+      - name: Close Nightly Issue
+        if: inputs.dry_run != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.create_issue.outputs.issue_number }}
+        run: |
+          gh issue close "$ISSUE_NUMBER" \
+            --comment "✅ Completed by duyetbot-action Nightly run #${{ github.run_number }}"
 
       - name: Upload Agent Logs
         uses: actions/upload-artifact@v4

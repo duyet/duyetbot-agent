@@ -85,7 +85,7 @@
     "prompt:share": "cd prompts-eval && bun --env-file=../.env.local promptfoo share",
     "prompt:report": "bun --env-file=.env.local run prompts-eval/scripts/generate-report.ts",
     "agent": "./scripts/trigger-agent.sh",
-    "duyetbot-action": "bun run apps/duyetbot-action/src/run-nightly.ts"
+    "duyetbot-action": "bun run apps/duyetbot-action/src/index.ts"
   },
   "keywords": [
     "agent",
