@@ -6,13 +6,10 @@
  * 2. CompactTypingIndicator - Compact inline version
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
+import React from "react";
 import { describe, expect, it } from "vitest";
-import {
-	TypingIndicator,
-	CompactTypingIndicator,
-} from "./typing-indicator";
+import { CompactTypingIndicator, TypingIndicator } from "./typing-indicator";
 
 describe("TypingIndicator", () => {
 	describe("default variant (dots)", () => {
@@ -135,8 +132,8 @@ describe("TypingIndicator", () => {
 
 			const dotsArray = Array.from(dots);
 			dotsArray.forEach((dot) => {
-				expect((dot as HTMLElement)).toHaveClass("h-1");
-				expect((dot as HTMLElement)).toHaveClass("w-1");
+				expect(dot as HTMLElement).toHaveClass("h-1");
+				expect(dot as HTMLElement).toHaveClass("w-1");
 			});
 		});
 

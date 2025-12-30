@@ -5,11 +5,7 @@
  * Uses SHA-256 hashing for secure key storage.
  */
 
-import type {
-  APIKeyRecord,
-  KeyValidationResult,
-  RotationOptions,
-} from './types.js';
+import type { APIKeyRecord, KeyValidationResult, RotationOptions } from './types.js';
 
 /**
  * Generate a secure random API key
@@ -263,11 +259,15 @@ export async function rotateAPIKey(
   };
 
   // Create new key with incremented version
-  const { apiKey, record: newRecord } = await createAPIKeyRecord(oldRecord.name, oldRecord.createdBy, {
-    version: oldRecord.version + 1,
-    expiresAt: oldRecord.expiresAt === 0 ? 0 : now + (oldRecord.expiresAt - oldRecord.createdAt),
-    replacesId: oldRecord.id,
-  });
+  const { apiKey, record: newRecord } = await createAPIKeyRecord(
+    oldRecord.name,
+    oldRecord.createdBy,
+    {
+      version: oldRecord.version + 1,
+      expiresAt: oldRecord.expiresAt === 0 ? 0 : now + (oldRecord.expiresAt - oldRecord.createdAt),
+      replacesId: oldRecord.id,
+    }
+  );
 
   // Call rotation callback if provided
   if (resolvedOptions.onRotation) {

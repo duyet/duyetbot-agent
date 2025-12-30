@@ -14,13 +14,19 @@
  * - Better TypeScript compatibility with React 19
  */
 
-import React from "react";
 import type { UseChatHelpers } from "@ai-sdk/react";
-import type { Components as VirtuosoComponents } from "react-virtuoso";
-import { Virtuoso } from "react-virtuoso";
 import equal from "fast-deep-equal";
 import { ArrowDownIcon } from "lucide-react";
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+	memo,
+	useCallback,
+	useEffect,
+	useMemo,
+	useRef,
+	useState,
+} from "react";
+import type { Components as VirtuosoComponents } from "react-virtuoso";
+import { Virtuoso } from "react-virtuoso";
 import { useMessages } from "@/hooks/use-messages";
 import { useSpeechSynthesis } from "@/hooks/use-text-to-speech";
 import type { Vote } from "@/lib/db/schema";
@@ -81,7 +87,9 @@ function MessageItem({
 				requiresScrollPadding={hasSentMessage && index === messagesLength - 1}
 				setMessages={setMessages}
 				vote={
-					votes ? votes.find((vote) => vote.messageId === message.id) : undefined
+					votes
+						? votes.find((vote) => vote.messageId === message.id)
+						: undefined
 				}
 			/>
 		</div>
@@ -231,7 +239,8 @@ function PureVirtualizedMessages({
 		prevStatusRef.current = status;
 
 		if (!wasStreaming || !isNowReady) return;
-		if (!isSupported || !voiceSettings.enabled || !voiceSettings.autoRead) return;
+		if (!isSupported || !voiceSettings.enabled || !voiceSettings.autoRead)
+			return;
 		if (messages.length === 0) return;
 
 		const lastMessage = messages[messages.length - 1];
@@ -253,7 +262,12 @@ function PureVirtualizedMessages({
 
 	// Scroll to bottom when new messages arrive
 	useEffect(() => {
-		if (hasSentMessage && isAtBottom && messages.length > 0 && virtuosoRef.current) {
+		if (
+			hasSentMessage &&
+			isAtBottom &&
+			messages.length > 0 &&
+			virtuosoRef.current
+		) {
 			virtuosoRef.current.scrollToIndex({
 				index: "LAST",
 				behavior: "auto",
@@ -315,7 +329,9 @@ function PureVirtualizedMessages({
 					ref={(node) => {
 						// Set both refs
 						if (node) {
-							(messagesContainerRef as React.MutableRefObject<HTMLElement | null>).current = node;
+							(
+								messagesContainerRef as React.MutableRefObject<HTMLElement | null>
+							).current = node;
 						}
 						if (typeof ref === "function") {
 							ref(node);
@@ -327,7 +343,10 @@ function PureVirtualizedMessages({
 			)),
 			// Item wrapper
 			Item: ({ children, ...props }) => (
-				<div {...props} className="mx-auto min-w-0 max-w-4xl px-3 py-2 sm:px-4 md:px-6 lg:px-8">
+				<div
+					{...props}
+					className="mx-auto min-w-0 max-w-4xl px-3 py-2 sm:px-4 md:px-6 lg:px-8"
+				>
 					{children}
 				</div>
 			),
@@ -341,7 +360,10 @@ function PureVirtualizedMessages({
 									"state" in part && part.state === "approval-responded",
 							),
 						) && <ThinkingMessage />}
-					<div ref={messagesEndRef} className="min-h-[24px] min-w-[24px] shrink-0" />
+					<div
+						ref={messagesEndRef}
+						className="min-h-[24px] min-w-[24px] shrink-0"
+					/>
 				</>
 			),
 		}),
@@ -388,26 +410,29 @@ function PureVirtualizedMessages({
 	);
 }
 
-export const VirtualizedMessages = memo(PureVirtualizedMessages, (prevProps, nextProps) => {
-	if (prevProps.isArtifactVisible && nextProps.isArtifactVisible) {
-		return true;
-	}
+export const VirtualizedMessages = memo(
+	PureVirtualizedMessages,
+	(prevProps, nextProps) => {
+		if (prevProps.isArtifactVisible && nextProps.isArtifactVisible) {
+			return true;
+		}
 
-	if (prevProps.status !== nextProps.status) {
-		return false;
-	}
-	if (prevProps.selectedModelId !== nextProps.selectedModelId) {
-		return false;
-	}
-	if (prevProps.messages.length !== nextProps.messages.length) {
-		return false;
-	}
-	if (!equal(prevProps.messages, nextProps.messages)) {
-		return false;
-	}
-	if (!equal(prevProps.votes, nextProps.votes)) {
-		return false;
-	}
+		if (prevProps.status !== nextProps.status) {
+			return false;
+		}
+		if (prevProps.selectedModelId !== nextProps.selectedModelId) {
+			return false;
+		}
+		if (prevProps.messages.length !== nextProps.messages.length) {
+			return false;
+		}
+		if (!equal(prevProps.messages, nextProps.messages)) {
+			return false;
+		}
+		if (!equal(prevProps.votes, nextProps.votes)) {
+			return false;
+		}
 
-	return false;
-});
+		return false;
+	},
+);

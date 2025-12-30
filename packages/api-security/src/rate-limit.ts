@@ -6,10 +6,7 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type {
-  PerKeyRateLimitConfig,
-  RateLimitState,
-} from './types.js';
+import type { PerKeyRateLimitConfig, RateLimitState } from './types.js';
 
 /**
  * Default rate limit configuration
@@ -174,11 +171,11 @@ export async function checkRateLimit(
     state.burstCount = 0;
   }
 
-  if (!state.burstStart) {
+  if (state.burstStart) {
+    state.burstCount++;
+  } else {
     state.burstStart = now;
     state.burstCount = 1;
-  } else {
-    state.burstCount++;
   }
 
   if (state.burstCount > effectiveConfig.maxBurst) {
@@ -234,7 +231,7 @@ export async function getRateLimitStats(db: D1Database): Promise<{
     .first<{ count: number }>();
   const activeResult = await db
     .prepare(
-      "SELECT COUNT(*) as count FROM api_rate_limits WHERE json_array_length(request_timestamps) > 0"
+      'SELECT COUNT(*) as count FROM api_rate_limits WHERE json_array_length(request_timestamps) > 0'
     )
     .first<{ count: number }>();
 

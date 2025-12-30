@@ -108,7 +108,8 @@ function PureVersionFooter({
 
 export const VersionFooter = memo(PureVersionFooter, (prevProps, nextProps) => {
 	// Re-render only if version index or documents change
-	if (prevProps.currentVersionIndex !== nextProps.currentVersionIndex) return false;
+	if (prevProps.currentVersionIndex !== nextProps.currentVersionIndex)
+		return false;
 	if (prevProps.documents?.length !== nextProps.documents?.length) return false;
 	return true;
 });

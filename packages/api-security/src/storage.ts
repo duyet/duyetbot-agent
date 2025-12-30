@@ -5,16 +5,8 @@
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
-import type {
-  APIKeyRecord,
-  KeyValidationResult,
-  RotationOptions,
-} from './types.js';
-import {
-  createAPIKeyRecord,
-  rotateAPIKey,
-  validateAPIKey,
-} from './api-keys.js';
+import { createAPIKeyRecord, rotateAPIKey, validateAPIKey } from './api-keys.js';
+import type { APIKeyRecord, KeyValidationResult, RotationOptions } from './types.js';
 
 /**
  * D1 schema for API key storage
@@ -67,9 +59,7 @@ CREATE INDEX IF NOT EXISTS idx_audit_log_performed_at ON api_key_audit_log(perfo
  * @param db - D1 database binding
  */
 export async function initializeAPIKeysStorage(db: D1Database): Promise<void> {
-  await db.batch([
-    db.prepare(API_KEYS_SCHEMA),
-  ]);
+  await db.batch([db.prepare(API_KEYS_SCHEMA)]);
 }
 
 /**
@@ -255,10 +245,7 @@ export async function rotateAPIKeyInStorage(
     onRotation: options.onRotation ?? (() => {}),
   };
   // Fetch old record
-  const oldResult = await db
-    .prepare('SELECT * FROM api_keys WHERE id = ?')
-    .bind(oldKeyId)
-    .first();
+  const oldResult = await db.prepare('SELECT * FROM api_keys WHERE id = ?').bind(oldKeyId).first();
 
   if (!oldResult) {
     throw new Error('API key not found');
@@ -280,7 +267,11 @@ export async function rotateAPIKeyInStorage(
   };
 
   // Rotate key
-  const { apiKey, record: newBaseRecord, oldRecordId } = await rotateAPIKey(oldRecord, resolvedOptions);
+  const {
+    apiKey,
+    record: newBaseRecord,
+    oldRecordId,
+  } = await rotateAPIKey(oldRecord, resolvedOptions);
 
   // Create new key record
   const newId = crypto.randomUUID();
@@ -340,7 +331,11 @@ export async function rotateAPIKeyInStorage(
  * @param keyId - ID of key to revoke
  * @param revokedBy - User performing the revocation
  */
-export async function revokeAPIKey(db: D1Database, keyId: string, revokedBy: string): Promise<void> {
+export async function revokeAPIKey(
+  db: D1Database,
+  keyId: string,
+  revokedBy: string
+): Promise<void> {
   await db.prepare('UPDATE api_keys SET is_active = 0 WHERE id = ?').bind(keyId).run();
 
   // Log audit event
@@ -435,7 +430,10 @@ export async function listAPIKeys(
     ${offsetClause}
   `;
 
-  const results = await db.prepare(query).bind(...params).all();
+  const results = await db
+    .prepare(query)
+    .bind(...params)
+    .all();
 
   return (results.results || []).map((row: any) => ({
     id: row.id,

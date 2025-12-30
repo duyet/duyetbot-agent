@@ -14,7 +14,11 @@
  * @see https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries
  */
 
-import { verifySignatureWithTimestamp, extractTimestamp, createSignatureOptions } from '@duyetbot/api-security';
+import {
+  createSignatureOptions,
+  extractTimestamp,
+  verifySignatureWithTimestamp,
+} from '@duyetbot/api-security';
 import { logger } from '@duyetbot/hono-middleware';
 import type { MiddlewareHandler } from 'hono';
 

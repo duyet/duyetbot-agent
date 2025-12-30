@@ -8,8 +8,8 @@
  * Note: Using container-based queries instead of text queries due to happy-dom + React 19 compatibility issues.
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
+import React from "react";
 import { describe, expect, it, vi } from "vitest";
 
 // Mock the hook before importing the component
@@ -17,8 +17,8 @@ vi.mock("@/hooks/use-online-status", () => ({
 	useOnlineStatus: vi.fn(),
 }));
 
-import { OfflineBanner } from "./offline-banner";
 import { useOnlineStatus } from "@/hooks/use-online-status";
+import { OfflineBanner } from "./offline-banner";
 
 describe("OfflineBanner", () => {
 	describe("when online", () => {
@@ -50,7 +50,9 @@ describe("OfflineBanner", () => {
 
 			const { container } = render(<OfflineBanner />);
 			const banner = container.firstChild as HTMLElement;
-			expect(banner.textContent).toContain("You are offline. Some features may be limited.");
+			expect(banner.textContent).toContain(
+				"You are offline. Some features may be limited.",
+			);
 		});
 
 		it("shows WifiOff icon", () => {

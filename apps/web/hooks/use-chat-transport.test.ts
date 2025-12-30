@@ -9,8 +9,8 @@
  * 5. RefObject handling for currentModelId
  */
 
-import { describe, expect, it, vi } from "vitest";
 import type { RefObject } from "react";
+import { describe, expect, it, vi } from "vitest";
 import type { VisibilityType } from "@/components/visibility-selector";
 import { createChatTransport } from "./use-chat-transport";
 

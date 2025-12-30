@@ -1,6 +1,16 @@
 'use client';
 
-import { Activity, Brain, Calendar, Clock, Database, DollarSign, FileText, Server, Zap } from 'lucide-react';
+import {
+  Activity,
+  Brain,
+  Calendar,
+  Clock,
+  Database,
+  DollarSign,
+  FileText,
+  Server,
+  Zap,
+} from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useStats } from '@/lib/hooks/use-dashboard-data';

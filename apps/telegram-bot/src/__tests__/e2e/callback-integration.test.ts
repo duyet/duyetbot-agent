@@ -40,11 +40,7 @@ interface CallbackQueryUpdate {
   };
 }
 
-function createCallbackQuery(
-  data: string,
-  user = 'admin',
-  messageId = 100
-): CallbackQueryUpdate {
+function createCallbackQuery(data: string, user = 'admin', messageId = 100): CallbackQueryUpdate {
   const users = {
     admin: { id: 12345, is_bot: false, first_name: 'Duyet', username: 'duyet' },
     authorized: { id: 67890, is_bot: false, first_name: 'TestUser', username: 'testuser' },

@@ -10,19 +10,19 @@
  * 6. KeyboardShortcutsIndicator component
  */
 
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import React from "react";
-import { render, screen, fireEvent, act } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
 	APP_SHORTCUTS,
 	formatShortcut,
 	getModifierKeyLabel,
 	isMacPlatform,
+	type KeyboardShortcut,
 	KeyboardShortcutsDialog,
 	KeyboardShortcutsIndicator,
 	matchesShortcut,
 	useKeyboardShortcuts,
-	type KeyboardShortcut,
 } from "./keyboard-shortcuts";
 
 // Mock shadcn/ui dialog components
@@ -106,7 +106,11 @@ describe("keyboard-shortcuts - formatShortcut", () => {
 		});
 
 		it("formats simple key without modifiers", () => {
-			const shortcut: KeyboardShortcut = { key: "/", description: "test", category: "Test" };
+			const shortcut: KeyboardShortcut = {
+				key: "/",
+				description: "test",
+				category: "Test",
+			};
 			expect(formatShortcut(shortcut)).toBe("/");
 		});
 
@@ -173,7 +177,11 @@ describe("keyboard-shortcuts - formatShortcut", () => {
 		});
 
 		it("formats simple key without modifiers", () => {
-			const shortcut: KeyboardShortcut = { key: "/", description: "test", category: "Test" };
+			const shortcut: KeyboardShortcut = {
+				key: "/",
+				description: "test",
+				category: "Test",
+			};
 			expect(formatShortcut(shortcut)).toBe("/");
 		});
 
@@ -375,7 +383,9 @@ describe("keyboard-shortcuts - KeyboardShortcutsDialog", () => {
 
 		// Close with Escape
 		fireEvent.keyDown(window, { key: "Escape" });
-		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe("false");
+		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe(
+			"false",
+		);
 	});
 
 	it("toggles dialog on repeated ? key press", () => {
@@ -387,7 +397,9 @@ describe("keyboard-shortcuts - KeyboardShortcutsDialog", () => {
 
 		// Close
 		fireEvent.keyDown(window, { key: "?" });
-		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe("false");
+		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe(
+			"false",
+		);
 	});
 
 	it("does not trigger when typing in input", () => {
@@ -403,7 +415,9 @@ describe("keyboard-shortcuts - KeyboardShortcutsDialog", () => {
 		fireEvent.keyDown(input, { key: "?" });
 
 		// Dialog should remain closed
-		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe("false");
+		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe(
+			"false",
+		);
 	});
 
 	it("does not trigger when typing in textarea", () => {
@@ -418,7 +432,9 @@ describe("keyboard-shortcuts - KeyboardShortcutsDialog", () => {
 		textarea.focus();
 		fireEvent.keyDown(textarea, { key: "?" });
 
-		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe("false");
+		expect(screen.getByTestId("dialog").getAttribute("data-open")).toBe(
+			"false",
+		);
 	});
 
 	it("groups shortcuts by category when open", () => {
@@ -655,7 +671,9 @@ describe("keyboard-shortcuts - KeyboardShortcutsIndicator", () => {
 
 describe("keyboard-shortcuts - APP_SHORTCUTS constant", () => {
 	it("has all expected categories", () => {
-		const categories = Array.from(new Set(APP_SHORTCUTS.map((s) => s.category)));
+		const categories = Array.from(
+			new Set(APP_SHORTCUTS.map((s) => s.category)),
+		);
 		expect(categories).toContain("Navigation");
 		expect(categories).toContain("Chat");
 		expect(categories).toContain("Artifacts");
@@ -664,7 +682,9 @@ describe("keyboard-shortcuts - APP_SHORTCUTS constant", () => {
 	});
 
 	it("has required Navigation shortcuts", () => {
-		const navShortcuts = APP_SHORTCUTS.filter((s) => s.category === "Navigation");
+		const navShortcuts = APP_SHORTCUTS.filter(
+			(s) => s.category === "Navigation",
+		);
 		expect(navShortcuts.length).toBeGreaterThanOrEqual(3);
 
 		const keys = navShortcuts.map((s) => s.key.toLowerCase());

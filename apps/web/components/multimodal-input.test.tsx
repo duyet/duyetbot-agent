@@ -10,13 +10,13 @@
  * 6. MultimodalInput memo - Memoization comparison function
  */
 
-import React from "react";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
 import type { UseChatHelpers } from "@ai-sdk/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { UIMessage } from "ai";
-import { MultimodalInput } from "./multimodal-input";
+import React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { Attachment, ChatMessage } from "@/lib/types";
+import { MultimodalInput } from "./multimodal-input";
 
 // Create mock functions that can be controlled in tests
 const mockHandleFileChange = vi.fn();
@@ -69,14 +69,30 @@ vi.mock("@ai-sdk/react", () => ({
 
 vi.mock("@/lib/ai/models", () => ({
 	chatModels: [
-		{ id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", description: "Latest Claude" },
+		{
+			id: "anthropic/claude-3.5-sonnet",
+			name: "Claude 3.5 Sonnet",
+			description: "Latest Claude",
+		},
 		{ id: "openai/gpt-4o", name: "GPT-4o", description: "OpenAI's best" },
-		{ id: "reasoning-model", name: "Reasoning Model", description: "Extended thinking" },
+		{
+			id: "reasoning-model",
+			name: "Reasoning Model",
+			description: "Extended thinking",
+		},
 	],
 	DEFAULT_CHAT_MODEL: "anthropic/claude-3.5-sonnet",
 	modelsByProvider: {
-		anthropic: [{ id: "anthropic/claude-3.5-sonnet", name: "Claude 3.5 Sonnet", description: "Latest Claude" }],
-		openai: [{ id: "openai/gpt-4o", name: "GPT-4o", description: "OpenAI's best" }],
+		anthropic: [
+			{
+				id: "anthropic/claude-3.5-sonnet",
+				name: "Claude 3.5 Sonnet",
+				description: "Latest Claude",
+			},
+		],
+		openai: [
+			{ id: "openai/gpt-4o", name: "GPT-4o", description: "OpenAI's best" },
+		],
 	},
 }));
 
@@ -110,7 +126,9 @@ vi.mock("@/hooks/use-speech-recognition", () => ({
 
 vi.mock("./mention-autocomplete", () => ({
 	useMentionAutocomplete: () => mockUseMentionAutocomplete(),
-	MentionAutocomplete: ({ children }: any) => <div data-testid="mention-autocomplete">{children}</div>,
+	MentionAutocomplete: ({ children }: any) => (
+		<div data-testid="mention-autocomplete">{children}</div>
+	),
 }));
 
 // Test utilities
@@ -164,7 +182,9 @@ describe("multimodal-input - MultimodalInput Component", () => {
 		const props = createMockProps();
 		render(<MultimodalInput {...props} />);
 
-		const textarea = screen.getByPlaceholderText("Send a message... (type @ to mention tools)");
+		const textarea = screen.getByPlaceholderText(
+			"Send a message... (type @ to mention tools)",
+		);
 		expect(textarea).toBeInTheDocument();
 	});
 
@@ -196,11 +216,13 @@ describe("multimodal-input - MultimodalInput Component", () => {
 	});
 
 	it("disables send button when uploadQueue has items", () => {
-		mockUseFileUpload.mockReturnValue({
-			uploadQueue: ["uploading-file.jpg"],
-			handleFileChange: mockHandleFileChange,
-			handlePaste: mockHandlePaste,
-		});
+		mockUseFileUpload.mockImplementation(
+			() => ({
+				uploadQueue: ["uploading-file.jpg"],
+				handleFileChange: mockHandleFileChange,
+				handlePaste: mockHandlePaste,
+			}) as any,
+		);
 
 		const props = createMockProps();
 		props.input = "Hello";
@@ -219,7 +241,13 @@ describe("multimodal-input - MultimodalInput Component", () => {
 
 	it("does not render suggested actions when there are messages", () => {
 		const props = createMockProps();
-		props.messages = [{ id: "1", role: "user", parts: [{ type: "text", text: "Existing message" }] }] as UIMessage[];
+		props.messages = [
+			{
+				id: "1",
+				role: "user",
+				parts: [{ type: "text", text: "Existing message" }],
+			},
+		] as UIMessage[];
 		render(<MultimodalInput {...props} />);
 
 		expect(screen.queryByTestId("suggested-actions")).not.toBeInTheDocument();
@@ -227,7 +255,13 @@ describe("multimodal-input - MultimodalInput Component", () => {
 
 	it("does not render suggested actions when there are attachments", () => {
 		const props = createMockProps();
-		props.attachments = [{ url: "http://example.com/file.jpg", name: "file.jpg", contentType: "image/jpeg" }];
+		props.attachments = [
+			{
+				url: "http://example.com/file.jpg",
+				name: "file.jpg",
+				contentType: "image/jpeg",
+			},
+		];
 		render(<MultimodalInput {...props} />);
 
 		expect(screen.queryByTestId("suggested-actions")).not.toBeInTheDocument();
@@ -236,7 +270,11 @@ describe("multimodal-input - MultimodalInput Component", () => {
 	it("renders attachments preview when there are attachments", () => {
 		const props = createMockProps();
 		props.attachments = [
-			{ url: "http://example.com/file.jpg", name: "file.jpg", contentType: "image/jpeg" },
+			{
+				url: "http://example.com/file.jpg",
+				name: "file.jpg",
+				contentType: "image/jpeg",
+			},
 		];
 		render(<MultimodalInput {...props} />);
 
@@ -248,11 +286,13 @@ describe("multimodal-input - MultimodalInput Component", () => {
 	});
 
 	it("renders uploading indicator for files in uploadQueue", () => {
-		mockUseFileUpload.mockReturnValue({
-			uploadQueue: ["uploading-file.jpg"],
-			handleFileChange: mockHandleFileChange,
-			handlePaste: mockHandlePaste,
-		});
+		mockUseFileUpload.mockImplementation(
+			() => ({
+				uploadQueue: ["uploading-file.jpg"],
+				handleFileChange: mockHandleFileChange,
+				handlePaste: mockHandlePaste,
+			}) as any,
+		);
 
 		const props = createMockProps();
 		render(<MultimodalInput {...props} />);
@@ -268,7 +308,9 @@ describe("multimodal-input - MultimodalInput Component", () => {
 		const props = createMockProps();
 		render(<MultimodalInput {...props} />);
 
-		const textarea = screen.getByPlaceholderText("Send a message... (type @ to mention tools)");
+		const textarea = screen.getByPlaceholderText(
+			"Send a message... (type @ to mention tools)",
+		);
 		fireEvent.change(textarea, { target: { value: "New message" } });
 
 		expect(props.setInput).toHaveBeenCalledWith("New message");
@@ -278,7 +320,9 @@ describe("multimodal-input - MultimodalInput Component", () => {
 		const props = createMockProps();
 		render(<MultimodalInput {...props} />);
 
-		const textarea = screen.getByPlaceholderText("Send a message... (type @ to mention tools)");
+		const textarea = screen.getByPlaceholderText(
+			"Send a message... (type @ to mention tools)",
+		);
 		fireEvent.change(textarea, { target: { value: "New message" } });
 
 		expect(mockUpdateCursorPosition).toHaveBeenCalled();
@@ -288,7 +332,11 @@ describe("multimodal-input - MultimodalInput Component", () => {
 		const props = createMockProps();
 		props.input = "Test message";
 		props.attachments = [
-			{ url: "http://example.com/file.jpg", name: "file.jpg", contentType: "image/jpeg" },
+			{
+				url: "http://example.com/file.jpg",
+				name: "file.jpg",
+				contentType: "image/jpeg",
+			},
 		];
 
 		render(<MultimodalInput {...props} />);
@@ -317,7 +365,11 @@ describe("multimodal-input - MultimodalInput Component", () => {
 		const props = createMockProps();
 		props.input = "Test message";
 		props.attachments = [
-			{ url: "http://example.com/file.jpg", name: "file.jpg", contentType: "image/jpeg" },
+			{
+				url: "http://example.com/file.jpg",
+				name: "file.jpg",
+				contentType: "image/jpeg",
+			},
 		];
 
 		render(<MultimodalInput {...props} />);
@@ -333,9 +385,14 @@ describe("multimodal-input - MultimodalInput Component", () => {
 		const props = createMockProps();
 		render(<MultimodalInput {...props} />);
 
-		const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement;
+		const fileInput = document.querySelector(
+			'input[type="file"]',
+		) as HTMLInputElement;
 		expect(fileInput).toBeInTheDocument();
-		expect(fileInput).toHaveAttribute("aria-label", "Upload files to attach to your message");
+		expect(fileInput).toHaveAttribute(
+			"aria-label",
+			"Upload files to attach to your message",
+		);
 		expect(fileInput).toHaveAttribute("multiple");
 	});
 
@@ -489,7 +546,9 @@ describe("multimodal-input - Memoization Behavior", () => {
 	it("memo comparison returns false when attachments change", () => {
 		const props1 = createMockProps();
 		const props2 = createMockProps();
-		props2.attachments = [{ url: "new", name: "new", contentType: "image/jpeg" }];
+		props2.attachments = [
+			{ url: "new", name: "new", contentType: "image/jpeg" },
+		];
 
 		expect(props1.attachments).not.toEqual(props2.attachments);
 	});
@@ -499,7 +558,9 @@ describe("multimodal-input - Memoization Behavior", () => {
 		const props2 = createMockProps();
 		props2.selectedVisibilityType = "private" as const;
 
-		expect(props1.selectedVisibilityType).not.toBe(props2.selectedVisibilityType);
+		expect(props1.selectedVisibilityType).not.toBe(
+			props2.selectedVisibilityType,
+		);
 	});
 
 	it("memo comparison returns false when selectedModelId changes", () => {

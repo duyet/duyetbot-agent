@@ -6,20 +6,15 @@
  * 2. InlineDocumentSkeleton - Inline document loading placeholder
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
+import React from "react";
 import { describe, expect, it } from "vitest";
-import {
-	DocumentSkeleton,
-	InlineDocumentSkeleton,
-} from "./document-skeleton";
+import { DocumentSkeleton, InlineDocumentSkeleton } from "./document-skeleton";
 
 describe("DocumentSkeleton", () => {
 	describe("when artifactKind is 'image'", () => {
 		it("renders centered image placeholder", () => {
-			const { container } = render(
-				<DocumentSkeleton artifactKind="image" />,
-			);
+			const { container } = render(<DocumentSkeleton artifactKind="image" />);
 			const wrapper = container.firstChild as HTMLElement;
 			expect(wrapper).toHaveClass(
 				"flex",
@@ -31,33 +26,25 @@ describe("DocumentSkeleton", () => {
 		});
 
 		it("renders large square placeholder", () => {
-			const { container } = render(
-				<DocumentSkeleton artifactKind="image" />,
-			);
+			const { container } = render(<DocumentSkeleton artifactKind="image" />);
 			const placeholder = container.querySelector(".size-96");
 			expect(placeholder).toBeInTheDocument();
 		});
 
 		it("has pulse animation", () => {
-			const { container } = render(
-				<DocumentSkeleton artifactKind="image" />,
-			);
+			const { container } = render(<DocumentSkeleton artifactKind="image" />);
 			const placeholder = container.querySelector('[class*="animate-pulse"]');
 			expect(placeholder).toBeInTheDocument();
 		});
 
 		it("has rounded corners", () => {
-			const { container } = render(
-				<DocumentSkeleton artifactKind="image" />,
-			);
+			const { container } = render(<DocumentSkeleton artifactKind="image" />);
 			const placeholder = container.querySelector('[class*="rounded-lg"]');
 			expect(placeholder).toBeInTheDocument();
 		});
 
 		it("has correct background color", () => {
-			const { container } = render(
-				<DocumentSkeleton artifactKind="image" />,
-			);
+			const { container } = render(<DocumentSkeleton artifactKind="image" />);
 			const placeholder = container.querySelector(
 				'[class*="bg-muted-foreground/20"]',
 			);
@@ -66,12 +53,7 @@ describe("DocumentSkeleton", () => {
 	});
 
 	describe("when artifactKind is not 'image'", () => {
-		const nonImageKinds = [
-			"text",
-			"code",
-			"sheet",
-			"chart",
-		] as const;
+		const nonImageKinds = ["text", "code", "sheet", "chart"] as const;
 
 		nonImageKinds.forEach((kind) => {
 			describe(`artifactKind is '${kind}'`, () => {
@@ -96,7 +78,7 @@ describe("DocumentSkeleton", () => {
 						<DocumentSkeleton artifactKind={kind} />,
 					);
 					// Look for h-5 elements (line skeletons) - there are 5 of them (including the transparent spacer)
-					const lines = container.querySelectorAll('.h-5');
+					const lines = container.querySelectorAll(".h-5");
 					// Should have 5 elements with h-5 class
 					expect(lines.length).toBe(5);
 				});
@@ -121,7 +103,9 @@ describe("DocumentSkeleton", () => {
 					const { container } = render(
 						<DocumentSkeleton artifactKind={kind} />,
 					);
-					const animated = container.querySelectorAll('[class*="animate-pulse"]');
+					const animated = container.querySelectorAll(
+						'[class*="animate-pulse"]',
+					);
 					expect(animated.length).toBeGreaterThan(0);
 				});
 			});
@@ -130,17 +114,13 @@ describe("DocumentSkeleton", () => {
 
 	describe("accessibility", () => {
 		it("has loading state representation for image", () => {
-			const { container } = render(
-				<DocumentSkeleton artifactKind="image" />,
-			);
+			const { container } = render(<DocumentSkeleton artifactKind="image" />);
 			const animated = container.querySelectorAll('[class*="animate-pulse"]');
 			expect(animated.length).toBeGreaterThan(0);
 		});
 
 		it("has loading state representation for non-image", () => {
-			const { container } = render(
-				<DocumentSkeleton artifactKind="text" />,
-			);
+			const { container } = render(<DocumentSkeleton artifactKind="text" />);
 			const animated = container.querySelectorAll('[class*="animate-pulse"]');
 			expect(animated.length).toBeGreaterThan(0);
 		});
@@ -156,14 +136,14 @@ describe("InlineDocumentSkeleton", () => {
 
 	it("renders 7 line skeletons", () => {
 		const { container } = render(<InlineDocumentSkeleton />);
-		const lines = container.querySelectorAll('.h-4');
+		const lines = container.querySelectorAll(".h-4");
 		// Should have 7 line skeleton divs
 		expect(lines.length).toBe(7);
 	});
 
 	it("has varying line widths", () => {
 		const { container } = render(<InlineDocumentSkeleton />);
-		const lines = container.querySelectorAll('.h-4');
+		const lines = container.querySelectorAll(".h-4");
 		// Check for various width classes
 		const widths = Array.from(lines).map((line) =>
 			Array.from((line as HTMLElement).classList).filter((c) =>
@@ -177,7 +157,7 @@ describe("InlineDocumentSkeleton", () => {
 
 	it("all lines have pulse animation", () => {
 		const { container } = render(<InlineDocumentSkeleton />);
-		const animated = container.querySelectorAll('.animate-pulse');
+		const animated = container.querySelectorAll(".animate-pulse");
 		// All 7 line divs should be animated
 		expect(animated.length).toBeGreaterThanOrEqual(7);
 	});
@@ -185,7 +165,7 @@ describe("InlineDocumentSkeleton", () => {
 	it("has correct background color", () => {
 		const { container } = render(<InlineDocumentSkeleton />);
 		// Look for the specific bg class - all line skeletons should have it
-		const lines = container.querySelectorAll('.bg-muted-foreground\\/20');
+		const lines = container.querySelectorAll(".bg-muted-foreground\\/20");
 		// All 7 line divs should have the background color
 		expect(lines.length).toBeGreaterThanOrEqual(7);
 	});
@@ -195,7 +175,7 @@ describe("InlineDocumentSkeleton", () => {
 		const lines = container.querySelectorAll('[class*="h-4"]');
 		// All lines should have h-4
 		lines.forEach((line) => {
-			expect((line as HTMLElement)).toHaveClass("h-4");
+			expect(line as HTMLElement).toHaveClass("h-4");
 		});
 	});
 

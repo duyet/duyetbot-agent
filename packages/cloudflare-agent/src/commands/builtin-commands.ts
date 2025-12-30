@@ -5,6 +5,7 @@ import { logger } from '@duyetbot/hono-middleware';
 import { escapeHtml, escapeMarkdownV2 } from '../debug-footer.js';
 import { EventBridge } from '../events/event-bridge.js';
 import type { CommandContext, CommandHandler } from './types.js';
+import { handleTodoCommand } from './todo.js';
 
 /**
  * Format uptime from milliseconds to human-readable string.
@@ -58,6 +59,8 @@ export const builtinCommands: Record<string, CommandHandler> = {
   '/help': async (_text, ctx) => {
     return ctx.config.helpMessage ?? 'Commands: /start, /help, /clear';
   },
+
+  '/todo': handleTodoCommand,
 
   '/debug': async (_text, ctx) => {
     // Admin-only command

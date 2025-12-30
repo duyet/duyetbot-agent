@@ -11,10 +11,10 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import type { ChangeEvent } from "react";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { Attachment } from "@/lib/types";
 import { useFileUpload } from "./use-file-upload";
-import type { ChangeEvent } from "react";
 
 // Mock sonner toast - use vi.hoisted to make the mock functions available
 const mockToast = vi.hoisted(() => ({
@@ -33,7 +33,9 @@ const createMockFile = (name: string, type: string): File => {
 };
 
 // Helper to create a mock ChangeEvent
-const createMockChangeEvent = (files: File[]): ChangeEvent<HTMLInputElement> => {
+const createMockChangeEvent = (
+	files: File[],
+): ChangeEvent<HTMLInputElement> => {
 	return {
 		target: {
 			files: files as any,
@@ -43,7 +45,9 @@ const createMockChangeEvent = (files: File[]): ChangeEvent<HTMLInputElement> => 
 };
 
 // Helper to create a mock ClipboardEvent
-const createMockClipboardEvent = (items: DataTransferItem[]): ClipboardEvent => {
+const createMockClipboardEvent = (
+	items: DataTransferItem[],
+): ClipboardEvent => {
 	return {
 		clipboardData: {
 			items: items as any,
@@ -67,9 +71,7 @@ const createMockDataTransferItem = (
 describe("useFileUpload - Initialization and State", () => {
 	it("initializes with empty upload queue", () => {
 		const onAttachmentsChange = vi.fn();
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		expect(result.current.uploadQueue).toEqual([]);
 		expect(result.current.handleFileChange).toBeDefined();
@@ -78,9 +80,7 @@ describe("useFileUpload - Initialization and State", () => {
 
 	it("returns all expected API methods", () => {
 		const onAttachmentsChange = vi.fn();
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		expect(result.current.uploadQueue).toBeDefined();
 		expect(result.current.handleFileChange).toBeDefined();
@@ -103,12 +103,10 @@ describe("useFileUpload - File Selection via Input Change", () => {
 			} as Response),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFile = createMockFile("file1.jpg", "image/jpeg");
-	 const mockEvent = createMockChangeEvent([mockFile]);
+		const mockEvent = createMockChangeEvent([mockFile]);
 
 		await act(async () => {
 			await result.current.handleFileChange(mockEvent);
@@ -137,13 +135,12 @@ describe("useFileUpload - File Selection via Input Change", () => {
 		global.fetch = vi.fn(() =>
 			Promise.resolve({
 				ok: true,
-				json: () => Promise.resolve(uploadedFiles[callCount++] || uploadedFiles[0]),
+				json: () =>
+					Promise.resolve(uploadedFiles[callCount++] || uploadedFiles[0]),
 			} as Response),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFiles = [
 			createMockFile("file1.jpg", "image/jpeg"),
@@ -178,9 +175,7 @@ describe("useFileUpload - File Selection via Input Change", () => {
 				}),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFile = createMockFile("file.jpg", "image/jpeg");
 		const mockEvent = createMockChangeEvent([mockFile]);
@@ -217,9 +212,7 @@ describe("useFileUpload - Paste-to-Upload", () => {
 			} as Response),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFile = createMockFile("pasted.jpg", "image/jpeg");
 		const mockItem = createMockDataTransferItem("image/jpeg", mockFile);
@@ -235,9 +228,7 @@ describe("useFileUpload - Paste-to-Upload", () => {
 
 	it("ignores non-image paste events", async () => {
 		const onAttachmentsChange = vi.fn();
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockItem = createMockDataTransferItem("text/plain", null);
 		const mockEvent = createMockClipboardEvent([mockItem]);
@@ -252,9 +243,7 @@ describe("useFileUpload - Paste-to-Upload", () => {
 
 	it("handles empty clipboard data", async () => {
 		const onAttachmentsChange = vi.fn();
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockEvent = {
 			clipboardData: null,
@@ -287,17 +276,22 @@ describe("useFileUpload - Paste-to-Upload", () => {
 		global.fetch = vi.fn(() =>
 			Promise.resolve({
 				ok: true,
-				json: () => Promise.resolve(uploadedFiles[callCount++] || uploadedFiles[0]),
+				json: () =>
+					Promise.resolve(uploadedFiles[callCount++] || uploadedFiles[0]),
 			} as Response),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockItems = [
-			createMockDataTransferItem("image/jpeg", createMockFile("pasted1.jpg", "image/jpeg")),
-			createMockDataTransferItem("image/png", createMockFile("pasted2.png", "image/png")),
+			createMockDataTransferItem(
+				"image/jpeg",
+				createMockFile("pasted1.jpg", "image/jpeg"),
+			),
+			createMockDataTransferItem(
+				"image/png",
+				createMockFile("pasted2.png", "image/png"),
+			),
 		];
 		const mockEvent = createMockClipboardEvent(mockItems);
 
@@ -327,9 +321,7 @@ describe("useFileUpload - Error Handling", () => {
 			} as Response),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFile = createMockFile("file.jpg", "image/jpeg");
 		const mockEvent = createMockChangeEvent([mockFile]);
@@ -346,9 +338,7 @@ describe("useFileUpload - Error Handling", () => {
 		const onAttachmentsChange = vi.fn();
 		global.fetch = vi.fn(() => Promise.reject(new Error("Network error")));
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFile = createMockFile("file.jpg", "image/jpeg");
 		const mockEvent = createMockChangeEvent([mockFile]);
@@ -374,9 +364,7 @@ describe("useFileUpload - Error Handling", () => {
 			} as Response),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFile = createMockFile("file.jpg", "image/jpeg");
 		const mockEvent = createMockChangeEvent([mockFile]);
@@ -408,9 +396,7 @@ describe("useFileUpload - onAttachmentsChange Callbacks", () => {
 			} as Response),
 		);
 
-		const { result } = renderHook(() =>
-			useFileUpload({ onAttachmentsChange }),
-		);
+		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
 		const mockFile = createMockFile("file.jpg", "image/jpeg");
 		const mockEvent = createMockChangeEvent([mockFile]);
@@ -449,7 +435,9 @@ describe("useFileUpload - onAttachmentsChange Callbacks", () => {
 			useFileUpload({
 				onAttachmentsChange: (updater) => {
 					const newAttachments =
-						typeof updater === "function" ? updater(existingAttachments) : updater;
+						typeof updater === "function"
+							? updater(existingAttachments)
+							: updater;
 					// Verify the function appends correctly
 					expect(newAttachments).toHaveLength(2);
 				},

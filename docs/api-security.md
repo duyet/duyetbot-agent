@@ -1,3 +1,8 @@
+---
+title: API Security
+description: API key rotation, signature verification, and rate limiting
+---
+
 # API Security Enhancements
 
 ## Overview

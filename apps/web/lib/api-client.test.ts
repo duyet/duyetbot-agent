@@ -8,7 +8,7 @@
  * 4. Zod schema validation
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 import * as apiClient from "./api-client";
 
@@ -128,7 +128,11 @@ describe("api-client - Authentication Functions", () => {
 				json: () =>
 					Promise.resolve({
 						success: true,
-						user: { id: "user-123", email: "test@example.com", type: "regular" },
+						user: {
+							id: "user-123",
+							email: "test@example.com",
+							type: "regular",
+						},
 						token: "jwt-token-abc",
 					}),
 			} as Response),
@@ -342,7 +346,9 @@ describe("api-client - Chat Operations", () => {
 	});
 
 	it("generateTitleFromUserMessage returns fallback on error", async () => {
-		const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const consoleWarnSpy = vi
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
 
 		global.fetch = vi.fn(() =>
 			Promise.resolve({
@@ -402,7 +408,9 @@ describe("api-client - Share Operations", () => {
 	});
 
 	it("createArtifactShare returns null on error", async () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		global.fetch = vi.fn(() =>
 			Promise.resolve({
@@ -523,7 +531,9 @@ describe("api-client - Agent Operations", () => {
 	});
 
 	it("getAgents returns null on error", async () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		global.fetch = vi.fn(() =>
 			Promise.resolve({

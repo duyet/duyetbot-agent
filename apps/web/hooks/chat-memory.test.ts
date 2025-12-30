@@ -12,14 +12,14 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { MemoryEntry, MemoryType } from "@/lib/chat-memory";
 import {
-	useChatMemory,
-	getAllMemories,
 	clearAllMemories,
 	exportMemories,
+	getAllMemories,
 	importMemories,
+	useChatMemory,
 } from "@/lib/chat-memory";
 
 // Mock localStorage
@@ -264,7 +264,10 @@ describe("chat-memory - Update Memory", () => {
 		const memoryId = result.current.memories[0].id;
 
 		act(() => {
-			result.current.updateMemory(memoryId, { content: "Updated", importance: 0.9 });
+			result.current.updateMemory(memoryId, {
+				content: "Updated",
+				importance: 0.9,
+			});
 		});
 
 		expect(result.current.memories[0].content).toBe("Updated");
@@ -338,7 +341,9 @@ describe("chat-memory - Delete Memory", () => {
 		});
 
 		// Find the first memory (Memory 2 with higher importance)
-		const firstMemory = result.current.memories.find((m) => m.content === "Memory 2");
+		const firstMemory = result.current.memories.find(
+			(m) => m.content === "Memory 2",
+		);
 		const memoryId = firstMemory?.id || "";
 
 		act(() => {
@@ -677,7 +682,9 @@ describe("chat-memory - Utility Functions", () => {
 	});
 
 	it("importMemories returns false for invalid JSON", () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		const result = importMemories("invalid json");
 
@@ -688,7 +695,9 @@ describe("chat-memory - Utility Functions", () => {
 	});
 
 	it("importMemories returns false for missing memories array", () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		const result = importMemories(JSON.stringify({ version: "1.0" }));
 

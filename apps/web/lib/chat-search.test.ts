@@ -6,12 +6,17 @@
  * Full integration testing would require a test database.
  */
 
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import type { Mock } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 // Mock server-only module before importing chat-search
 vi.mock("server-only", () => ({}));
 
-import { searchChats, getSearchSuggestions, getRecentChats } from "./chat-search";
+import {
+	getRecentChats,
+	getSearchSuggestions,
+	searchChats,
+} from "./chat-search";
 
 // Mock dependencies
 vi.mock("@opennextjs/cloudflare", () => ({
@@ -66,7 +71,7 @@ vi.mock("@/lib/db/schema", () => {
 	};
 });
 
-import { eq, and, desc, inArray, like, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
 
 // Mock drizzle ORM functions
 vi.mock("drizzle-orm", () => ({
@@ -79,28 +84,41 @@ vi.mock("drizzle-orm", () => ({
 }));
 
 // Helper to create a resolved promise for query results
-const createQueryMock = (result: any[] = []) =>
-	Promise.resolve(result) as any;
+const createQueryMock = (result: any[] = []): Promise<any[]> =>
+	Promise.resolve(result);
 
 // Mock database interface with proper chaining
-const mockDb = {
-	select: vi.fn(function(this: any) {
+interface MockDb {
+	select: Mock<any, any>;
+	from: Mock<any, any>;
+	where: Mock<any, any>;
+	orderBy: Mock<any, any>;
+	limit: Mock<any, any>;
+	innerJoin: Mock<any, any>;
+	selectDistinct: Mock<any, any>;
+	execute: Mock<any, any>;
+	_queryType?: string;
+	_limit?: number;
+}
+
+const mockDb: MockDb = {
+	select: vi.fn(function (this: MockDb) {
 		this._queryType = "select";
 		return mockDb;
 	}),
-	from: vi.fn(function(this: any) {
+	from: vi.fn(function (this: MockDb) {
 		this._queryType = "select";
 		return mockDb;
 	}),
 	where: vi.fn(() => mockDb),
 	orderBy: vi.fn(() => mockDb),
-	limit: vi.fn(function(this: any, limit: number) {
+	limit: vi.fn(function (this: MockDb, limit: number) {
 		this._limit = limit;
 		// Return a promise that resolves to an array (simulating drizzle query execution)
 		return createQueryMock([]);
 	}),
 	innerJoin: vi.fn(() => mockDb),
-	selectDistinct: vi.fn(function(this: any) {
+	selectDistinct: vi.fn(function (this: MockDb) {
 		this._queryType = "selectDistinct";
 		return mockDb;
 	}),

@@ -187,9 +187,13 @@ export async function generateSignature(payload: string, secret: string): Promis
   const keyData = encoder.encode(secret);
   const payloadData = encoder.encode(payload);
 
-  const key = await crypto.subtle.importKey('raw', keyData, { name: 'HMAC', hash: 'SHA-256' }, false, [
-    'sign',
-  ]);
+  const key = await crypto.subtle.importKey(
+    'raw',
+    keyData,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
 
   const signatureBytes = await crypto.subtle.sign('HMAC', key, payloadData);
 

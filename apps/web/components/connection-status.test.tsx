@@ -10,17 +10,15 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import {
+	ConnectionDot,
 	ConnectionStatusIndicator,
 	mapStatusToConnectionStatus,
-	ConnectionDot,
 } from "./connection-status";
 
 describe("ConnectionStatusIndicator", () => {
 	describe("compact variant (default)", () => {
 		it("renders idle status", () => {
-			const { container } = render(
-				<ConnectionStatusIndicator status="idle" />,
-			);
+			const { container } = render(<ConnectionStatusIndicator status="idle" />);
 			const indicator = container.firstChild as HTMLElement;
 			expect(indicator).toHaveClass("bg-muted");
 			expect(indicator).toHaveAttribute("title", "Ready");
@@ -75,9 +73,7 @@ describe("ConnectionStatusIndicator", () => {
 		});
 
 		it("shows label when showLabel is true", () => {
-			render(
-				<ConnectionStatusIndicator status="connected" showLabel />,
-			);
+			render(<ConnectionStatusIndicator status="connected" showLabel />);
 			expect(screen.getByText("Connected")).toBeInTheDocument();
 		});
 
@@ -143,9 +139,7 @@ describe("mapStatusToConnectionStatus", () => {
 	});
 
 	it("maps submitted and pending to connecting", () => {
-		expect(mapStatusToConnectionStatus("submitted", true)).toBe(
-			"connecting",
-		);
+		expect(mapStatusToConnectionStatus("submitted", true)).toBe("connecting");
 		expect(mapStatusToConnectionStatus("pending", true)).toBe("connecting");
 	});
 

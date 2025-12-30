@@ -1,5 +1,5 @@
-import { defineConfig } from "vitest/config";
 import path from "node:path";
+import { defineConfig } from "vitest/config";
 
 /**
  * Vitest configuration for API and unit tests
@@ -12,7 +12,11 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: "happy-dom", // happy-dom for React component tests (Bun compatible)
-		include: ["tests/api/**/*.test.ts", "lib/**/*.test.ts", "components/**/*.test.tsx"],
+		include: [
+			"tests/api/**/*.test.ts",
+			"lib/**/*.test.ts",
+			"components/**/*.test.tsx",
+		],
 		// Note: hooks/ tests excluded due to SWR cache pollution issues
 		// TODO: Fix hook tests with proper cache isolation
 		testTimeout: 60_000, // 60 seconds for API calls

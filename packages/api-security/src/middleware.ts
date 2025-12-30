@@ -4,24 +4,17 @@
  * Ready-to-use Hono middleware for API security features.
  */
 
-import type {
-  MiddlewareHandler,
-  Context as HonoContext,
-  Env,
-} from 'hono';
 import type { D1Database } from '@cloudflare/workers-types';
-import type {
-  SignatureVerificationOptions,
-  PerKeyRateLimitConfig,
-} from './types.js';
-import {
-  verifySignatureWithTimestamp,
-  extractTimestamp,
-  createSignatureOptions,
-} from './signature.js';
+import type { Env, Context as HonoContext, MiddlewareHandler } from 'hono';
 import { checkRateLimit } from './rate-limit.js';
+import {
+  createSignatureOptions,
+  extractTimestamp,
+  verifySignatureWithTimestamp,
+} from './signature.js';
 import { validateAndUpdateAPIKey } from './storage.js';
 import { executeThrottled } from './throttle.js';
+import type { PerKeyRateLimitConfig, SignatureVerificationOptions } from './types.js';
 
 /**
  * Environment bindings for security middleware
@@ -61,7 +54,8 @@ export function createSignatureMiddleware<E extends SecurityEnv>(
 
   return async (c: HonoContext<E>, next: () => Promise<void>) => {
     const rawBody = await c.req.text();
-    const signature = c.req.header('x-hub-signature-256') || c.req.header('x-webhook-signature') || '';
+    const signature =
+      c.req.header('x-hub-signature-256') || c.req.header('x-webhook-signature') || '';
     const timestamp = extractTimestamp(c.req.raw.headers);
 
     // Re-set raw body for downstream middlewares
@@ -71,7 +65,13 @@ export function createSignatureMiddleware<E extends SecurityEnv>(
 
     // Verify signature if secret is configured
     if (secret) {
-      const isValid = await verifySignatureWithTimestamp(rawBody, signature, secret, timestamp, opts);
+      const isValid = await verifySignatureWithTimestamp(
+        rawBody,
+        signature,
+        secret,
+        timestamp,
+        opts
+      );
 
       if (!isValid) {
         return c.json({ error: 'Invalid signature' }, 401);
@@ -107,11 +107,7 @@ export function createSignatureMiddleware<E extends SecurityEnv>(
  * ```
  */
 export function createAPIKeyAuthMiddleware<E extends SecurityEnv>(
-  options: {
-    headerName?: string;
-    required?: boolean;
-    skipPaths?: string[];
-  } = {}
+  options: { headerName?: string; required?: boolean; skipPaths?: string[] } = {}
 ): MiddlewareHandler<E> {
   const headerName = options.headerName ?? 'x-api-key';
 
@@ -169,7 +165,9 @@ export function createAPIKeyAuthMiddleware<E extends SecurityEnv>(
  * ```
  */
 export function createRateLimitMiddleware<E extends SecurityEnv>(
-  getConfig: (c: HonoContext<E>) => Partial<PerKeyRateLimitConfig> | Promise<Partial<PerKeyRateLimitConfig>>
+  getConfig: (
+    c: HonoContext<E>
+  ) => Partial<PerKeyRateLimitConfig> | Promise<Partial<PerKeyRateLimitConfig>>
 ): MiddlewareHandler<E> {
   return async (c: HonoContext<E>, next: () => Promise<void>) => {
     if (!c.env.SECURITY_DB) {

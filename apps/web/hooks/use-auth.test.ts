@@ -12,8 +12,8 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import type { Session, AuthUser } from "./use-auth";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { AuthUser, Session } from "./use-auth";
 import { useAuth } from "./use-auth";
 
 // Mock Next.js router
@@ -32,7 +32,11 @@ vi.mock("@/lib/auth/token-storage", () => ({
 }));
 
 // Import mocked functions
-import { getStoredToken, initTokenSync, removeStoredToken } from "@/lib/auth/token-storage";
+import {
+	getStoredToken,
+	initTokenSync,
+	removeStoredToken,
+} from "@/lib/auth/token-storage";
 
 describe("useAuth - Initialization and State", () => {
 	beforeEach(() => {
@@ -113,7 +117,10 @@ describe("useAuth - Session Fetching", () => {
 		});
 
 		expect(result.current.data).toEqual(mockSession);
-		expect(global.fetch).toHaveBeenCalledWith("/api/auth/session", expect.anything());
+		expect(global.fetch).toHaveBeenCalledWith(
+			"/api/auth/session",
+			expect.anything(),
+		);
 	});
 
 	it("handles guest sessions", async () => {
@@ -142,7 +149,9 @@ describe("useAuth - Session Fetching", () => {
 	});
 
 	it("validates session format", async () => {
-		const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const consoleWarnSpy = vi
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
 
 		// Invalid session format
 		global.fetch = vi.fn(() =>
@@ -318,7 +327,9 @@ describe("useAuth - Sign Out", () => {
 	});
 
 	it("handles sign out API errors gracefully", async () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 		const routerPush = vi.fn();
 		vi.doMock("next/navigation", () => ({
 			useRouter: () => ({ push: routerPush, refresh: vi.fn() }),
@@ -485,8 +496,8 @@ describe("useAuth - Abort and Cleanup", () => {
 	it("aborts fetch on unmount", () => {
 		const abortSpy = vi.spyOn(AbortController.prototype, "abort");
 
-		global.fetch = vi.fn(() =>
-			new Promise(() => {}) // Never resolves
+		global.fetch = vi.fn(
+			() => new Promise(() => {}), // Never resolves
 		) as any;
 
 		const { unmount } = renderHook(() => useAuth());
@@ -528,7 +539,9 @@ describe("useAuth - Error Handling", () => {
 	});
 
 	it("handles network errors", async () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		global.fetch = vi.fn(() =>
 			Promise.reject(new Error("Network error")),
@@ -549,13 +562,15 @@ describe("useAuth - Error Handling", () => {
 	});
 
 	it("handles malformed JSON response", async () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		global.fetch = vi.fn(() =>
 			Promise.resolve({
 				ok: true,
 				json: () => Promise.reject(new Error("Invalid JSON")),
-			} as Response),
+			} as unknown as Response),
 		) as any;
 
 		const { result } = renderHook(() => useAuth());

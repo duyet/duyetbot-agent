@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import type React from "react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 /**
@@ -123,9 +123,11 @@ function ActivityFeedSkeleton() {
 					<div
 						key={`activity-${i}`}
 						className="flex items-start gap-3"
-						style={{
-							animationDelay: `${i * 50}ms`,
-						} as React.CSSProperties}
+						style={
+							{
+								animationDelay: `${i * 50}ms`,
+							} as React.CSSProperties
+						}
 					>
 						<Skeleton className="h-8 w-8 shrink-0 rounded-full" />
 						<div className="flex-1 space-y-2">
@@ -174,9 +176,11 @@ export function SessionsListSkeleton() {
 						<div
 							key={`session-${i}`}
 							className="animate-stagger-fade-in"
-							style={{
-								animationDelay: `${i * 50}ms`,
-							} as React.CSSProperties}
+							style={
+								{
+									animationDelay: `${i * 50}ms`,
+								} as React.CSSProperties
+							}
 						>
 							<SessionCardSkeleton />
 						</div>
@@ -231,9 +235,11 @@ export function SettingsSkeleton() {
 							<div
 								key={`section-${i}`}
 								className="animate-stagger-fade-in rounded-lg border bg-card p-6"
-								style={{
-									animationDelay: `${i * 75}ms`,
-								} as React.CSSProperties}
+								style={
+									{
+										animationDelay: `${i * 75}ms`,
+									} as React.CSSProperties
+								}
 							>
 								<Skeleton className="mb-4 h-6 w-40" />
 								<div className="space-y-4">
@@ -300,9 +306,11 @@ export function AnalyticsSkeleton() {
 							<div
 								key={`summary-${i}`}
 								className="animate-stagger-fade-in"
-								style={{
-									animationDelay: `${i * 50}ms`,
-								} as React.CSSProperties}
+								style={
+									{
+										animationDelay: `${i * 50}ms`,
+									} as React.CSSProperties
+								}
 							>
 								<MetricCardSkeleton />
 							</div>
@@ -359,10 +367,12 @@ function LargeChartSkeleton() {
 					<Skeleton
 						key={`bar-${i}`}
 						className="flex-1"
-						style={{
-							height: `${30 + Math.random() * 70}%`,
-							animationDelay: `${i * 30}ms`,
-						} as React.CSSProperties}
+						style={
+							{
+								height: `${30 + Math.random() * 70}%`,
+								animationDelay: `${i * 30}ms`,
+							} as React.CSSProperties
+						}
 					/>
 				))}
 			</div>
@@ -394,7 +404,11 @@ function TableSkeleton() {
 				{Array.from({ length: 6 }).map((_, i) => (
 					<div key={`row-${i}`} className="flex items-center gap-4">
 						{Array.from({ length: 4 }).map((_, j) => (
-							<Skeleton key={`cell-${j}`} className="h-4" style={{ width: `${15 + Math.random() * 25}%` }} />
+							<Skeleton
+								key={`cell-${j}`}
+								className="h-4"
+								style={{ width: `${15 + Math.random() * 25}%` }}
+							/>
 						))}
 					</div>
 				))}

@@ -8,8 +8,8 @@
  * 4. SidebarSkeleton - Sidebar loading skeleton
  */
 
-import React from "react";
 import { render, screen } from "@testing-library/react";
+import React from "react";
 import { describe, expect, it } from "vitest";
 import {
 	ChatSkeleton,
@@ -30,14 +30,18 @@ describe("ChatSkeleton", () => {
 		expect(header).toBeInTheDocument();
 
 		// Should have skeleton elements (h-8 or h-6 with rounded/rounded-full)
-		const skeletons = header?.querySelectorAll('[class*="rounded-md"], [class*="rounded-full"]');
+		const skeletons = header?.querySelectorAll(
+			'[class*="rounded-md"], [class*="rounded-full"]',
+		);
 		expect(skeletons?.length).toBeGreaterThanOrEqual(4);
 	});
 
 	it("renders messages area with greeting skeleton", () => {
 		const { container } = render(<ChatSkeleton />);
 		// Look for the greeting area (logo/avatar + text placeholders)
-		const skeletons = container.querySelectorAll('[class*="rounded-lg"], [class*="rounded-full"]');
+		const skeletons = container.querySelectorAll(
+			'[class*="rounded-lg"], [class*="rounded-full"]',
+		);
 		// Should have multiple skeleton elements for greeting
 		expect(skeletons.length).toBeGreaterThan(5);
 	});
@@ -80,7 +84,9 @@ describe("MessageSkeleton", () => {
 		it("has message content skeletons", () => {
 			const { container } = render(<MessageSkeleton />);
 			// Look for content skeletons (they have h-5 or h-16 classes with widths)
-			const contentSkeletons = container.querySelectorAll('[class*="h-5"], [class*="h-16"]');
+			const contentSkeletons = container.querySelectorAll(
+				'[class*="h-5"], [class*="h-16"]',
+			);
 			// Should have 2 content skeletons
 			expect(contentSkeletons.length).toBe(2);
 		});
@@ -113,7 +119,9 @@ describe("MessageSkeleton", () => {
 		it("has proper loading state representation", () => {
 			const { container } = render(<MessageSkeleton />);
 			// Skeleton components should have aria-hidden or loading indicators
-			const skeletons = container.querySelectorAll('[class*="animate-pulse"], [class*="skeleton"]');
+			const skeletons = container.querySelectorAll(
+				'[class*="animate-pulse"], [class*="skeleton"]',
+			);
 			expect(skeletons.length).toBeGreaterThan(0);
 		});
 	});
@@ -122,19 +130,25 @@ describe("MessageSkeleton", () => {
 describe("MessagesListSkeleton", () => {
 	it("renders default count of 3 messages", () => {
 		const { container } = render(<MessagesListSkeleton />);
-		const messages = container.querySelectorAll('[class*="flex flex-col gap-6"] > div');
+		const messages = container.querySelectorAll(
+			'[class*="flex flex-col gap-6"] > div',
+		);
 		expect(messages.length).toBe(3);
 	});
 
 	it("renders custom count of messages", () => {
 		const { container } = render(<MessagesListSkeleton count={5} />);
-		const messages = container.querySelectorAll('[class*="flex flex-col gap-6"] > div');
+		const messages = container.querySelectorAll(
+			'[class*="flex flex-col gap-6"] > div',
+		);
 		expect(messages.length).toBe(5);
 	});
 
 	it("applies stagger animation to messages", () => {
 		const { container } = render(<MessagesListSkeleton count={3} />);
-		const messages = container.querySelectorAll('[class*="animate-stagger-fade-in"]');
+		const messages = container.querySelectorAll(
+			'[class*="animate-stagger-fade-in"]',
+		);
 		expect(messages.length).toBe(3);
 	});
 
@@ -142,7 +156,7 @@ describe("MessagesListSkeleton", () => {
 		const { container } = render(<MessagesListSkeleton count={4} />);
 		// Look at direct children of the main container
 		const mainContainer = container.firstChild as HTMLElement;
-		const messageElements = mainContainer?.querySelector(':scope > div');
+		const messageElements = mainContainer?.querySelector(":scope > div");
 
 		// Get all direct children divs
 		const children = Array.from(mainContainer?.children || []);
@@ -155,8 +169,12 @@ describe("MessagesListSkeleton", () => {
 		const fourth = children[3] as HTMLElement;
 
 		// Even indices (0, 2) are user messages with flex-row-reverse
-		expect(first.querySelector('[class*="flex-row-reverse"]')).toBeInTheDocument();
-		expect(third.querySelector('[class*="flex-row-reverse"]')).toBeInTheDocument();
+		expect(
+			first.querySelector('[class*="flex-row-reverse"]'),
+		).toBeInTheDocument();
+		expect(
+			third.querySelector('[class*="flex-row-reverse"]'),
+		).toBeInTheDocument();
 		// Odd indices (1, 3) are assistant messages with items-start
 		expect(second.querySelector('[class*="items-start"]')).toBeInTheDocument();
 		expect(fourth.querySelector('[class*="items-start"]')).toBeInTheDocument();
@@ -189,20 +207,26 @@ describe("SidebarSkeleton", () => {
 
 	it("renders 5 chat history item skeletons", () => {
 		const { container } = render(<SidebarSkeleton />);
-		const historySkeletons = container.querySelectorAll('[class*="h-10 rounded-md"]');
+		const historySkeletons = container.querySelectorAll(
+			'[class*="h-10 rounded-md"]',
+		);
 		expect(historySkeletons.length).toBe(5);
 	});
 
 	it("applies stagger animation with delays", () => {
 		const { container } = render(<SidebarSkeleton />);
-		const animatedElements = container.querySelectorAll('[class*="animate-stagger-fade-in"]');
+		const animatedElements = container.querySelectorAll(
+			'[class*="animate-stagger-fade-in"]',
+		);
 		// All elements should have stagger animation
 		expect(animatedElements.length).toBe(7); // 1 new chat + 1 header + 5 items
 	});
 
 	it("has variable width for chat history items", () => {
 		const { container } = render(<SidebarSkeleton />);
-		const historySkeletons = container.querySelectorAll('[class*="h-10 rounded-md"]');
+		const historySkeletons = container.querySelectorAll(
+			'[class*="h-10 rounded-md"]',
+		);
 		// Each should have a different random width between 60-100%
 		const widths = Array.from(historySkeletons).map(
 			(el) => (el as HTMLElement).style.width,

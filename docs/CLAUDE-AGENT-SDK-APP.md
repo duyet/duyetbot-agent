@@ -1,6 +1,11 @@
+---
+title: Claude Agent SDK App
+description: Long-running agent server with Claude Agent SDK
+---
+
 # Claude Agent SDK App - Long-Running Agent Server
 
-**Status**: PLANNING
+**Status**: PLANNED
 **Priority**: MEDIUM
 **Target Start**: Iteration 151+
 

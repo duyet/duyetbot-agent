@@ -8,75 +8,69 @@
  * - Request throttling for expensive operations
  */
 
-// Types
-export * from './types.js';
-
 // API Key Management
 export {
+  createAPIKeyRecord,
   generateAPIKey,
-  validateAPIKeyFormat,
-  parseAPIKey,
   generateKeyId,
   hashAPIKey,
-  createAPIKeyRecord,
-  validateAPIKey,
-  shouldRotateKey,
+  parseAPIKey,
   rotateAPIKey,
+  shouldRotateKey,
+  validateAPIKey,
+  validateAPIKeyFormat,
 } from './api-keys.js';
-
-// Signature Verification
+// Hono Middleware Wrappers
 export {
-  verifySignatureWithTimestamp,
-  generateSignature,
-  extractTimestamp,
-  createSignatureOptions,
-  timingSafeEqual,
-} from './signature.js';
-
+  createAPIKeyAuthMiddleware,
+  createRateLimitMiddleware,
+  createSecurityMiddleware,
+  createSignatureMiddleware,
+  createThrottleMiddleware,
+  type SecurityEnv,
+} from './middleware.js';
 // Rate Limiting
 export {
   checkRateLimit,
-  getRateLimitState,
-  saveRateLimitState,
-  resetRateLimit,
-  getRateLimitStats,
   cleanupStaleRateLimits,
   DEFAULT_RATE_LIMIT_CONFIG,
+  getRateLimitState,
+  getRateLimitStats,
   RATE_LIMIT_SCHEMA,
+  resetRateLimit,
+  saveRateLimitState,
 } from './rate-limit.js';
-
-// Request Throttling
+// Signature Verification
 export {
-  checkThrottle,
-  acquireThrottleSlot,
-  queueOperation,
-  executeThrottled,
-  getThrottleStats,
-  resetThrottleState,
-  cleanupStaleThrottleStates,
-  DEFAULT_THROTTLE_CONFIG,
-} from './throttle.js';
-
+  createSignatureOptions,
+  extractTimestamp,
+  generateSignature,
+  timingSafeEqual,
+  verifySignatureWithTimestamp,
+} from './signature.js';
 // D1 Storage
 export {
-  createAPIKey,
-  validateAndUpdateAPIKey,
-  rotateAPIKeyInStorage,
-  revokeAPIKey,
-  getAPIKey,
-  listAPIKeys,
-  getAPIKeyAuditLog,
-  checkKeysNeedingRotation,
-  initializeAPIKeysStorage,
   API_KEYS_SCHEMA,
+  checkKeysNeedingRotation,
+  createAPIKey,
+  getAPIKey,
+  getAPIKeyAuditLog,
+  initializeAPIKeysStorage,
+  listAPIKeys,
+  revokeAPIKey,
+  rotateAPIKeyInStorage,
+  validateAndUpdateAPIKey,
 } from './storage.js';
-
-// Hono Middleware Wrappers
+// Request Throttling
 export {
-  createSignatureMiddleware,
-  createAPIKeyAuthMiddleware,
-  createRateLimitMiddleware,
-  createThrottleMiddleware,
-  createSecurityMiddleware,
-  type SecurityEnv,
-} from './middleware.js';
+  acquireThrottleSlot,
+  checkThrottle,
+  cleanupStaleThrottleStates,
+  DEFAULT_THROTTLE_CONFIG,
+  executeThrottled,
+  getThrottleStats,
+  queueOperation,
+  resetThrottleState,
+} from './throttle.js';
+// Types
+export * from './types.js';

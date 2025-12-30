@@ -9,9 +9,9 @@
  * 5. Children rendering
  */
 
-import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import type React from "react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthForm } from "./auth-form";
 
 // Mock next/form
@@ -68,7 +68,9 @@ describe("auth-form - Component Rendering", () => {
 			</AuthForm>,
 		);
 
-		const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+		const emailInput = screen.getByLabelText(
+			/email address/i,
+		) as HTMLInputElement;
 
 		expect(emailInput.type).toBe("email");
 		expect(emailInput.autocomplete).toBe("email");
@@ -86,7 +88,9 @@ describe("auth-form - Component Rendering", () => {
 			</AuthForm>,
 		);
 
-		const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+		const passwordInput = screen.getByLabelText(
+			/password/i,
+		) as HTMLInputElement;
 
 		expect(passwordInput.type).toBe("password");
 		expect(passwordInput.required).toBe(true);
@@ -113,7 +117,9 @@ describe("auth-form - Component Rendering", () => {
 			</AuthForm>,
 		);
 
-		expect(screen.getByRole("button", { name: /sign in/i })).toBeInTheDocument();
+		expect(
+			screen.getByRole("button", { name: /sign in/i }),
+		).toBeInTheDocument();
 		expect(screen.getByText(/forgot password/i)).toBeInTheDocument();
 	});
 });
@@ -131,7 +137,9 @@ describe("auth-form - defaultEmail Prop", () => {
 			</AuthForm>,
 		);
 
-		const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+		const emailInput = screen.getByLabelText(
+			/email address/i,
+		) as HTMLInputElement;
 		expect(emailInput.value).toBe("test@example.com");
 	});
 
@@ -143,7 +151,9 @@ describe("auth-form - defaultEmail Prop", () => {
 			</AuthForm>,
 		);
 
-		const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+		const emailInput = screen.getByLabelText(
+			/email address/i,
+		) as HTMLInputElement;
 		expect(emailInput.value).toBe("");
 	});
 
@@ -155,7 +165,9 @@ describe("auth-form - defaultEmail Prop", () => {
 			</AuthForm>,
 		);
 
-		const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
+		const emailInput = screen.getByLabelText(
+			/email address/i,
+		) as HTMLInputElement;
 		expect(emailInput.value).toBe("");
 	});
 });
@@ -228,8 +240,12 @@ describe("auth-form - Form Submission", () => {
 			</AuthForm>,
 		);
 
-		const emailInput = screen.getByLabelText(/email address/i) as HTMLInputElement;
-		const passwordInput = screen.getByLabelText(/password/i) as HTMLInputElement;
+		const emailInput = screen.getByLabelText(
+			/email address/i,
+		) as HTMLInputElement;
+		const passwordInput = screen.getByLabelText(
+			/password/i,
+		) as HTMLInputElement;
 
 		expect(emailInput.required).toBe(true);
 		expect(passwordInput.required).toBe(true);
@@ -266,7 +282,11 @@ describe("auth-form - Accessibility", () => {
 
 		const labels = container.querySelectorAll("label");
 		labels.forEach((label) => {
-			expect(label).toHaveClass("font-normal", "text-zinc-600", "dark:text-zinc-400");
+			expect(label).toHaveClass(
+				"font-normal",
+				"text-zinc-600",
+				"dark:text-zinc-400",
+			);
 		});
 	});
 

@@ -9,8 +9,8 @@
 
 import * as matchers from "@testing-library/jest-dom/matchers";
 import { cleanup } from "@testing-library/react";
-import { afterEach, expect, vi } from "vitest";
 import React from "react";
+import { afterEach, expect, vi } from "vitest";
 
 // Make React available globally for JSX transform
 global.React = React;

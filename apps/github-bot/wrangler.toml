@@ -50,3 +50,8 @@ new_sqlite_classes = ["GitHubAgent"]
 binding = "OBSERVABILITY_DB"
 database_name = "duyetbot"
 database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+
+# Memory service binding for task management
+[[services]]
+binding = "MEMORY_SERVICE"
+service = "duyetbot-memory-mcp"

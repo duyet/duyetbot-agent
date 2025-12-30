@@ -12,8 +12,8 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
 import type { UIMessage } from "ai";
+import { describe, expect, it, vi } from "vitest";
 import { useTitleGeneration } from "./use-title-generation";
 
 // Mock Next.js router
@@ -36,6 +36,7 @@ vi.mock("@/lib/api-client", () => ({
 
 // Import the mocked function
 import { generateTitleFromUserMessage } from "@/lib/api-client";
+
 const generateTitleMock = vi.mocked(generateTitleFromUserMessage);
 
 describe("useTitleGeneration - Initialization", () => {
@@ -66,7 +67,6 @@ describe("useTitleGeneration - Initialization", () => {
 
 describe("useTitleGeneration - Trigger Conditions", () => {
 	it("does not generate title for readonly chats", async () => {
-
 		const messages: UIMessage[] = [
 			{
 				id: "msg-1",
@@ -94,7 +94,6 @@ describe("useTitleGeneration - Trigger Conditions", () => {
 	});
 
 	it("does not generate title with less than 2 messages", () => {
-
 		const messages: UIMessage[] = [
 			{
 				id: "msg-1",
@@ -115,7 +114,6 @@ describe("useTitleGeneration - Trigger Conditions", () => {
 	});
 
 	it("does not generate title with empty messages array", () => {
-
 		renderHook(() =>
 			useTitleGeneration({
 				chatId: "test-chat-4",
@@ -130,7 +128,6 @@ describe("useTitleGeneration - Trigger Conditions", () => {
 
 describe("useTitleGeneration - Title Generation", () => {
 	it("generates title when messages reach 2", async () => {
-
 		const { rerender } = renderHook(
 			({ messages }) =>
 				useTitleGeneration({
@@ -179,12 +176,13 @@ describe("useTitleGeneration - Title Generation", () => {
 	});
 
 	it("extracts text from first user message", async () => {
-
 		const messages: UIMessage[] = [
 			{
 				id: "msg-1",
 				role: "user",
-				parts: [{ type: "text", text: "This is my question about React hooks" }],
+				parts: [
+					{ type: "text", text: "This is my question about React hooks" },
+				],
 			},
 			{
 				id: "msg-2",
@@ -241,7 +239,6 @@ describe("useTitleGeneration - Title Generation", () => {
 
 describe("useTitleGeneration - Duplicate Prevention", () => {
 	it("prevents duplicate title generation with ref", async () => {
-
 		const { rerender } = renderHook(
 			({ messages }) =>
 				useTitleGeneration({
@@ -290,7 +287,6 @@ describe("useTitleGeneration - Duplicate Prevention", () => {
 	});
 
 	it("does not generate title when first user message has no text part", async () => {
-
 		const messages: UIMessage[] = [
 			{
 				id: "msg-1",
@@ -325,11 +321,11 @@ describe("useTitleGeneration - Duplicate Prevention", () => {
 
 describe("useTitleGeneration - Error Handling", () => {
 	it("resets ref on failure to allow retry", async () => {
-		generateTitleMock.mockRejectedValueOnce(
-			new Error("Generation failed"),
-		);
+		generateTitleMock.mockRejectedValueOnce(new Error("Generation failed"));
 
-		const consoleWarnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+		const consoleWarnSpy = vi
+			.spyOn(console, "warn")
+			.mockImplementation(() => {});
 
 		const { rerender } = renderHook(
 			({ messages }) =>
@@ -397,7 +393,6 @@ describe("useTitleGeneration - Error Handling", () => {
 
 describe("useTitleGeneration - Edge Cases", () => {
 	it("handles empty text in user message", async () => {
-
 		const messages: UIMessage[] = [
 			{
 				id: "msg-1",
@@ -424,7 +419,6 @@ describe("useTitleGeneration - Edge Cases", () => {
 	});
 
 	it("handles messages without parts array", async () => {
-
 		const messages: UIMessage[] = [
 			{
 				id: "msg-1",

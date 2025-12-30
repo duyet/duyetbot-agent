@@ -13,7 +13,7 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type {
 	SpeechRecognitionOptions,
 	UseSpeechRecognitionResult,
@@ -34,12 +34,12 @@ class MockSpeechRecognition implements EventTarget {
 	onerror: ((this: any, ev: any) => any) | null = null;
 	onend: ((this: any, ev: Event) => any) | null = null;
 
-	start = vi.fn(function(this: MockSpeechRecognition) {
+	start = vi.fn(function (this: MockSpeechRecognition) {
 		// Store instance for test access
 		currentRecognitionInstance = this;
 		return Promise.resolve();
 	});
-	stop = vi.fn(function(this: MockSpeechRecognition) {
+	stop = vi.fn(function (this: MockSpeechRecognition) {
 		currentRecognitionInstance = this;
 		return Promise.resolve();
 	});
@@ -286,9 +286,11 @@ describe("useSpeechRecognition - Transcript Updates", () => {
 	});
 
 	it("updates transcript with interim results", async () => {
-		const { result } = renderHook(() => useSpeechRecognition({
-			interimResults: true,
-		}));
+		const { result } = renderHook(() =>
+			useSpeechRecognition({
+				interimResults: true,
+			}),
+		);
 
 		act(() => {
 			result.current.startListening();
@@ -407,7 +409,9 @@ describe("useSpeechRecognition - Error Handling", () => {
 	});
 
 	it("handles recognition errors", () => {
-		const consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const consoleErrorSpy = vi
+			.spyOn(console, "error")
+			.mockImplementation(() => {});
 
 		const { result } = renderHook(() => useSpeechRecognition());
 
@@ -447,7 +451,9 @@ describe("useSpeechRecognition - Error Handling", () => {
 
 		// Should show error since SpeechRecognition is not available
 		expect(result.current.state).toBe("error");
-		expect(result.current.error).toBe("Speech recognition is not supported in this browser");
+		expect(result.current.error).toBe(
+			"Speech recognition is not supported in this browser",
+		);
 	});
 });
 
@@ -515,9 +521,11 @@ describe("useSpeechRecognition - Continuous Mode", () => {
 	});
 
 	it("auto-restarts in continuous mode", async () => {
-		const { result } = renderHook(() => useSpeechRecognition({
-			continuous: true,
-		}));
+		const { result } = renderHook(() =>
+			useSpeechRecognition({
+				continuous: true,
+			}),
+		);
 
 		act(() => {
 			result.current.startListening();
@@ -543,9 +551,11 @@ describe("useSpeechRecognition - Continuous Mode", () => {
 	});
 
 	it("does not auto-restart when stopping", () => {
-		const { result } = renderHook(() => useSpeechRecognition({
-			continuous: true,
-		}));
+		const { result } = renderHook(() =>
+			useSpeechRecognition({
+				continuous: true,
+			}),
+		);
 
 		act(() => {
 			result.current.startListening();

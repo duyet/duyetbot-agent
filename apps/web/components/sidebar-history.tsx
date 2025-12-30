@@ -144,9 +144,7 @@ export function SidebarHistory({ user }: { user: AuthUser | undefined }) {
 				// Remove the chat optimistically
 				return chatHistories.map((chatHistory) => ({
 					...chatHistory,
-					chats: chatHistory.chats.filter(
-						(chat) => chat.id !== chatToDelete,
-					),
+					chats: chatHistory.chats.filter((chat) => chat.id !== chatToDelete),
 				}));
 			}
 			return chatHistories;

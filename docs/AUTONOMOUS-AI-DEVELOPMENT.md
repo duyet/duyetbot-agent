@@ -1,3 +1,8 @@
+---
+title: Autonomous AI Development
+description: Guidelines for 24/7 autonomous AI development patterns
+---
+
 # Autonomous AI Development Plan
 
 **Iteration**: 123

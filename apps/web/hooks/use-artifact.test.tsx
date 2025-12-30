@@ -10,12 +10,18 @@
  */
 
 import { act, renderHook, waitFor } from "@testing-library/react";
-import { describe, expect, it, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { UIArtifact } from "@/components/artifact";
-import { initialArtifactData, useArtifact, useArtifactSelector } from "./use-artifact";
+import {
+	initialArtifactData,
+	useArtifact,
+	useArtifactSelector,
+} from "./use-artifact";
 
 // Helper to create a mock artifact
-const createMockArtifact = (overrides: Partial<UIArtifact> = {}): UIArtifact => ({
+const createMockArtifact = (
+	overrides: Partial<UIArtifact> = {},
+): UIArtifact => ({
 	documentId: "test-doc-1",
 	content: "Test content",
 	kind: "text",
@@ -294,10 +300,7 @@ describe("useArtifact - Edge Cases", () => {
 
 	it("handles all status values", () => {
 		const { result } = renderHook(() => useArtifact());
-		const statuses: Array<UIArtifact["status"]> = [
-			"idle",
-			"streaming",
-		];
+		const statuses: Array<UIArtifact["status"]> = ["idle", "streaming"];
 
 		for (const status of statuses) {
 			act(() => {
@@ -329,7 +332,9 @@ describe("useArtifact - Integration with SWR", () => {
 		expect(hook1.current.artifact).toEqual(hook2.current.artifact);
 
 		act(() => {
-			hook1.current.setArtifact(createMockArtifact({ documentId: "shared-cache" }));
+			hook1.current.setArtifact(
+				createMockArtifact({ documentId: "shared-cache" }),
+			);
 		});
 
 		// SWR should sync state between hooks using same cache key

@@ -1,6 +1,6 @@
 import Image from "next/image";
-import type { Attachment } from "@/lib/types";
 import { memo } from "react";
+import type { Attachment } from "@/lib/types";
 import { Loader } from "./elements/loader";
 import { CrossSmallIcon } from "./icons";
 import { Button } from "./ui/button";
@@ -62,11 +62,15 @@ function PurePreviewAttachment({
 	);
 }
 
-export const PreviewAttachment = memo(PurePreviewAttachment, (prevProps, nextProps) => {
-	// Re-render only if attachment content or upload state changes
-	if (prevProps.attachment.url !== nextProps.attachment.url) return false;
-	if (prevProps.attachment.name !== nextProps.attachment.name) return false;
-	if (prevProps.attachment.contentType !== nextProps.attachment.contentType) return false;
-	if (prevProps.isUploading !== nextProps.isUploading) return false;
-	return true;
-});
+export const PreviewAttachment = memo(
+	PurePreviewAttachment,
+	(prevProps, nextProps) => {
+		// Re-render only if attachment content or upload state changes
+		if (prevProps.attachment.url !== nextProps.attachment.url) return false;
+		if (prevProps.attachment.name !== nextProps.attachment.name) return false;
+		if (prevProps.attachment.contentType !== nextProps.attachment.contentType)
+			return false;
+		if (prevProps.isUploading !== nextProps.isUploading) return false;
+		return true;
+	},
+);

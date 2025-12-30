@@ -145,4 +145,6 @@ export type GitHubAgentInstance = InstanceType<typeof GitHubAgent>;
  */
 export interface Env extends BaseEnv {
   GitHubAgent: CloudflareChatAgentNamespace<BaseEnv, GitHubContext>;
+  /** Memory service binding for task management */
+  MEMORY_SERVICE: Fetcher;
 }

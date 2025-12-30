@@ -18,6 +18,7 @@ import { Octokit } from '@octokit/rest';
 
 import { type Env } from './agent.js';
 import { fetchIssueContext, fetchPRContext } from './github-api.js';
+import { handleTaskCreation, shouldCreateTask } from './github-webhook-handler.js';
 import { logger } from './logger.js';
 import {
   createGitHubMentionMiddleware,
@@ -406,6 +407,40 @@ app.post(
               logger.error(`[${requestId}] [EVENT_BRIDGE] Failed to publish event`, {
                 requestId,
                 error: eventError instanceof Error ? eventError.message : String(eventError),
+              });
+            }
+          }
+
+          // Create task in memory-mcp for relevant GitHub events (fire-and-forget)
+          if (env.MEMORY_SERVICE && shouldCreateTask(event, action)) {
+            try {
+              const taskResult = await handleTaskCreation(
+                env.MEMORY_SERVICE,
+                event,
+                action,
+                webhookCtx,
+                fullIssueOrPr?.html_url
+              );
+
+              if (taskResult.success) {
+                logger.info(`[${requestId}] [TASK] Task created`, {
+                  requestId,
+                  taskId: taskResult.task?.id,
+                  description: taskResult.task?.description,
+                  priority: taskResult.task?.priority,
+                  tags: taskResult.task?.tags,
+                });
+              } else {
+                logger.error(`[${requestId}] [TASK] Failed to create task`, {
+                  requestId,
+                  error: taskResult.error,
+                });
+              }
+            } catch (taskError) {
+              // Don't fail the webhook if task creation fails
+              logger.error(`[${requestId}] [TASK] Task creation error`, {
+                requestId,
+                error: taskError instanceof Error ? taskError.message : String(taskError),
               });
             }
           }
