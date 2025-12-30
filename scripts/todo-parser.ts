@@ -59,7 +59,9 @@ function parsePriority(description: string): 'high' | 'medium' | 'low' {
  */
 function parseTags(description: string): string[] {
   const tagsMatch = description.match(/\(tags:\s*([^)]+)\)/i);
-  if (!tagsMatch) return [];
+  if (!tagsMatch) {
+    return [];
+  }
 
   return tagsMatch[1]
     .split(',')
@@ -98,7 +100,9 @@ function parseTaskLine(line: string, lineNumber: number, section: string): Parse
   // Match checkbox format: - [ ] or - [x]
   const checkboxMatch = line.match(/^[\s]*-\s*\[([ x])\]\s*(.+)$/);
 
-  if (!checkboxMatch) return null;
+  if (!checkboxMatch) {
+    return null;
+  }
 
   const status = checkboxMatch[1] === 'x' ? 'completed' : 'pending';
   const rawDescription = checkboxMatch[2];
@@ -106,7 +110,9 @@ function parseTaskLine(line: string, lineNumber: number, section: string): Parse
   const tags = parseTags(rawDescription);
   const description = cleanDescription(rawDescription);
 
-  if (!description) return null;
+  if (!description) {
+    return null;
+  }
 
   return {
     id: generateTaskId(lineNumber, description),
@@ -382,7 +388,9 @@ export function formatTasksForRalphLoop(todoDoc: TodoDocument): string {
   };
 
   for (const [priority, priorityTasks] of Object.entries(byPriority)) {
-    if (priorityTasks.length === 0) continue;
+    if (priorityTasks.length === 0) {
+      continue;
+    }
 
     lines.push(`## ${priority.toUpperCase()} Priority (${priorityTasks.length} tasks)`);
 
