@@ -6,6 +6,9 @@
 
 import type { AgentStep } from '@/types';
 
+// Re-export AgentStep type for convenience
+export type { AgentStep };
+
 export type AgentStepStatus = AgentStep['status'];
 
 export interface StatusConfig {

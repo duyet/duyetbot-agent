@@ -6,8 +6,8 @@ import {
   formatTokenCount,
   getStatusBgClass,
   hasChildren as hasAgentStepChildren,
+  type AgentStep,
 } from '@/lib/agent-step-utils';
-import type { AgentStep } from '@/types';
 
 interface AgentStepNodeProps {
   step: AgentStep;
