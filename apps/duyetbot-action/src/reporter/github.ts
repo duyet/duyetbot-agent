@@ -14,6 +14,16 @@ export interface GitHubReporterOptions {
   repo: string;
   /** If true, skip actual GitHub API calls */
   dryRun?: boolean | undefined;
+  /** Auto-merge configuration */
+  autoMerge?: {
+    enabled: boolean;
+    requireChecks: string[];
+    waitForChecks: boolean;
+    timeout: number;
+    approveFirst: boolean;
+    deleteBranch: boolean;
+    closeIssueAfterMerge?: boolean; // Auto-close issue after PR merge
+  } | undefined;
 }
 
 /**
@@ -54,6 +64,19 @@ export class GitHubReporter implements Reporter {
         await this.addLabel(context.issueNumber, 'agent:completed');
         if (context.prUrl) {
           await this.addLabel(context.issueNumber, 'has-pr');
+
+          // Auto-merge PR if enabled and verification passed
+          if (context.verificationPassed && this.options.autoMerge?.enabled) {
+            const prNumber = this.extractPRNumber(context.prUrl);
+            if (prNumber) {
+              const merged = await this.autoMergePR(prNumber);
+              // Close issue after successful merge if configured
+              if (merged && this.options.autoMerge?.closeIssueAfterMerge) {
+                await this.closeIssue(context.issueNumber, '✅ Issue closed automatically after PR was merged.');
+                console.log(`✅ Issue #${context.issueNumber} closed`);
+              }
+            }
+          }
         }
       } else {
         await this.addLabel(context.issueNumber, 'agent:failed');
@@ -94,6 +117,112 @@ export class GitHubReporter implements Reporter {
       url: response.data.html_url,
       number: response.data.number,
     };
+  }
+
+  /**
+   * Auto-merge a PR after verification passes
+   */
+  async autoMergePR(prNumber: number): Promise<boolean> {
+    if (!this.options.autoMerge?.enabled) {
+      return false;
+    }
+
+    const config = this.options.autoMerge;
+    console.log(`\n🔄 Auto-merging PR #${prNumber}...`);
+
+    try {
+      // Wait for status checks if enabled
+      if (config.waitForChecks) {
+        await this.waitForChecks(prNumber, config);
+      }
+
+      // Approve PR if configured
+      if (config.approveFirst) {
+        await this.octokit.pulls.createReview({
+          owner: this.options.owner,
+          repo: this.options.repo,
+          pull_number: prNumber,
+          event: 'APPROVE',
+          body: 'Auto-approved by duyetbot-action after successful verification',
+        });
+        console.log('✅ PR approved');
+      }
+
+      // Merge PR
+      await this.octokit.pulls.merge({
+        owner: this.options.owner,
+        repo: this.options.repo,
+        pull_number: prNumber,
+        commit_title: `Auto-merge by duyetbot-action`,
+        commit_message: 'Automatically merged after successful verification',
+        merge_method: 'merge',
+        delete_branch: config.deleteBranch,
+      });
+      console.log('✅ PR merged');
+
+      return true;
+    } catch (error) {
+      console.error('❌ Auto-merge failed:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Wait for status checks to complete
+   */
+  private async waitForChecks(prNumber: number, config: GitHubReporterOptions['autoMerge']): Promise<void> {
+    console.log('⏳ Waiting for CI checks...');
+
+    const startTime = Date.now();
+    const pollInterval = 10000; // 10 seconds
+
+    while (Date.now() - startTime < config!.timeout) {
+      // Get PR to find head SHA
+      const { data: pr } = await this.octokit.pulls.get({
+        owner: this.options.owner,
+        repo: this.options.repo,
+        pull_number: prNumber,
+      });
+
+      // Get status checks
+      const { data: checks } = await this.octokit.checks.listForRef({
+        owner: this.options.owner,
+        repo: this.options.repo,
+        ref: pr.head.sha,
+      });
+
+      const checkRuns = checks.check_runs as any[];
+      const completedChecks = checkRuns.filter((c) => c.status === 'completed');
+
+      // Check if any required checks failed
+      const failedChecks = completedChecks.filter((c) => c.conclusion === 'failure');
+      if (failedChecks.length > 0) {
+        throw new Error(`CI checks failed: ${failedChecks.map((c) => c.name).join(', ')}`);
+      }
+
+      // Check if all required checks passed
+      const requiredChecks = config!.requireChecks;
+      const successfulChecks = completedChecks.filter((c) => c.conclusion === 'success');
+      const passedRequiredChecks = successfulChecks.filter((c) => requiredChecks.includes(c.name));
+
+      if (passedRequiredChecks.length >= requiredChecks.length) {
+        console.log(`✅ All ${requiredChecks.length} required checks passed`);
+        return;
+      }
+
+      console.log(`   Checks pending: ${completedChecks.length}/${checkRuns.length} complete`);
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error('Timeout waiting for CI checks');
+  }
+
+  /**
+   * Extract PR number from URL
+   */
+  private extractPRNumber(prUrl: string): number | null {
+    const match = prUrl.match(/\/pull\/(\d+)/);
+    return match?.[1] ? parseInt(match[1], 10) : null;
   }
 
   /**

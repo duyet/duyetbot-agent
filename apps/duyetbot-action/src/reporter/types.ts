@@ -26,6 +26,10 @@ export interface ReportContext {
   duration: number;
   /** GitHub issue number (if from issue) */
   issueNumber?: number | undefined;
+  /** Whether verification checks passed (for auto-merge) */
+  verificationPassed?: boolean;
+  /** Whether PR was auto-merged (triggers issue close) */
+  prMerged?: boolean;
 }
 
 /**

@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
     inputs:
       task:
-        description: 'Task description for the agent'
-        required: true
+        description: 'Task description for the agent (skip if continuous mode)'
+        required: false
         type: string
       model:
         description: 'AI model to use'
@@ -44,6 +44,37 @@ on:
         description: 'Specific task ID to run (optional, overrides creating new issue)'
         required: false
         type: string
+      # Continuous mode inputs
+      continuous_mode:
+        description: 'Enable continuous mode - process all tasks until done'
+        required: false
+        default: false
+        type: boolean
+      max_tasks:
+        description: 'Maximum tasks to process in continuous mode'
+        required: false
+        default: '100'
+        type: string
+      auto_merge:
+        description: 'Auto-merge PRs after CI checks pass'
+        required: false
+        default: true
+        type: boolean
+      close_issues:
+        description: 'Auto-close issues after PR merge'
+        required: false
+        default: true
+        type: boolean
+      delay_between_tasks:
+        description: 'Delay between tasks in continuous mode (seconds)'
+        required: false
+        default: '5'
+        type: string
+      stop_on_failure:
+        description: 'Stop continuous mode if a task fails'
+        required: false
+        default: false
+        type: boolean
 
 concurrency:
   group: duyetbot-action-${{ github.ref }}
@@ -61,7 +92,8 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-    timeout-minutes: ${{ inputs.timeout || 60 }}
+    # Use longer timeout for continuous mode (up to 6 hours for 100 tasks)
+    timeout-minutes: ${{ inputs.continuous_mode == 'true' && 360 || inputs.timeout || 60 }}
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -82,7 +114,8 @@ jobs:
 
       - name: Create GitHub Issue for Task
         id: create_issue
-        if: inputs.task_id == ''
+        # Skip issue creation in continuous mode or when task_id is provided
+        if: inputs.continuous_mode != 'true' && inputs.task_id == '' && inputs.task != ''
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -118,6 +151,19 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
           TASK_SOURCE: ${{ inputs.task_source }}
           TASK_ID: ${{ inputs.task_id != '' && inputs.task_id || format('github-{0}', steps.create_issue.outputs.issue_number) }}
+          # Continuous mode configuration
+          CONTINUOUS_MODE: ${{ inputs.continuous_mode == 'true' && 'true' || 'false' }}
+          CONTINUOUS_MAX_TASKS: ${{ inputs.max_tasks }}
+          CONTINUOUS_DELAY_MS: ${{ inputs.delay_between_tasks && format('{0}000', inputs.delay_between_tasks) || '5000' }}
+          CLOSE_ISSUES_AFTER_MERGE: ${{ inputs.close_issues == 'true' && 'true' || 'false' }}
+          STOP_ON_FIRST_FAILURE: ${{ inputs.stop_on_failure == 'true' && 'true' || 'false' }}
+          # Auto-merge configuration
+          AUTO_MERGE: ${{ inputs.auto_merge == 'true' && 'true' || 'false' }}
+          REQUIRED_CHECKS: "ci,test"
+          WAIT_FOR_CHECKS: "true"
+          AUTO_MERGE_TIMEOUT: "600000"
+          AUTO_MERGE_APPROVE: "true"
+          AUTO_MERGE_DELETE_BRANCH: "true"
         run: |
           # Build arguments
           ARGS="--source=$TASK_SOURCE"
@@ -127,18 +173,24 @@ jobs:
           if [ "$DRY_RUN" = "true" ]; then
             ARGS="$ARGS --dry-run"
           fi
+          if [ "$CONTINUOUS_MODE" = "true" ]; then
+            ARGS="$ARGS --continuous"
+          fi
 
           echo "🤖 Running duyetbot-action..."
           echo "   Model: ${MODEL}"
           echo "   Source: ${TASK_SOURCE}"
           echo "   Task ID: ${TASK_ID}"
+          echo "   Continuous Mode: ${CONTINUOUS_MODE}"
+          echo "   Auto-Merge: ${AUTO_MERGE}"
           echo "   Dry Run: ${DRY_RUN}"
           echo ""
 
           bun run apps/duyetbot-action/src/index.ts $ARGS
 
       - name: Close Task Issue
-        if: inputs.task_id == '' && steps.create_issue.outputs.issue_number != '' && inputs.dry_run != 'true'
+        # Skip in continuous mode (issues are auto-closed after PR merge)
+        if: inputs.continuous_mode != 'true' && inputs.task_id == '' && steps.create_issue.outputs.issue_number != '' && inputs.dry_run != 'true'
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           ISSUE_NUMBER: ${{ steps.create_issue.outputs.issue_number }}
@@ -166,6 +218,9 @@ jobs:
           TASK_SOURCE: ${{ inputs.task_source }}
           TASK_ID: ${{ inputs.task_id != '' && inputs.task_id || format('github-{0}', steps.create_issue.outputs.issue_number) }}
           DRY_RUN: ${{ inputs.dry_run }}
+          CONTINUOUS_MODE: ${{ inputs.continuous_mode }}
+          AUTO_MERGE: ${{ inputs.auto_merge }}
+          MAX_TASKS: ${{ inputs.max_tasks }}
         run: |
           {
             echo "## duyetbot-action Run Summary"
@@ -177,6 +232,9 @@ jobs:
             echo "| Task Source | ${TASK_SOURCE} |"
             echo "| Task ID | ${TASK_ID} |"
             echo "| Dry Run | ${DRY_RUN} |"
+            echo "| Continuous Mode | ${CONTINUOUS_MODE} |"
+            echo "| Auto-Merge | ${AUTO_MERGE} |"
+            echo "| Max Tasks | ${MAX_TASKS} |"
             echo "| Status | ${{ job.status }} |"
             echo ""
             echo "### 🤖 Full Capabilities"
@@ -187,4 +245,7 @@ jobs:
             echo "- ✅ **Sub-Agents**: Autonomous task delegation and parallel execution"
             echo "- ✅ **Checkpoint Support**: Resume from interrupted runs"
             echo "- ✅ **Token Tracking**: Full usage and cost tracking"
+            echo "- ✅ **Continuous Mode**: Process all tasks until done"
+            echo "- ✅ **Auto-Merge**: Automatically merge PRs after CI"
+            echo "- ✅ **Auto-Close**: Automatically close issues after merge"
           } >> "$GITHUB_STEP_SUMMARY"
