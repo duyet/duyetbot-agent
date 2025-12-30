@@ -27,9 +27,9 @@ import { PreviewAttachment } from "./preview-attachment";
 import { ScratchpadViewer } from "./scratchpad-viewer";
 import { SearchResults } from "./search-results";
 import { type TokenUsage, TokenUsageDisplay } from "./token-usage-display";
+import { ToolRenderer } from "./tool-renderer";
 import { UrlFetchPreview } from "./url-fetch-preview";
 import { Weather } from "./weather";
-import { ToolRenderer } from "./tool-renderer";
 
 const PurePreviewMessage = ({
 	addToolApprovalResponse,
