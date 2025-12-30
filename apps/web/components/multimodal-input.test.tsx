@@ -556,7 +556,7 @@ describe("multimodal-input - Memoization Behavior", () => {
 	it("memo comparison returns false when selectedVisibilityType changes", () => {
 		const props1 = createMockProps();
 		const props2 = createMockProps();
-		props2.selectedVisibilityType = "private" as const;
+		(props2 as any).selectedVisibilityType = "public";
 
 		expect(props1.selectedVisibilityType).not.toBe(
 			props2.selectedVisibilityType,
