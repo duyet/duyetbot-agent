@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 1
+iteration: 2
 max_iterations: 0
 completion_promise: null
 circuit_breaker: true
@@ -18,3 +18,9 @@ Plan for new features, bugs to fix, improvements to make.
 plan and adding new app claude agent sdk on long runner server.
 pick the tasks from somewhere (mcp, TODO.md files, ...) then execute 24/7
 using ralph loop hooks
+
+Plan and continue improve apps/dashboard
+
+
+Cost Distribution
+Estimated cost by AI model -> most using glm-4.7, opus, ...
