@@ -136,6 +136,7 @@
     "@types/react-syntax-highlighter": "^15.5.13",
     "ai": "^6.0.3",
     "ai-gateway-provider": "^3.0.0",
+    "critters": "^0.0.25",
     "next": "^16.1.1",
     "react-markdown": "^10.1.0",
     "react-syntax-highlighter": "^16.1.0",
