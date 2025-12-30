@@ -1,12 +1,12 @@
 import { AlertCircle, CheckCircle, ChevronDown, ChevronRight, Clock, Loader2 } from 'lucide-react';
 import React from 'react';
 import {
+  type AgentStep,
   calculatePaddingLeft,
   formatDuration,
   formatTokenCount,
   getStatusBgClass,
   hasChildren as hasAgentStepChildren,
-  type AgentStep,
 } from '@/lib/agent-step-utils';
 
 interface AgentStepNodeProps {

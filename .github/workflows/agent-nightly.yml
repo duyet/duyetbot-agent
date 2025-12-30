@@ -1,4 +1,4 @@
-name: Agent Nightly
+name: duyetbot-action Nightly
 
 on:
   schedule:
@@ -38,7 +38,7 @@ vars:
 
 jobs:
   run-agent:
-    name: Run Agent
+    name: Run duyetbot-action Nightly
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -63,7 +63,7 @@ jobs:
       - name: Build Project
         run: bun run build
 
-      - name: Run Nightly Agent
+      - name: Run duyetbot-action Nightly
         env:
           # OpenRouter with Anthropic-compatible API
           ANTHROPIC_BASE_URL: https://openrouter.ai/api
@@ -76,7 +76,7 @@ jobs:
           TASK_DESCRIPTION: ${{ vars.TASK_PROMPT }}
           DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
         run: |
-          bun run apps/github-actions-agent/src/run-nightly.ts
+          bun run apps/duyetbot-action/src/run-nightly.ts
 
       - name: Upload Agent Logs
         uses: actions/upload-artifact@v4

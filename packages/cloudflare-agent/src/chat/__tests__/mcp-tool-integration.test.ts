@@ -438,7 +438,7 @@ describe('MCP Tool Execution Integration', () => {
 
       const config = {
         builtinToolMap: new Map<string, Tool>(),
-        mcpCallTool: (params: MCPToolCallParams) => {
+        mcpCallTool: (_params: MCPToolCallParams) => {
           // Mock returning multiple content blocks
           return Promise.resolve({
             content: [

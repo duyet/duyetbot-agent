@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Trigger GitHub Actions Agent workflow locally using gh CLI
+# Trigger duyetbot-action workflow locally using gh CLI
 #
 # Usage:
 #   ./scripts/trigger-agent.sh "Fix the bug in authentication"
@@ -90,7 +90,7 @@ if [[ -z "$REPO" ]]; then
   exit 1
 fi
 
-echo "🤖 Triggering GitHub Actions Agent workflow..."
+echo "🤖 Triggering duyetbot-action workflow..."
 echo "   Repository: $REPO"
 echo "   Task: $TASK"
 echo "   Model: $MODEL"
@@ -103,7 +103,7 @@ fi
 echo ""
 
 # Build gh command
-GH_CMD="gh workflow run github-actions-agent.yml \
+GH_CMD="gh workflow run duyetbot-action.yml \
   --repo $REPO \
   --ref $(git branch --show-current) \
   -f task=\"$TASK\" \
@@ -122,7 +122,7 @@ GH_CMD="$GH_CMD\""
 eval $GH_CMD
 
 # Get the run URL
-RUN_ID=$(gh run list --repo $REPO --workflow=github-actions-agent.yml --limit 1 --json databaseId --jq '.[0].databaseId')
+RUN_ID=$(gh run list --repo $REPO --workflow=duyetbot-action.yml --limit 1 --json databaseId --jq '.[0].databaseId')
 
 if [[ -n "$RUN_ID" ]]; then
   echo ""

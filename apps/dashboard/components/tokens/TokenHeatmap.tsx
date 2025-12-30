@@ -1,13 +1,13 @@
 import React from 'react';
-import { TokenHeatmapData } from '@/types';
 import {
+  getDayLabels,
   getHeatmapColor,
   getHeatmapColorScale,
-  groupHeatmapByGrid,
-  getDayLabels,
   getHourLabel,
   getMaxTokens,
+  groupHeatmapByGrid,
 } from '@/lib/token-heatmap-utils';
+import { TokenHeatmapData } from '@/types';
 
 interface TokenHeatmapProps {
   data: TokenHeatmapData[];

@@ -1,4 +1,4 @@
-name: GitHub Actions Agent
+name: duyetbot-action
 
 on:
   workflow_dispatch:
@@ -46,7 +46,7 @@ on:
         type: string
 
 concurrency:
-  group: github-actions-agent-${{ github.ref }}
+  group: duyetbot-action-${{ github.ref }}
   cancel-in-progress: true
 
 env:
@@ -55,7 +55,7 @@ env:
 
 jobs:
   run-agent:
-    name: Run GitHub Actions Agent
+    name: Run duyetbot-action
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -89,13 +89,13 @@ jobs:
           # Use jq to safely construct the issue body JSON (prevents command injection)
           ISSUE_BODY=$(jq -n \
             --arg desc "${{ inputs.task }}" \
-            '"## Task Description\n\n\($desc)\n\n---\n\n*This issue was automatically created by the GitHub Actions Agent workflow*"')
+            '"## Task Description\n\n\($desc)\n\n---\n\n*This issue was automatically created by duyetbot-action*"')
 
           # Create GitHub issue using the safely escaped body
           RESPONSE=$(gh issue create \
-            --title "🤖 Agent Task: Manual Run" \
+            --title "🤖 duyetbot-action Task" \
             --body "$ISSUE_BODY" \
-            --label "github-actions-agent" \
+            --label "duyetbot-action" \
             --json number,title \
             --jq '{number: .number, title: .title}')
 
@@ -104,7 +104,7 @@ jobs:
           echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
           echo "✅ Created issue #${ISSUE_NUMBER}"
 
-      - name: Run GitHub Actions Agent
+      - name: Run duyetbot-action
         env:
           # Use OpenRouter with Anthropic-compatible API
           ANTHROPIC_BASE_URL: https://openrouter.ai/api
@@ -118,7 +118,6 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
           TASK_SOURCE: ${{ inputs.task_source }}
           TASK_ID: ${{ inputs.task_id != '' && inputs.task_id || format('github-{0}', steps.create_issue.outputs.issue_number) }}
-          TASK_DESCRIPTION: ${{ inputs.task }}
         run: |
           # Build arguments
           ARGS="--source=$TASK_SOURCE"
@@ -129,14 +128,14 @@ jobs:
             ARGS="$ARGS --dry-run"
           fi
 
-          echo "🤖 Running GitHub Actions Agent..."
+          echo "🤖 Running duyetbot-action..."
           echo "   Model: ${MODEL}"
           echo "   Source: ${TASK_SOURCE}"
           echo "   Task ID: ${TASK_ID}"
           echo "   Dry Run: ${DRY_RUN}"
           echo ""
 
-          bun run apps/github-actions-agent/src/index.ts $ARGS
+          bun run apps/duyetbot-action/src/index.ts $ARGS
 
       - name: Close Task Issue
         if: inputs.task_id == '' && steps.create_issue.outputs.issue_number != '' && inputs.dry_run != 'true'
@@ -146,7 +145,7 @@ jobs:
         run: |
           # Close the issue after task completion
           gh issue close "$ISSUE_NUMBER" \
-            --comment "✅ Task completed by GitHub Actions Agent workflow run #${{ github.run_number }}"
+            --comment "✅ Task completed by duyetbot-action run #${{ github.run_number }}"
 
       - name: Upload Agent Logs
         uses: actions/upload-artifact@v4
@@ -169,7 +168,7 @@ jobs:
           DRY_RUN: ${{ inputs.dry_run }}
         run: |
           {
-            echo "## GitHub Actions Agent Run Summary"
+            echo "## duyetbot-action Run Summary"
             echo ""
             echo "| Setting | Value |"
             echo "|---------|-------|"
@@ -182,7 +181,7 @@ jobs:
             echo ""
             echo "### 🤖 Full Capabilities"
             echo ""
-            echo "This workflow runs with:"
+            echo "duyetbot-action runs with:"
             echo "- ✅ **Full Skills**: bash, git, github, research, plan, and more"
             echo "- ✅ **MCP Servers**: Memory MCP and other configured servers"
             echo "- ✅ **Sub-Agents**: Autonomous task delegation and parallel execution"

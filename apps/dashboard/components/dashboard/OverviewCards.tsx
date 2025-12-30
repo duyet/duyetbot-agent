@@ -1,7 +1,7 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import React from 'react';
+import { formatChange, getTrendColorClass } from '@/lib/kpi-card-utils';
 import { KPICard } from '@/types';
-import { getTrendColorClass, formatChange } from '@/lib/kpi-card-utils';
 
 interface OverviewCardsProps {
   cards: KPICard[];
