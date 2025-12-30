@@ -5,33 +5,36 @@ on:
     - cron: '0 2 * * *'  # 2 AM UTC daily
   workflow_dispatch:
     inputs:
-      task_source:
-        description: 'Task source (all, github-issues, file, memory)'
-        required: false
-        default: 'all'
-        type: choice
-        options:
-          - all
-          - github-issues
-          - file
-          - memory
-      task_id:
-        description: 'Specific task ID (optional)'
-        required: false
-        type: string
       dry_run:
         description: 'Dry run mode (no real changes)'
         required: false
         default: false
         type: boolean
 
-concurrency:
-  group: agent-nightly
-  cancel-in-progress: false
-
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+# Define the prompt here in YAML for easy modification
+# This agent will: analyze repo, find improvements, implement, create PR
+vars:
+  TASK_PROMPT: |
+    Analyze the repository comprehensively and find things that need improvement.
+
+    Priority order:
+    1. Fix any bugs or issues found in existing code
+    2. Implement features requested in GitHub issues
+    3. Improve code quality, test coverage, or documentation
+    4. Add new capabilities that would be valuable
+
+    Process:
+    1. Explore the codebase to understand its structure and purpose
+    2. Identify specific improvements to make (be concrete and actionable)
+    3. Plan the implementation in detail
+    4. Implement the changes
+    5. Create a pull request with clear description
+
+    Be thorough and create production-ready code with proper tests.
 
 jobs:
   run-agent:
@@ -41,7 +44,7 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
-    timeout-minutes: 30
+    timeout-minutes: 120
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -57,30 +60,31 @@ jobs:
           git config user.name "duyetbot"
           git config user.email "duyetbot@users.noreply.github.com"
 
-      - name: Run Agent
+      - name: Build Project
+        run: bun run build
+
+      - name: Run Nightly Agent
         env:
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          # OpenRouter with Anthropic-compatible API
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          ANTHROPIC_DEFAULT_OPUS_MODEL: '@preset/claude-code-github-action'
+          ANTHROPIC_DEFAULT_HAIKU_MODEL: '@preset/claude-code-github-action'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
-          MODEL: ${{ vars.AGENT_MODEL || 'anthropic/claude-sonnet-4' }}
-          DRY_RUN: ${{ inputs.dry_run || 'false' }}
-          TASK_SOURCE: ${{ inputs.task_source || 'all' }}
-          TASK_ID: ${{ inputs.task_id || '' }}
+          TASK_DESCRIPTION: ${{ vars.TASK_PROMPT }}
+          DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
         run: |
-          ARGS="--source=$TASK_SOURCE"
-          if [ -n "$TASK_ID" ]; then
-            ARGS="$ARGS --task=$TASK_ID"
-          fi
-          if [ "$DRY_RUN" = "true" ]; then
-            ARGS="$ARGS --dry-run"
-          fi
-          bun run apps/github-actions-agent/src/index.ts $ARGS
+          bun run apps/github-actions-agent/src/run-nightly.ts
 
       - name: Upload Agent Logs
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: agent-logs-${{ github.run_number }}
-          path: .agent/logs/
+          name: agent-logs-nightly-${{ github.run_number }}
+          path: |
+            .agent/logs/
+            .agent/checkpoints/
           retention-days: 7
           if-no-files-found: ignore

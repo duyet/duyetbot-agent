@@ -83,7 +83,8 @@
     "prompt:eval:quality": "cd prompts-eval && bun --env-file=../.env.local promptfoo eval -c configs/quality.promptfoo.yaml",
     "prompt:view": "cd prompts-eval && bun --env-file=../.env.local promptfoo view",
     "prompt:share": "cd prompts-eval && bun --env-file=../.env.local promptfoo share",
-    "prompt:report": "bun --env-file=.env.local run prompts-eval/scripts/generate-report.ts"
+    "prompt:report": "bun --env-file=.env.local run prompts-eval/scripts/generate-report.ts",
+    "agent": "./scripts/trigger-agent.sh"
   },
   "keywords": [
     "agent",
