@@ -118,18 +118,19 @@ Pre-push hook enforces this automatically.
 Format: `<type>: <description in lowercase>`
 
 ```bash
-git commit -m "feat: add streaming support"
-git commit -m "fix: resolve session error"
+git commit -m "feat: add streaming support
+
+Add streaming support for real-time responses.
+
+Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>"
 ```
 
-Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
-
-
-Commit Co-Author:
-
+**ALL commits MUST include the co-author:**
 ```
 Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 ```
+
+Types: `feat`, `fix`, `docs`, `test`, `refactor`, `perf`, `chore`
 
 ### PLAN.md Maintenance
 
