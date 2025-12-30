@@ -5,71 +5,12 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useRecentEvents } from '@/lib/hooks/use-dashboard-data';
-
-function formatTimestamp(ts: number | undefined): string {
-  if (!ts) {
-    return 'Unknown';
-  }
-  const date = new Date(ts);
-  const now = new Date();
-  const diff = now.getTime() - date.getTime();
-  const minutes = Math.floor(diff / (1000 * 60));
-  const hours = Math.floor(diff / (1000 * 60 * 60));
-
-  if (minutes < 1) {
-    return 'Just now';
-  }
-  if (minutes < 60) {
-    return `${minutes}m ago`;
-  }
-  if (hours < 24) {
-    return `${hours}h ago`;
-  }
-  return `${Math.floor(hours / 24)}d ago`;
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) {
-    return `${ms}ms`;
-  }
-  if (ms < 60000) {
-    return `${(ms / 1000).toFixed(1)}s`;
-  }
-  return `${Math.floor(ms / 60000)}m ${Math.floor((ms % 60000) / 1000)}s`;
-}
-
-function getStatusVariant(
-  status: string
-): 'success' | 'warning' | 'destructive' | 'info' | 'secondary' {
-  switch (status) {
-    case 'success':
-      return 'success';
-    case 'running':
-    case 'pending':
-      return 'warning';
-    case 'error':
-      return 'destructive';
-    default:
-      return 'secondary';
-  }
-}
-
-function getStatusLabel(status: string): string {
-  switch (status) {
-    case 'success':
-      return 'Completed';
-    case 'running':
-      return 'Running';
-    case 'pending':
-      return 'Pending';
-    case 'error':
-      return 'Error';
-    case 'cancelled':
-      return 'Cancelled';
-    default:
-      return status;
-  }
-}
+import {
+  formatDuration,
+  formatEventTimestamp,
+  getStatusLabel,
+  getStatusVariant,
+} from './event-utils';
 
 function EventItemSkeleton() {
   return (
@@ -140,7 +81,7 @@ export function EventsContent() {
                     </p>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {formatTimestamp(event.completedAt || event.startedAt)}
+                    {formatEventTimestamp(event.completedAt || event.startedAt)}
                     {event.durationMs > 0 && ` • ${formatDuration(event.durationMs)}`}
                   </p>
                   <div className="flex items-center gap-2 mt-2 text-xs text-muted-foreground">
