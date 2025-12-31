@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 49
+iteration: 50
 max_iterations: 0
 completion_promise: null
 circuit_breaker: true
@@ -10,7 +10,7 @@ started_at: "2025-12-30T06:37:44Z"
 ---
 
 ## Ralph Loop Autonomous Development
-**Iteration**: 15
+**Iteration**: 16
 **Status**: active
 **Mode**: 24/7 autonomous AI development
 
@@ -67,6 +67,12 @@ Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 - [ ] Implement dashboard cost distribution feature (BLOCKED: awaiting user input)
 
 ### Completed Iterations
+**Iteration 16** (Documentation Update):
+- Marked "Auto PR reviews with AI" as complete in TODO.md
+- Feature was already implemented via review_requested webhook event
+- When bot is requested as reviewer, it automatically processes the review
+- Commit 977acfe pushed
+
 **Iteration 15** (Telegram Bot /review Command):
 - Added `/review` command to Telegram bot
 - Fetches PR diff from GitHub and sends to AI agent for code review
@@ -137,6 +143,6 @@ Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 - 5 commits pushed with duyetbot co-author
 
 ### Last Update
-- **Time**: 2025-12-31 16:08 UTC
-- **Action**: Added /review command to Telegram bot
+- **Time**: 2025-12-31 16:15 UTC
+- **Action**: Marked auto PR reviews as complete in TODO.md
 - **Next**: Pick next high-priority task from TODO.md
