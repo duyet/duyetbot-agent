@@ -1,0 +1,128 @@
+name: duyetbot-action Cron Jobs
+
+on:
+  schedule:
+    - cron: '0 6 * * *'   # Security - 6 AM UTC daily
+    - cron: '0 10 * * 1'  # Deps - Mon 10 AM UTC
+    - cron: '0 14 * * 3'  # Quality - Wed 2 PM UTC
+    - cron: '0 18 * * 5'  # SOTA - Fri 6 PM UTC
+    - cron: '0 16 * * 2'  # Coverage - Tue 4 PM UTC
+    - cron: '0 8 * * 4'   # Performance - Thu 8 AM UTC
+    - cron: '0 12 * * 0'  # Docs - Sun 12 PM UTC
+    - cron: '0 */4 * * *' # Triage - Every 4 hours
+    - cron: '0 20 * * *'  # API Review - 8 PM UTC daily
+    - cron: '0 3 1 * *'   # Cleanup - Monthly 1st 3 AM
+    - cron: '0 2 * * *'   # Nightly - 2 AM UTC daily
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode'
+        type: boolean
+        default: false
+      job_type:
+        description: 'Job type'
+        type: choice
+        options: [security, deps, quality, docs, coverage, performance, sota, cleanup, triage, api-review, nightly]
+
+concurrency:
+  group: duyetbot-cron
+  cancel-in-progress: false
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+vars:
+  SECURITY_PROMPT: |
+    Security audit: dependency vulnerabilities (CVEs), code security (OWASP Top 10), secrets detection, config security.
+  DEPS_PROMPT: |
+    Update dependencies to latest stable versions. Priority: security > bug fixes > minor > major.
+  QUALITY_PROMPT: |
+    Improve code quality: fix TypeScript errors, resolve lint issues, refactor complex code, add JSDoc.
+  DOCS_PROMPT: |
+    Generate documentation: API docs (JSDoc), usage guides, README improvements, code comments.
+  COVERAGE_PROMPT: |
+    Improve test coverage. Add tests for uncovered code paths. Focus on core packages first.
+  PERFORMANCE_PROMPT: |
+    Optimize performance: bundle size, runtime bottlenecks, memory usage, build performance.
+  SOTA_PROMPT: |
+    Research latest AI tech: new LLM models, agent frameworks, developer tools, MCP servers. Create issues for opportunities.
+  CLEANUP_PROMPT: |
+    Cleanup repo: stale branches (>30d), stale issues (>90d), unused dependencies, orphaned files.
+  TRIAGE_PROMPT: |
+    Triage issues: add labels (bug/enhancement/question/docs), priority (1-5), categorize by package.
+  API_REVIEW_PROMPT: |
+    Review API changes: breaking changes, experimental APIs, deprecated usage, type changes.
+  NIGHTLY_PROMPT: |
+    Analyze repository comprehensively. Priority: 1) Fix bugs, 2) Feature requests, 3) Quality/tests/docs, 4) New capabilities.
+
+jobs:
+  run-agent:
+    name: Agent ${{ github.event.schedule.inputs.job_type || 'Scheduled' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - name: Determine Job
+        id: job
+        run: |
+          if [ "${{ inputs.job_type }}" != "" ]; then
+            echo "type=${{ inputs.job_type }}" >> $GITHUB_OUTPUT
+          else
+            H=$(date +%H)
+            D=$(date +%u)
+            DM=$(date +%d)
+            case "$DM $H $D" in
+              "1 3 "*) echo "type=cleanup" >> $GITHUB_OUTPUT ;;
+              "* 2 *") echo "type=nightly" >> $GITHUB_OUTPUT ;;
+              "* 6 *") echo "type=security" >> $GITHUB_OUTPUT ;;
+              "1 10 *") echo "type=deps" >> $GITHUB_OUTPUT ;;
+              "3 14 *") echo "type=quality" >> $GITHUB_OUTPUT ;;
+              "5 18 *") echo "type=sota" >> $GITHUB_OUTPUT ;;
+              "2 16 *") echo "type=coverage" >> $GITHUB_OUTPUT ;;
+              "4 8 *") echo "type=performance" >> $GITHUB_OUTPUT ;;
+              "0 12 *") echo "type=docs" >> $GITHUB_OUTPUT ;;
+              "* 20 *") echo "type=api-review" >> $GITHUB_OUTPUT ;;
+              *) echo "type=triage" >> $GITHUB_OUTPUT ;;
+            esac
+          fi
+
+      - name: Run Agent
+        env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
+          JOB_TYPE: ${{ steps.job.outputs.type }}
+        run: |
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="file" \
+            --task="${JOB_TYPE}-$(date +%s)"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-${{ steps.job.outputs.type }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 14
+          if-no-files-found: ignore

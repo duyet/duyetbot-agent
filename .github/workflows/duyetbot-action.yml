@@ -76,6 +76,12 @@ on:
         default: false
         type: boolean
 
+  issues:
+    types: [labeled]
+
+  issue_comment:
+    types: [created]
+
 concurrency:
   group: duyetbot-action-${{ github.ref }}
   cancel-in-progress: true
@@ -249,3 +255,153 @@ jobs:
             echo "- ✅ **Auto-Merge**: Automatically merge PRs after CI"
             echo "- ✅ **Auto-Close**: Automatically close issues after merge"
           } >> "$GITHUB_STEP_SUMMARY"
+
+  # Triggered by agent-task label on issues
+  run-agent-on-issue:
+    if: github.event.label.name == 'agent-task'
+    name: Agent for Issue
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 60
+    concurrency:
+      group: agent-issue-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['agent-processing']
+            });
+
+      - name: Run Agent
+        env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+        run: |
+          TASK_ID="github-${{ github.repository }}-${{ github.event.issue.number }}"
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="github-issues" \
+            --task="$TASK_ID"
+
+      - uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'agent-processing'
+              });
+            } catch (e) {}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-issue-${{ github.event.issue.number }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Triggered by @duyetbot mentions in PR comments
+  run-agent-on-pr-comment:
+    if: |
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@duyetbot')
+    name: Agent for PR Comment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 45
+    concurrency:
+      group: agent-pr-comment-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.issue.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+      - name: Run Agent
+        env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENT: ${{ github.event.comment.body }}
+        run: |
+          TASK=$(echo "$COMMENT" | sed 's/.*@duyetbot//' | xargs)
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="file" \
+            --task="pr-comment-${PR_NUMBER}-$(date +%s)"
+
+      - uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const content = '${{ job.status }}' === 'success' ? 'rocket' : 'confused';
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: content
+            });
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-pr-${{ github.event.issue.number }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
