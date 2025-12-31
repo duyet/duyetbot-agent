@@ -36,7 +36,7 @@ export const fetcher = async (url: string) => {
   return response.json();
 };
 
-export async function fetchWithErrorHandlers(
+async function fetchWithErrorHandlers(
   input: RequestInfo | URL,
   init?: RequestInit,
 ) {
@@ -68,6 +68,14 @@ export async function fetchWithErrorHandlers(
     throw error;
   }
 }
+
+// Add preconnect method for AI SDK compatibility
+(fetchWithErrorHandlers as any).preconnect = () => {
+  // Preconnect to the API if needed for performance optimization
+  return Promise.resolve();
+};
+
+export { fetchWithErrorHandlers };
 
 /**
  * Safe localStorage access with error handling

@@ -26,11 +26,13 @@ vi.mock("@/lib/custom-instructions", () => ({
 	getEffectiveInstructions: vi.fn(() => "Custom instructions"),
 }));
 
-vi.mock("@/lib/utils", () => ({
-	fetchWithErrorHandlers: vi.fn((input, init) =>
-		Promise.resolve(new Response()),
-	),
-}));
+vi.mock("@/lib/utils", () => {
+	const mockFetch = vi.fn((input, init) => Promise.resolve(new Response()));
+	(mockFetch as any).preconnect = () => Promise.resolve();
+	return {
+		fetchWithErrorHandlers: mockFetch,
+	};
+});
 
 // Mock DefaultChatTransport from 'ai'
 const MockDefaultChatTransport = class {
