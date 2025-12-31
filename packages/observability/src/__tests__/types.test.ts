@@ -9,7 +9,6 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  type AgentStep,
   type ChatMessageRole,
   type DebugContext,
   debugContextToAgentSteps,

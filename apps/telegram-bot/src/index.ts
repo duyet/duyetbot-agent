@@ -284,6 +284,78 @@ app.post(
       return c.text('OK');
     }
 
+    // Handle built-in commands before agent dispatch
+    const messageText = webhookCtx.task ?? ctx.text;
+    const commandMatch = messageText.match(/^\/(\w+)(?:\s+(.*))?$/);
+
+    if (commandMatch) {
+      const [, command, args] = commandMatch;
+      logger.info(`[${requestId}] [COMMAND] Processing command`, {
+        requestId,
+        command,
+        args,
+      });
+
+      // Handle /health command
+      if (command === 'health') {
+        try {
+          const healthStatus = `✅ *Bot Status*
+
+*Version*: 1.0.0
+*Chat*: ${ctx.chatId}
+*User*: ${ctx.username || ctx.userId}
+*Time*: ${new Date().toISOString()}`;
+
+          await telegramTransport.send(ctx, healthStatus);
+
+          logger.info(`[${requestId}] [COMMAND] /health completed`, {
+            requestId,
+            durationMs: Date.now() - startTime,
+          });
+        } catch (error) {
+          logger.error(`[${requestId}] [COMMAND] /health failed`, {
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        return c.text('OK');
+      }
+
+      // Handle /start command
+      if (command === 'start') {
+        try {
+          const welcomeMessage = `👋 *Welcome to DuyetBot!*
+
+I'm your AI assistant powered by Claude. Here's what I can do:
+
+💬 *Chat naturally* - Just send me a message
+🔍 *Research* - Ask me to look things up
+📝 *Write code* - I can help with programming
+🤖 *Tasks* - I can execute various commands
+
+*Tips*:
+• In groups, mention me with @duyetbot
+• Reply to my messages to continue conversations
+• Use /health to check my status
+
+Let's chat!`;
+
+          await telegramTransport.send(ctx, welcomeMessage);
+
+          logger.info(`[${requestId}] [COMMAND] /start completed`, {
+            requestId,
+            durationMs: Date.now() - startTime,
+          });
+        } catch (error) {
+          logger.error(`[${requestId}] [COMMAND] /start failed`, {
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+        }
+        return c.text('OK');
+      }
+    }
+
     // Set observability context (user info for event tracking)
     // TriggerContext expects string types, but TelegramContext has number for userId/chatId
     if (collector) {
@@ -314,7 +386,7 @@ app.post(
     try {
       // Create ParsedInput for agent (backward compatibility)
       // The agent will accept both ParsedInput (legacy) and GlobalContext (new)
-      const messageText = webhookCtx.task ?? ctx.text;
+      // messageText was already defined above for command handling
 
       const parsedInput: ParsedInput = {
         text: messageText,
