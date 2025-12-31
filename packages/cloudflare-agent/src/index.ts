@@ -58,6 +58,19 @@ export {
 } from './debug-footer.js';
 // Factory
 export { createAgent } from './factory.js';
+// Error recovery for Durable Objects
+export {
+  CircuitBreaker,
+  DOErrorRecovery,
+  doErrorRecovery,
+  type CircuitBreakerConfig,
+  type CircuitState,
+  type DOErrorRecoveryConfig,
+  type DOErrorType,
+  type DOOperationError,
+  type ErrorSeverity,
+  type RetryConfig,
+} from './error-recovery.js';
 // Format utilities
 export {
   cleanToolName,
