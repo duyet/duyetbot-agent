@@ -104,7 +104,13 @@ export function getAllBuiltinTools(): Tool[] {
  * - Long-running processes (sleep)
  */
 export function getCloudflareTools(): Tool[] {
-  return [planTool, duyetMCPClientTool, researchTool, scratchpadTool, telegramForwardTool];
+  return [
+    planTool,
+    duyetMCPClientTool,
+    researchTool,
+    scratchpadTool,
+    telegramForwardTool,
+  ];
 }
 
 /**
