@@ -22,7 +22,7 @@ export default defineConfig({
 		testTimeout: 60_000, // 60 seconds for API calls
 		hookTimeout: 60_000,
 		teardownTimeout: 30_000,
-		isolate: false, // Share context between tests for session management
+		isolate: true, // Enable isolation to prevent DOM pollution between tests
 		reporters: ["verbose", "json"],
 		outputFile: "./test-results/api-results.json",
 		// Use env vars from environment

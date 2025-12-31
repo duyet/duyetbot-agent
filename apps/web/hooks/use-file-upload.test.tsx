@@ -68,6 +68,11 @@ const createMockDataTransferItem = (
 	} as DataTransferItem;
 };
 
+// Helper to create a typed fetch mock (satisfies typeof fetch with preconnect)
+const mockFetch = (impl: () => Promise<unknown>) => {
+	global.fetch = vi.fn(impl) as unknown as typeof fetch;
+};
+
 describe("useFileUpload - Initialization and State", () => {
 	it("initializes with empty upload queue", () => {
 		const onAttachmentsChange = vi.fn();
@@ -91,7 +96,7 @@ describe("useFileUpload - Initialization and State", () => {
 describe("useFileUpload - File Selection via Input Change", () => {
 	it("uploads single file successfully", async () => {
 		const onAttachmentsChange = vi.fn();
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>
@@ -132,7 +137,7 @@ describe("useFileUpload - File Selection via Input Change", () => {
 		];
 
 		let callCount = 0;
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>
@@ -159,7 +164,7 @@ describe("useFileUpload - File Selection via Input Change", () => {
 		const onAttachmentsChange = vi.fn();
 
 		let resolveFetch: () => void;
-		global.fetch = vi.fn(
+		mockFetch(
 			() =>
 				new Promise((resolve) => {
 					resolveFetch = () =>
@@ -200,7 +205,7 @@ describe("useFileUpload - File Selection via Input Change", () => {
 describe("useFileUpload - Paste-to-Upload", () => {
 	it("uploads pasted image", async () => {
 		const onAttachmentsChange = vi.fn();
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>
@@ -273,7 +278,7 @@ describe("useFileUpload - Paste-to-Upload", () => {
 		];
 
 		let callCount = 0;
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>
@@ -311,7 +316,7 @@ describe("useFileUpload - Error Handling", () => {
 
 	it("handles API error response", async () => {
 		const onAttachmentsChange = vi.fn();
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: false,
 				json: () =>
@@ -336,7 +341,7 @@ describe("useFileUpload - Error Handling", () => {
 
 	it("handles network error", async () => {
 		const onAttachmentsChange = vi.fn();
-		global.fetch = vi.fn(() => Promise.reject(new Error("Network error")));
+		mockFetch(() => Promise.reject(new Error("Network error")));
 
 		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
@@ -354,7 +359,7 @@ describe("useFileUpload - Error Handling", () => {
 
 	it("clears queue even on error", async () => {
 		const onAttachmentsChange = vi.fn();
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: false,
 				json: () =>
@@ -384,7 +389,7 @@ describe("useFileUpload - onAttachmentsChange Callbacks", () => {
 
 	it("calls onAttachmentsChange with functional updater", async () => {
 		const onAttachmentsChange = vi.fn();
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>
@@ -419,7 +424,7 @@ describe("useFileUpload - onAttachmentsChange Callbacks", () => {
 			},
 		];
 
-		global.fetch = vi.fn(() =>
+		mockFetch(() =>
 			Promise.resolve({
 				ok: true,
 				json: () =>

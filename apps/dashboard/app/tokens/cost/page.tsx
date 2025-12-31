@@ -20,6 +20,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { formatNumber } from '@/lib/chart-theme';
 import { useDailyAggregates, useTokenSummary } from '@/lib/hooks/use-dashboard-data';
 
 // Model pricing per 1M tokens (approximate pricing)
@@ -46,16 +47,6 @@ function formatCurrency(amount: number): string {
     return `$${amount.toFixed(3)}`;
   }
   return `$${amount.toFixed(4)}`;
-}
-
-function formatNumber(num: number): string {
-  if (num >= 1000000) {
-    return `${(num / 1000000).toFixed(2)}M`;
-  }
-  if (num >= 1000) {
-    return `${(num / 1000).toFixed(1)}K`;
-  }
-  return num.toLocaleString();
 }
 
 function StatsCardSkeleton() {

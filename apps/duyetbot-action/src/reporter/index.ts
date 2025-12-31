@@ -22,18 +22,6 @@ export interface CombinedReporterOptions {
   logDir: string;
   /** If true, skip GitHub API calls */
   dryRun?: boolean | undefined;
-  /** Auto-merge configuration */
-  autoMerge?:
-    | {
-        enabled: boolean;
-        requireChecks: string[];
-        waitForChecks: boolean;
-        timeout: number;
-        approveFirst: boolean;
-        deleteBranch: boolean;
-        closeIssueAfterMerge?: boolean;
-      }
-    | undefined;
 }
 
 /**
@@ -49,7 +37,6 @@ export class CombinedReporter implements Reporter {
         owner: options.owner,
         repo: options.repo,
         dryRun: options.dryRun,
-        autoMerge: options.autoMerge,
       })
     );
     this.reporters.push(

@@ -1,4 +1,12 @@
 import React from 'react';
+import {
+  getDayLabels,
+  getHeatmapColor,
+  getHeatmapColorScale,
+  getHourLabel,
+  getMaxTokens,
+  groupHeatmapByGrid,
+} from '@/lib/token-heatmap-utils';
 import { TokenHeatmapData } from '@/types';
 
 interface TokenHeatmapProps {
@@ -7,27 +15,16 @@ interface TokenHeatmapProps {
   colorScale?: (value: number, max: number) => string;
 }
 
-const defaultColorScale = (value: number, max: number): string => {
-  const ratio = value / max;
-  if (ratio < 0.25) {
-    return '#e0e7ff'; // indigo-100
-  }
-  if (ratio < 0.5) {
-    return '#a5b4fc'; // indigo-300
-  }
-  if (ratio < 0.75) {
-    return '#6366f1'; // indigo-500
-  }
-  return '#4f46e5'; // indigo-600
-};
-
-const dayLabels = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const defaultColorScale = getHeatmapColor;
 
 export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
   data,
   loading = false,
   colorScale = defaultColorScale,
 }) => {
+  const dayLabels = getDayLabels();
+  const colorScaleForLegend = getHeatmapColorScale();
+
   if (loading) {
     return (
       <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
@@ -43,15 +40,10 @@ export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
     );
   }
 
-  const maxTokens = Math.max(...data.map((d) => d.tokens), 1);
+  const maxTokens = getMaxTokens(data);
 
   // Group data by day
-  const grid = Array.from({ length: 7 }).map((_, day) =>
-    Array.from({ length: 24 }).map((_, hour) => {
-      const item = data.find((d) => d.day === day && d.hour === hour);
-      return item?.tokens || 0;
-    })
-  );
+  const grid = groupHeatmapByGrid(data);
 
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800">
@@ -68,7 +60,7 @@ export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
                   key={`hour-label-${hour}`}
                   className="flex w-6 items-center justify-center text-xs text-gray-600 dark:text-gray-400"
                 >
-                  {hour % 6 === 0 ? hour : ''}
+                  {getHourLabel(hour)}
                 </div>
               ))}
             </div>
@@ -102,7 +94,7 @@ export const TokenHeatmap: React.FC<TokenHeatmapProps> = ({
       <div className="mt-4 flex items-center gap-4 text-xs">
         <span className="text-gray-600 dark:text-gray-400">Less</span>
         <div className="flex gap-1">
-          {['#e0e7ff', '#a5b4fc', '#6366f1', '#4f46e5'].map((color) => (
+          {colorScaleForLegend.map((color) => (
             <div key={color} className="h-3 w-3 rounded" style={{ backgroundColor: color }} />
           ))}
         </div>

@@ -24,7 +24,8 @@ export function createChatTransport({
 }: PrepareChatMessagesOptions) {
 	return new DefaultChatTransport({
 		api: "/api/chat",
-		fetch: fetchWithErrorHandlers,
+		// Cast to typeof fetch since fetchWithErrorHandlers is compatible but missing unused preconnect method
+		fetch: fetchWithErrorHandlers as typeof fetch,
 		prepareSendMessagesRequest(request) {
 			const lastMessage = request.messages.at(-1);
 

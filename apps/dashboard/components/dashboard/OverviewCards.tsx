@@ -1,5 +1,6 @@
 import { Minus, TrendingDown, TrendingUp } from 'lucide-react';
 import React from 'react';
+import { formatChange, getTrendColorClass } from '@/lib/kpi-card-utils';
 import { KPICard } from '@/types';
 
 interface OverviewCardsProps {
@@ -47,17 +48,8 @@ export const OverviewCards: React.FC<OverviewCardsProps> = ({ cards, loading = f
             ) : (
               <Minus className="h-4 w-4 text-gray-500" />
             )}
-            <span
-              className={`text-sm font-semibold ${
-                card.trend === 'up'
-                  ? 'text-green-500'
-                  : card.trend === 'down'
-                    ? 'text-red-500'
-                    : 'text-gray-500'
-              }`}
-            >
-              {card.change > 0 ? '+' : ''}
-              {card.change}%
+            <span className={`text-sm font-semibold ${getTrendColorClass(card.trend)}`}>
+              {formatChange(card.change)}%
             </span>
             <span className="text-sm text-gray-500 dark:text-gray-400">{card.changeLabel}</span>
           </div>

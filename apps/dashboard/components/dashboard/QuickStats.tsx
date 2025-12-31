@@ -1,4 +1,5 @@
 import React from 'react';
+import { getGridClass } from './dashboard-utils';
 
 interface QuickStatItem {
   label: string;
@@ -12,9 +13,11 @@ interface QuickStatsProps {
 }
 
 export const QuickStats: React.FC<QuickStatsProps> = ({ stats, loading = false, columns = 3 }) => {
+  const gridClass = getGridClass(columns);
+
   if (loading) {
     return (
-      <div className={`grid gap-4 sm:grid-cols-2 lg:grid-cols-${columns}`}>
+      <div className={`grid gap-4 sm:grid-cols-2 lg:${gridClass}`}>
         {Array.from({ length: columns }, (_, i) => `skeleton-${i}`).map((id) => (
           <div
             key={id}
@@ -27,14 +30,6 @@ export const QuickStats: React.FC<QuickStatsProps> = ({ stats, loading = false, 
       </div>
     );
   }
-
-  const gridClass =
-    {
-      1: 'grid-cols-1',
-      2: 'grid-cols-2',
-      3: 'grid-cols-3',
-      4: 'grid-cols-4',
-    }[Math.min(columns, 4)] || 'grid-cols-3';
 
   return (
     <div className={`grid gap-4 sm:grid-cols-2 lg:${gridClass}`}>

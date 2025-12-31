@@ -30,39 +30,6 @@ export const configSchema = z.object({
   // Dry run mode (don't make real changes)
   dryRun: z.boolean().default(false),
 
-  // Auto-merge configuration
-  autoMerge: z
-    .object({
-      enabled: z.boolean().default(false),
-      requireChecks: z.array(z.string()).default([]),
-      waitForChecks: z.boolean().default(true),
-      timeout: z.number().default(600000), // 10 minutes
-      approveFirst: z.boolean().default(true),
-      deleteBranch: z.boolean().default(true),
-      closeIssueAfterMerge: z.boolean().default(false), // Auto-close issue after PR merge
-    })
-    .optional(),
-
-  // Self-improvement configuration
-  selfImprovement: z
-    .object({
-      enableVerification: z.boolean().default(true),
-      enableAutoFix: z.boolean().default(false),
-      maxRecoveryAttempts: z.number().default(3),
-    })
-    .optional(),
-
-  // Continuous mode configuration
-  continuous: z
-    .object({
-      enabled: z.boolean().default(false),
-      maxTasks: z.number().default(100), // Maximum tasks to process before stopping
-      delayBetweenTasks: z.number().default(5000), // Delay between tasks (ms)
-      closeIssuesAfterMerge: z.boolean().default(true), // Auto-close issues after PR merge
-      stopOnFirstFailure: z.boolean().default(false), // Stop if a task fails
-    })
-    .optional(),
-
   // Repository info
   repository: z
     .object({
@@ -81,32 +48,6 @@ export function loadConfig(): Config {
     memoryMcpUrl: process.env.MEMORY_MCP_URL,
     model: process.env.MODEL,
     dryRun: process.env.DRY_RUN === 'true',
-    autoMerge:
-      process.env.AUTO_MERGE === 'true'
-        ? {
-            enabled: true,
-            requireChecks: (process.env.REQUIRED_CHECKS || '').split(',').filter(Boolean),
-            waitForChecks: process.env.WAIT_FOR_CHECKS !== 'false',
-            timeout: parseInt(process.env.AUTO_MERGE_TIMEOUT || '600000', 10),
-            approveFirst: process.env.AUTO_MERGE_APPROVE !== 'false',
-            deleteBranch: process.env.AUTO_MERGE_DELETE_BRANCH !== 'false',
-          }
-        : undefined,
-    selfImprovement: {
-      enableVerification: process.env.ENABLE_VERIFICATION !== 'false',
-      enableAutoFix: process.env.ENABLE_AUTO_FIX === 'true',
-      maxRecoveryAttempts: parseInt(process.env.MAX_RECOVERY_ATTEMPTS || '3', 10),
-    },
-    continuous:
-      process.env.CONTINUOUS_MODE === 'true'
-        ? {
-            enabled: true,
-            maxTasks: parseInt(process.env.CONTINUOUS_MAX_TASKS || '100', 10),
-            delayBetweenTasks: parseInt(process.env.CONTINUOUS_DELAY_MS || '5000', 10),
-            closeIssuesAfterMerge: process.env.CLOSE_ISSUES_AFTER_MERGE !== 'false',
-            stopOnFirstFailure: process.env.STOP_ON_FIRST_FAILURE === 'true',
-          }
-        : undefined,
     repository: process.env.GITHUB_REPOSITORY
       ? {
           owner: process.env.GITHUB_REPOSITORY.split('/')[0],

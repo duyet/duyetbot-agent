@@ -1,4 +1,11 @@
 import React from 'react';
+import {
+  calculatePercentages,
+  calculateTotal,
+  formatTokenWithPercent,
+  percentToWidth,
+  type TokenBreakdown as TokenBreakdownData,
+} from '@/lib/token-breakdown-utils';
 import { chartColors } from '@/types';
 
 interface TokenBreakdownProps {
@@ -8,10 +15,13 @@ interface TokenBreakdownProps {
 }
 
 export const TokenBreakdown: React.FC<TokenBreakdownProps> = ({ input, output, cached }) => {
-  const total = input + output + cached;
-  const inputPercent = total > 0 ? (input / total) * 100 : 0;
-  const outputPercent = total > 0 ? (output / total) * 100 : 0;
-  const cachedPercent = total > 0 ? (cached / total) * 100 : 0;
+  const breakdown: TokenBreakdownData = { input, output, cached };
+  const total = calculateTotal(breakdown);
+  const {
+    input: inputPercent,
+    output: outputPercent,
+    cached: cachedPercent,
+  } = calculatePercentages(breakdown);
 
   return (
     <div className="space-y-3">
@@ -19,14 +29,14 @@ export const TokenBreakdown: React.FC<TokenBreakdownProps> = ({ input, output, c
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium text-gray-900 dark:text-white">Input</span>
           <span className="text-gray-600 dark:text-gray-400">
-            {input.toLocaleString()} ({inputPercent.toFixed(0)}%)
+            {formatTokenWithPercent(input, inputPercent)}
           </span>
         </div>
         <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
           <div
             className="h-full"
             style={{
-              width: `${inputPercent}%`,
+              width: percentToWidth(inputPercent),
               backgroundColor: chartColors.input,
             }}
           />
@@ -37,14 +47,14 @@ export const TokenBreakdown: React.FC<TokenBreakdownProps> = ({ input, output, c
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium text-gray-900 dark:text-white">Output</span>
           <span className="text-gray-600 dark:text-gray-400">
-            {output.toLocaleString()} ({outputPercent.toFixed(0)}%)
+            {formatTokenWithPercent(output, outputPercent)}
           </span>
         </div>
         <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
           <div
             className="h-full"
             style={{
-              width: `${outputPercent}%`,
+              width: percentToWidth(outputPercent),
               backgroundColor: chartColors.output,
             }}
           />
@@ -55,14 +65,14 @@ export const TokenBreakdown: React.FC<TokenBreakdownProps> = ({ input, output, c
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium text-gray-900 dark:text-white">Cached</span>
           <span className="text-gray-600 dark:text-gray-400">
-            {cached.toLocaleString()} ({cachedPercent.toFixed(0)}%)
+            {formatTokenWithPercent(cached, cachedPercent)}
           </span>
         </div>
         <div className="mt-1 h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
           <div
             className="h-full"
             style={{
-              width: `${cachedPercent}%`,
+              width: percentToWidth(cachedPercent),
               backgroundColor: chartColors.cached,
             }}
           />
