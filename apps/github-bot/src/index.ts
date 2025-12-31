@@ -20,6 +20,7 @@ import { type Env } from './agent.js';
 import { fetchIssueContext, fetchPRContext } from './github-api.js';
 import { handleTaskCreation, shouldCreateTask } from './github-webhook-handler.js';
 import { logger } from './logger.js';
+import { detectAndReportConflicts } from './merge-conflict.js';
 import {
   createGitHubMentionMiddleware,
   createGitHubParserMiddleware,
@@ -441,6 +442,38 @@ app.post(
               logger.error(`[${requestId}] [TASK] Task creation error`, {
                 requestId,
                 error: taskError instanceof Error ? taskError.message : String(taskError),
+              });
+            }
+          }
+
+          // Detect and report merge conflicts for PRs (fire-and-forget)
+          if (event === 'pull_request' && webhookCtx.headRef && webhookCtx.baseRef) {
+            try {
+              const conflictSuccess = await detectAndReportConflicts(
+                env.GITHUB_TOKEN,
+                owner,
+                repo,
+                issue.number,
+                webhookCtx.headRef,
+                webhookCtx.baseRef,
+                env.BOT_USERNAME || 'github-actions[bot]' // Default to GitHub Actions bot username
+              );
+
+              if (conflictSuccess) {
+                logger.info(`[${requestId}] [MERGE_CONFLICT] Detection complete`, {
+                  requestId,
+                  repository: `${owner}/${repo}`,
+                  prNumber: issue.number,
+                  headRef: webhookCtx.headRef,
+                  baseRef: webhookCtx.baseRef,
+                });
+              }
+            } catch (conflictError) {
+              // Don't fail the webhook if conflict detection fails
+              logger.error(`[${requestId}] [MERGE_CONFLICT] Detection error`, {
+                requestId,
+                error:
+                  conflictError instanceof Error ? conflictError.message : String(conflictError),
               });
             }
           }
