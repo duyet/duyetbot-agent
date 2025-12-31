@@ -116,18 +116,15 @@ Line 3`;
     });
 
     it('should create Telegram context for group chat', () => {
-      const context = createTelegramContext(
-        'test_token_123',
-        {
-          chatId: -1001234567890, // Negative chat ID indicates group/supergroup
-          userId: 789,
-          username: 'testuser',
-          text: 'Hello bot',
-          startTime: Date.now(),
-          messageId: 42,
-          isGroupChat: true,
-        }
-      );
+      const context = createTelegramContext('test_token_123', {
+        chatId: -1001234567890, // Negative chat ID indicates group/supergroup
+        userId: 789,
+        username: 'testuser',
+        text: 'Hello bot',
+        startTime: Date.now(),
+        messageId: 42,
+        isGroupChat: true,
+      });
 
       expect(context.chatId).toBeLessThan(0);
       expect(context.isGroupChat).toBe(true);
@@ -156,19 +153,16 @@ Line 3`;
 
     it('should create context with reply to message', () => {
       const replyToMessageId = 99;
-      const context = createTelegramContext(
-        'test_token_123',
-        {
-          chatId: 123456,
-          userId: 789,
-          username: 'testuser',
-          text: 'Hello bot',
-          startTime: Date.now(),
-          messageId: 42,
-          replyToMessageId,
-          isGroupChat: false,
-        }
-      );
+      const context = createTelegramContext('test_token_123', {
+        chatId: 123456,
+        userId: 789,
+        username: 'testuser',
+        text: 'Hello bot',
+        startTime: Date.now(),
+        messageId: 42,
+        replyToMessageId,
+        isGroupChat: false,
+      });
 
       expect(context.replyToMessageId).toBe(replyToMessageId);
     });
@@ -209,19 +203,16 @@ Line 3`;
 
     it('should include replyTo in ParsedInput when present', () => {
       const replyToMessageId = 99;
-      const telegramContext = createTelegramContext(
-        'test_token_123',
-        {
-          chatId: 123456,
-          userId: 789,
-          username: 'testuser',
-          text: 'Hello bot',
-          startTime: Date.now(),
-          messageId: 42,
-          replyToMessageId,
-          isGroupChat: false,
-        }
-      );
+      const telegramContext = createTelegramContext('test_token_123', {
+        chatId: 123456,
+        userId: 789,
+        username: 'testuser',
+        text: 'Hello bot',
+        startTime: Date.now(),
+        messageId: 42,
+        replyToMessageId,
+        isGroupChat: false,
+      });
 
       const parsedInput = telegramTransport.parseContext(telegramContext);
 
@@ -229,17 +220,14 @@ Line 3`;
     });
 
     it('should handle context without username', () => {
-      const telegramContext = createTelegramContext(
-        'test_token_123',
-        {
-          chatId: 123456,
-          userId: 789,
-          text: 'Hello bot',
-          startTime: Date.now(),
-          messageId: 42,
-          isGroupChat: false,
-        }
-      );
+      const telegramContext = createTelegramContext('test_token_123', {
+        chatId: 123456,
+        userId: 789,
+        text: 'Hello bot',
+        startTime: Date.now(),
+        messageId: 42,
+        isGroupChat: false,
+      });
 
       const parsedInput = telegramTransport.parseContext(telegramContext);
 
@@ -288,9 +276,7 @@ Line 3`;
         { userId: 999, chatId: -1001234567890 }, // Group chat
       ];
 
-      const sessionIds = combinations.map(
-        (c) => `telegram:${c.userId}:${c.chatId}`
-      );
+      const sessionIds = combinations.map((c) => `telegram:${c.userId}:${c.chatId}`);
 
       expect(sessionIds).toHaveLength(3);
       expect(new Set(sessionIds)).toHaveLength(3); // All unique
@@ -339,18 +325,15 @@ Line 3`;
     });
 
     it('should handle undefined parse mode', () => {
-      const context = createTelegramContext(
-        'test_token_123',
-        {
-          chatId: 123456,
-          userId: 789,
-          username: 'testuser',
-          text: 'Plain text',
-          startTime: Date.now(),
-          messageId: 42,
-          isGroupChat: false,
-        }
-      );
+      const context = createTelegramContext('test_token_123', {
+        chatId: 123456,
+        userId: 789,
+        username: 'testuser',
+        text: 'Plain text',
+        startTime: Date.now(),
+        messageId: 42,
+        isGroupChat: false,
+      });
 
       expect(context.parseMode).toBeUndefined();
     });

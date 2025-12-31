@@ -441,14 +441,14 @@ Let's chat!`;
 
           // Parse PR number from args
           const prNumber = parseInt(args.trim(), 10);
-          if (isNaN(prNumber)) {
+          if (Number.isNaN(prNumber)) {
             await telegramTransport.send(ctx, `❌ Invalid PR number. Usage: \`/pr <number>\``);
             return c.text('OK');
           }
 
           // Fetch PR from GitHub API
           const response = await fetch(
-            'https://api.github.com/repos/duyet/duyetbot-agent/pulls/' + prNumber,
+            `https://api.github.com/repos/duyet/duyetbot-agent/pulls/${prNumber}`,
             {
               headers: {
                 Authorization: `Bearer ${env.GITHUB_TOKEN}`,
@@ -545,7 +545,7 @@ Let's chat!`;
 
           // Parse PR number from args
           const prNumber = parseInt(args.trim(), 10);
-          if (isNaN(prNumber)) {
+          if (Number.isNaN(prNumber)) {
             await telegramTransport.send(ctx, `❌ Invalid PR number. Usage: \`/review <number>\``);
             return c.text('OK');
           }
@@ -558,7 +558,7 @@ Let's chat!`;
 
           // Fetch PR from GitHub API
           const prResponse = await fetch(
-            'https://api.github.com/repos/duyet/duyetbot-agent/pulls/' + prNumber,
+            `https://api.github.com/repos/duyet/duyetbot-agent/pulls/${prNumber}`,
             {
               headers: {
                 Authorization: `Bearer ${env.GITHUB_TOKEN}`,
@@ -608,7 +608,7 @@ Let's chat!`;
             diffContent = await diffResponse.text();
             // Truncate diff if too large (limit to ~50k chars)
             if (diffContent.length > 50000) {
-              diffContent = diffContent.slice(0, 50000) + '\n\n... (truncated)';
+              diffContent = `${diffContent.slice(0, 50000)}\n\n... (truncated)`;
             }
           }
 
