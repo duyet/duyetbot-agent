@@ -38,6 +38,9 @@ interface BaseEnv extends ProviderEnv {
   TELEGRAM_PARSE_MODE?: 'HTML' | 'MarkdownV2';
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
+  // Cloudflare deployment API (for /deploy command)
+  CLOUDFLARE_ACCOUNT_ID?: string;
+  CLOUDFLARE_API_TOKEN?: string;
   ROUTER_DEBUG?: string;
   // Internal forward endpoint (for web app integration)
   FORWARD_SECRET?: string;

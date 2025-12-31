@@ -354,6 +354,79 @@ Let's chat!`;
         }
         return c.text('OK');
       }
+
+      // Handle /deploy command
+      if (command === 'deploy') {
+        try {
+          // Fetch deployment info from Cloudflare
+          const deployments = await fetch(
+            `https://api.cloudflare.com/client/v4/accounts/${env.CLOUDFLARE_ACCOUNT_ID}/workers/scripts/duyetbot-telegram-bot/deployments`,
+            {
+              headers: {
+                Authorization: `Bearer ${env.CLOUDFLARE_API_TOKEN}`,
+                'Content-Type': 'application/json',
+              },
+            }
+          );
+
+          let deployStatus = `📦 *Deployment Status*
+
+*Environment*: ${env.ENVIRONMENT || 'production'}
+*Account*: ${env.CLOUDFLARE_ACCOUNT_ID?.slice(0, 8)}...`;
+
+          if (deployments.ok) {
+            const data = (await deployments.json()) as {
+              result?: Array<{
+                id: string;
+                created_on: string;
+                metadata?: { annotations?: Array<{ name: string }> };
+              }>;
+            };
+
+            if (data.result && data.result.length > 0) {
+              const latest = data.result[0];
+              const deployDate = new Date(latest.created_on);
+              deployStatus += `
+
+*Latest Deployment*:
+• ID: ${latest.id.slice(0, 8)}...
+• Date: ${deployDate.toISOString()}
+• Age: ${Math.floor((Date.now() - deployDate.getTime()) / 1000 / 60)} minutes ago`;
+            } else {
+              deployStatus += `
+
+*Latest Deployment*: No deployment history found`;
+            }
+          } else {
+            deployStatus += `
+
+*Latest Deployment*: Unable to fetch (API error)`;
+          }
+
+          deployStatus += `
+
+*Chat*: ${ctx.chatId}
+*User*: ${ctx.username || ctx.userId}`;
+
+          await telegramTransport.send(ctx, deployStatus);
+
+          logger.info(`[${requestId}] [COMMAND] /deploy completed`, {
+            requestId,
+            durationMs: Date.now() - startTime,
+          });
+        } catch (error) {
+          logger.error(`[${requestId}] [COMMAND] /deploy failed`, {
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          // Send a simple fallback message
+          await telegramTransport.send(
+            ctx,
+            `📦 *Deployment Status*\n\nUnable to fetch deployment info. Please try again later.`
+          );
+        }
+        return c.text('OK');
+      }
     }
 
     // Set observability context (user info for event tracking)
