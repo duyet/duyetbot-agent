@@ -10,7 +10,7 @@ started_at: "2025-12-30T06:37:44Z"
 ---
 
 ## Ralph Loop Autonomous Development
-**Iteration**: 13
+**Iteration**: 14
 **Status**: active
 **Mode**: 24/7 autonomous AI development
 
@@ -67,6 +67,13 @@ Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 - [ ] Implement dashboard cost distribution feature (BLOCKED: awaiting user input)
 
 ### Completed Iterations
+**Iteration 14** (Telegram Bot /pr Command):
+- Added `/pr` command to Telegram bot
+- Fetches PR status from GitHub API (title, status, author, timestamps, changes)
+- Includes error handling for 404, 401, and generic errors
+- All 145 telegram-bot tests pass, type-check passes
+- Commit fb88fd0 pushed
+
 **Iteration 13** (Telegram Bot /deploy Command):
 - Added `/deploy` command to Telegram bot
 - Fetches deployment status from Cloudflare API (account ID, latest deployment info, age)
@@ -123,6 +130,6 @@ Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 - 5 commits pushed with duyetbot co-author
 
 ### Last Update
-- **Time**: 2025-12-31 16:02 UTC
-- **Action**: Added /deploy command to Telegram bot
+- **Time**: 2025-12-31 16:05 UTC
+- **Action**: Added /pr command to Telegram bot
 - **Next**: Pick next high-priority task from TODO.md

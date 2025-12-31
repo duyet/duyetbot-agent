@@ -531,6 +531,164 @@ Let's chat!`;
         }
         return c.text('OK');
       }
+
+      // Handle /review command - AI code review for PR
+      if (command === 'review') {
+        try {
+          if (!args) {
+            await telegramTransport.send(
+              ctx,
+              `🔍 *PR Review*\n\nUsage: \`/review <number>\`\n\nExample: \`/review 123\``
+            );
+            return c.text('OK');
+          }
+
+          // Parse PR number from args
+          const prNumber = parseInt(args.trim(), 10);
+          if (isNaN(prNumber)) {
+            await telegramTransport.send(ctx, `❌ Invalid PR number. Usage: \`/review <number>\``);
+            return c.text('OK');
+          }
+
+          // Send initial message
+          await telegramTransport.send(
+            ctx,
+            `🔍 *Reviewing PR #${prNumber}*\n\nFetching PR details and diff...`
+          );
+
+          // Fetch PR from GitHub API
+          const prResponse = await fetch(
+            'https://api.github.com/repos/duyet/duyetbot-agent/pulls/' + prNumber,
+            {
+              headers: {
+                Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+                Accept: 'application/vnd.github.v3+json',
+                'User-Agent': 'duyetbot-telegram',
+              },
+            }
+          );
+
+          if (!prResponse.ok) {
+            if (prResponse.status === 404) {
+              await telegramTransport.send(ctx, `❌ PR #${prNumber} not found`);
+            } else if (prResponse.status === 401) {
+              await telegramTransport.send(
+                ctx,
+                `❌ GitHub authentication failed. Check GITHUB_TOKEN.`
+              );
+            } else {
+              await telegramTransport.send(
+                ctx,
+                `❌ Failed to fetch PR #${prNumber} (HTTP ${prResponse.status})`
+              );
+            }
+            return c.text('OK');
+          }
+
+          const pr = (await prResponse.json()) as {
+            number: number;
+            title: string;
+            state: 'open' | 'closed';
+            user: { login: string };
+            body?: string;
+            html_url: string;
+            diff_url: string;
+          };
+
+          // Fetch PR diff
+          const diffResponse = await fetch(pr.diff_url, {
+            headers: {
+              Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+              'User-Agent': 'duyetbot-telegram',
+            },
+          });
+
+          let diffContent = '';
+          if (diffResponse.ok) {
+            diffContent = await diffResponse.text();
+            // Truncate diff if too large (limit to ~50k chars)
+            if (diffContent.length > 50000) {
+              diffContent = diffContent.slice(0, 50000) + '\n\n... (truncated)';
+            }
+          }
+
+          // Build review prompt
+          const reviewPrompt = `Please review PR #${prNumber}: "${pr.title}" by @${pr.user.login}
+
+${pr.body ? `PR Description:\n${pr.body}\n\n` : ''}
+
+Please analyze:
+1. **Code Quality**: Identify bugs, logic errors, security issues, or anti-patterns
+2. **Best Practices**: Check adherence to project conventions and TypeScript/JavaScript best practices
+3. **Potential Issues**: Highlight edge cases, error handling gaps, or performance concerns
+4. **Suggestions**: Provide specific, actionable improvement recommendations
+
+${diffContent ? `Diff:\n\`\`\`diff\n${diffContent}\n\`\`\`` : '(No diff available)'}
+
+Provide your review in a structured format with clear sections.`;
+
+          // Get agent for review dispatch
+          const agentId = `telegram:${ctx.userId}:${ctx.chatId}`;
+          const reviewAgent = getChatAgent(env.TelegramAgent, agentId);
+
+          // Create review input for agent
+          const reviewParsedInput: ParsedInput = {
+            text: reviewPrompt,
+            userId: ctx.userId,
+            chatId: ctx.chatId,
+            username: ctx.username,
+            messageRef: ctx.messageId,
+            replyTo: ctx.replyToMessageId,
+            metadata: {
+              platform: 'telegram',
+              requestId,
+              eventId, // Full UUID for D1 observability correlation
+              traceId: `telegram:${ctx.chatId}:${Date.now()}`,
+              startTime: ctx.startTime,
+              adminUsername: ctx.adminUsername,
+              parseMode: ctx.parseMode,
+              isAdmin: ctx.isAdmin,
+              isReview: true, // Mark as review request for special handling
+            },
+          };
+
+          logger.info(`[${requestId}] [COMMAND] /review dispatching to agent`, {
+            requestId,
+            prNumber,
+            diffSize: diffContent.length,
+          });
+
+          // Dispatch to agent for AI review
+          c.executionCtx.waitUntil(
+            (async () => {
+              try {
+                await reviewAgent.receiveMessage(reviewParsedInput);
+              } catch (error) {
+                logger.error(`[${requestId}] [COMMAND] /review agent failed`, {
+                  requestId,
+                  error: error instanceof Error ? error.message : String(error),
+                });
+              }
+            })()
+          );
+
+          logger.info(`[${requestId}] [COMMAND] /review completed`, {
+            requestId,
+            prNumber,
+            durationMs: Date.now() - startTime,
+          });
+        } catch (error) {
+          logger.error(`[${requestId}] [COMMAND] /review failed`, {
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          await telegramTransport.send(
+            ctx,
+            `❌ Failed to start PR review. Please try again later.`
+          );
+        }
+        return c.text('OK');
+      }
     }
 
     // Set observability context (user info for event tracking)
