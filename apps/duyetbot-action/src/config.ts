@@ -2,13 +2,23 @@ import { z } from 'zod';
 
 export const configSchema = z.object({
   // OpenRouter API key for LLM access
-  openrouterApiKey: z.string().min(1),
+  // Handle empty string as validation error with clear message
+  openrouterApiKey: z
+    .string()
+    .min(1, "OPENROUTER_API_KEY is required. Set it in GitHub Secrets.")
+    .refine((val) => val.trim().length > 0, "OPENROUTER_API_KEY cannot be empty"),
 
   // GitHub token for API operations
   githubToken: z.string().min(1),
 
   // Memory MCP URL (optional)
-  memoryMcpUrl: z.string().url().optional(),
+  // Handle empty string as undefined for cases where GitHub Secret is not set
+  memoryMcpUrl: z
+    .string()
+    .url()
+    .optional()
+    .or(z.literal(""))
+    .transform((val) => (val === "" ? undefined : val)),
 
   // Model to use
   model: z.string().default('anthropic/claude-sonnet-4'),
