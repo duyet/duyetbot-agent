@@ -34,7 +34,9 @@ export class SafetyValidator {
 
     // Run all enabled rules
     for (const rule of this.rules) {
-      if (!rule.enabled) continue;
+      if (!rule.enabled) {
+        continue;
+      }
 
       const violation = rule.check(context);
       if (violation) {
@@ -85,7 +87,9 @@ export class SafetyValidator {
    */
   private shouldBlockOperation(violations: SafetyViolation[]): boolean {
     for (const policy of this.policies) {
-      if (!policy.enabled) continue;
+      if (!policy.enabled) {
+        continue;
+      }
 
       for (const violation of violations) {
         // Check if violation type is blocked

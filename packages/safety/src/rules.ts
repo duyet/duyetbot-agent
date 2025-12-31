@@ -65,7 +65,9 @@ export const DEFAULT_RULES: SafetyRule[] = [
     type: 'security_issue',
     enabled: true,
     check: (ctx) => {
-      if (!ctx.requests) return null;
+      if (!ctx.requests) {
+        return null;
+      }
 
       const suspiciousDomains = ['pastebin.com', 'trello.com', 'gist.github.com', 'transfer.sh'];
 

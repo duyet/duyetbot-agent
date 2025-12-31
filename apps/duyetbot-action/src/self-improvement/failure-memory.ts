@@ -4,16 +4,11 @@
  * Stores and retrieves learned patterns from past failures
  */
 
+import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { createHash } from 'node:crypto';
 import { z } from 'zod';
-import type {
-  FailurePattern,
-  FixSuggestion,
-  LearnedFix,
-  ParsedError,
-} from './types.js';
+import type { FailurePattern, FixSuggestion, LearnedFix, ParsedError } from './types.js';
 import { ErrorCategory } from './types.js';
 
 /**
@@ -40,16 +35,20 @@ const learnedFixSchema = z.object({
   fix: z.object({
     type: z.enum(['patch', 'command', 'refactor']),
     description: z.string(),
-    patch: z.object({
-      file: z.string(),
-      oldText: z.string(),
-      newText: z.string(),
-    }).optional(),
-    command: z.object({
-      cwd: z.string(),
-      command: z.string(),
-      args: z.array(z.string()),
-    }).optional(),
+    patch: z
+      .object({
+        file: z.string(),
+        oldText: z.string(),
+        newText: z.string(),
+      })
+      .optional(),
+    command: z
+      .object({
+        cwd: z.string(),
+        command: z.string(),
+        args: z.array(z.string()),
+      })
+      .optional(),
   }),
   appliedAt: z.number(),
   worked: z.boolean(),
@@ -194,11 +193,7 @@ export class FailureMemory {
   /**
    * Learn from a failure
    */
-  async learnFromFailure(
-    error: ParsedError,
-    solution: string,
-    worked: boolean,
-  ): Promise<void> {
+  async learnFromFailure(error: ParsedError, solution: string, worked: boolean): Promise<void> {
     const signature = this.getErrorSignature(error);
     let pattern = this.patterns.get(signature);
 
@@ -209,8 +204,7 @@ export class FailureMemory {
       if (worked) {
         // Update success rate using weighted average
         const weight = 0.3; // New data has 30% weight
-        pattern.successRate =
-          pattern.successRate * (1 - weight) + (worked ? 1 : 0) * weight;
+        pattern.successRate = pattern.successRate * (1 - weight) + (worked ? 1 : 0) * weight;
       }
     } else {
       // Create new pattern
@@ -306,7 +300,7 @@ export class FailureMemory {
         };
         this.patterns.set(pattern.id, pattern);
       }
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist yet or is invalid
       console.debug('No existing patterns found');
     }
@@ -325,7 +319,7 @@ export class FailureMemory {
         const fix = learnedFixSchema.parse(item);
         this.fixes.set(fix.errorSignature, fix);
       }
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist yet or is invalid
       console.debug('No existing fixes found');
     }

@@ -72,7 +72,7 @@ export class ImprovementCycle {
       await execAsync(`git checkout -b ${this.snapshotBranch}`, {
         cwd: this.root,
       });
-    } catch (error) {
+    } catch (_error) {
       console.warn('⚠️  Could not create snapshot branch');
     }
   }
@@ -81,7 +81,9 @@ export class ImprovementCycle {
    * Rollback changes from snapshot
    */
   private async rollback(): Promise<void> {
-    if (!this.snapshotBranch) return;
+    if (!this.snapshotBranch) {
+      return;
+    }
 
     try {
       // Switch back to master/main
@@ -95,7 +97,7 @@ export class ImprovementCycle {
       });
 
       console.log('🔄 Changes rolled back');
-    } catch (error) {
+    } catch (_error) {
       console.warn('⚠️  Could not rollback changes');
     }
   }

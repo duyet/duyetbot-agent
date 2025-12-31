@@ -75,8 +75,12 @@ export class SelfImprovement {
     let totalComplexity = 0;
 
     for (const opportunity of sorted) {
-      if (selected.length >= maxOpportunities) break;
-      if (totalComplexity + opportunity.complexity > maxComplexity) break;
+      if (selected.length >= maxOpportunities) {
+        break;
+      }
+      if (totalComplexity + opportunity.complexity > maxComplexity) {
+        break;
+      }
 
       selected.push(opportunity);
       totalComplexity += opportunity.complexity;
@@ -98,7 +102,7 @@ export class SelfImprovement {
     const cycle = new ImprovementCycle(this.config);
     const result = await cycle.run(plan);
 
-    console.log('\n' + result.summary);
+    console.log(`\n${result.summary}`);
 
     if (!result.rolledBack && result.failed === 0) {
       console.log('✅ All improvements applied successfully!');

@@ -140,12 +140,9 @@ function classifyError(error: unknown): ErrorSeverity {
 /**
  * Calculate retry delay with exponential backoff and jitter
  */
-function calculateRetryDelay(
-  attempt: number,
-  config: Required<RetryConfig>
-): number {
+function calculateRetryDelay(attempt: number, config: Required<RetryConfig>): number {
   const exponentialDelay = Math.min(
-    config.baseDelayMs * Math.pow(config.backoffMultiplier, attempt),
+    config.baseDelayMs * config.backoffMultiplier ** attempt,
     config.maxDelayMs
   );
   const jitter = exponentialDelay * config.jitterFactor * Math.random();
@@ -239,11 +236,12 @@ export class DOErrorRecovery {
   private retry: Required<RetryConfig>;
   private circuitBreaker: CircuitBreaker;
 
-  constructor(private config: DOErrorRecoveryConfig = {}) {
+  constructor(config: DOErrorRecoveryConfig = {}) {
     this.retry = { ...DEFAULT_RETRY, ...config.retry };
-    this.circuitBreaker = new CircuitBreaker(
-      { ...DEFAULT_CIRCUIT_BREAKER, ...config.circuitBreaker }
-    );
+    this.circuitBreaker = new CircuitBreaker({
+      ...DEFAULT_CIRCUIT_BREAKER,
+      ...config.circuitBreaker,
+    });
   }
 
   async execute<T>(
@@ -310,11 +308,21 @@ export class DOErrorRecovery {
     if (error instanceof Error) {
       const message = error.message.toLowerCase();
 
-      if (message.includes('timeout')) return 'timeout_error';
-      if (message.includes('network') || message.includes('fetch')) return 'network_error';
-      if (message.includes('storage') || message.includes('io')) return 'storage_error';
-      if (message.includes('evicted')) return 'eviction_error';
-      if (message.includes('version')) return 'version_mismatch';
+      if (message.includes('timeout')) {
+        return 'timeout_error';
+      }
+      if (message.includes('network') || message.includes('fetch')) {
+        return 'network_error';
+      }
+      if (message.includes('storage') || message.includes('io')) {
+        return 'storage_error';
+      }
+      if (message.includes('evicted')) {
+        return 'eviction_error';
+      }
+      if (message.includes('version')) {
+        return 'version_mismatch';
+      }
     }
 
     return 'unknown_error';

@@ -118,7 +118,13 @@ async function pickTask(picker: TaskPicker, taskId?: string): Promise<Task | nul
  */
 function buildReportContext(
   task: Task,
-  result: { success: boolean; output: string; error?: string; tokensUsed: number; verificationPassed?: boolean },
+  result: {
+    success: boolean;
+    output: string;
+    error?: string;
+    tokensUsed: number;
+    verificationPassed?: boolean;
+  },
   duration: number
 ): ReportContext {
   // Extract issue number from GitHub issue task ID (format: github-{number})
@@ -386,8 +392,12 @@ async function printContinuousSummary(
   console.log(`   Total tokens used: ${totalTokensUsed}`);
   console.log(`   Total task time: ${(totalDuration / 1000).toFixed(2)}s`);
   console.log(`   Total session time: ${(totalSessionTime / 1000).toFixed(2)}s`);
-  console.log(`   Avg tokens per task: ${tasksCompleted > 0 ? Math.round(totalTokensUsed / tasksCompleted) : 0}`);
-  console.log(`   Avg time per task: ${tasksCompleted > 0 ? (totalDuration / tasksCompleted / 1000).toFixed(2) : 'N/A'}s`);
+  console.log(
+    `   Avg tokens per task: ${tasksCompleted > 0 ? Math.round(totalTokensUsed / tasksCompleted) : 0}`
+  );
+  console.log(
+    `   Avg time per task: ${tasksCompleted > 0 ? (totalDuration / tasksCompleted / 1000).toFixed(2) : 'N/A'}s`
+  );
   console.log(`${'='.repeat(60)}\n`);
 }
 

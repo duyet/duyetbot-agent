@@ -56,21 +56,21 @@ export {
   formatProgressiveDebugFooter,
   smartEscapeMarkdownV2,
 } from './debug-footer.js';
-// Factory
-export { createAgent } from './factory.js';
 // Error recovery for Durable Objects
 export {
   CircuitBreaker,
-  DOErrorRecovery,
-  doErrorRecovery,
   type CircuitBreakerConfig,
   type CircuitState,
+  DOErrorRecovery,
   type DOErrorRecoveryConfig,
   type DOErrorType,
   type DOOperationError,
+  doErrorRecovery,
   type ErrorSeverity,
   type RetryConfig,
 } from './error-recovery.js';
+// Factory
+export { createAgent } from './factory.js';
 // Format utilities
 export {
   cleanToolName,

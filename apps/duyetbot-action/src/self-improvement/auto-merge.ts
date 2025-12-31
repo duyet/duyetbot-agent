@@ -9,11 +9,11 @@
  */
 export interface AutoMergeConfig {
   enabled: boolean;
-  requireChecks: string[];  // Required CI checks to pass
-  waitForChecks: boolean;   // Wait for CI before merging
-  timeout: number;          // Max wait time for CI (ms)
-  approveFirst: boolean;    // Approve PR before merging
-  deleteBranch: boolean;    // Delete branch after merge
+  requireChecks: string[]; // Required CI checks to pass
+  waitForChecks: boolean; // Wait for CI before merging
+  timeout: number; // Max wait time for CI (ms)
+  approveFirst: boolean; // Approve PR before merging
+  deleteBranch: boolean; // Delete branch after merge
 }
 
 /**
@@ -56,7 +56,7 @@ export class AutoMergeService {
   constructor(
     private githubToken: string,
     private owner: string,
-    private repo: string,
+    private repo: string
   ) {
     // Lazy load Octokit
   }
@@ -64,10 +64,7 @@ export class AutoMergeService {
   /**
    * Auto-merge a PR if all checks pass
    */
-  async autoMerge(
-    prNumber: number,
-    config: AutoMergeConfig,
-  ): Promise<AutoMergeResult> {
+  async autoMerge(prNumber: number, config: AutoMergeConfig): Promise<AutoMergeResult> {
     console.log(`\n🔄 Auto-merge process for PR #${prNumber}...`);
 
     // Get Octokit dynamically
@@ -145,7 +142,12 @@ export class AutoMergeService {
       mergeable: pr.mergeable ?? false,
       statusChecks: checks.check_runs.map((run: any) => ({
         name: run.name,
-        status: run.conclusion === 'success' ? 'success' : run.conclusion === 'failure' ? 'failure' : 'pending',
+        status:
+          run.conclusion === 'success'
+            ? 'success'
+            : run.conclusion === 'failure'
+              ? 'failure'
+              : 'pending',
         url: run.html_url,
       })),
     };
@@ -154,10 +156,7 @@ export class AutoMergeService {
   /**
    * Wait for status checks to complete
    */
-  private async waitForChecks(
-    prNumber: number,
-    config: AutoMergeConfig,
-  ): Promise<StatusCheck[]> {
+  private async waitForChecks(prNumber: number, config: AutoMergeConfig): Promise<StatusCheck[]> {
     const startTime = Date.now();
     const pollInterval = 10000; // 10 seconds
 
@@ -166,16 +165,16 @@ export class AutoMergeService {
 
       // Check if all required checks have completed
       const requiredChecks = config.requireChecks;
-      const completedChecks = prStatus.statusChecks.filter(
-        (c) => c.status !== 'pending'
-      );
+      const completedChecks = prStatus.statusChecks.filter((c) => c.status !== 'pending');
 
       // If all required checks are done, return results
       if (completedChecks.length >= requiredChecks.length) {
         return prStatus.statusChecks;
       }
 
-      console.log(`   Still waiting for checks... (${completedChecks.length}/${requiredChecks.length} complete)`);
+      console.log(
+        `   Still waiting for checks... (${completedChecks.length}/${requiredChecks.length} complete)`
+      );
       await new Promise((resolve) => setTimeout(resolve, pollInterval));
     }
 
@@ -221,7 +220,7 @@ export async function autoMergePR(
   owner: string,
   repo: string,
   prNumber: number,
-  config: Partial<AutoMergeConfig> = {},
+  config: Partial<AutoMergeConfig> = {}
 ): Promise<AutoMergeResult> {
   const service = new AutoMergeService(githubToken, owner, repo);
 

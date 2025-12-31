@@ -4,21 +4,6 @@
  * Main export for the self-improvement system
  */
 
-// Types - export enums as values, other types as type-only
-export { ErrorCategory, ErrorSeverity } from './types.js';
-export type {
-  ParsedError,
-  FixSuggestion,
-  VerificationCheck,
-  VerificationResult,
-  RecoveryResult,
-  FailurePattern,
-  LearnedFix,
-  PostMortemAnalysis,
-  SelfImprovementConfig,
-  RecoveryContext,
-} from './types.js';
-
 // Auto-merge types
 export type {
   AutoMergeConfig,
@@ -26,18 +11,28 @@ export type {
   PRStatus,
   StatusCheck,
 } from './auto-merge.js';
-
-// Error analyzer
-export { ErrorAnalyzer, errorAnalyzer } from './error-analyzer.js';
-
-// Verification loop
-export { VerificationLoop, verifyWorkDir } from './verification-loop.js';
-
-// Failure memory
-export { FailureMemory, getFailureMemory } from './failure-memory.js';
-
 // Auto-merge
 export { AutoMergeService, autoMergePR } from './auto-merge.js';
+// Error analyzer
+export { ErrorAnalyzer, errorAnalyzer } from './error-analyzer.js';
+// Failure memory
+export { FailureMemory, getFailureMemory } from './failure-memory.js';
+export type {
+  FailurePattern,
+  FixSuggestion,
+  LearnedFix,
+  ParsedError,
+  PostMortemAnalysis,
+  RecoveryContext,
+  RecoveryResult,
+  SelfImprovementConfig,
+  VerificationCheck,
+  VerificationResult,
+} from './types.js';
+// Types - export enums as values, other types as type-only
+export { ErrorCategory, ErrorSeverity } from './types.js';
+// Verification loop
+export { VerificationLoop, verifyWorkDir } from './verification-loop.js';
 
 /**
  * Initialize self-improvement system
