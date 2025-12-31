@@ -1,4 +1,4 @@
-name: duyetbot-action
+name: duyetbot-action (v2)
 
 on:
   workflow_dispatch:
