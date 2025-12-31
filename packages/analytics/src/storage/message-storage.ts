@@ -22,6 +22,7 @@ import type {
   UserStats,
 } from '../types.js';
 import { BaseStorage } from './base.js';
+import { estimateCostFromTokens } from './cost-utils.js';
 
 /**
  * AnalyticsMessageStorage handles D1 operations for analytics messages.
@@ -438,7 +439,10 @@ export class AnalyticsMessageStorage extends BaseStorage {
       totalInputTokens: result.total_input_tokens,
       totalOutputTokens: result.total_output_tokens,
       totalTokens: result.total_tokens,
-      estimatedCostUsd: 0, // TODO: Calculate based on cost config
+      estimatedCostUsd: estimateCostFromTokens({
+        inputTokens: result.total_input_tokens,
+        outputTokens: result.total_output_tokens,
+      }),
     };
   }
 

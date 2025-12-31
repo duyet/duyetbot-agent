@@ -1,3 +1,4 @@
+import { estimateCostFromTokens } from '@duyetbot/analytics';
 import { NextRequest, NextResponse } from 'next/server';
 import { getDBFromContext } from '@/lib/db';
 import { handleRouteError, successResponse } from '../../types';
@@ -38,7 +39,10 @@ export async function GET(request: NextRequest) {
         totalOutputTokens: globalStats.totalOutputTokens,
         totalTokens: globalStats.totalTokens,
         platformBreakdown: globalStats.platformBreakdown,
-        estimatedCostUsd: 0, // TODO: Calculate from cost config
+        estimatedCostUsd: estimateCostFromTokens({
+          inputTokens: globalStats.totalInputTokens,
+          outputTokens: globalStats.totalOutputTokens,
+        }),
       })
     );
   } catch (error) {

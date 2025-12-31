@@ -12,6 +12,7 @@
 
 import type { AggregateType, PeriodType } from '../types.js';
 import { BaseStorage } from './base.js';
+import { estimateCostFromTokens } from './cost-utils.js';
 
 /**
  * Token aggregate type
@@ -472,15 +473,25 @@ export class AggregateStorage extends BaseStorage {
       event_count: number;
     }>(sql, params);
 
+    const inputTokens = result?.input_tokens ?? 0;
+    const outputTokens = result?.output_tokens ?? 0;
+    const cachedTokens = result?.cached_tokens ?? 0;
+    const reasoningTokens = result?.reasoning_tokens ?? 0;
+
     return {
-      inputTokens: result?.input_tokens ?? 0,
-      outputTokens: result?.output_tokens ?? 0,
+      inputTokens,
+      outputTokens,
       totalTokens: result?.total_tokens ?? 0,
-      cachedTokens: result?.cached_tokens ?? 0,
-      reasoningTokens: result?.reasoning_tokens ?? 0,
+      cachedTokens,
+      reasoningTokens,
       messageCount: result?.message_count ?? 0,
       eventCount: result?.event_count ?? 0,
-      estimatedCostUsd: 0, // TODO: Calculate based on cost config
+      estimatedCostUsd: estimateCostFromTokens({
+        inputTokens,
+        outputTokens,
+        cachedTokens,
+        reasoningTokens,
+      }),
     };
   }
 
