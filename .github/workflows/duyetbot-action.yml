@@ -1,7 +1,7 @@
 # Consolidated duyetbot-action workflow with manual dispatch, issue trigger, and PR comment trigger
 name: duyetbot-action
 
-on:
+'on':
   workflow_dispatch:
     inputs:
       task:
