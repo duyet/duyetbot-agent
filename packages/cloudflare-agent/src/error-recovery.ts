@@ -14,6 +14,7 @@ export type DOErrorType =
   | 'storage_error'
   | 'eviction_error'
   | 'version_mismatch'
+  | 'circuit_breaker'
   | 'unknown_error';
 
 /**
