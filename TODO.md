@@ -73,7 +73,7 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 ### GitHub Bot
 - [x] Auto PR reviews with AI ✅ (already implemented via review_requested webhook)
 - [x] Issue labeling and triage ✅ (231a596 - rule-based auto-labeling system)
-- [ ] Merge conflict detection
+- [x] Merge conflict detection ✅ (1ac9fa5 - automated detection with bot comments)
 - [ ] PR template enforcement
 
 ### Web App
