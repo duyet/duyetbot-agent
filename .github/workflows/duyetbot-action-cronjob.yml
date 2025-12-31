@@ -88,19 +88,35 @@ jobs:
             H=$(date +%H)
             D=$(date +%u)
             DM=$(date +%d)
-            case "$DM $H $D" in
-              "1 3 "*) echo "type=cleanup" >> $GITHUB_OUTPUT ;;
-              "* 2 *") echo "type=nightly" >> $GITHUB_OUTPUT ;;
-              "* 6 *") echo "type=security" >> $GITHUB_OUTPUT ;;
-              "1 10 *") echo "type=deps" >> $GITHUB_OUTPUT ;;
-              "3 14 *") echo "type=quality" >> $GITHUB_OUTPUT ;;
-              "5 18 *") echo "type=sota" >> $GITHUB_OUTPUT ;;
-              "2 16 *") echo "type=coverage" >> $GITHUB_OUTPUT ;;
-              "4 8 *") echo "type=performance" >> $GITHUB_OUTPUT ;;
-              "0 12 *") echo "type=docs" >> $GITHUB_OUTPUT ;;
-              "* 20 *") echo "type=api-review" >> $GITHUB_OUTPUT ;;
-              *) echo "type=triage" >> $GITHUB_OUTPUT ;;
-            esac
+            # Priority: monthly > daily > hourly > weekly
+            if [ "$DM" = "01" ] && [ "$H" = "03" ]; then
+              echo "type=cleanup" >> $GITHUB_OUTPUT
+            elif [ "$H" = "02" ]; then
+              echo "type=nightly" >> $GITHUB_OUTPUT
+            elif [ "$H" = "06" ]; then
+              echo "type=security" >> $GITHUB_OUTPUT
+            elif [ "$H" = "20" ]; then
+              echo "type=api-review" >> $GITHUB_OUTPUT
+            # Hourly triage (every 4 hours: 0, 4, 8, 12, 16, 20)
+            # Note: 20 already handled above, 6 handled above, 2 handled above
+            elif [ "$((H % 4))" = "0" ]; then
+              echo "type=triage" >> $GITHUB_OUTPUT
+            # Weekly schedules (specific day + hour)
+            elif [ "$D" = "1" ] && [ "$H" = "10" ]; then
+              echo "type=deps" >> $GITHUB_OUTPUT
+            elif [ "$D" = "3" ] && [ "$H" = "14" ]; then
+              echo "type=quality" >> $GITHUB_OUTPUT
+            elif [ "$D" = "5" ] && [ "$H" = "18" ]; then
+              echo "type=sota" >> $GITHUB_OUTPUT
+            elif [ "$D" = "2" ] && [ "$H" = "16" ]; then
+              echo "type=coverage" >> $GITHUB_OUTPUT
+            elif [ "$D" = "4" ] && [ "$H" = "08" ]; then
+              echo "type=performance" >> $GITHUB_OUTPUT
+            elif [ "$D" = "0" ] && [ "$H" = "12" ]; then
+              echo "type=docs" >> $GITHUB_OUTPUT
+            else
+              echo "type=triage" >> $GITHUB_OUTPUT
+            fi
           fi
 
       - name: Run Agent

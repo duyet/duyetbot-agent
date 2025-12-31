@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 712
+iteration: 713
 max_iterations: 0
 completion_promise: null
 circuit_breaker: true
@@ -39,6 +39,8 @@ Autonomous AI development cycle: pick tasks from PLANS.md/TODO.md, implement wit
 
 Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 ```
+
+you are free to create pr and merge. Using gh tool
 
 
 ### Active Projects
