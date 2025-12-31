@@ -14,6 +14,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useStats } from '@/lib/hooks/use-dashboard-data';
+import { DashboardSkeleton } from './dashboard-skeleton';
 import { CostDistributionCard } from './CostDistributionCard';
 import { QuickLinkCard } from './quick-link-card';
 
@@ -28,8 +29,13 @@ function formatNumber(num: number): string {
 }
 
 export function DashboardContent() {
-  const { data: stats } = useStats();
+  const { data: stats, isLoading } = useStats();
   const currentDate = new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' });
+
+  // Show skeleton while loading
+  if (isLoading) {
+    return <DashboardSkeleton />;
+  }
 
   // Fallback defaults
   const totalMessages = stats?.totalMessages ?? 0;
