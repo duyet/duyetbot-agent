@@ -31,8 +31,6 @@ concurrency:
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
-vars:
   SECURITY_PROMPT: |
     Security audit: dependency vulnerabilities (CVEs), code security (OWASP Top 10), secrets detection, config security.
   DEPS_PROMPT: |
