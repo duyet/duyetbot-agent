@@ -69,9 +69,9 @@ const createMockDataTransferItem = (
 };
 
 // Helper to create a mock fetch with preconnect method for AI SDK compatibility
-const createMockFetch = (response: Partial<Response>) => {
-	const mockFn = vi.fn(() => Promise.resolve(response as Response));
-	(mockFn as any).preconnect = () => Promise.resolve();
+const createMockFetch = (impl: () => Promise<Response>): typeof fetch => {
+	const mockFn = vi.fn(impl) as unknown as typeof fetch;
+	mockFn.preconnect = () => Promise.resolve();
 	return mockFn;
 };
 
@@ -98,15 +98,17 @@ describe("useFileUpload - Initialization and State", () => {
 describe("useFileUpload - File Selection via Input Change", () => {
 	it("uploads single file successfully", async () => {
 		const onAttachmentsChange = vi.fn();
-		global.fetch = createMockFetch({
-			ok: true,
-			json: () =>
-				Promise.resolve({
-					url: "https://example.com/file1.jpg",
-					pathname: "file1.jpg",
-					contentType: "image/jpeg",
-				}),
-		});
+		global.fetch = createMockFetch(() =>
+			Promise.resolve({
+				ok: true,
+				json: () =>
+					Promise.resolve({
+						url: "https://example.com/file1.jpg",
+						pathname: "file1.jpg",
+						contentType: "image/jpeg",
+					}),
+			} as Response),
+		);
 
 		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
@@ -343,7 +345,7 @@ describe("useFileUpload - Error Handling", () => {
 		const onAttachmentsChange = vi.fn();
 		global.fetch = createMockFetch(() =>
 			Promise.reject(new Error("Network error")),
-		);
+		) as typeof fetch;
 
 		const { result } = renderHook(() => useFileUpload({ onAttachmentsChange }));
 
