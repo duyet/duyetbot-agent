@@ -299,6 +299,7 @@ jobs:
       - name: Run Agent
         env:
           ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -377,6 +378,7 @@ jobs:
       - name: Run Agent
         env:
           ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
