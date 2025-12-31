@@ -45,6 +45,7 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 - [x] Playwright E2E testing setup
 - [x] Critical user flow tests
 - [x] Visual regression tests
+- [x] Added tests for observability package (67 tests)
 - [ ] Increase test coverage to 80%+
 - [ ] Integration tests for Telegram/GitHub bots
 
