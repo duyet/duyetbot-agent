@@ -50,3 +50,8 @@ you are free to create pr and merge. Using gh tool
 - [x] Create agent-server 24/7 implementation plan (COMPLETED: docs/agent-server-247.md)
 - [x] Production Readiness (COMPLETED: type-check, workspace verification, tests all pass)
 - [x] Fix all scheduled Github Actions Schedule (COMPLETED: fixed job determination logic, pushed)
+
+using gh tool to check the status and fix:
+
+duyetbot-action.yml
+duyetbot-action-cronjob.yml

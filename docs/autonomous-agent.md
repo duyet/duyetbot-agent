@@ -1,3 +1,8 @@
+---
+title: Autonomous Agent System
+description: AI-powered repository maintenance and improvement system
+---
+
 # Autonomous Agent System
 
 The **duyetbot-action** autonomous agent system provides AI-powered repository maintenance and improvement.

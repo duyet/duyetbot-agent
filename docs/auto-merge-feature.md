@@ -1,3 +1,8 @@
+---
+title: Auto-Merge Feature
+description: Implementation summary of the auto-merge feature for autonomous PR handling
+---
+
 # Auto-Merge Feature - Implementation Summary
 
 ## Overview

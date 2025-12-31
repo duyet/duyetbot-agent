@@ -1,3 +1,8 @@
+---
+title: Continuous Mode
+description: Fully autonomous task processing for duyetbot-action
+---
+
 # Continuous Mode - Fully Autonomous Task Processing
 
 ## Overview
