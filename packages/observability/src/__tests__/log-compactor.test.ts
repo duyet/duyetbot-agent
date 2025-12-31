@@ -10,11 +10,11 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  type CompactLogOptions,
   compactDebugContext,
   compactLog,
   compactStateUpdate,
   createCompactMiddleware,
-  type CompactLogOptions,
 } from '../log-compactor';
 
 describe('compactStateUpdate', () => {

@@ -9,10 +9,10 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  debugContextToAgentSteps,
   type AgentStep,
   type ChatMessageRole,
   type DebugContext,
+  debugContextToAgentSteps,
   type TokenCounts,
   type TokenUsage,
 } from '../types';

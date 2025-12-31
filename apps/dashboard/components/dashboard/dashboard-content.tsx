@@ -14,8 +14,8 @@ import {
 import { Card } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { useStats } from '@/lib/hooks/use-dashboard-data';
-import { DashboardSkeleton } from './dashboard-skeleton';
 import { CostDistributionCard } from './CostDistributionCard';
+import { DashboardSkeleton } from './dashboard-skeleton';
 import { QuickLinkCard } from './quick-link-card';
 
 function formatNumber(num: number): string {
