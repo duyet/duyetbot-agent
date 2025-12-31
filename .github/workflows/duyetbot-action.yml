@@ -61,7 +61,7 @@ env:
 
 jobs:
   run-agent:
-    name: Run duyetbot-action
+    name: Run duyetbot-action (manual/event)
     runs-on: ubuntu-latest
     permissions:
       contents: write
