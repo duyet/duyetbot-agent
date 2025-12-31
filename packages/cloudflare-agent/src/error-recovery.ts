@@ -102,10 +102,23 @@ function createDOError(
 }
 
 /**
+ * Type guard for DOOperationError
+ */
+function isDOOperationError(error: unknown): error is DOOperationError {
+  return (
+    error instanceof Error &&
+    'type' in error &&
+    'severity' in error &&
+    'retryable' in error &&
+    'timestamp' in error
+  );
+}
+
+/**
  * Classify error based on type and message
  */
 function classifyError(error: unknown): ErrorSeverity {
-  if (error instanceof DOOperationError) {
+  if (isDOOperationError(error)) {
     return error.severity;
   }
 
@@ -264,9 +277,7 @@ export class DOErrorRecovery {
         try {
           return await operation();
         } catch (error) {
-          const severity = config.classifyError
-            ? config.classifyError(error)
-            : classifyError(error);
+          const severity = classifyError(error);
 
           lastError = createDOError(
             this.getErrorType(error),
@@ -282,8 +293,6 @@ export class DOErrorRecovery {
           if (attempt === this.retry.maxRetries) {
             throw lastError;
           }
-
-          config.onRetry?.(attempt, lastError);
 
           const delay = calculateRetryDelay(attempt, this.retry);
           await sleep(delay);
@@ -301,7 +310,7 @@ export class DOErrorRecovery {
   }
 
   private getErrorType(error: unknown): DOErrorType {
-    if (error instanceof DOOperationError) {
+    if (isDOOperationError(error)) {
       return error.type;
     }
 
