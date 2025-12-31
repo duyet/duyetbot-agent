@@ -1,6 +1,6 @@
 ---
 active: true
-iteration: 714
+iteration: 715
 max_iterations: 0
 completion_promise: null
 circuit_breaker: true
@@ -55,3 +55,16 @@ using gh tool to check the status and fix:
 
 duyetbot-action.yml
 duyetbot-action-cronjob.yml
+
+if these are failing, fix and push the changes, trigger to test, watch to get logs and fix.
+if these are successful, checking the results of the agents. Fix until get the good results.
+
+### Recent Findings (Iteration 715)
+**cronjob workflow status**:
+- ✅ Fixed job determination logic (commit 49d04b9)
+- ✅ Added bun.lock for CI (commit fbb2b02)
+- ✅ Fixed docs frontmatter (commit eb0ccae)
+- ⚠️ @duyetbot/web has SSR bug: "navigator is not defined" - needs separate fix
+
+**Test results**: cronjob workflow now progresses past setup-bun (3min runtime vs 1min before).
+The web build failure is a pre-existing bug unrelated to workflow fixes.
