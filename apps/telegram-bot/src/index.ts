@@ -427,6 +427,110 @@ Let's chat!`;
         }
         return c.text('OK');
       }
+
+      // Handle /pr command
+      if (command === 'pr') {
+        try {
+          if (!args) {
+            await telegramTransport.send(
+              ctx,
+              `🔀 *PR Status*\n\nUsage: \`/pr <number>\`\n\nExample: \`/pr 123\``
+            );
+            return c.text('OK');
+          }
+
+          // Parse PR number from args
+          const prNumber = parseInt(args.trim(), 10);
+          if (isNaN(prNumber)) {
+            await telegramTransport.send(ctx, `❌ Invalid PR number. Usage: \`/pr <number>\``);
+            return c.text('OK');
+          }
+
+          // Fetch PR from GitHub API
+          const response = await fetch(
+            'https://api.github.com/repos/duyet/duyetbot-agent/pulls/' + prNumber,
+            {
+              headers: {
+                Authorization: `Bearer ${env.GITHUB_TOKEN}`,
+                Accept: 'application/vnd.github.v3+json',
+                'User-Agent': 'duyetbot-telegram',
+              },
+            }
+          );
+
+          if (!response.ok) {
+            if (response.status === 404) {
+              await telegramTransport.send(ctx, `❌ PR #${prNumber} not found`);
+            } else if (response.status === 401) {
+              await telegramTransport.send(
+                ctx,
+                `❌ GitHub authentication failed. Check GITHUB_TOKEN.`
+              );
+            } else {
+              await telegramTransport.send(
+                ctx,
+                `❌ Failed to fetch PR #${prNumber} (HTTP ${response.status})`
+              );
+            }
+            return c.text('OK');
+          }
+
+          const pr = (await response.json()) as {
+            number: number;
+            title: string;
+            state: 'open' | 'closed';
+            user: { login: string };
+            created_at: string;
+            updated_at: string;
+            html_url: string;
+            additions: number;
+            deletions: number;
+            changed_files: number;
+            body?: string;
+          };
+
+          const createdAt = new Date(pr.created_at);
+          const updatedAt = new Date(pr.updated_at);
+          const age = Math.floor((Date.now() - createdAt.getTime()) / 1000 / 60 / 60 / 24);
+
+          // Build PR status message
+          const statusEmoji = pr.state === 'open' ? '🟢' : '🔴';
+          let prMessage = `${statusEmoji} *PR #${prNumber}*
+
+*Title*: ${pr.title}
+*Status*: ${pr.state === 'open' ? 'Open' : 'Closed'}
+*Author*: @${pr.user.login}
+*Created*: ${age > 0 ? `${age}d ago` : 'today'}
+*Updated*: ${Math.floor((Date.now() - updatedAt.getTime()) / 1000 / 60)}m ago`;
+
+          if (pr.state === 'open') {
+            prMessage += `
+
+*Changes*:
+• +${pr.additions} -${pr.deletions} files
+• ${pr.changed_files} file(s) changed`;
+          }
+
+          prMessage += `
+
+[View PR](${pr.html_url})`;
+
+          await telegramTransport.send(ctx, prMessage);
+
+          logger.info(`[${requestId}] [COMMAND] /pr completed`, {
+            requestId,
+            prNumber,
+            durationMs: Date.now() - startTime,
+          });
+        } catch (error) {
+          logger.error(`[${requestId}] [COMMAND] /pr failed`, {
+            requestId,
+            error: error instanceof Error ? error.message : String(error),
+          });
+          await telegramTransport.send(ctx, `❌ Failed to fetch PR info. Please try again later.`);
+        }
+        return c.text('OK');
+      }
     }
 
     // Set observability context (user info for event tracking)

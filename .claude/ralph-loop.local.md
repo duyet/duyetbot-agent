@@ -10,7 +10,7 @@ started_at: "2025-12-30T06:37:44Z"
 ---
 
 ## Ralph Loop Autonomous Development
-**Iteration**: 11
+**Iteration**: 13
 **Status**: active
 **Mode**: 24/7 autonomous AI development
 
@@ -67,6 +67,21 @@ Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 - [ ] Implement dashboard cost distribution feature (BLOCKED: awaiting user input)
 
 ### Completed Iterations
+**Iteration 13** (Telegram Bot /deploy Command):
+- Added `/deploy` command to Telegram bot
+- Fetches deployment status from Cloudflare API (account ID, latest deployment info, age)
+- Added `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` to BaseEnv interface
+- All 145 telegram-bot tests pass, type-check passes
+- Commit bef02d8 pushed
+
+**Iteration 12** (Telegram Bot Commands):
+- Added `/health` command showing bot status (version, chat, user, timestamp)
+- Added `/start` command with welcome message
+- Fixed biome warnings (unused imports in observability tests)
+- Removed uptime metric (Cloudflare Workers doesn't have process.uptime())
+- All 94 telegram-bot tests pass, type-check passes
+- Commit 34aad4f pushed
+
 **Iteration 11** (GitHub Bot Integration Tests):
 - Added 19 integration tests for GitHub bot webhook flow
 - Tests cover: mention parsing, command detection, transport layer, ParsedInput conversion
@@ -108,6 +123,6 @@ Co-Authored-By: duyetbot <duyetbot@users.noreply.github.com>
 - 5 commits pushed with duyetbot co-author
 
 ### Last Update
-- **Time**: 2025-12-31 15:38 UTC
-- **Action**: Added GitHub bot webhook flow integration tests
-- **Next**: Pick next high-priority task from PLANS.md or TODO.md
+- **Time**: 2025-12-31 16:02 UTC
+- **Action**: Added /deploy command to Telegram bot
+- **Next**: Pick next high-priority task from TODO.md

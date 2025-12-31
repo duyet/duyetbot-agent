@@ -64,8 +64,9 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 
 ### Telegram Bot
 - [ ] `/news` - Daily news summaries
-- [ ] `/deploy` - Deployment status
-- [ ] `/health` - System health checks
+- [x] `/deploy` - Deployment status ✅ (bef02d8)
+- [x] `/health` - System health checks ✅ (34aad4f)
+- [x] `/start` - Welcome message ✅ (34aad4f)
 - [ ] `/pr` - PR status and summaries
 - [ ] `/review` - AI code review
 
