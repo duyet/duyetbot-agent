@@ -300,7 +300,7 @@ export class FailureMemory {
         };
         this.patterns.set(pattern.id, pattern);
       }
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist yet or is invalid
       console.debug('No existing patterns found');
     }
@@ -319,7 +319,7 @@ export class FailureMemory {
         const fix = learnedFixSchema.parse(item);
         this.fixes.set(fix.errorSignature, fix);
       }
-    } catch (error) {
+    } catch (_error) {
       // File doesn't exist yet or is invalid
       console.debug('No existing fixes found');
     }

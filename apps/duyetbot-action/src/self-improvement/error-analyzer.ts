@@ -181,9 +181,15 @@ export class ErrorAnalyzer {
       // Could be file or error code depending on pattern
       if (match[1]?.includes('.')) {
         error.file = match[1];
-        if (match[2]) error.line = parseInt(match[2], 10);
-        if (match[3]) error.column = parseInt(match[3], 10);
-        if (match[4]) error.code = match[4];
+        if (match[2]) {
+          error.line = parseInt(match[2], 10);
+        }
+        if (match[3]) {
+          error.column = parseInt(match[3], 10);
+        }
+        if (match[4]) {
+          error.code = match[4];
+        }
         if (match[5]) {
           // Extract just the error message part
           error.message = match[5];

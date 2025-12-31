@@ -57,7 +57,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
     // Initialize failure memory
     if (this.selfImprovementOptions.enableAutoFix) {
       const config = this.getConfig();
-      const memory = getFailureMemory(config.checkpointDir + '/memory');
+      const memory = getFailureMemory(`${config.checkpointDir}/memory`);
       memory.load().catch(console.error);
     }
   }
@@ -150,7 +150,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
 
       // Check if we have a learned fix
       const config = this.getConfig();
-      const memory = getFailureMemory(config.checkpointDir + '/memory');
+      const memory = getFailureMemory(`${config.checkpointDir}/memory`);
       const suggestedFix = memory.getFixForError(error);
 
       if (suggestedFix && this.selfImprovementOptions.enableAutoFix) {
@@ -237,7 +237,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
     // Learn from errors
     if (verification?.errors && verification.errors.length > 0) {
       const config = this.getConfig();
-      const memory = getFailureMemory(config.checkpointDir + '/memory');
+      const memory = getFailureMemory(`${config.checkpointDir}/memory`);
 
       for (const error of verification.errors) {
         // Learn from the error pattern
