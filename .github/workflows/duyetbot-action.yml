@@ -51,10 +51,6 @@ on:
   issue_comment:
     types: [created]
 
-concurrency:
-  group: duyetbot-action-${{ github.ref }}
-  cancel-in-progress: true
-
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
   TURBO_TEAM: ${{ vars.TURBO_TEAM }}
