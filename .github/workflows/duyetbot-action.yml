@@ -258,7 +258,7 @@ jobs:
 
   # Triggered by agent-task label on issues
   run-agent-on-issue:
-    if: github.event.label.name == 'agent-task'
+    if: github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'agent-task'
     name: Agent for Issue
     runs-on: ubuntu-latest
     permissions:
@@ -332,6 +332,8 @@ jobs:
   # Triggered by @duyetbot mentions in PR comments
   run-agent-on-pr-comment:
     if: |
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
       github.event.issue.pull_request &&
       contains(github.event.comment.body, '@duyetbot')
     name: Agent for PR Comment
