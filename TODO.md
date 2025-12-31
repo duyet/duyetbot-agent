@@ -67,11 +67,11 @@ Multi-agent AI platform with Telegram, GitHub, and Web interfaces. Focus on cont
 - [x] `/deploy` - Deployment status ✅ (bef02d8)
 - [x] `/health` - System health checks ✅ (34aad4f)
 - [x] `/start` - Welcome message ✅ (34aad4f)
-- [ ] `/pr` - PR status and summaries
-- [ ] `/review` - AI code review
+- [x] `/pr` - PR status and summaries ✅ (fb88fd0)
+- [x] `/review` - AI code review ✅ (49823ca)
 
 ### GitHub Bot
-- [ ] Auto PR reviews with AI
+- [x] Auto PR reviews with AI ✅ (already implemented via review_requested webhook)
 - [ ] Issue labeling and triage
 - [ ] Merge conflict detection
 - [ ] PR template enforcement
