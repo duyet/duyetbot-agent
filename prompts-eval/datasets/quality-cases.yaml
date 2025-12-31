@@ -1,0 +1,81 @@
+# Response Quality Test Cases
+# Tests response quality across platforms
+# Coverage: 8 test cases
+
+# =============================================================================
+# TELEGRAM QUALITY (3 tests)
+# =============================================================================
+
+- description: "Telegram quality - mobile-friendly length"
+  vars:
+    platform: "telegram"
+    query: "Explain microservices architecture"
+  assert:
+    - type: llm-rubric
+      value: "Response is concise and mobile-friendly. Uses bullet points. No lengthy paragraphs."
+
+- description: "Telegram quality - progressive disclosure"
+  vars:
+    platform: "telegram"
+    query: "What is machine learning and how does it work?"
+  assert:
+    - type: llm-rubric
+      value: "Response gives a brief answer first, then offers to expand if needed."
+
+- description: "Telegram quality - no meta-commentary"
+  vars:
+    platform: "telegram"
+    query: "How do I use async/await in JavaScript?"
+  assert:
+    - type: not-contains
+      value: "Let me explain"
+    - type: llm-rubric
+      value: "Response starts directly with the explanation or code, no meta-commentary."
+
+# =============================================================================
+# GITHUB QUALITY (3 tests)
+# =============================================================================
+
+- description: "GitHub quality - comprehensive detail"
+  vars:
+    platform: "github"
+    query: "What are best practices for error handling in Node.js?"
+  assert:
+    - type: llm-rubric
+      value: "Response is detailed and comprehensive. Includes multiple approaches with code examples."
+
+- description: "GitHub quality - structured sections"
+  vars:
+    platform: "github"
+    query: "How should I structure a TypeScript monorepo?"
+  assert:
+    - type: llm-rubric
+      value: "Response uses clear headings and sections to organize the information."
+
+- description: "GitHub quality - actionable advice"
+  vars:
+    platform: "github"
+    query: "Suggest improvements for this API design"
+  assert:
+    - type: llm-rubric
+      value: "Response provides specific, actionable recommendations with examples."
+
+# =============================================================================
+# CROSS-PLATFORM (2 tests)
+# =============================================================================
+
+- description: "Cross-platform - code accuracy"
+  vars:
+    query: "Write a function to check if a number is prime"
+  assert:
+    - type: contains
+      value: "```"
+    - type: llm-rubric
+      value: "Code is syntactically correct and implements the prime check algorithm properly."
+
+- description: "Cross-platform - technical accuracy"
+  vars:
+    query: "What is the difference between REST and GraphQL?"
+  assert:
+    - type: llm-rubric
+      value: "Response is technically accurate and explains the key differences clearly."

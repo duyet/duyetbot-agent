@@ -5,7 +5,7 @@
  * cloudflare: protocol dependencies from the transport module.
  */
 
-import type { DebugContext } from '@duyetbot/chat-agent';
+import type { DebugContext } from '@duyetbot/cloudflare-agent';
 import { describe, expect, it } from 'vitest';
 import { escapeHtml, formatDebugFooter, prepareMessageWithDebug } from '../debug-footer.js';
 
@@ -20,6 +20,8 @@ interface TelegramContext {
   text: string;
   startTime: number;
   isAdmin: boolean;
+  messageId: number;
+  isGroupChat: boolean;
   debugContext?: DebugContext;
   parseMode?: 'HTML' | 'MarkdownV2';
 }
@@ -35,6 +37,8 @@ function createMockContext(overrides: Partial<TelegramContext> = {}): TelegramCo
     text: 'test message',
     startTime: Date.now(),
     isAdmin: false,
+    messageId: 123,
+    isGroupChat: false,
     ...overrides,
   };
 }
@@ -59,7 +63,7 @@ describe('debug-footer', () => {
       expect(formatDebugFooter(ctx)).toBeNull();
     });
 
-    it('returns null when routingFlow is empty', () => {
+    it('returns null when routingFlow is empty and no metadata', () => {
       const ctx = createMockContext({
         isAdmin: true,
         debugContext: {
@@ -67,6 +71,23 @@ describe('debug-footer', () => {
         },
       });
       expect(formatDebugFooter(ctx)).toBeNull();
+    });
+
+    it('returns minimal footer when routingFlow is empty but has metadata', () => {
+      const ctx = createMockContext({
+        isAdmin: true,
+        debugContext: {
+          routingFlow: [],
+          totalDurationMs: 1500,
+          metadata: {
+            model: 'claude-3-5-sonnet-20241022',
+          },
+        },
+      });
+      const footer = formatDebugFooter(ctx);
+      expect(footer).toContain('1.50s');
+      expect(footer).toContain('sonnet-3.5');
+      expect(footer).toContain('<blockquote expandable>');
     });
 
     it('delegates to shared implementation for admin users', () => {
@@ -82,7 +103,7 @@ describe('debug-footer', () => {
       });
       const footer = formatDebugFooter(ctx);
       expect(footer).toContain('<blockquote expandable>');
-      expect(footer).toContain('🔍');
+      expect(footer).toContain('[debug]');
       expect(footer).toContain('router-agent');
       expect(footer).toContain('simple-agent');
       expect(footer).toContain('</blockquote>');
@@ -106,7 +127,7 @@ describe('debug-footer', () => {
       });
       const footer = formatDebugFooter(ctx);
       expect(footer).toContain('duyet-info-agent');
-      expect(footer).toContain('⚠️ get_latest_posts: timeout');
+      expect(footer).toContain('[!] get_latest_posts: timeout');
     });
 
     it('escapes HTML in error messages', () => {
@@ -115,7 +136,6 @@ describe('debug-footer', () => {
         debugContext: {
           routingFlow: [{ agent: 'test-agent' }],
           metadata: {
-            toolErrors: 1,
             lastToolError: 'tool: <timeout> & retry',
           },
         },
@@ -183,7 +203,7 @@ describe('debug-footer', () => {
       expect(result.parseMode).toBe('HTML');
     });
 
-    it('escapes HTML in message when adding debug footer', () => {
+    it('converts markdown formatting to HTML', () => {
       const ctx = createMockContext({
         isAdmin: true,
         debugContext: {
@@ -191,8 +211,9 @@ describe('debug-footer', () => {
           totalDurationMs: 500,
         },
       });
-      const result = prepareMessageWithDebug('Hello <b>world</b>', ctx);
-      expect(result.text).toContain('Hello &lt;b&gt;world&lt;/b&gt;');
+      // Sanitizer converts markdown bold to HTML bold
+      const result = prepareMessageWithDebug('Hello **world**', ctx);
+      expect(result.text).toContain('Hello <b>world</b>');
       expect(result.parseMode).toBe('HTML');
     });
 
@@ -205,13 +226,94 @@ describe('debug-footer', () => {
       expect(result.parseMode).toBe('HTML');
     });
 
-    it('escapes HTML special chars even for non-admin users', () => {
+    it('converts markdown and escapes special chars for HTML mode', () => {
       const ctx = createMockContext({
         isAdmin: false,
       });
-      const result = prepareMessageWithDebug('Use <code> & "quotes"', ctx);
-      expect(result.text).toBe('Use &lt;code&gt; &amp; &quot;quotes&quot;');
+      // Sanitizer converts markdown `code` to <code>code</code>
+      // and properly handles special characters
+      const result = prepareMessageWithDebug('Use `command` & check "quotes"', ctx);
+      expect(result.text).toContain('<code>command</code>');
+      expect(result.text).toContain('&amp;');
       expect(result.parseMode).toBe('HTML');
+    });
+
+    describe('MarkdownV2 mode', () => {
+      it('returns MarkdownV2 mode when configured', () => {
+        const ctx = createMockContext({
+          isAdmin: false,
+          parseMode: 'MarkdownV2',
+        });
+        const result = prepareMessageWithDebug('Hello world', ctx);
+        expect(result.parseMode).toBe('MarkdownV2');
+      });
+
+      it('preserves MarkdownV2 formatting (LLM produces formatted output)', () => {
+        const ctx = createMockContext({
+          isAdmin: false,
+          parseMode: 'MarkdownV2',
+        });
+
+        // LLM is instructed to produce MarkdownV2-formatted output
+        // Text is NOT escaped - LLM handles formatting as per prompt instructions
+        const patterns = [
+          // Plain text with loading indicators
+          { input: '🔄 Thinking...', expected: '🔄 Thinking...' },
+          { input: '🔄 Loading...', expected: '🔄 Loading...' },
+          { input: '🤔 Analyzing...', expected: '🤔 Analyzing...' },
+          { input: '📊 Processing (50%)', expected: '📊 Processing (50%)' },
+          { input: '✅ Done!', expected: '✅ Done!' },
+          { input: '⚠️ Warning!', expected: '⚠️ Warning!' },
+          { input: 'Hello world!', expected: 'Hello world!' },
+          // MarkdownV2 formatting is preserved
+          { input: '*bold* text', expected: '*bold* text' },
+          { input: '_italic_ text', expected: '_italic_ text' },
+          { input: '~strikethrough~', expected: '~strikethrough~' },
+          // Links are preserved
+          {
+            input: '[link](https://example.com)',
+            expected: '[link](https://example.com)',
+          },
+          // Code is preserved
+          { input: '`code`', expected: '`code`' },
+        ];
+
+        for (const { input, expected } of patterns) {
+          const result = prepareMessageWithDebug(input, ctx);
+          expect(result.text).toBe(expected);
+        }
+      });
+
+      it('preserves text as-is for MarkdownV2 (no escaping by transport)', () => {
+        const ctx = createMockContext({
+          isAdmin: false,
+          parseMode: 'MarkdownV2',
+        });
+
+        // LLM produces properly formatted MarkdownV2, transport does not escape
+        const response =
+          'Here is a detailed explanation\\. The dots in this sentence are escaped by the LLM\\.';
+        const result = prepareMessageWithDebug(response, ctx);
+        // Text is passed through unchanged
+        expect(result.text).toBe(response);
+      });
+
+      it('includes MarkdownV2 debug footer for admin users', () => {
+        const ctx = createMockContext({
+          isAdmin: true,
+          parseMode: 'MarkdownV2',
+          debugContext: {
+            routingFlow: [{ agent: 'simple-agent', durationMs: 500 }],
+            totalDurationMs: 500,
+          },
+        });
+        const result = prepareMessageWithDebug('Hello', ctx);
+        expect(result.text).toContain('Hello');
+        // MarkdownV2 expandable blockquote syntax
+        expect(result.text).toContain('**>');
+        expect(result.text).toContain('||');
+        expect(result.parseMode).toBe('MarkdownV2');
+      });
     });
   });
 });

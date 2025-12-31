@@ -7,8 +7,8 @@ describe('HomePage', () => {
   it('renders without crashing', () => {
     // Use server-side rendering to avoid jsdom issues
     const html = renderToString(createElement(Page));
-    expect(html).toContain('@duyetbot');
-    expect(html).toContain('Understand Architecture');
+    // Check for architecture section content
+    expect(html).toContain('Router Agent');
     expect(html).toContain('System Architecture');
   });
 });

@@ -3,1384 +3,438 @@
 import { DiagramNode, DiagramNodeOverlay } from './DiagramNodeOverlay';
 
 export function ArchitectureSection() {
+  // Nodes for interactivity/overlay - mapped to the isometric positions approximately
   const diagramNodes: DiagramNode[] = [
     {
       id: 'telegram',
-      title: 'Telegram Bot',
-      description: 'Real-time chat interface with edge routing',
-      href: '/docs/guides/telegram-bot',
-      bounds: { x: 15, y: 55, width: 100, height: 38 },
-    },
-    {
-      id: 'github',
-      title: 'GitHub Bot',
-      description: '@mentions and webhooks',
-      href: '/docs/guides/github-bot',
-      bounds: { x: 15, y: 115, width: 100, height: 38 },
+      title: 'Transport Layer',
+      description: 'Telegram, GitHub, & API',
+      href: '/docs/concepts/architecture',
+      bounds: { x: 550, y: 50, width: 140, height: 60 },
     },
     {
       id: 'router',
-      title: 'Router Agent',
-      description: 'Pattern matching + LLM fallback',
+      title: 'Edge Router',
+      description: 'Pattern matching & security',
       href: '/docs/concepts/router-agent',
-      bounds: { x: 400, y: 85, width: 90, height: 50 },
+      bounds: { x: 180, y: 160, width: 140, height: 40 },
     },
     {
-      id: 'simple',
-      title: 'Simple Agent',
-      description: 'Direct execution',
+      id: 'agents',
+      title: 'Agent Runtime',
+      description: 'Durable Objects & Loops',
       href: '/docs/concepts/simple-agent',
-      bounds: { x: 505, y: 85, width: 185, height: 32 },
+      bounds: { x: 180, y: 280, width: 140, height: 40 },
     },
     {
-      id: 'bash',
-      title: 'Bash Tool',
-      description: 'Shell command execution',
-      href: '/docs/reference/api',
-      bounds: { x: 785, y: 85, width: 80, height: 38 },
+      id: 'storage',
+      title: 'Storage & Tools',
+      description: 'Vector DB, D1, MCP',
+      href: '/docs/concepts/persistence',
+      bounds: { x: 180, y: 400, width: 140, height: 40 },
     },
   ];
 
   return (
-    <section className="my-12">
-      <div className="mb-6">
-        <h2 className="text-lg font-semibold text-fd-foreground mb-1">System Architecture</h2>
-        <p className="text-sm text-fd-muted-foreground">
-          Multi-agent system with durable state and tool orchestration
+    <section className="my-20 lg:my-32">
+      <div className="mb-12 text-center">
+        <h2 className="text-3xl font-bold tracking-tight text-fd-foreground mb-4">
+          System Architecture
+        </h2>
+        <p className="text-lg text-fd-muted-foreground max-w-2xl mx-auto">
+          A layered, durable architecture built for resilience and scale on the Edge.
         </p>
       </div>
 
       {/* Architecture Diagram Container */}
-      <div className="relative overflow-hidden rounded-xl border border-fd-border bg-gradient-to-br from-slate-50 via-white to-slate-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-4 sm:p-6">
-        {/* Dot pattern overlay */}
-        <div
-          className="absolute inset-0 opacity-[0.4] dark:opacity-[0.15]"
-          style={{
-            backgroundImage: `radial-gradient(circle, #94a3b8 1px, transparent 1px)`,
-            backgroundSize: '24px 24px',
-          }}
-        />
+      <div className="relative w-full max-w-5xl mx-auto">
+        {/* Desktop Isometric SVG */}
+        <div className="hidden lg:block relative h-[600px] w-full select-none">
+          {/* Interactive Overlay */}
+          <DiagramNodeOverlay nodes={diagramNodes} viewBox={{ width: 1000, height: 600 }} />
 
-        {/* Desktop SVG Diagram */}
-        <div className="hidden lg:block relative">
-          {/* Interactive overlay for diagram nodes */}
-          <DiagramNodeOverlay nodes={diagramNodes} viewBox={{ width: 1000, height: 420 }} />
           <svg
-            viewBox="0 0 1000 420"
-            className="w-full h-auto"
-            style={{ minHeight: '380px' }}
-            role="img"
-            aria-label="Architecture diagram showing multi-agent system with inputs, edge workers, and agent orchestration"
+            viewBox="0 0 1000 600"
+            className="w-full h-full drop-shadow-2xl"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+            aria-hidden="true"
           >
             <defs>
-              <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.1" />
-              </filter>
-              <filter id="shadowStrong" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="4" stdDeviation="6" floodOpacity="0.15" />
-              </filter>
-              {/* Single consistent arrow marker - smaller and thinner */}
-              <marker id="arrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
-                <path d="M0,1 L0,5 L5,3 z" fill="#64748b" fillOpacity="0.6" />
-              </marker>
-            </defs>
-
-            {/* ==================== LAYER LABELS ==================== */}
-
-            {/* Column labels */}
-            <text
-              x="55"
-              y="45"
-              className="text-[9px] font-medium uppercase tracking-wider"
-              fill="#94a3b8"
-            >
-              Inputs
-            </text>
-            <text
-              x="250"
-              y="45"
-              className="text-[9px] font-medium uppercase tracking-wider"
-              fill="#94a3b8"
-            >
-              Edge
-            </text>
-            <text
-              x="480"
-              y="45"
-              className="text-[9px] font-medium uppercase tracking-wider"
-              fill="#94a3b8"
-            >
-              Agents
-            </text>
-
-            {/* ==================== STRAIGHT LINE CONNECTIONS ==================== */}
-
-            {/* Inputs to Workers - straight lines (4 inputs now) */}
-            <line
-              x1="115"
-              y1="80"
-              x2="200"
-              y2="130"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrow)"
-            />
-            <line
-              x1="115"
-              y1="140"
-              x2="200"
-              y2="150"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrow)"
-            />
-            <line
-              x1="115"
-              y1="200"
-              x2="200"
-              y2="170"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrow)"
-            />
-            <line
-              x1="115"
-              y1="260"
-              x2="200"
-              y2="190"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* API Handler to Agents container */}
-            <line
-              x1="310"
-              y1="150"
-              x2="390"
-              y2="150"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* Agents (DO) to Tools Pool - single line to pool */}
-            <line
-              x1="700"
-              y1="160"
-              x2="760"
-              y2="160"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.4"
-              markerEnd="url(#arrow)"
-            />
-
-            {/* ==================== INPUT NODES ==================== */}
-
-            {/* Telegram */}
-            <g transform="translate(15, 55)" filter="url(#shadow)">
-              <rect
-                width="100"
-                height="38"
-                rx="8"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="50"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-medium"
-                fill="#334155"
+              <pattern
+                id="grid-pattern"
+                width="40"
+                height="20"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(0)"
               >
-                Telegram
-              </text>
-            </g>
-
-            {/* GitHub */}
-            <g transform="translate(15, 115)" filter="url(#shadow)">
-              <rect
-                width="100"
-                height="38"
-                rx="8"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="50"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-medium"
-                fill="#334155"
-              >
-                GitHub
-              </text>
-            </g>
-
-            {/* CLI */}
-            <g transform="translate(15, 175)" filter="url(#shadow)">
-              <rect
-                width="100"
-                height="38"
-                rx="8"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="50"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-medium"
-                fill="#334155"
-              >
-                CLI
-              </text>
-            </g>
-
-            {/* Scheduler */}
-            <g transform="translate(15, 235)" filter="url(#shadow)">
-              <rect
-                width="100"
-                height="38"
-                rx="8"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="50"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-medium"
-                fill="#334155"
-              >
-                Scheduler
-              </text>
-            </g>
-
-            {/* ==================== API HANDLER NODE ==================== */}
-            <g transform="translate(200, 100)" filter="url(#shadow)">
-              <rect
-                width="110"
-                height="100"
-                rx="10"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="55"
-                y="35"
-                textAnchor="middle"
-                className="text-[11px] font-semibold"
-                fill="#334155"
-              >
-                API Handler
-              </text>
-              <text x="55" y="55" textAnchor="middle" className="text-[9px]" fill="#94a3b8">
-                Edge Runtime
-              </text>
-            </g>
-
-            {/* ==================== AGENTS CONTAINER ==================== */}
-
-            {/* Main agents container */}
-            <g transform="translate(390, 55)">
-              <rect
-                width="310"
-                height="250"
-                rx="10"
-                className="fill-slate-50/50 dark:fill-slate-800/30"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-              />
-
-              {/* Cloudflare Workers section */}
-              <text
-                x="155"
-                y="18"
-                textAnchor="middle"
-                className="text-[8px] font-medium uppercase tracking-wider"
-                fill="#94a3b8"
-              >
-                Cloudflare Workers
-              </text>
-
-              {/* Router - compact box */}
-              <g transform="translate(10, 30)">
-                <rect
-                  width="90"
-                  height="50"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="45"
-                  y="30"
-                  textAnchor="middle"
-                  className="text-[11px] font-semibold"
-                  fill="#334155"
-                >
-                  Router
-                </text>
-              </g>
-
-              {/* Connection lines from Router to agents */}
-              <line
-                x1="100"
-                y1="45"
-                x2="115"
-                y2="45"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.5"
-                markerEnd="url(#arrow)"
-              />
-              <line
-                x1="100"
-                y1="55"
-                x2="115"
-                y2="80"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.5"
-                markerEnd="url(#arrow)"
-              />
-              <line
-                x1="100"
-                y1="65"
-                x2="115"
-                y2="115"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.5"
-                markerEnd="url(#arrow)"
-              />
-              <line
-                x1="100"
-                y1="75"
-                x2="115"
-                y2="150"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.5"
-                markerEnd="url(#arrow)"
-              />
-
-              {/* Right column - agents stacked */}
-              {/* Simple */}
-              <g transform="translate(115, 30)">
-                <rect
-                  width="185"
-                  height="32"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="92"
-                  y="20"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  Simple
-                </text>
-              </g>
-
-              {/* Orchestrator */}
-              <g transform="translate(115, 68)">
-                <rect
-                  width="185"
-                  height="38"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="92"
-                  y="16"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  Orchestrator
-                </text>
-                <text x="92" y="30" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                  Multi-step Tasks
-                </text>
-              </g>
-
-              {/* HITL */}
-              <g transform="translate(115, 112)">
-                <rect
-                  width="185"
-                  height="38"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="92"
-                  y="16"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  HITL
-                </text>
-                <text x="92" y="30" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                  Human Approval
-                </text>
-              </g>
-
-              {/* Researcher */}
-              <g transform="translate(115, 156)">
-                <rect
-                  width="185"
-                  height="32"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="92"
-                  y="20"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  Researcher
-                </text>
-              </g>
-
-              {/* Separator line */}
-              <line
-                x1="10"
-                y1="198"
-                x2="300"
-                y2="198"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-                strokeDasharray="3 3"
-              />
-
-              {/* Cloudflare Sandbox section */}
-              <text
-                x="70"
-                y="215"
-                textAnchor="middle"
-                className="text-[8px] font-medium uppercase tracking-wider"
-                fill="#94a3b8"
-              >
-                Sandbox
-              </text>
-
-              {/* Claude Code Agent */}
-              <g transform="translate(115, 203)">
-                <rect
-                  width="185"
-                  height="38"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="92"
-                  y="16"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  Claude Code
-                </text>
-                <text x="92" y="30" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                  Isolated Runtime
-                </text>
-              </g>
-            </g>
-
-            {/* ==================== TOOLS POOL ==================== */}
-
-            {/* Tools container box */}
-            <g transform="translate(760, 55)">
-              <rect
-                width="130"
-                height="250"
-                rx="10"
-                className="fill-slate-50/50 dark:fill-slate-800/30"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-              />
-              <text
-                x="65"
-                y="18"
-                textAnchor="middle"
-                className="text-[8px] font-medium uppercase tracking-wider"
-                fill="#94a3b8"
-              >
-                Tools Pool
-              </text>
-
-              {/* Tool nodes inside */}
-              <g transform="translate(25, 30)">
-                <rect
-                  width="80"
-                  height="38"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="40"
-                  y="17"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  Bash
-                </text>
-                <text x="40" y="30" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                  Shell
-                </text>
-              </g>
-
-              <g transform="translate(25, 75)">
-                <rect
-                  width="80"
-                  height="38"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="40"
-                  y="17"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  Git
-                </text>
-                <text x="40" y="30" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                  Version
-                </text>
-              </g>
-
-              <g transform="translate(25, 120)">
-                <rect
-                  width="80"
-                  height="38"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="40"
-                  y="17"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  Search
-                </text>
-                <text x="40" y="30" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                  Web
-                </text>
-              </g>
-
-              <g transform="translate(25, 165)">
-                <rect
-                  width="80"
-                  height="38"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="40"
-                  y="17"
-                  textAnchor="middle"
-                  className="text-[10px] font-medium"
-                  fill="#334155"
-                >
-                  MCP
-                </text>
-                <text x="40" y="30" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                  Protocol
-                </text>
-              </g>
-
-              <g transform="translate(25, 210)">
-                <rect
-                  width="80"
-                  height="32"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
+                <path
+                  d="M0 10 L40 10 M20 0 L20 20"
                   stroke="#e2e8f0"
                   strokeWidth="1"
                   strokeDasharray="2 2"
+                  opacity="0.5"
                 />
-                <text x="40" y="20" textAnchor="middle" className="text-[9px]" fill="#94a3b8">
-                  + Custom
-                </text>
-              </g>
-            </g>
+              </pattern>
 
-            {/* ==================== STORAGE LAYER ==================== */}
-
-            {/* Storage separator line */}
-            <line
-              x1="50"
-              y1="330"
-              x2="900"
-              y2="330"
-              stroke="#e2e8f0"
-              strokeWidth="1"
-              strokeDasharray="4 4"
-            />
-            <text
-              x="475"
-              y="348"
-              textAnchor="middle"
-              className="text-[8px] font-medium uppercase tracking-wider"
-              fill="#94a3b8"
-            >
-              Storage Layer
-            </text>
-
-            {/* Storage nodes - 5 items evenly distributed */}
-            <g transform="translate(50, 355)" filter="url(#shadow)">
-              <rect
-                width="80"
-                height="50"
-                rx="8"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="40"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-semibold"
-                fill="#334155"
+              {/* Hatch Pattern for Sides - Blue */}
+              <pattern
+                id="hatch-side-blue"
+                width="4"
+                height="4"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(-45)"
               >
-                D1
-              </text>
-              <text x="40" y="38" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                SQLite
-              </text>
-            </g>
+                <rect width="4" height="4" fill="#dbeafe" opacity="0.3" />
+                <path d="M0 0h4v1h-4z" fill="#3b82f6" opacity="0.2" />
+              </pattern>
 
-            <g transform="translate(180, 355)" filter="url(#shadow)">
-              <rect
-                width="80"
-                height="50"
-                rx="8"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="40"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-semibold"
-                fill="#334155"
+              {/* Hatch Pattern for Sides - Orange */}
+              <pattern
+                id="hatch-side-orange"
+                width="4"
+                height="4"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(-45)"
               >
-                KV
-              </text>
-              <text x="40" y="38" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                Key-Value
-              </text>
-            </g>
+                <rect width="4" height="4" fill="#ffedd5" opacity="0.3" />
+                <path d="M0 0h4v1h-4z" fill="#f97316" opacity="0.2" />
+              </pattern>
 
-            <g transform="translate(310, 355)" filter="url(#shadow)">
-              <rect
-                width="80"
-                height="50"
-                rx="8"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="40"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-semibold"
-                fill="#334155"
+              {/* Hatch Pattern for Sides - Gray */}
+              <pattern
+                id="hatch-side-gray"
+                width="4"
+                height="4"
+                patternUnits="userSpaceOnUse"
+                patternTransform="rotate(-45)"
               >
-                R2
-              </text>
-              <text x="40" y="38" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                Objects
-              </text>
-            </g>
-
-            <g transform="translate(440, 355)" filter="url(#shadow)">
-              <rect
-                width="90"
-                height="50"
-                rx="8"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="45"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-semibold"
-                fill="#334155"
-              >
-                Vectorize
-              </text>
-              <text x="45" y="38" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                Embeddings
-              </text>
-            </g>
-
-            <g transform="translate(580, 355)" filter="url(#shadow)">
-              <rect
-                width="110"
-                height="50"
-                rx="8"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="55"
-                y="22"
-                textAnchor="middle"
-                className="text-[10px] font-semibold"
-                fill="#334155"
-              >
-                Observability
-              </text>
-              <text x="55" y="38" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                Logs & Traces
-              </text>
-            </g>
-          </svg>
-        </div>
-
-        {/* Tablet Layout */}
-        <div className="hidden md:block lg:hidden relative">
-          <svg
-            viewBox="0 0 650 380"
-            className="w-full h-auto"
-            style={{ minHeight: '340px' }}
-            role="img"
-            aria-label="Architecture diagram - tablet view"
-          >
-            <defs>
-              <filter id="shadowTab" x="-20%" y="-20%" width="140%" height="140%">
-                <feDropShadow dx="0" dy="2" stdDeviation="2" floodOpacity="0.08" />
-              </filter>
-              <marker
-                id="arrowTab"
-                markerWidth="6"
-                markerHeight="6"
-                refX="5"
-                refY="3"
-                orient="auto"
-              >
-                <path d="M0,0 L0,6 L6,3 z" fill="#64748b" fillOpacity="0.5" />
-              </marker>
+                <rect width="4" height="4" fill="#f1f5f9" opacity="0.3" />
+                <path d="M0 0h4v1h-4z" fill="#64748b" opacity="0.2" />
+              </pattern>
             </defs>
 
-            {/* Labels */}
-            <text
-              x="50"
-              y="22"
-              className="text-[9px] font-semibold uppercase tracking-wider"
-              fill="#64748b"
-            >
-              Inputs
-            </text>
-            <text
-              x="175"
-              y="22"
-              className="text-[9px] font-semibold uppercase tracking-wider"
-              fill="#64748b"
-            >
-              Edge
-            </text>
-            <text
-              x="420"
-              y="22"
-              className="text-[9px] font-semibold uppercase tracking-wider"
-              fill="#64748b"
-            >
-              Agents (DO)
-            </text>
-
-            {/* Straight line connections */}
-            <line
-              x1="95"
-              y1="50"
-              x2="160"
-              y2="85"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrowTab)"
-            />
-            <line
-              x1="95"
-              y1="95"
-              x2="160"
-              y2="100"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrowTab)"
-            />
-            <line
-              x1="95"
-              y1="140"
-              x2="160"
-              y2="115"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrowTab)"
-            />
-            <line
-              x1="95"
-              y1="185"
-              x2="160"
-              y2="130"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrowTab)"
-            />
-            <line
-              x1="260"
-              y1="100"
-              x2="285"
-              y2="100"
-              stroke="#64748b"
-              strokeWidth="1"
-              strokeOpacity="0.5"
-              markerEnd="url(#arrowTab)"
+            {/* Background Grid Elements (Subtle) */}
+            <path
+              d="M500 100 L900 300 L500 500 L100 300 Z"
+              fill="url(#grid-pattern)"
+              opacity="0.3"
             />
 
-            {/* Input Nodes */}
-            <g transform="translate(15, 30)" filter="url(#shadowTab)">
-              <rect
-                width="80"
-                height="38"
-                rx="6"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
+            {/* ==================== LAYER 3: STORAGE (BOTTOM) ==================== */}
+            <g transform="translate(500, 480)">
+              {/* Box Geometry: 400x300 isometric-ish plane */}
+              {/* Left Face */}
+              <path
+                d="M0 100 L-300 0 V20 L0 120 Z"
+                fill="url(#hatch-side-blue)"
+                stroke="#3b82f6"
+                strokeWidth="2"
               />
-              <text
-                x="40"
-                y="24"
-                textAnchor="middle"
-                className="text-[9px] font-medium"
-                fill="#334155"
-              >
-                Telegram
-              </text>
-            </g>
-            <g transform="translate(15, 75)" filter="url(#shadowTab)">
-              <rect
-                width="80"
-                height="38"
-                rx="6"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
+              {/* Right Face */}
+              <path
+                d="M0 100 L300 0 V20 L0 120 Z"
+                fill="#eff6ff"
+                stroke="#3b82f6"
+                strokeWidth="2"
               />
-              <text
-                x="40"
-                y="24"
-                textAnchor="middle"
-                className="text-[9px] font-medium"
-                fill="#334155"
-              >
-                GitHub
-              </text>
-            </g>
-            <g transform="translate(15, 120)" filter="url(#shadowTab)">
-              <rect
-                width="80"
-                height="38"
-                rx="6"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
+              {/* Top Face */}
+              <path
+                d="M0 100 L300 0 L0 -100 L-300 0 Z"
+                fill="#ffffff"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                fillOpacity="0.9"
               />
-              <text
-                x="40"
-                y="24"
-                textAnchor="middle"
-                className="text-[9px] font-medium"
-                fill="#334155"
-              >
-                CLI
-              </text>
-            </g>
-            <g transform="translate(15, 165)" filter="url(#shadowTab)">
-              <rect
-                width="80"
-                height="38"
-                rx="6"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
-              <text
-                x="40"
-                y="24"
-                textAnchor="middle"
-                className="text-[9px] font-medium"
-                fill="#334155"
-              >
-                Scheduler
-              </text>
-            </g>
 
-            {/* API Handler */}
-            <g transform="translate(160, 60)" filter="url(#shadowTab)">
-              <rect
-                width="100"
-                height="80"
-                rx="8"
-                className="fill-white dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-              />
+              {/* Content on Layer */}
               <text
-                x="50"
-                y="35"
-                textAnchor="middle"
-                className="text-[10px] font-semibold"
-                fill="#334155"
+                x="-240"
+                y="10"
+                className="text-sm font-bold fill-blue-600 font-mono tracking-widest uppercase"
               >
-                API Handler
-              </text>
-              <text x="50" y="50" textAnchor="middle" className="text-[8px]" fill="#94a3b8">
-                Edge Runtime
-              </text>
-            </g>
-
-            {/* Cloudflare Workers Group - includes Router */}
-            <g transform="translate(285, 32)">
-              <rect
-                width="340"
-                height="155"
-                rx="8"
-                className="fill-slate-50/50 dark:fill-slate-800/30"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-              />
-              <text
-                x="170"
-                y="15"
-                textAnchor="middle"
-                className="text-[7px] font-medium uppercase tracking-wider"
-                fill="#94a3b8"
-              >
-                Cloudflare Workers
+                Storage & Tools
               </text>
 
-              {/* Router - left column */}
-              <g transform="translate(10, 25)" filter="url(#shadowTab)">
-                <rect
-                  width="85"
-                  height="120"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
+              <g transform="translate(0, 10)">
+                {/* D1 Database Block */}
+                <path d="M-100 30 L-60 45 L-20 30 L-60 15 Z" fill="#e0f2fe" stroke="#38bdf8" />
+                <path d="M-100 30 L-60 45 V55 L-100 40 Z" fill="#bae6fd" stroke="#38bdf8" />
+                <path d="M-60 45 L-20 30 V40 L-60 55 Z" fill="#7dd3fc" stroke="#38bdf8" />
                 <text
-                  x="42"
-                  y="45"
+                  x="-60"
+                  y="65"
                   textAnchor="middle"
-                  className="text-[10px] font-semibold"
-                  fill="#334155"
+                  className="text-[10px] font-mono fill-slate-500"
                 >
-                  Router
+                  D1
                 </text>
-                <text x="42" y="85" textAnchor="middle" className="text-[7px]" fill="#94a3b8">
-                  Routes →
+
+                {/* Vectorize Block */}
+                <path d="M20 30 L60 45 L100 30 L60 15 Z" fill="#e0f2fe" stroke="#38bdf8" />
+                <path d="M20 30 L60 45 V55 L20 40 Z" fill="#bae6fd" stroke="#38bdf8" />
+                <path d="M60 45 L100 30 V40 L60 55 Z" fill="#7dd3fc" stroke="#38bdf8" />
+                <text
+                  x="60"
+                  y="65"
+                  textAnchor="middle"
+                  className="text-[10px] font-mono fill-slate-500"
+                >
+                  Vectorize
+                </text>
+              </g>
+            </g>
+
+            {/* ==================== LAYER 2: AGENTS (MIDDLE) ==================== */}
+            <g transform="translate(500, 340)">
+              {/* Left Face */}
+              <path
+                d="M0 100 L-300 0 V25 L0 125 Z"
+                fill="url(#hatch-side-blue)"
+                stroke="#3b82f6"
+                strokeWidth="2"
+              />
+              {/* Right Face */}
+              <path
+                d="M0 100 L300 0 V25 L0 125 Z"
+                fill="#eff6ff"
+                stroke="#3b82f6"
+                strokeWidth="2"
+              />
+              {/* Top Face */}
+              <path
+                d="M0 100 L300 0 L0 -100 L-300 0 Z"
+                fill="#ffffff"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                fillOpacity="0.95"
+              />
+
+              <text
+                x="-240"
+                y="10"
+                className="text-sm font-bold fill-blue-600 font-mono tracking-widest uppercase"
+              >
+                Agent Runtime
+              </text>
+
+              {/* Durable Object 'Chip' */}
+              <g transform="translate(140, 0)">
+                <path d="M0 20 L40 10 L80 20 L40 30 Z" fill="#fef3c7" stroke="#f59e0b" />
+                <path d="M0 20 L40 30 V35 L0 25 Z" fill="#fde68a" stroke="#f59e0b" />
+                <path d="M40 30 L80 20 V25 L40 35 Z" fill="#fbbf24" stroke="#f59e0b" />
+                <text
+                  x="40"
+                  y="50"
+                  textAnchor="middle"
+                  className="text-[10px] font-mono fill-amber-600"
+                >
+                  Durable State
                 </text>
               </g>
 
-              {/* Connection lines from Router to agents */}
-              <line
-                x1="95"
-                y1="45"
-                x2="110"
-                y2="38"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.4"
-                markerEnd="url(#arrowTab)"
-              />
-              <line
-                x1="95"
-                y1="70"
-                x2="110"
-                y2="70"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.4"
-                markerEnd="url(#arrowTab)"
-              />
-              <line
-                x1="95"
-                y1="95"
-                x2="110"
-                y2="100"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.4"
-                markerEnd="url(#arrowTab)"
-              />
-              <line
-                x1="95"
-                y1="115"
-                x2="110"
-                y2="130"
-                stroke="#64748b"
-                strokeWidth="1"
-                strokeOpacity="0.4"
-                markerEnd="url(#arrowTab)"
-              />
-
-              {/* Right column - agents */}
-              {/* Simple */}
-              <g transform="translate(110, 25)" filter="url(#shadowTab)">
-                <rect
-                  width="105"
-                  height="25"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
+              {/* Orchestrator 'Chip' */}
+              <g transform="translate(0, 40)">
+                <path d="M0 20 L40 10 L80 20 L40 30 Z" fill="#dbeafe" stroke="#3b82f6" />
+                <path d="M0 20 L40 30 V35 L0 25 Z" fill="#bfdbfe" stroke="#3b82f6" />
+                <path d="M40 30 L80 20 V25 L40 35 Z" fill="#93c5fd" stroke="#3b82f6" />
                 <text
-                  x="52"
-                  y="17"
+                  x="40"
+                  y="50"
                   textAnchor="middle"
-                  className="text-[9px] font-medium"
-                  fill="#334155"
-                >
-                  Simple
-                </text>
-              </g>
-
-              {/* Orchestrator */}
-              <g transform="translate(225, 25)" filter="url(#shadowTab)">
-                <rect
-                  width="105"
-                  height="25"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="52"
-                  y="17"
-                  textAnchor="middle"
-                  className="text-[9px] font-medium"
-                  fill="#334155"
+                  className="text-[10px] font-mono fill-blue-600"
                 >
                   Orchestrator
                 </text>
               </g>
-
-              {/* HITL */}
-              <g transform="translate(110, 55)" filter="url(#shadowTab)">
-                <rect
-                  width="105"
-                  height="32"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="52"
-                  y="14"
-                  textAnchor="middle"
-                  className="text-[9px] font-medium"
-                  fill="#334155"
-                >
-                  HITL
-                </text>
-                <text x="52" y="26" textAnchor="middle" className="text-[7px]" fill="#94a3b8">
-                  Human Approval
-                </text>
-              </g>
-
-              {/* Researcher */}
-              <g transform="translate(225, 55)" filter="url(#shadowTab)">
-                <rect
-                  width="105"
-                  height="32"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
-                />
-                <text
-                  x="52"
-                  y="14"
-                  textAnchor="middle"
-                  className="text-[9px] font-medium"
-                  fill="#334155"
-                >
-                  Researcher
-                </text>
-                <text x="52" y="26" textAnchor="middle" className="text-[7px]" fill="#94a3b8">
-                  Deep Search
-                </text>
-              </g>
             </g>
 
-            {/* Cloudflare Sandbox - separate below */}
-            <g transform="translate(285, 195)">
-              <rect
-                width="340"
-                height="45"
-                rx="8"
-                className="fill-slate-50/50 dark:fill-slate-800/30"
-                stroke="#e2e8f0"
-                strokeWidth="1"
-                strokeDasharray="4 4"
+            {/* ==================== LAYER 1: EDGE (TOP) ==================== */}
+            <g transform="translate(500, 200)">
+              {/* Left Face */}
+              <path
+                d="M0 100 L-300 0 V20 L0 120 Z"
+                fill="url(#hatch-side-blue)"
+                stroke="#3b82f6"
+                strokeWidth="2"
               />
+              {/* Right Face */}
+              <path
+                d="M0 100 L300 0 V20 L0 120 Z"
+                fill="#eff6ff"
+                stroke="#3b82f6"
+                strokeWidth="2"
+              />
+              {/* Top Face */}
+              <path
+                d="M0 100 L300 0 L0 -100 L-300 0 Z"
+                fill="#ffffff"
+                stroke="#3b82f6"
+                strokeWidth="2"
+                fillOpacity="0.95"
+              />
+
               <text
-                x="70"
-                y="15"
-                textAnchor="middle"
-                className="text-[7px] font-medium uppercase tracking-wider"
-                fill="#94a3b8"
+                x="-240"
+                y="10"
+                className="text-sm font-bold fill-blue-600 font-mono tracking-widest uppercase"
               >
-                Cloudflare Sandbox
+                Edge Layer
               </text>
-              <g transform="translate(120, 8)" filter="url(#shadowTab)">
+
+              {/* Router Badge */}
+              <g transform="translate(0, 0)">
                 <rect
-                  width="130"
-                  height="28"
-                  rx="6"
-                  className="fill-white dark:fill-slate-800"
-                  stroke="#e2e8f0"
-                  strokeWidth="1"
+                  x="-40"
+                  y="-10"
+                  width="80"
+                  height="20"
+                  rx="4"
+                  fill="#3b82f6"
+                  fillOpacity="0.1"
+                  stroke="#3b82f6"
+                  transform="skewY(10) skewX(-10)"
                 />
-                <text
-                  x="65"
-                  y="12"
-                  textAnchor="middle"
-                  className="text-[9px] font-medium"
-                  fill="#334155"
-                >
-                  Claude Code
-                </text>
-                <text x="65" y="23" textAnchor="middle" className="text-[7px]" fill="#94a3b8">
-                  Isolated Runtime
+                <text x="0" y="5" textAnchor="middle" className="text-xs font-bold fill-blue-600">
+                  ROUTER
                 </text>
               </g>
             </g>
 
-            {/* Storage separator */}
-            <line
-              x1="30"
-              y1="250"
-              x2="620"
-              y2="250"
-              stroke="#e2e8f0"
+            {/* ==================== FLOATING INPUTS ==================== */}
+
+            {/* Dashed Line Connection */}
+            <path d="M680 120 L680 180" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4 4" />
+            <path
+              d="M680 180 L500 240"
+              stroke="#94a3b8"
               strokeWidth="1"
               strokeDasharray="4 4"
+              opacity="0.5"
             />
-            <text
-              x="325"
-              y="275"
-              textAnchor="middle"
-              className="text-[9px] font-semibold uppercase tracking-wider"
-              fill="#64748b"
-            >
-              Storage
-            </text>
 
-            {/* Storage nodes - aligned */}
-            <g transform="translate(80, 290)" filter="url(#shadowTab)">
-              <rect
-                width="80"
-                height="40"
-                rx="6"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
-                strokeWidth="1"
+            <g transform="translate(680, 100)">
+              {/* User Box (Orange) */}
+              <path
+                d="M0 20 L40 0 L80 20 L40 40 Z"
+                fill="#fff7ed"
+                stroke="#f97316"
+                strokeWidth="2"
               />
-              <text
-                x="40"
-                y="25"
-                textAnchor="middle"
-                className="text-[9px] font-semibold"
-                fill="#334155"
-              >
-                D1
+              <path
+                d="M0 20 L40 40 V60 L0 40 Z"
+                fill="url(#hatch-side-orange)"
+                stroke="#f97316"
+                strokeWidth="2"
+              />
+              <path
+                d="M40 40 L80 20 V40 L40 60 Z"
+                fill="#ffedd5"
+                stroke="#f97316"
+                strokeWidth="2"
+              />
+
+              <text x="100" y="35" className="text-xs font-bold fill-orange-500 font-mono">
+                User / API
+              </text>
+              <text x="100" y="50" className="text-[10px] fill-orange-400 font-mono">
+                Telegram/GitHub
               </text>
             </g>
-            <g transform="translate(280, 290)" filter="url(#shadowTab)">
-              <rect
-                width="80"
-                height="40"
-                rx="6"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
+
+            {/* Attack/Noise Box (Left - Red/Red) */}
+            <path d="M320 180 L360 200" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4 4" />
+
+            <g transform="translate(280, 160)">
+              <path
+                d="M0 15 L30 0 L60 15 L30 30 Z"
+                fill="#fef2f2"
+                stroke="#ef4444"
                 strokeWidth="1"
               />
-              <text
-                x="40"
-                y="25"
-                textAnchor="middle"
-                className="text-[9px] font-semibold"
-                fill="#334155"
-              >
-                KV
-              </text>
-            </g>
-            <g transform="translate(480, 290)" filter="url(#shadowTab)">
-              <rect
-                width="80"
-                height="40"
-                rx="6"
-                className="fill-slate-50 dark:fill-slate-800"
-                stroke="#e2e8f0"
+              <path
+                d="M0 15 L30 30 V40 L0 25 Z"
+                fill="url(#hatch-side-gray)"
+                stroke="#ef4444"
                 strokeWidth="1"
               />
-              <text
-                x="40"
-                y="25"
-                textAnchor="middle"
-                className="text-[9px] font-semibold"
-                fill="#334155"
-              >
-                MCP
+              <path
+                d="M30 30 L60 15 V25 L30 40 Z"
+                fill="#fee2e2"
+                stroke="#ef4444"
+                strokeWidth="1"
+              />
+              <text x="-10" y="50" textAnchor="end" className="text-[10px] fill-red-400 font-mono">
+                Unverified Req
               </text>
             </g>
           </svg>
         </div>
 
-        {/* Mobile Layout */}
-        <div className="md:hidden space-y-5">
-          <MobileSection title="Inputs">
-            <div className="grid grid-cols-2 gap-2">
+        {/* Mobile/Tablet Stack Layout */}
+        <div className="lg:hidden space-y-6 px-4">
+          {/* Inputs */}
+          <MobileSection title="01. Inputs">
+            <div className="grid grid-cols-2 gap-3">
               <MobileNode title="Telegram" color="sky" />
               <MobileNode title="GitHub" color="violet" />
-              <MobileNode title="CLI" color="green" />
+              <MobileNode title="CLI / API" color="green" />
               <MobileNode title="Scheduler" color="orange" />
             </div>
           </MobileSection>
 
-          <MobileArrow />
-
-          <MobileSection title="Edge">
-            <MobileNode title="API Handler" subtitle="Edge Runtime" highlight />
+          {/* Edge */}
+          <MobileSection title="02. Edge Layer">
+            <div className="bg-blue-50/50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h4 className="text-sm font-bold text-blue-700 dark:text-blue-300 mb-2">
+                Router Agent
+              </h4>
+              <p className="text-xs text-muted-foreground mb-0">
+                Intercepts all requests. Pattern matches to route to correct agent or rejects
+                unverified traffic.
+              </p>
+            </div>
           </MobileSection>
 
-          <MobileArrow />
+          {/* Agents */}
+          <MobileSection title="03. Agents (Durable Objects)">
+            <div className="space-y-3">
+              <MobileNode title="Simple Agent" subtitle="Direct LLM Response" accent />
+              <MobileNode title="Orchestrator" subtitle="Planning & Tool Execution" accent />
+              <MobileNode title="Researcher" subtitle="Deep web search loops" accent />
+            </div>
+          </MobileSection>
 
-          {/* Cloudflare Workers Group - includes Router */}
-          <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-3">
-            <MobileSection title="Cloudflare Workers">
-              <div className="space-y-2">
-                {/* Router - prominent */}
-                <MobileNode title="Router" accent />
-                {/* Other agents grid */}
-                <div className="grid grid-cols-2 gap-2">
-                  <MobileNode title="Simple" small />
-                  <MobileNode title="Orchestrator" small />
-                  <MobileNode title="HITL" small />
-                  <MobileNode title="Researcher" small />
-                </div>
+          {/* Storage */}
+          <MobileSection title="04. Storage & Tools">
+            <div className="grid grid-cols-2 gap-2">
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 border rounded-md text-center">
+                <div className="text-xs font-bold text-slate-600">D1 Database</div>
+                <div className="text-[10px] text-slate-400">Relational Data</div>
               </div>
-            </MobileSection>
-          </div>
-
-          <MobileArrow />
-
-          {/* Cloudflare Sandbox - separate below */}
-          <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-3">
-            <MobileSection title="Cloudflare Sandbox">
-              <MobileNode title="Claude Code" subtitle="Isolated Runtime" small />
-            </MobileSection>
-          </div>
-
-          <MobileArrow />
-
-          {/* Tools Pool */}
-          <div className="border border-dashed border-slate-300 dark:border-slate-600 rounded-lg p-3">
-            <MobileSection title="Tools Pool">
-              <div className="grid grid-cols-4 gap-2">
-                <MobileNode title="Bash" small />
-                <MobileNode title="Git" small />
-                <MobileNode title="Search" small />
-                <MobileNode title="MCP" small />
+              <div className="p-3 bg-slate-50 dark:bg-slate-900 border rounded-md text-center">
+                <div className="text-xs font-bold text-slate-600">Vectorize</div>
+                <div className="text-[10px] text-slate-400">Embeddings</div>
               </div>
-            </MobileSection>
-          </div>
-
-          {/* Storage separator */}
-          <div className="border-t border-dashed border-slate-300 dark:border-slate-600 pt-4">
-            <MobileSection title="Storage Layer">
-              <div className="grid grid-cols-3 gap-2">
-                <MobileNode title="D1" small />
-                <MobileNode title="KV" small />
-                <MobileNode title="R2" small />
-                <MobileNode title="Vectorize" small />
-                <MobileNode title="Observability" small />
+              <div className="col-span-2 p-3 bg-purple-50 dark:bg-purple-900/10 border border-purple-100 dark:border-purple-900 rounded-md flex items-center justify-center gap-2">
+                <span className="text-xs font-bold text-purple-600">MCP Servers</span>
+                <span className="text-[10px] px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                  New
+                </span>
               </div>
-            </MobileSection>
-          </div>
+            </div>
+          </MobileSection>
         </div>
       </div>
     </section>
   );
 }
 
+// Helper Components
 function MobileSection({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div>
-      <div className="text-[10px] text-slate-500 dark:text-slate-400 font-semibold uppercase tracking-wider mb-2">
-        {title}
-      </div>
+      <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">{title}</div>
       {children}
     </div>
   );
@@ -1389,69 +443,24 @@ function MobileSection({ title, children }: { title: string; children: React.Rea
 interface MobileNodeProps {
   title: string;
   subtitle?: string;
+  color?: string;
+  small?: boolean;
   highlight?: boolean;
   accent?: boolean;
-  small?: boolean;
-  color?: 'sky' | 'violet' | 'purple' | 'green' | 'blue' | 'yellow' | 'cyan' | 'orange';
 }
 
-function MobileNode({ title, subtitle, highlight, accent, small, color }: MobileNodeProps) {
-  const colorClasses = {
-    sky: 'border-slate-300/50',
-    violet: 'border-slate-300/50',
-    purple: 'border-slate-300/50',
-    green: 'border-slate-300/50',
-    blue: 'border-slate-300/50',
-    yellow: 'border-slate-300/50',
-    cyan: 'border-slate-300/50',
-    orange: 'border-slate-300/50',
-  };
-
+function MobileNode({ title, subtitle, small, highlight, accent }: MobileNodeProps) {
   return (
     <div
       className={`
-        rounded-lg px-3 text-center border transition-colors
-        ${
-          accent
-            ? 'bg-slate-50 dark:bg-slate-800 border-slate-300 dark:border-slate-600 py-3'
-            : highlight
-              ? 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 py-3'
-              : color
-                ? `bg-white dark:bg-slate-800 ${colorClasses[color]} py-2`
-                : 'bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 py-2'
-        }
-        ${small ? 'py-2' : ''}
-      `}
+      relative rounded-lg border transition-all
+      ${small ? 'p-2' : 'p-3'}
+      ${highlight ? 'bg-blue-50/50 border-blue-200 dark:bg-blue-900/10 dark:border-blue-800' : 'bg-card border-border shadow-sm'}
+      ${accent ? 'border-l-4 border-l-blue-500' : ''}
+    `}
     >
-      <div
-        className={`font-medium text-slate-700 dark:text-slate-200 ${small ? 'text-[11px]' : 'text-xs'}`}
-      >
-        {title}
-      </div>
-      {subtitle && (
-        <div
-          className={`text-slate-500 dark:text-slate-400 mt-0.5 ${small ? 'text-[9px]' : 'text-[10px]'}`}
-        >
-          {subtitle}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function MobileArrow() {
-  return (
-    <div className="flex justify-center py-1">
-      <svg width="20" height="16" viewBox="0 0 20 16" fill="none" aria-hidden="true">
-        <path
-          d="M10 2L10 14M10 14L6 10M10 14L14 10"
-          stroke="#64748b"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          opacity="0.5"
-        />
-      </svg>
+      <div className="text-sm font-medium text-foreground">{title}</div>
+      {subtitle && <div className="text-xs text-muted-foreground mt-1">{subtitle}</div>}
     </div>
   );
 }

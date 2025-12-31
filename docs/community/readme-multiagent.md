@@ -40,8 +40,8 @@ This directory contains comprehensive documentation on the multi-agent routing s
    - Decision trees
 
 #### 🛠️ Implementation Details
-- Code: [`packages/chat-agent/src/`](../packages/chat-agent/src/)
-- Tests: [`packages/chat-agent/test/`](../packages/chat-agent/test/)
+- Code: [`packages/cloudflare-agent/src/`](../packages/cloudflare-agent/src/)
+- Tests: [`packages/cloudflare-agent/test/`](../packages/cloudflare-agent/test/)
 - Prompts: [`packages/prompts/src/agents/`](../packages/prompts/src/agents/)
 
 ---
@@ -268,18 +268,18 @@ if (requestId in processedRequestIds) {
 **👨‍💻 Implementation Engineer**
 1. Read: **ROUTER-CHEATSHEET.md** (5 min)
 2. Read: **token-optimization-guide.md** (20 min)
-3. Study: `packages/chat-agent/src/routing/` (30 min)
+3. Study: `packages/cloudflare-agent/src/routing/` (30 min)
 4. Time: 55 minutes
 
 **🔬 Architect/Senior**
 1. Read: **architecture.md** (30 min)
 2. Read: **FLOW-DIAGRAMS.md** (15 min)
-3. Review: `packages/chat-agent/src/` codebase (60 min)
+3. Review: `packages/cloudflare-agent/src/` codebase (60 min)
 4. Time: 105 minutes total
 
 **🧪 QA/Test Engineer**
 1. Read: **ROUTER-CHEATSHEET.md** - "Monitoring Checklist" section
-2. Study: `packages/chat-agent/test/routing.test.ts` (20 min)
+2. Study: `packages/cloudflare-agent/test/routing.test.ts` (20 min)
 3. Time: 25 minutes
 
 ### Interactive Tools
@@ -314,8 +314,8 @@ less token-optimization-guide.md
 ### 4. Review Implementation (30 min)
 ```bash
 # Check the router code
-less packages/chat-agent/src/agents/router-agent.ts
-less packages/chat-agent/src/routing/classifier.ts
+less packages/cloudflare-agent/src/agents/router-agent.ts
+less packages/cloudflare-agent/src/routing/classifier.ts
 ```
 
 ---
@@ -396,7 +396,7 @@ A: Dual-batch design prevents blocking. `activeBatch` processes atomically while
 A: Minimal. Pattern matching may rarely misclassify (but LLM fallback handles this). Batching adds 500ms to first response (acceptable trade-off for savings).
 
 **Q: Can I add custom patterns?**
-A: Yes! Edit `packages/chat-agent/src/routing/classifier.ts` and add regex rules to `QUICK_ROUTES`.
+A: Yes! Edit `packages/cloudflare-agent/src/routing/classifier.ts` and add regex rules to `QUICK_ROUTES`.
 
 **Q: How do I monitor token usage?**
 A: Enable logging with `ROUTER_DEBUG=true` and track metrics in `logger.info()` calls. See monitoring section in token-optimization-guide.md.
@@ -407,11 +407,11 @@ A: Enable logging with `ROUTER_DEBUG=true` and track metrics in `logger.info()` 
 
 | File | Purpose |
 |------|---------|
-| `packages/chat-agent/src/cloudflare-agent.ts` | Main Durable Object wrapper |
-| `packages/chat-agent/src/agents/router-agent.ts` | Hybrid classification logic |
-| `packages/chat-agent/src/routing/classifier.ts` | Pattern matching + LLM fallback |
-| `packages/chat-agent/src/batch-types.ts` | Dual-batch queue implementation |
-| `packages/chat-agent/src/feature-flags.ts` | Configuration flags |
+| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main Durable Object wrapper |
+| `packages/cloudflare-agent/src/agents/router-agent.ts` | Hybrid classification logic |
+| `packages/cloudflare-agent/src/routing/classifier.ts` | Pattern matching + LLM fallback |
+| `packages/cloudflare-agent/src/batch-types.ts` | Dual-batch queue implementation |
+| `packages/cloudflare-agent/src/feature-flags.ts` | Configuration flags |
 | `packages/prompts/src/agents/router.ts` | Classification system prompt |
 | `docs/multiagent-flows.html` | Interactive visualization |
 | `docs/ROUTER-CHEATSHEET.md` | Quick reference |
@@ -430,9 +430,9 @@ Check the relevant file:
 - Quick lookup -> `ROUTER-CHEATSHEET.md`
 
 ### Code Questions?
-- Router implementation -> `packages/chat-agent/src/agents/router-agent.ts`
-- Classifier logic -> `packages/chat-agent/src/routing/classifier.ts`
-- Tests -> `packages/chat-agent/test/routing.test.ts`
+- Router implementation -> `packages/cloudflare-agent/src/agents/router-agent.ts`
+- Classifier logic -> `packages/cloudflare-agent/src/routing/classifier.ts`
+- Tests -> `packages/cloudflare-agent/test/routing.test.ts`
 
 ### Need a Specific Example?
 - See `token-optimization-guide.md` for code snippets

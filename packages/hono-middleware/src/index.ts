@@ -1,8 +1,8 @@
 // Factory
 export { createBaseApp } from './factory.js';
-export type { LogContext, LogLevel } from './logger.js';
+export type { LogContext, LoggerConfig, LogLevel } from './logger.js';
 // Logger
-export { logger } from './logger.js';
+export { configureLogger, logger } from './logger.js';
 // Middleware
 export {
   clearRateLimitStore,

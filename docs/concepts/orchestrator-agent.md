@@ -1,11 +1,16 @@
 ---
-title: Orchestrator Agent
-description: Decomposes complex tasks into parallel worker steps. Plans, executes, aggregates Code/Research/GitHub workers.
+title: Orchestrator Agent (LEGACY)
+description: DEPRECATED - This document describes the legacy OrchestratorAgent which was removed in December 2024.
+deprecated: true
 ---
 
 <!-- i18n: en -->
 
-**TL;DR**: Plans high-complexity tasks. Dispatches parallel Code/Research/GitHub Workers. Aggregates results. Router -> Orchestrator -> Workers.
+> **DEPRECATION NOTICE**: This document describes the legacy OrchestratorAgent which was removed in December 2024 as part of the loop-based agent refactoring. The system now uses a single `CloudflareChatAgent` with tool iterations and the `plan` tool for task decomposition. See [architecture.md](../architecture.md) for current implementation.
+
+## Legacy Documentation
+
+**TL;DR** (Historical): Planned high-complexity tasks. Dispatched parallel Code/Research/GitHub Workers. Aggregated results. Router -> Orchestrator -> Workers.
 
 ## Table of Contents
 - [Flow](#flow)
@@ -52,13 +57,13 @@ description: Decomposes complex tasks into parallel worker steps. Plans, execute
 | 1 | Deps L0 | CodeWorker | Review code after research |
 | 2 | Deps L1 | GitHubWorker | Comment on PR |
 
-**Planner** -> [`orchestration/planner.ts`](packages/chat-agent/src/orchestration/planner.ts:99)
+**Planner** -> [`orchestration/planner.ts`](packages/cloudflare-agent/src/orchestration/planner.ts:99)
 
 **Executor** -> Levels via topological sort.
 
 ## Code Snippet
 
-[`packages/chat-agent/src/orchestration/executor.ts`](packages/chat-agent/src/orchestration/executor.ts:70)
+[`packages/cloudflare-agent/src/orchestration/executor.ts`](packages/cloudflare-agent/src/orchestration/executor.ts:70)
 ```typescript
 const stepGroups = groupStepsByLevel(plan.steps);
 for (const group of stepGroups) {

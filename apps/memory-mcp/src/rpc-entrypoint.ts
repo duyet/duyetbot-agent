@@ -7,6 +7,14 @@
 
 import { WorkerEntrypoint } from 'cloudflare:workers';
 import { D1Storage } from './storage/d1.js';
+import {
+  addTask,
+  completeTask,
+  deleteTask,
+  listTasks,
+  type TaskItem,
+  updateTask,
+} from './tools/todo-tasks.js';
 import type { Env, LLMMessage } from './types.js';
 
 /**
@@ -196,5 +204,276 @@ export class MemoryServiceEntrypoint extends WorkerEntrypoint<Env> {
       sessions,
       total: result.total,
     };
+  }
+
+  /**
+   * Set a short-term memory item
+   */
+  async setShortTermMemory(
+    userId: string,
+    sessionId: string,
+    key: string,
+    value: string,
+    ttlSeconds: number = 86400
+  ): Promise<{ id: string; expiresAt: number }> {
+    const storage = this.getStorage();
+    const result = await storage.setShortTermMemory(sessionId, userId, key, value, ttlSeconds);
+    return {
+      id: result.id,
+      expiresAt: result.expires_at,
+    };
+  }
+
+  /**
+   * Get a short-term memory item
+   */
+  async getShortTermMemory(
+    sessionId: string,
+    key: string
+  ): Promise<{ value: string; expiresAt: number } | null> {
+    const storage = this.getStorage();
+    const result = await storage.getShortTermMemory(sessionId, key);
+    if (!result) {
+      return null;
+    }
+    return {
+      value: result.value,
+      expiresAt: result.expires_at,
+    };
+  }
+
+  /**
+   * List short-term memory items for a session
+   */
+  async listShortTermMemory(
+    sessionId: string
+  ): Promise<Array<{ key: string; value: string; expiresAt: number }>> {
+    const storage = this.getStorage();
+    const results = await storage.listShortTermMemory(sessionId);
+    return results.map((item) => ({
+      key: item.key,
+      value: item.value,
+      expiresAt: item.expires_at,
+    }));
+  }
+
+  /**
+   * Delete a short-term memory item
+   */
+  async deleteShortTermMemory(sessionId: string, key: string): Promise<boolean> {
+    const storage = this.getStorage();
+    return storage.deleteShortTermMemory(sessionId, key);
+  }
+
+  /**
+   * Save a long-term memory item
+   */
+  async saveLongTermMemory(
+    userId: string,
+    category: string,
+    key: string,
+    value: string,
+    options?: {
+      importance?: number;
+      sourceSessionId?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<{ id: string; created: boolean }> {
+    const storage = this.getStorage();
+    const result = await storage.saveLongTermMemory(userId, category, key, value, options);
+    await storage.indexMemoryForSearch(result.id, userId, value, category);
+    return {
+      id: result.id,
+      created: result.created_at === result.updated_at,
+    };
+  }
+
+  /**
+   * Get long-term memory items
+   */
+  async getLongTermMemory(
+    userId: string,
+    options?: {
+      category?: string;
+      limit?: number;
+      offset?: number;
+    }
+  ): Promise<{
+    items: Array<{
+      id: string;
+      category: string;
+      key: string;
+      value: string;
+      importance: number;
+      accessCount: number;
+    }>;
+    total: number;
+  }> {
+    const storage = this.getStorage();
+    const { items, total } = await storage.listLongTermMemory(userId, options);
+    return {
+      items: items.map((item) => ({
+        id: item.id,
+        category: item.category,
+        key: item.key,
+        value: item.value,
+        importance: item.importance,
+        accessCount: item.access_count,
+      })),
+      total,
+    };
+  }
+
+  /**
+   * Update a long-term memory item
+   */
+  async updateLongTermMemory(
+    id: string,
+    updates: {
+      value?: string;
+      importance?: number;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<boolean> {
+    const storage = this.getStorage();
+    return storage.updateLongTermMemory(id, updates);
+  }
+
+  /**
+   * Delete a long-term memory item
+   */
+  async deleteLongTermMemory(id: string): Promise<boolean> {
+    const storage = this.getStorage();
+    return storage.deleteLongTermMemory(id);
+  }
+
+  /**
+   * Search long-term memory
+   */
+  async searchLongTermMemory(
+    userId: string,
+    query: string,
+    options?: {
+      categories?: string[];
+      limit?: number;
+    }
+  ): Promise<
+    Array<{
+      id: string;
+      key: string;
+      value: string;
+      category: string;
+      importance: number;
+    }>
+  > {
+    const storage = this.getStorage();
+    const results = await storage.searchLongTermMemory(userId, query, options);
+    return results.map((item) => ({
+      id: item.id,
+      key: item.key,
+      value: item.value,
+      category: item.category,
+      importance: item.importance,
+    }));
+  }
+
+  /**
+   * Clean up expired short-term memory items
+   */
+  async cleanupExpiredMemory(): Promise<number> {
+    const storage = this.getStorage();
+    return storage.cleanupExpiredShortTermMemory();
+  }
+
+  // ========================================================================
+  // Todo/Task Management RPC Methods
+  // ========================================================================
+
+  /**
+   * Add a new task
+   */
+  async addTask(
+    userId: string,
+    description: string,
+    options?: {
+      priority?: number;
+      due_date?: number;
+      tags?: string[];
+      parent_task_id?: string;
+      metadata?: Record<string, unknown>;
+    }
+  ): Promise<TaskItem> {
+    const storage = this.getStorage();
+    return addTask(
+      {
+        description,
+        priority: options?.priority ?? 5,
+        due_date: options?.due_date,
+        tags: options?.tags ?? [],
+        parent_task_id: options?.parent_task_id,
+        metadata: options?.metadata,
+      },
+      storage,
+      userId
+    );
+  }
+
+  /**
+   * List tasks for a user
+   */
+  async listTasks(
+    userId: string,
+    options?: {
+      status?: 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
+      limit?: number;
+      offset?: number;
+      parent_task_id?: string;
+    }
+  ): Promise<{ tasks: TaskItem[]; total: number }> {
+    const storage = this.getStorage();
+    return listTasks(
+      {
+        status: options?.status,
+        limit: options?.limit ?? 20,
+        offset: options?.offset ?? 0,
+        parent_task_id: options?.parent_task_id,
+      },
+      storage,
+      userId
+    );
+  }
+
+  /**
+   * Update an existing task
+   */
+  async updateTask(
+    taskId: string,
+    updates: {
+      description?: string;
+      status?: 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
+      priority?: number;
+      due_date?: number;
+      tags?: string[];
+      completed_at?: number;
+    }
+  ): Promise<TaskItem> {
+    const storage = this.getStorage();
+    return updateTask({ id: taskId, ...updates }, storage);
+  }
+
+  /**
+   * Mark a task as completed
+   */
+  async completeTask(taskId: string): Promise<TaskItem> {
+    const storage = this.getStorage();
+    return completeTask({ id: taskId }, storage);
+  }
+
+  /**
+   * Delete a task
+   */
+  async deleteTask(taskId: string): Promise<{ success: boolean; id: string }> {
+    const storage = this.getStorage();
+    return deleteTask({ id: taskId }, storage);
   }
 }

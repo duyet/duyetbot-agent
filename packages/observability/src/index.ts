@@ -1,5 +1,6 @@
 // Types
 
+export { ChatMessageStorage } from './chat-storage.js';
 // Collector
 export {
   EventCollector,
@@ -7,6 +8,14 @@ export {
   type EventCompletion,
   type TriggerContext,
 } from './collector.js';
+// Log Compaction
+export {
+  type CompactLogOptions,
+  compactDebugContext,
+  compactLog,
+  compactStateUpdate,
+  createCompactMiddleware,
+} from './log-compactor.js';
 // Middleware
 export {
   getCollector,
@@ -21,6 +30,9 @@ export type {
   AgentStep,
   AppSource,
   CategoryStat,
+  ChatMessage,
+  ChatMessageRole,
+  ChatSessionStats,
   Classification,
   DailyMetric,
   DebugContext,

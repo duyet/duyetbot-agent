@@ -2,17 +2,17 @@
 
 ## Overview
 
-**duyetbot-agent** is a personal AI agent system built on Cloudflare Workers + Durable Objects, implementing a sophisticated multi-agent architecture for GitHub integration (@duyetbot mentions), Telegram chat, and long-running task execution.
+**duyetbot-agent** is a personal AI agent system built on Cloudflare Workers + Durable Objects, implementing a loop-based agent architecture with tool iterations for GitHub integration (@duyetbot mentions) and Telegram chat.
 
 ### Core Capabilities
 
 - 🤖 **GitHub Integration**: Respond to @duyetbot mentions, manage issues/PRs, automated reviews
 - 💬 **Telegram Bot**: Chat interface for quick queries and notifications
 - 🧠 **Persistent Memory**: MCP-based memory server on Cloudflare Workers (D1 + KV)
-- 🛠️ **LLM Provider**: OpenRouter SDK via Cloudflare AI Gateway (grok-4.1-fast + xAI native tools)
-- 📦 **Monorepo**: Separated packages for core, tools, server, CLI, MCP, bots
-- 🤖 **Multi-Agent Routing**: 8 specialized Durable Objects for different task types
-- ⚡ **Batch Processing**: Intelligent message batching with alarm-based execution
+- 🛠️ **LLM Provider**: OpenRouter SDK via Cloudflare AI Gateway
+- 📦 **Monorepo**: Separated packages for core, tools, CLI, MCP, bots
+- 🔄 **Loop-Based Agent**: Single agent with LLM reasoning loop and tool iterations
+- 🔧 **Tool System**: Built-in tools (bash, git, github, research, plan) + MCP integration
 - 💻 **CLI Support**: Local execution with optional cloud memory access
 
 ## Current Architecture ✅ DEPLOYED
@@ -21,38 +21,28 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────────┐
-│                     Cloudflare Workers (Tier 1)                  │
+│                     Cloudflare Workers                           │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
 │  │  Telegram Bot + GitHub Bot (HTTP Handlers)              │   │
 │  │  • Webhook receivers                                    │   │
 │  │  • Context parsing                                      │   │
-│  │  • Fire-and-forget DO invocation                        │   │
 │  │  • ~50 lines per app                                    │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
-│  │  Durable Objects (8 per bot + platform-specific)        │   │
+│  │  CloudflareChatAgent (Durable Object)                   │   │
 │  │                                                          │   │
-│  │  Platform-Specific:                                     │   │
-│  │  • TelegramAgent (telegram-bot)                         │   │
-│  │  • GitHubAgent (github-bot)                             │   │
-│  │                                                          │   │
-│  │  Shared (via shared-agents script binding):             │   │
-│  │  • RouterAgent (hybrid classifier + orchestrator)       │   │
-│  │  • SimpleAgent (direct LLM for quick Q&A)               │   │
-│  │  • OrchestratorAgent (task decomposition)               │   │
-│  │  • HITLAgent (human-in-the-loop approvals)              │   │
-│  │  • CodeWorker (code analysis/review)                    │   │
-│  │  • ResearchWorker (web search + research)               │   │
-│  │  • GitHubWorker (PR/issue operations)                   │   │
-│  │  • DuyetInfoAgent (personal blog/info via duyet-mcp)    │   │
+│  │  • Chat Loop (LLM reasoning with tool iterations)       │   │
+│  │  • Tool Executor (built-in + MCP tools)                 │   │
+│  │  • Token Tracker (usage + cost tracking)                │   │
+│  │  • Message Store (conversation history)                 │   │
+│  │  • Transport Layer (platform abstraction)               │   │
 │  │                                                          │   │
 │  │  State Management:                                      │   │
 │  │  • Conversation history (trimmed to max)                │   │
-│  │  • Batch queue (dual-batch: pending + active)           │   │
-│  │  • Session deduplication (requestId tracking)           │   │
-│  │  • Heartbeat for stuck detection                        │   │
+│  │  • Token usage and cost tracking                        │   │
+│  │  • Execution steps for debugging                        │   │
 │  └──────────────────────────────────────────────────────────┘   │
 │                                                                  │
 │  ┌──────────────────────────────────────────────────────────┐   │
@@ -67,7 +57,7 @@
                 │             │             │
                 ▼             ▼             ▼
          ┌────────────┐ ┌──────────┐ ┌────────────┐
-         │   GitHub   │ │Anthropic │ │ MCP Servers│
+         │   GitHub   │ │OpenRouter│ │ MCP Servers│
          │    API     │ │   API    │ │ (optional) │
          └────────────┘ └──────────┘ └────────────┘
 ```
@@ -86,12 +76,12 @@
 
 | Component | Purpose | Status |
 |-----------|---------|--------|
-| **CloudflareChatAgent** | Main DO wrapper (2400+ LOC) | ✅ Deployed |
-| **Multi-Agent Routing** | Route queries to 8 specialized agents | ✅ Deployed |
-| **Hybrid Classifier** | Pattern match + LLM fallback | ✅ Deployed |
-| **Batch Processing** | Dual-queue with alarm-based execution | ✅ Deployed |
+| **CloudflareChatAgent** | Loop-based agent with tool iterations | ✅ Deployed |
+| **Chat Loop** | LLM reasoning loop with tool execution | ✅ Deployed |
+| **Tool Executor** | Unified built-in + MCP tool execution | ✅ Deployed |
+| **Token Tracker** | Real-time usage and cost tracking | ✅ Deployed |
+| **Message Store** | Conversation history persistence | ✅ Deployed |
 | **Transport Layer** | Platform abstraction (Telegram/GitHub) | ✅ Deployed |
-| **Heartbeat Mechanism** | Rotating messages + stuck detection | ✅ Deployed |
 | **Memory MCP Server** | Cross-session persistence | ✅ Deployed |
 
 ---
@@ -168,108 +158,70 @@ Better approach:
 
 ---
 
-## Multi-Agent Routing System
+## Loop-Based Agent Architecture ✅ REFACTORED
 
-### 8 Durable Objects: Roles & Responsibilities
+**Date**: December 2024
+**Status**: COMPLETE - Multi-agent routing system removed (~8000+ LOC deleted)
 
-```
-RouterAgent
-├─ Purpose: Query classification + routing orchestration
-├─ Trigger: scheduleRouting() from TelegramAgent/GitHubAgent
-├─ Logic: Hybrid classifier (pattern match → LLM)
-├─ Output: Routes to one of 7 specialized agents
-└─ Status: ✅ Deployed
+The system now uses a single loop-based agent pattern instead of the previous multi-agent routing architecture.
 
-SimpleAgent
-├─ Purpose: Direct LLM responses for quick Q&A
-├─ Trigger: Router determines type:simple + complexity:low
-├─ Logic: Embed history, call LLM, return response
-├─ Examples: Greetings, help, simple questions
-└─ Status: ✅ Deployed
+### What Changed
 
-OrchestratorAgent
-├─ Purpose: Break complex tasks into parallel steps
-├─ Trigger: Router determines complexity:high
-├─ Logic: Plan → Execute (parallel) → Aggregate
-├─ Coordinated Agents: CodeWorker, ResearchWorker, GitHubWorker
-└─ Status: ✅ Deployed
+**Before (Multi-Agent System)**:
+- 8 specialized Durable Objects (RouterAgent, SimpleAgent, OrchestratorAgent, HITLAgent, CodeWorker, ResearchWorker, GitHubWorker, DuyetInfoAgent)
+- Complex routing logic with hybrid classification
+- shared-agents app for shared DO pool
+- ~8000+ LOC for routing and orchestration
+- 1420+ tests
 
-HITLAgent (Human-In-The-Loop)
-├─ Purpose: Request user approval for sensitive operations
-├─ Trigger: Router determines requiresHumanApproval:true
-├─ Logic: State machine (pending → approved/rejected → execute)
-├─ Example: Delete operations, merge PRs
-└─ Status: ✅ Deployed
+**After (Loop-Based System)**:
+- Single CloudflareChatAgent with chat loop
+- Built-in tools + MCP integration
+- Tool-based approach (plan, bash, git, github, research tools)
+- ~2000 LOC for agent logic
+- 969 tests (simpler architecture)
 
-CodeWorker
-├─ Purpose: Code analysis, review, generation
-├─ Trigger: Router determines category:code
-├─ Logic: Receive task + context, analyze, return results
-├─ Examples: Review code, explain functions, find bugs
-└─ Status: ✅ Deployed
+### Benefits
 
-ResearchWorker
-├─ Purpose: Web research and documentation lookup
-├─ Trigger: Router determines category:research
-├─ Logic: Search web, compile info, synthesize
-├─ Examples: Technology research, documentation lookup
-└─ Status: ✅ Deployed
+| Aspect | Improvement |
+|--------|-------------|
+| **Code Complexity** | 75% reduction in LOC |
+| **Test Count** | 32% reduction (simpler to test) |
+| **Real-time Updates** | Every tool iteration (vs. lost in routing) |
+| **Debugging** | Single execution thread (vs. cross-agent traces) |
+| **Maintenance** | Simple tool interface (vs. complex routing) |
+| **Context** | Unified conversation (vs. fragmented) |
 
-GitHubWorker
-├─ Purpose: GitHub operations (PRs, issues, CI)
-├─ Trigger: Router determines category:github
-├─ Logic: Use GitHub MCP tools to perform operations
-├─ Examples: Check CI status, merge PRs, label issues
-└─ Status: ✅ Deployed
+### Tool System
 
-DuyetInfoAgent
-├─ Purpose: Personal blog/info queries
-├─ Trigger: Router determines category:duyet
-├─ Logic: Connect to duyet-mcp MCP server
-├─ Examples: Blog posts, personal info, CV, skills
-└─ Status: ✅ Deployed
-```
-
-### Routing Classification Logic
+The chat loop uses tools instead of specialized agents:
 
 ```
-Query Input
-    ↓
-hybridClassify(query)
-    │
-    ├─ Phase 1: Quick Pattern Match (10-50ms)
-    │  ├─ Greetings: /^(hi|hello|hey)/i
-    │  ├─ Help: /help|\?|what can you do/i
-    │  ├─ Confirmations: /yes|no|approve|reject/i
-    │  └─ No match? → Phase 2
-    │
-    └─ Phase 2: LLM Classification (200-500ms)
-       └─ Call Claude with classification prompt
-          Returns: { type, category, complexity, requiresHumanApproval }
+Built-in Tools (from @duyetbot/tools):
+├─ bash: Execute shell commands
+├─ git: Git operations
+├─ github: GitHub API operations
+├─ research: Web search and synthesis
+└─ plan: Task planning and decomposition
 
-determineRouteTarget(classification)
-    ├─ tool_confirmation → hitl-agent
-    ├─ complexity: high → orchestrator-agent
-    ├─ requiresHumanApproval: true → hitl-agent
-    ├─ category: code → code-worker
-    ├─ category: research → research-worker
-    ├─ category: github → github-worker
-    ├─ category: duyet → duyet-info-agent
-    └─ default → simple-agent
-
-Response Handling
-    ├─ Routed Agent executes task
-    ├─ Returns response to target transport
-    └─ Transport sends to Telegram/GitHub
+MCP Tools (dynamically discovered):
+├─ duyet-mcp: Personal blog/info queries
+├─ github-mcp: Advanced GitHub operations
+└─ Custom MCP servers as needed
 ```
+
+### Migration Notes
+
+- All legacy agents removed from `packages/cloudflare-agent/src/`
+- `apps/shared-agents` deleted entirely
+- Routing infrastructure (routing/, orchestration/, workers/, hitl/, context/, execution/) removed
+- Transport layer pattern preserved (platform abstraction still works)
 
 ---
 
-## Batch Processing Architecture
+## Chat Loop Architecture
 
-### Dual-Batch Queue System
-
-The system uses two batch states to prevent message loss:
+### Flow
 
 ```
 Message Arrival Loop
@@ -341,6 +293,62 @@ Recovery:
     └─ User: Can send new messages (recovered)
 ```
 
+### Progress Chain Display
+
+Real-time execution progress shown during LLM tool iterations. Uses `*` prefix for current running step, `⏺` for completed steps.
+
+**During Execution (Progressive Updates)**:
+
+```
+Initial:
+* Ruminating...
+
+After thinking starts:
+* <thinking message>...
+
+Tool starting:
+⏺ <thinking message>...
+* <tool_name>(<param>: "value")
+  ⎿ Running…
+
+Tool completed, next iteration:
+⏺ <thinking message>...
+⏺ <tool_name>(<param>: "value")
+  ⎿ <result preview>
+* <next thinking>...
+
+Multiple tools:
+⏺ <thinking message>...
+⏺ tool_1(param: "value")
+  ⎿ <result>
+⏺ <thinking message>...
+* tool_2(...)
+  ⎿ Running…
+```
+
+**Final Response (Expandable Debug Footer)**:
+
+```
+<final response text>
+
+<blockquote expandable>
+[debug]
+⏺ <thinking message>...
+⏺ tool_1(param: "value")
+  ⎿ <result>
+⏺ <thinking message>...
+⏺ tool_2(...)
+  ⎿ <result>
+⏱️ 7.6s | 📊 5.4kin/272out/642cache | 🤖 x-ai/grok-4.1-fast
+</blockquote>
+```
+
+**Key Components**:
+- `StepProgressTracker`: Tracks execution steps and emits progress updates
+- `formatDebugFooter()`: Formats final chain for admin debug footer
+- `ContextBuilder`: Extracts thinking text from LLM responses
+- Transport `edit()`: Updates progress message in real-time
+
 ---
 
 ## Package Structure (Monorepo)
@@ -363,13 +371,13 @@ Recovery:
                  @duyetbot/core
             (SDK adapter + session mgmt)
                         ↓
-              @duyetbot/chat-agent
+              @duyetbot/cloudflare-agent
            (2400+ LOC: agents, routing, batch)
                         ↓
-        ┌───────────────┼───────────────┐
-        ↓               ↓               ↓
-  telegram-bot    github-bot      memory-mcp
-  (Workers+DO)    (Workers+DO)    (Workers+D1)
+        ┌───────────────┼───────────────┬───────────────┐
+        ↓               ↓               ↓               ↓
+  telegram-bot    github-bot      memory-mcp     agent-server
+  (Workers+DO)    (Workers+DO)    (Workers+D1)   (Node.js)
 ```
 
 ### Package Details
@@ -382,13 +390,13 @@ Recovery:
 | **@duyetbot/prompts** | System prompts & templates | Telegram, GitHub, router prompts | 18 |
 | **@duyetbot/hono-middleware** | Shared HTTP utilities | logger, auth, health routes | 6 |
 | **@duyetbot/core** | SDK adapter & session | query(), sdkTool(), MCP client | 32 |
-| **@duyetbot/chat-agent** | Multi-agent system | CloudflareChatAgent, routing, agents | 226 |
+| **@duyetbot/cloudflare-agent** | Loop-based agent | CloudflareChatAgent, chat loop, tools | 969 |
 | **@duyetbot/cli** | Command-line interface | chat, ask, sessions commands | 14 |
 | **@duyetbot/config-typescript** | TypeScript config | Shared tsconfig.json | 0 |
 | **@duyetbot/config-vitest** | Vitest config | Shared vitest.config.ts | 0 |
 | **@duyetbot/mcp-servers** | MCP server configs | duyet-mcp, github-mcp | 4 |
 
-**Total: 344 tests across 11 packages**
+**Total: 969+ tests** (significant simplification from 1420+ after refactoring)
 
 ### Apps
 
@@ -397,7 +405,7 @@ Recovery:
 | **@duyetbot/telegram-bot** | Cloudflare Workers + DO | Telegram chat interface | ✅ Deployed |
 | **@duyetbot/github-bot** | Cloudflare Workers + DO | GitHub @mention handler | ✅ Deployed |
 | **@duyetbot/memory-mcp** | Cloudflare Workers + D1 | Cross-session memory (MCP) | ✅ Deployed |
-| **@duyetbot/shared-agents** | Cloudflare Workers | Shared DO pool (8 agents) | ✅ Deployed |
+| ~~**@duyetbot/shared-agents**~~ | ~~Cloudflare Workers~~ | ~~Shared DO pool~~ | ❌ DELETED (December 2024) |
 
 ---
 
@@ -408,33 +416,28 @@ Recovery:
 **Status**: COMPLETE & DEPLOYED
 
 - [x] Monorepo structure (pnpm workspaces)
-- [x] Package organization (types → providers → chat-agent)
+- [x] Package organization (types → providers → cloudflare-agent)
 - [x] Shared Hono middleware (logger, auth, health)
 - [x] Environment configuration system
 - [x] Build & test infrastructure
 - [x] 40+ unit tests
 
 **Key Files**:
-- `packages/chat-agent/src/cloudflare-agent.ts` (main framework)
-- `packages/chat-agent/src/batch-types.ts` (batch structures)
-- `packages/chat-agent/src/transport.ts` (transport interface)
+- `packages/cloudflare-agent/src/cloudflare-agent.ts` (main framework)
+- `packages/cloudflare-agent/src/batch-types.ts` (batch structures)
+- `packages/cloudflare-agent/src/transport.ts` (transport interface)
 
-### ✅ Phase 2: Multi-Agent Routing
+### ✅ ~~Phase 2: Multi-Agent Routing~~ REMOVED IN REFACTORING
 
-**Status**: COMPLETE & DEPLOYED
+**Status**: COMPLETE - REMOVED (December 2024)
 
-- [x] RouterAgent implementation
-- [x] Hybrid classifier (pattern + LLM)
-- [x] SimpleAgent (direct LLM)
-- [x] OrchestratorAgent (task decomposition)
-- [x] HITLAgent (human approval)
-- [x] Classification schemas (Zod)
-- [x] 80+ routing tests
+This phase was replaced by the loop-based agent architecture.
 
-**Key Files**:
-- `packages/chat-agent/src/agents/router-agent.ts`
-- `packages/chat-agent/src/routing/classifier.ts`
-- `packages/chat-agent/src/routing/schemas.ts`
+**What was removed** (~8000+ LOC deleted):
+- All legacy agents: RouterAgent, SimpleAgent, OrchestratorAgent, HITLAgent, CodeWorker, ResearchWorker, GitHubWorker, DuyetInfoAgent
+- Routing infrastructure: routing/, orchestration/, workers/, hitl/, context/, execution/ folders
+- The `apps/shared-agents` app (deleted entirely)
+- Hybrid classifier and complex routing logic
 
 ### ✅ Phase 3: Platform Integration
 
@@ -454,46 +457,28 @@ Recovery:
 - `apps/github-bot/src/index.ts` (webhook handler)
 - `apps/github-bot/src/transport.ts` (GitHub impl)
 
-### ✅ Phase 4: Batch Processing & Reliability
+### ✅ ~~Phase 4: Batch Processing & Reliability~~ REMOVED IN REFACTORING
 
-**Status**: COMPLETE & DEPLOYED
+**Status**: COMPLETE - REMOVED (December 2024)
 
-- [x] Dual-batch queue architecture
-- [x] Alarm-based batch processing
-- [x] Message combining (batch window)
-- [x] Heartbeat mechanism
-- [x] Stuck batch detection & recovery
-- [x] Deduplication strategy
-- [x] 70+ reliability tests
+Batch processing logic was removed in favor of direct chat loop execution with real-time updates.
 
-**Key Files**:
-- `packages/chat-agent/src/cloudflare-agent.ts` (batch logic, lines 1137-1265)
-- `packages/chat-agent/src/cloudflare-agent.ts` (stuck detection, lines 812-880)
+### ✅ ~~Phase 5: Specialized Agents & Workers~~ REMOVED IN REFACTORING
 
-### ✅ Phase 5: Specialized Agents & Workers
+**Status**: COMPLETE - REMOVED (December 2024)
 
-**Status**: COMPLETE & DEPLOYED
-
-- [x] CodeWorker (code analysis)
-- [x] ResearchWorker (web research)
-- [x] GitHubWorker (GitHub operations)
-- [x] DuyetInfoAgent (personal blog/info)
-- [x] Base agent patterns
-- [x] Lifecycle hooks (beforeHandle, afterHandle, onError)
-- [x] 90+ agent tests
-
-**Key Files**:
-- `packages/chat-agent/src/workers/code-worker.ts`
-- `packages/chat-agent/src/workers/research-worker.ts`
-- `packages/chat-agent/src/workers/github-worker.ts`
-- `packages/chat-agent/src/agents/duyet-info-agent.ts`
+Specialized agents replaced by tool-based approach:
+- CodeWorker → No direct replacement (LLM handles code tasks via chat loop)
+- ResearchWorker → `research` tool (built-in)
+- GitHubWorker → `github` tool (built-in)
+- DuyetInfoAgent → `duyet-mcp` MCP server
 
 ### ✅ Phase 6: Deployment & Monitoring
 
 **Status**: COMPLETE & DEPLOYED
 
 - [x] Wrangler.toml configuration
-- [x] Shared agent pattern (script_name binding)
+- [x] ~~Shared agent pattern (script_name binding)~~ REMOVED
 - [x] Durable Object state schema
 - [x] Error handling & recovery
 - [x] Structured logging patterns
@@ -531,11 +516,9 @@ bun run dev
 # Deploy all workers
 bun run deploy
 
-# Deploy individual apps
-bun run deploy:telegram    # duyetbot-telegram
-bun run deploy:github      # duyetbot-github
-bun run deploy:memory-mcp  # duyetbot-memory-mcp
-bun run deploy:shared      # duyetbot-shared-agents
+# Deploy individual apps (includes dependencies)
+bun run deploy:telegram    # Telegram bot
+bun run deploy:github      # GitHub bot
 ```
 
 ### Configuration
@@ -550,29 +533,28 @@ bun run deploy:shared      # duyetbot-shared-agents
 
 ```bash
 # Set all secrets for an app
-bun scripts/config.ts telegram    # Telegram bot + webhook
+bun scripts/config.ts telegram    # Telegram bot
 bun scripts/config.ts github      # GitHub bot
-bun scripts/config.ts agents      # Shared agents
 ```
 
 ### Monitoring
 
 **Key Metrics**:
-- Routing accuracy (% correct agent routing)
-- Batch processing latency (P50, P95, P99)
-- Stuck batch detection (count per day)
-- Token usage per query type
-- Error rates by agent
+- Processing latency (P50, P95, P99)
+- Tool execution duration
+- Token usage per message
+- Cost per session
+- Tool success/error rates
 
 **Logging**:
 ```typescript
-logger.info('[ROUTER] Query classified', {
+logger.info('[CHAT] Tool execution', {
   queryId,
-  type: classification.type,
-  category: classification.category,
-  complexity: classification.complexity,
-  routedTo: route,
-  latencyMs: duration,
+  tool: 'github',
+  duration: 125,
+  success: true,
+  userId,
+  timestamp: Date.now(),
 });
 ```
 
@@ -580,18 +562,17 @@ logger.info('[ROUTER] Query classified', {
 
 ## Testing Strategy
 
-**Total**: 344 tests across 11 packages
+**Total**: 969+ tests across packages (significant simplification after refactoring from 1420+)
 
-### Test Breakdown by Phase
+### Test Breakdown by Package
 
-| Phase | Component | Test Count | Coverage |
-|-------|-----------|-----------|----------|
-| 1 | Core infrastructure | 40 | ✅ High |
-| 2 | Routing & classification | 80 | ✅ High |
-| 3 | Platform integration | 60 | ✅ High |
-| 4 | Batch processing & reliability | 70 | ✅ High |
-| 5 | Specialized agents | 90 | ✅ High |
-| 6 | Deployment & monitoring | 50 | ✅ High |
+| Package | Test Count | Coverage |
+|---------|-----------|----------|
+| `@duyetbot/cloudflare-agent` | 969 | ✅ High |
+| `@duyetbot/core` | 32 | ✅ High |
+| `@duyetbot/tools` | 24 | ✅ High |
+| `@duyetbot/prompts` | 18 | ✅ High |
+| Others | ~20 | ✅ High |
 
 ### Test Execution
 
@@ -600,7 +581,7 @@ logger.info('[ROUTER] Query classified', {
 bun run test
 
 # Specific package
-bun run test --filter @duyetbot/chat-agent
+bun run test --filter @duyetbot/cloudflare-agent
 
 # Watch mode
 bun run test -- --watch
@@ -639,6 +620,95 @@ interface Transport<TContext> {
 
 - **Telegram**: Message splitting, parse mode fallback, admin debug footer
 - **GitHub**: Context enrichment, emoji reactions, comment threading
+
+---
+
+## ✅ Phase 7-8: Loop-Based Agent Refactoring
+
+**Status**: COMPLETE & DEPLOYED (December 2024)
+
+**Summary**: Complete architectural refactoring from multi-agent routing to loop-based agent pattern.
+- Phase 7: Introduced loop-based architecture alongside legacy system
+- Phase 8: Removed all legacy multi-agent code (~8000+ LOC deleted)
+
+This refactoring replaced the multi-agent routing system with a simpler, more maintainable loop-based architecture inspired by Claude Code's reasoning model.
+
+### Architecture Overview
+
+```
+OLD Architecture (Multi-Agent Routing):
+User → RouterAgent → 7 specialized agents → Workers
+    ├─ SimpleAgent, OrchestratorAgent, HITLAgent
+    ├─ CodeWorker, ResearchWorker, GitHubWorker
+    └─ DuyetInfoAgent
+
+NEW Architecture (Claude Code-Style Single Loop):
+User → CloudflareAgent → AgenticLoop
+                              │
+                    while (needs_tool_use):
+                      1. LLM generates response
+                      2. If tool_call → execute tool
+                      3. Feed result back to LLM
+                      4. Update user with progress
+                    end
+                              │
+                    Available Tools (replaces agents):
+                    ├── plan (task decomposition)
+                    ├── research (web search + synthesis)
+                    ├── memory (MCP: personal info)
+                    ├── github (MCP: GitHub operations)
+                    ├── request_approval (HITL)
+                    └── subagent (parallel delegation)
+```
+
+### Key Benefits
+
+| Aspect | Before (Multi-Agent) | After (AgenticLoop) |
+|--------|---------------------|---------------------|
+| **Architecture** | 7 agents + routing | 1 loop + 6 tools |
+| **Real-time updates** | ❌ Lost in fire-and-forget | ✅ Every iteration |
+| **Debugging** | Hard (cross-agent traces) | Easy (single thread) |
+| **Context** | Fragmented per agent | Unified conversation |
+| **Code complexity** | ~3000 LOC routing | ~500 LOC loop |
+
+### ~~Feature Flag Control~~ REMOVED
+
+**Note**: The feature flag `USE_AGENTIC_LOOP` has been removed. The loop-based architecture is now the only implementation.
+
+### Implementation Files
+
+| File | Purpose |
+|------|---------|
+| `packages/cloudflare-agent/src/cloudflare-agent.ts` | Main agent factory |
+| `packages/cloudflare-agent/src/chat/chat-loop.ts` | Core chat loop |
+| `packages/cloudflare-agent/src/chat/tool-executor.ts` | Tool execution |
+| `packages/cloudflare-agent/src/tracking/token-tracker.ts` | Token tracking |
+| `packages/cloudflare-agent/src/persistence/message-persistence.ts` | Message store |
+
+### Progress Updates
+
+Real-time status messages edit the "Thinking..." message:
+
+- **🤔 Thinking...** - LLM reasoning in progress
+- **🔧 Running {tool}...** - Tool execution started
+- **✅ {tool} completed** - Tool finished successfully
+- **❌ {tool} failed** - Tool error (with message)
+- **📝 Generating response...** - Final response
+
+### Tasks Completed
+
+- [x] Phase 7: Implement loop-based architecture with feature flag (November 2024)
+- [x] Phase 8: Complete refactoring (December 2024)
+  - [x] Remove all legacy multi-agent code (~8000+ LOC deleted)
+  - [x] Delete `apps/shared-agents` app entirely
+  - [x] Remove routing infrastructure: routing/, orchestration/, workers/, hitl/, context/, execution/ folders
+  - [x] Simplify to modular components: chat/, tracking/, persistence/, workflow/ modules
+  - [x] Update all tests (969 tests passing, down from 1420+)
+  - [x] Remove feature flag (loop-based is now the only implementation)
+  - [x] Update project documentation
+- [x] Production testing with real LLM (Telegram + GitHub bots)
+- [x] Performance validation (simpler, faster, more transparent architecture)
+- [x] Code quality improvements (75% reduction in LOC, easier to maintain)
 
 ---
 
@@ -688,6 +758,7 @@ Status: PLANNED (Phase 9+)
 
 | Date | Changes | Contributor |
 |------|---------|-------------|
+| 2025-12-13 | Added Phase 7: AgenticLoop architecture (Claude Code-style single-agent loop) | Claude Code |
 | 2025-11-29 | Provider refactoring: unified OpenRouter SDK with AI Gateway auth | Claude Code |
 | 2024-11-27 | Complete rewrite: document current Cloudflare implementation | Claude Code |
 | (Previous entries in git history) | | |

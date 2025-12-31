@@ -1,10 +1,12 @@
+// @ts-nocheck
 import { resolve } from 'node:path';
 import react from '@vitejs/plugin-react';
-import { defineConfig, mergeConfig } from 'vitest/config';
+import { defineConfig, mergeConfig, type UserConfig } from 'vitest/config';
+
 import baseConfig from '../../packages/config-vitest/vitest.config';
 
 export default mergeConfig(
-  baseConfig,
+  baseConfig as UserConfig,
   defineConfig({
     plugins: [react()],
     resolve: {
@@ -19,6 +21,17 @@ export default mergeConfig(
       environment: 'jsdom',
       include: ['**/?(*.)+(spec|test).[jt]s?(x)', '**/__tests__/**/*.[jt]s?(x)'],
       setupFiles: ['./src/test-setup.tsx'],
+      coverage: {
+        include: ['app/layout.tsx', 'app/page.tsx', 'lib/layout.shared.ts'],
+        exclude: [
+          'node_modules/**',
+          '.next/**',
+          '.source/**',
+          'src/__mocks__/**',
+          'src/__tests__/**',
+          '**/*.config.{ts,js,mjs}',
+        ],
+      },
     },
-  })
+  }) as UserConfig
 );

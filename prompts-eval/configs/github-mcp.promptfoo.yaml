@@ -1,0 +1,19 @@
+description: "GitHub MCP Agent response quality evaluation"
+
+prompts:
+  - file://../prompts/github-mcp-prompt.cjs
+
+providers:
+  - id: openrouter:anthropic/claude-sonnet-4
+  - id: openrouter:google/gemini-2.5-flash
+
+tests: file://../datasets/github-mcp-cases.yaml
+outputPath: ../results/github-mcp-results.json
+
+evaluateOptions:
+  maxConcurrency: 3
+  showProgressBar: true
+
+defaultTest:
+  options:
+    timeout: 60000

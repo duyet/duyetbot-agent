@@ -1,0 +1,32 @@
+"use client";
+
+import { Suspense, useState } from "react";
+import { Chat } from "@/components/chat";
+import { ChatSkeleton } from "@/components/chat-skeleton";
+import { DataStreamHandler } from "@/components/data-stream-handler";
+import { ChatErrorBoundary } from "@/components/error-boundary";
+import { DEFAULT_CHAT_MODEL } from "@/lib/ai/models";
+import { generateUUID } from "@/lib/utils";
+
+export default function Page() {
+	const [chatId, _setChatId] = useState(() => generateUUID());
+
+	return (
+		<>
+			<Suspense fallback={<ChatSkeleton />}>
+				<ChatErrorBoundary>
+					<Chat
+						autoResume={false}
+						id={chatId}
+						initialChatModel={DEFAULT_CHAT_MODEL}
+						initialMessages={[]}
+						initialVisibilityType="private"
+						isReadonly={false}
+						key={chatId}
+					/>
+				</ChatErrorBoundary>
+			</Suspense>
+			<DataStreamHandler />
+		</>
+	);
+}

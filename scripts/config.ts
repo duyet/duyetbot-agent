@@ -39,6 +39,7 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_TOKEN', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
+      { name: 'MEM0_API_KEY', required: false },
     ],
   },
   github: {
@@ -51,6 +52,7 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
+      { name: 'MEM0_API_KEY', required: false },
     ],
   },
   'memory-mcp': {
@@ -65,7 +67,7 @@ const APPS: Record<string, AppConfig> = {
   agents: {
     name: 'Shared Agents',
     dir: 'apps/shared-agents',
-    workerName: 'duyetbot-agents',
+    workerName: 'duyetbot-shared-agents',
     secrets: [
       { name: 'AI_GATEWAY_API_KEY', required: true },
       { name: 'TELEGRAM_BOT_TOKEN', required: true },
@@ -75,6 +77,31 @@ const APPS: Record<string, AppConfig> = {
       { name: 'GITHUB_WEBHOOK_SECRET', required: false },
       { name: 'MEMORY_MCP_URL', required: false },
       { name: 'MEMORY_MCP_TOKEN', required: false },
+      { name: 'MEM0_API_KEY', required: false },
+    ],
+  },
+  'safety-kernel': {
+    name: 'Safety Kernel',
+    dir: 'apps/safety-kernel',
+    workerName: 'duyetbot-safety-kernel',
+    secrets: [
+      { name: 'ADMIN_OVERRIDE_TOKEN', required: true },
+      { name: 'CF_API_TOKEN', required: true },
+      { name: 'CF_ACCOUNT_ID', required: true },
+      { name: 'TELEGRAM_BOT_TOKEN', required: true },
+      { name: 'TELEGRAM_ADMIN_CHAT_ID', required: true },
+    ],
+  },
+  web: {
+    name: 'Web App',
+    dir: 'apps/web',
+    workerName: 'duyetbot-web',
+    secrets: [
+      { name: 'SESSION_SECRET', required: false },
+      { name: 'AI_GATEWAY_API_KEY', required: true },
+      { name: 'GITHUB_TOKEN', required: true },
+      { name: 'GITHUB_CLIENT_ID', required: true },
+      { name: 'GITHUB_CLIENT_SECRET', required: true },
     ],
   },
 };
@@ -352,6 +379,8 @@ switch (app) {
   case 'github':
   case 'memory-mcp':
   case 'agents':
+  case 'safety-kernel':
+  case 'web':
     await configureApp(app, subCommand);
     break;
   case 'show':
@@ -363,6 +392,7 @@ switch (app) {
     console.log('Usage:');
     console.log('  bun scripts/config.ts telegram        - Set secrets + configure webhook');
     console.log('  bun scripts/config.ts github          - Set secrets');
+    console.log('  bun scripts/config.ts web             - Set secrets');
     console.log('  bun scripts/config.ts telegram info   - Get webhook info');
     console.log('  bun scripts/config.ts telegram delete - Delete webhook');
     console.log('  bun scripts/config.ts show            - Show all config status');

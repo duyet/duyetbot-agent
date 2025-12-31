@@ -8,13 +8,15 @@
     "build": "tsc",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:branch": "bun ../../scripts/deploy-branch.ts github",
     "config": "bun ../../scripts/config.ts github",
     "start": "node dist/index.js",
     "test": "vitest run",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/api-security": "workspace:*",
+    "@duyetbot/cloudflare-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",

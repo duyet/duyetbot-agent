@@ -1,0 +1,46 @@
+{
+  "name": "@duyetbot/dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3001",
+    "dev:remote": "opennextjs-cloudflare build && opennextjs-cloudflare preview --remote --port 3001",
+    "build": "next build",
+    "preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "deploy:branch": "opennextjs-cloudflare build && opennextjs-cloudflare deploy -- --name duyetbot-dashboard-preview",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
+    "start": "next start",
+    "lint": "biome lint ./",
+    "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duyetbot/analytics": "workspace:*",
+    "@tanstack/react-query": "^5.60.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.0",
+    "date-fns": "^4.1.0",
+    "eslint-config-next": "^16.0.10",
+    "lucide-react": "^0.460.0",
+    "next": "^16.0.10",
+    "next-themes": "^0.4.6",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "recharts": "^2.15.0",
+    "tailwind-merge": "^2.5.0"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241127.0",
+    "@opennextjs/cloudflare": "latest",
+    "@types/node": "^22.7.4",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "typescript": "^5.6.3",
+    "tailwindcss": "^3.4.17",
+    "postcss": "^8.4.47",
+    "autoprefixer": "^10.4.20",
+    "tailwindcss-animate": "^1.0.7",
+    "wrangler": "latest"
+  }
+}

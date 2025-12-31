@@ -3,10 +3,11 @@
  *
  * Hono-based webhook server using Transport Layer pattern.
  * Uses middleware chain for signature verification, parsing, and mention detection.
- * Uses alarm-based batch processing for reliable message handling.
+ * Uses fire-and-forget pattern with ChatAgent for async message processing.
  */
 
-import { getChatAgent } from '@duyetbot/chat-agent';
+import { EventBridge, type GitHubPREventPayload, publishPREvent } from '@duyetbot/cloudflare-agent';
+// Removed deleted imports: createGlobalContext, githubToWebhookInput
 import { createBaseApp } from '@duyetbot/hono-middleware';
 import {
   EventCollector,
@@ -17,17 +18,34 @@ import { Octokit } from '@octokit/rest';
 
 import { type Env } from './agent.js';
 import { fetchIssueContext, fetchPRContext } from './github-api.js';
+import { handleTaskCreation, shouldCreateTask } from './github-webhook-handler.js';
 import { logger } from './logger.js';
 import {
   createGitHubMentionMiddleware,
   createGitHubParserMiddleware,
   createGitHubSignatureMiddleware,
 } from './middlewares/index.js';
-import { createGitHubContext } from './transport.js';
+import type { GitHubWebhookPayload, WebhookContext } from './middlewares/types.js';
+import { createGitHubContext, githubTransport } from './transport.js';
+
+// Extend Hono context to include github-bot middleware variables
+// Note: We extend the base ContextVariableMap with our app-specific variables
+declare module 'hono' {
+  interface ContextVariableMap {
+    // From SignatureVariables
+    skipProcessing: boolean;
+    rawBody: string;
+    // From ParserVariables
+    webhookContext: WebhookContext | undefined;
+    payload: GitHubWebhookPayload | undefined;
+    // From MentionVariables
+    hasMention: boolean;
+    task: string | undefined;
+  }
+}
 
 export type { Env, GitHubAgentInstance } from './agent.js';
 // Local Durable Object export
-// Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from duyetbot-agents via script_name
 export { GitHubAgent } from './agent.js';
 // Utility exports
 export {
@@ -37,14 +55,14 @@ export {
   parseCommand,
   parseMention,
 } from './mention-parser.js';
-// Type exports
+// Type exports (from middlewares for webhook payload types)
 export type {
   GitHubComment,
   GitHubIssue,
   GitHubPullRequest,
   GitHubRepository,
   GitHubUser,
-} from './types.js';
+} from './middlewares/types.js';
 
 // Extend Env to include observability bindings
 type EnvWithObservability = Env & ObservabilityEnv;
@@ -84,10 +102,13 @@ app.post(
 
     if (env.OBSERVABILITY_DB) {
       storage = new ObservabilityStorage(env.OBSERVABILITY_DB);
+      // Determine event type based on webhook context (will be updated after parser runs)
+      const webhookCtxForType = c.get('webhookContext');
+      const eventType = webhookCtxForType?.isReviewRequest ? 'review_request' : 'mention';
       collector = new EventCollector({
         eventId: crypto.randomUUID(),
         appSource: 'github-webhook',
-        eventType: 'mention',
+        eventType,
         triggeredAt: startTime,
         requestId,
       });
@@ -251,76 +272,186 @@ app.post(
         });
       }
 
-      const ctx = createGitHubContext(contextOptions);
+      // Create GlobalContext at webhook entry point (ONLY place it's created)
+      // Create GitHub context for transport layer
+      const githubContext = createGitHubContext(contextOptions);
 
-      // Get agent by name (issue-based session)
+      // Parse context to ParsedInput using transport's parseContext
+      const parsedInput = githubTransport.parseContext(githubContext);
+
+      // Generate traceId for logging correlation
+      const traceId = `github:${owner}/${repo}#${issue.number}:${Date.now()}`;
+
+      // Add traceId to metadata for correlation
+      if (!parsedInput.metadata) {
+        parsedInput.metadata = {};
+      }
+      parsedInput.metadata.traceId = traceId;
+
+      // Get agent instance (issue-based session)
       const agentId = `github:${owner}/${repo}#${issue.number}`;
-      logger.info(`[${requestId}] [WEBHOOK] Creating agent`, {
+      logger.info(`[${requestId}] [WEBHOOK] Getting agent instance`, {
         requestId,
         agentId,
+        traceId,
         isPullRequest,
         durationMs: Date.now() - startTime,
       });
 
-      const agent = getChatAgent(env.GitHubAgent, agentId);
+      const agent = (env.GitHubAgent as any).get(
+        env.GitHubAgent.idFromName(agentId)
+      ) as unknown as {
+        receiveMessage(input: typeof parsedInput): Promise<{ traceId: string }>;
+      };
 
-      logger.info(`[${requestId}] [WEBHOOK] Queueing message for batch processing`, {
+      // True fire-and-forget: schedule RPC without awaiting
+      // waitUntil keeps worker alive for the RPC, but we return immediately
+      c.executionCtx.waitUntil(
+        (async () => {
+          try {
+            const result = await agent.receiveMessage(parsedInput);
+            logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
+              requestId,
+              agentId,
+              traceId: result.traceId,
+              durationMs: Date.now() - startTime,
+            });
+          } catch (error) {
+            // RPC failure only (rare) - DO is unreachable
+            logger.error(`[${requestId}] [WEBHOOK] RPC to ChatAgent failed`, {
+              requestId,
+              agentId,
+              error: error instanceof Error ? error.message : String(error),
+            });
+          }
+
+          // Write observability event (fire-and-forget)
+          if (collector && storage) {
+            collector.complete({ status: 'success' });
+            storage.writeEvent(collector.toEvent()).catch((err) => {
+              logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
+                requestId,
+                error: err instanceof Error ? err.message : String(err),
+              });
+            });
+          }
+
+          // Publish Event Bridge event for cross-agent notification (fire-and-forget)
+          if (env.OBSERVABILITY_DB && isPullRequest && issue) {
+            try {
+              const bridge = new EventBridge({
+                // Type assertion needed: D1Database types from different packages
+                // are structurally identical but TypeScript sees them as distinct
+                db: env.OBSERVABILITY_DB as unknown as D1Database,
+                agentId: 'github-bot',
+              });
+
+              // Map GitHub action to Event Bridge action type
+              const actionMap: Record<string, GitHubPREventPayload['action']> = {
+                opened: 'opened',
+                closed:
+                  webhookCtx.action === 'closed' && (payload.pull_request as any)?.merged
+                    ? 'merged'
+                    : 'closed',
+                review_requested: 'review_requested',
+                submitted:
+                  action === 'submitted'
+                    ? 'approved'
+                    : (undefined as unknown as GitHubPREventPayload['action']),
+              };
+
+              const eventAction = actionMap[action] ?? (action as GitHubPREventPayload['action']);
+
+              // Only publish for relevant PR actions
+              if (
+                [
+                  'opened',
+                  'closed',
+                  'merged',
+                  'review_requested',
+                  'approved',
+                  'changes_requested',
+                ].includes(eventAction)
+              ) {
+                const prPayload: GitHubPREventPayload = {
+                  action: eventAction,
+                  repo: `${owner}/${repo}`,
+                  prNumber: issue.number,
+                  title: issue.title,
+                  author: sender.login,
+                  url:
+                    fullIssueOrPr?.html_url ??
+                    `https://github.com/${owner}/${repo}/pull/${issue.number}`,
+                };
+
+                // Add optional fields only if defined
+                if (webhookCtx.additions !== undefined) {
+                  prPayload.additions = webhookCtx.additions;
+                }
+                if (webhookCtx.deletions !== undefined) {
+                  prPayload.deletions = webhookCtx.deletions;
+                }
+
+                await bridge.initialize();
+                await publishPREvent(bridge, prPayload, requestId);
+
+                logger.info(`[${requestId}] [EVENT_BRIDGE] Published PR event`, {
+                  requestId,
+                  action: eventAction,
+                  repo: `${owner}/${repo}`,
+                  prNumber: issue.number,
+                });
+              }
+            } catch (eventError) {
+              // Don't fail the webhook if Event Bridge fails
+              logger.error(`[${requestId}] [EVENT_BRIDGE] Failed to publish event`, {
+                requestId,
+                error: eventError instanceof Error ? eventError.message : String(eventError),
+              });
+            }
+          }
+
+          // Create task in memory-mcp for relevant GitHub events (fire-and-forget)
+          if (env.MEMORY_SERVICE && shouldCreateTask(event, action)) {
+            try {
+              const taskResult = await handleTaskCreation(
+                env.MEMORY_SERVICE,
+                event,
+                action,
+                webhookCtx,
+                fullIssueOrPr?.html_url
+              );
+
+              if (taskResult.success) {
+                logger.info(`[${requestId}] [TASK] Task created`, {
+                  requestId,
+                  taskId: taskResult.task?.id,
+                  description: taskResult.task?.description,
+                  priority: taskResult.task?.priority,
+                  tags: taskResult.task?.tags,
+                });
+              } else {
+                logger.error(`[${requestId}] [TASK] Failed to create task`, {
+                  requestId,
+                  error: taskResult.error,
+                });
+              }
+            } catch (taskError) {
+              // Don't fail the webhook if task creation fails
+              logger.error(`[${requestId}] [TASK] Task creation error`, {
+                requestId,
+                error: taskError instanceof Error ? taskError.message : String(taskError),
+              });
+            }
+          }
+        })()
+      );
+
+      logger.info(`[${requestId}] [WEBHOOK] Returning OK immediately`, {
         requestId,
         agentId,
         durationMs: Date.now() - startTime,
       });
-
-      // Queue message - alarm will fire after batch window (200ms by default for GitHub)
-      try {
-        const { queued, batchId } = await agent.queueMessage(ctx);
-        logger.info(`[${requestId}] [WEBHOOK] Message queued`, {
-          requestId,
-          agentId,
-          queued,
-          batchId,
-          durationMs: Date.now() - startTime,
-        });
-
-        // Complete observability event on success
-        if (collector) {
-          collector.complete({ status: 'success' });
-        }
-      } catch (error) {
-        logger.error(`[${requestId}] [WEBHOOK] Failed to queue message`, {
-          requestId,
-          agentId,
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined,
-          durationMs: Date.now() - startTime,
-        });
-
-        // Complete observability event on error
-        if (collector) {
-          collector.complete({
-            status: 'error',
-            error: error instanceof Error ? error : new Error(String(error)),
-          });
-        }
-      } finally {
-        // Write observability event to D1 with retry logic
-        if (collector && storage) {
-          const result = await storage.writeEventWithRetry(collector.toEvent());
-          if (result.success) {
-            logger.info(`[${requestId}] [OBSERVABILITY] Event written`, {
-              requestId,
-              eventId: collector.getEventId(),
-              attempts: result.attempts,
-            });
-          } else {
-            logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
-              requestId,
-              eventId: collector.getEventId(),
-              error: result.error,
-              attempts: result.attempts,
-            });
-          }
-        }
-      }
 
       return c.json({ ok: true });
     } catch (error) {
@@ -333,7 +464,7 @@ app.post(
         durationMs: Date.now() - startTime,
       });
 
-      // Complete observability event on outer error
+      // Complete observability event on error
       if (collector) {
         collector.complete({
           status: 'error',
@@ -341,23 +472,14 @@ app.post(
         });
       }
 
-      // Write observability event to D1 with retry logic
+      // Write observability event to D1 (fire-and-forget)
       if (collector && storage) {
-        const result = await storage.writeEventWithRetry(collector.toEvent());
-        if (result.success) {
-          logger.info(`[${requestId}] [OBSERVABILITY] Event written`, {
-            requestId,
-            eventId: collector.getEventId(),
-            attempts: result.attempts,
-          });
-        } else {
+        storage.writeEvent(collector.toEvent()).catch((err) => {
           logger.error(`[${requestId}] [OBSERVABILITY] Failed to write event`, {
             requestId,
-            eventId: collector.getEventId(),
-            error: result.error,
-            attempts: result.attempts,
+            error: err instanceof Error ? err.message : String(err),
           });
-        }
+        });
       }
 
       return c.json({ error: 'Internal error' }, 500);

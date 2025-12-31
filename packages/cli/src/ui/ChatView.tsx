@@ -49,7 +49,7 @@ export function ChatView({
       {/* Header */}
       <Box marginBottom={1}>
         <Text bold color="cyan">
-          DuyetBot Chat
+          duyetbot
         </Text>
         <Text dimColor> | </Text>
         <Text color="gray">Mode: {mode}</Text>

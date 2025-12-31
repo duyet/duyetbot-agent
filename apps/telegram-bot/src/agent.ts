@@ -1,21 +1,19 @@
 /**
  * Telegram Agent using Cloudflare Agents SDK
  *
- * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
+ * Uses @duyetbot/cloudflare-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern.
  *
  * This file only exports TelegramAgent (local DO).
  * Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from
- * duyetbot-agents worker via script_name in wrangler.toml.
+ * duyetbot-shared-agents worker via script_name in wrangler.toml.
  */
 
-import type { D1Database } from '@cloudflare/workers-types';
-import type { RouterAgentEnv, TelegramPlatformConfig } from '@duyetbot/chat-agent';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
   createCloudflareChatAgent,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   getTelegramHelpMessage,
@@ -29,11 +27,9 @@ import { type TelegramContext, telegramTransport } from './transport.js';
 /**
  * Base environment without self-reference
  */
-interface BaseEnv extends ProviderEnv, RouterAgentEnv {
+interface BaseEnv extends ProviderEnv {
   // Common config (from wrangler.toml [vars])
   ENVIRONMENT?: string;
-  // Observability
-  OBSERVABILITY_DB?: D1Database;
   // Telegram-specific
   TELEGRAM_BOT_TOKEN: string;
   TELEGRAM_WEBHOOK_SECRET?: string;
@@ -43,6 +39,11 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
   WORKER_URL?: string;
   GITHUB_TOKEN?: string;
   ROUTER_DEBUG?: string;
+  // Internal forward endpoint (for web app integration)
+  FORWARD_SECRET?: string;
+  TELEGRAM_FORWARD_CHAT_ID?: string;
+  // Admin chat ID for scheduled notifications
+  TELEGRAM_ADMIN_CHAT_ID?: string;
 }
 
 /**
@@ -54,10 +55,10 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
   createCloudflareChatAgent<BaseEnv, TelegramContext>({
     createProvider: (env) => createAIGatewayProvider(env),
     // Dynamic system prompt based on TELEGRAM_PARSE_MODE env var
+    // Default to MarkdownV2 (LLMs generate Markdown naturally)
     systemPrompt: (env) =>
       getTelegramPrompt({
-        outputFormat:
-          env.TELEGRAM_PARSE_MODE === 'MarkdownV2' ? 'telegram-markdown' : 'telegram-html',
+        outputFormat: env.TELEGRAM_PARSE_MODE === 'HTML' ? 'telegram-html' : 'telegram-markdown',
       }),
     welcomeMessage: getTelegramWelcomeMessage(),
     helpMessage: getTelegramHelpMessage(),
@@ -76,27 +77,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // Limit number of tools to reduce token overhead and prevent timeouts
     // Priority: built-in tools first, then MCP tools
     maxTools: 5,
-    router: {
-      platform: 'telegram',
-      debug: false,
-    },
     // Extract platform config for shared DOs (includes AI Gateway credentials)
-    extractPlatformConfig: (env): TelegramPlatformConfig => ({
-      platform: 'telegram',
-      // Common config - only include defined values
-      ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
-      ...(env.MODEL && { model: env.MODEL }),
-      ...(env.AI_GATEWAY_NAME && { aiGatewayName: env.AI_GATEWAY_NAME }),
-      ...(env.AI_GATEWAY_API_KEY && {
-        aiGatewayApiKey: env.AI_GATEWAY_API_KEY,
-      }),
-      // Telegram-specific
-      ...(env.TELEGRAM_PARSE_MODE && { parseMode: env.TELEGRAM_PARSE_MODE }),
-      ...(env.TELEGRAM_ADMIN && { adminUsername: env.TELEGRAM_ADMIN }),
-      ...(env.TELEGRAM_ALLOWED_USERS && {
-        allowedUsers: env.TELEGRAM_ALLOWED_USERS,
-      }),
-    }),
     hooks: {
       onError: async (ctx, error, messageRef) => {
         // Log the error for monitoring
@@ -115,7 +96,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
         }
       },
     },
-  });
+  }) as unknown as CloudflareChatAgentClass<BaseEnv, TelegramContext>;
 
 /**
  * Type for agent instance

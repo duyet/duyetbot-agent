@@ -7,8 +7,10 @@
     "declaration": true,
     "declarationMap": true,
     "sourceMap": true,
-    "lib": ["ES2022"],
-    "types": ["node"]
+    "baseUrl": ".",
+    "paths": {},
+    "types": [],
+    "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]

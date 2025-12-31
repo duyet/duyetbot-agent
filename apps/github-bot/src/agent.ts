@@ -1,12 +1,12 @@
 /**
  * GitHub Agent using Cloudflare Agents SDK
  *
- * Uses @duyetbot/chat-agent's createCloudflareChatAgent for
+ * Uses @duyetbot/cloudflare-agent's createCloudflareChatAgent for
  * a clean, reusable agent pattern with Durable Object state.
  *
  * This file only exports GitHubAgent (local DO).
  * Shared DOs (RouterAgent, SimpleAgent, etc.) are referenced from
- * duyetbot-agents worker via script_name in wrangler.toml.
+ * duyetbot-shared-agents worker via script_name in wrangler.toml.
  */
 
 import type { D1Database } from '@cloudflare/workers-types';
@@ -16,8 +16,7 @@ import {
   createCloudflareChatAgent,
   type GitHubPlatformConfig,
   type MCPServerConnection,
-  type RouterAgentEnv,
-} from '@duyetbot/chat-agent';
+} from '@duyetbot/cloudflare-agent';
 import { getGitHubBotPrompt } from '@duyetbot/prompts';
 import { getPlatformTools } from '@duyetbot/tools';
 import { Octokit } from '@octokit/rest';
@@ -40,7 +39,7 @@ const githubMcpServer: MCPServerConnection = {
 /**
  * Base environment without self-reference
  */
-interface BaseEnv extends ProviderEnv, RouterAgentEnv {
+interface BaseEnv extends ProviderEnv {
   // Common config (from wrangler.toml [vars])
   ENVIRONMENT?: string;
   // Observability
@@ -61,7 +60,7 @@ interface BaseEnv extends ProviderEnv, RouterAgentEnv {
  */
 export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
   createCloudflareChatAgent<BaseEnv, GitHubContext>({
-    createProvider: (env) => createOpenRouterProvider(env),
+    createProvider: (env: BaseEnv) => createOpenRouterProvider(env),
     systemPrompt: getGitHubBotPrompt(),
     welcomeMessage: "Hello! I'm @duyetbot. How can I help with this issue/PR?",
     helpMessage: 'Mention me with @duyetbot followed by your question or request.',
@@ -76,12 +75,8 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
     maxToolIterations: 10,
     // Limit number of tools to reduce token overhead
     maxTools: 5,
-    router: {
-      platform: 'github',
-      debug: false,
-    },
     // Extract platform config for shared DOs (includes AI Gateway credentials)
-    extractPlatformConfig: (env): GitHubPlatformConfig => ({
+    extractPlatformConfig: (env: BaseEnv): GitHubPlatformConfig => ({
       platform: 'github',
       // Common config - only include defined values
       ...(env.ENVIRONMENT && { environment: env.ENVIRONMENT }),
@@ -102,7 +97,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
       maxMessages: 5,
     },
     hooks: {
-      beforeHandle: async (ctx) => {
+      beforeHandle: async (ctx: GitHubContext) => {
         // Add "eyes" reaction to acknowledge we're processing
         if (ctx.commentId) {
           try {
@@ -123,7 +118,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
           }
         }
       },
-      onError: async (ctx, error) => {
+      onError: async (ctx: GitHubContext, error: any) => {
         logger.error('[AGENT] Error in handle()', {
           owner: ctx.owner,
           repo: ctx.repo,
@@ -141,7 +136,7 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
         });
       },
     },
-  });
+  } as any) as unknown as CloudflareChatAgentClass<BaseEnv, GitHubContext>;
 
 /**
  * Type for agent instance
@@ -153,4 +148,6 @@ export type GitHubAgentInstance = InstanceType<typeof GitHubAgent>;
  */
 export interface Env extends BaseEnv {
   GitHubAgent: CloudflareChatAgentNamespace<BaseEnv, GitHubContext>;
+  /** Memory service binding for task management */
+  MEMORY_SERVICE: Fetcher;
 }

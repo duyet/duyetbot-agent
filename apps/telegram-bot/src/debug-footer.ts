@@ -14,11 +14,13 @@ import {
   formatDebugFooterMarkdownV2 as coreFormatDebugFooterMarkdownV2,
   escapeHtml,
   escapeMarkdownV2,
-} from '@duyetbot/chat-agent/debug-footer';
+  smartEscapeMarkdownV2,
+} from '@duyetbot/cloudflare-agent/debug-footer';
+import { sanitizeLLMResponseForTelegram } from '@duyetbot/cloudflare-agent/sanitization';
 import type { TelegramContext } from './transport.js';
 
 // Re-export escape functions directly (no wrapper needed)
-export { escapeHtml, escapeMarkdownV2 };
+export { escapeHtml, escapeMarkdownV2, smartEscapeMarkdownV2 };
 
 /**
  * Format debug context as expandable blockquote footer (admin only)
@@ -44,9 +46,12 @@ export function formatDebugFooter(ctx: TelegramContext): string | null {
 /**
  * Prepare message with optional debug footer for sending
  *
- * Returns the message text and parse mode based on context configuration.
- * Escapes text appropriately for the target parse mode.
+ * For HTML mode: Sanitizes LLM response to convert markdown to valid Telegram HTML.
+ * This handles common markdown patterns like headers, bold, italic, links, and code.
+ *
  * Admin users with debug context get an expandable footer appended.
+ *
+ * @see packages/cloudflare-agent/src/sanitization/telegram-sanitizer.ts
  */
 export function prepareMessageWithDebug(
   text: string,
@@ -55,8 +60,7 @@ export function prepareMessageWithDebug(
   const debugFooter = formatDebugFooter(ctx);
 
   // Use MarkdownV2 parse mode if configured
-  // Note: LLM generates properly escaped MarkdownV2 text via prompt instructions
-  // We DON'T escape the main message text as that would break the formatting
+  // Text is NOT escaped - LLM produces properly formatted MarkdownV2
   if (ctx.parseMode === 'MarkdownV2') {
     return {
       text: debugFooter ? text + debugFooter : text,
@@ -64,10 +68,11 @@ export function prepareMessageWithDebug(
     };
   }
 
-  // Default to HTML escaping and parse mode
-  const escapedText = escapeHtml(text);
+  // Default to HTML parse mode
+  // Sanitize LLM response to convert markdown to valid Telegram HTML
+  const sanitizedText = sanitizeLLMResponseForTelegram(text);
   return {
-    text: debugFooter ? escapedText + debugFooter : escapedText,
+    text: debugFooter ? sanitizedText + debugFooter : sanitizedText,
     parseMode: 'HTML',
   };
 }

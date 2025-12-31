@@ -20,10 +20,11 @@
     "build": "echo 'Skipping memory-mcp build (tsc hangs with agents package)'",
     "dev": "wrangler dev",
     "clean": "rm -rf dist",
-    "type-check": "tsc --noEmit",
+    "type-check": "node --max-old-space-size=8192 $(which tsc) --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "deploy": "bun scripts/deploy.ts",
+    "deploy:branch": "WRANGLER_COMMAND='versions upload' WRANGLER_ARGS='--message=\"Branch deploy: $(git branch --show-current)\" --tag=$(git branch --show-current)' bun scripts/deploy.ts",
     "deploy:staging": "wrangler deploy --env staging",
     "deploy:production": "wrangler deploy",
     "db:create": "wrangler d1 create duyetbot-memory",
@@ -44,13 +45,12 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/workers-oauth-provider": "^0.1.0",
     "@duyetbot/hono-middleware": "workspace:*",
-    "@modelcontextprotocol/sdk": "^1.23.0",
+    "@modelcontextprotocol/sdk": "catalog:",
     "agents": "catalog:",
     "hono": "catalog:",
-    "zod": "^3.23.8",
-    "zod-to-json-schema": "^3.24.5"
+    "zod": "catalog:",
+    "zod-to-json-schema": "catalog:"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241127.0",

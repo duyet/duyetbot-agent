@@ -52,7 +52,7 @@
   "author": "duyet",
   "license": "MIT",
   "dependencies": {
-    "zod": "^3.23.8"
+    "zod": "catalog:"
   },
   "devDependencies": {
     "typescript": "catalog:"

@@ -32,44 +32,69 @@ export function DocsCategoryCard({
   return (
     <Link
       href={href}
-      className="group relative flex h-full items-start gap-4 rounded-lg border border-fd-border bg-fd-card p-4 transition-all hover:border-[#f38020]/50 hover:bg-fd-muted/50"
+      className="group relative flex h-full flex-col overflow-visible rounded-xl p-5 transition-all hatched-shadow"
+      style={{ '--hatch-color': '#f38020' } as React.CSSProperties}
     >
       {recommended && (
-        <span className="absolute -top-2 -right-2 px-2 py-1 text-[10px] font-semibold bg-[#f38020] text-white rounded-full">
-          Start Here
+        <span className="absolute top-3 right-3 inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider bg-[#f38020]/10 text-[#f38020] border border-[#f38020]/20">
+          Recommended
         </span>
       )}
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-fd-muted text-fd-muted-foreground group-hover:bg-[#f38020]/10 group-hover:text-[#f38020] transition-colors">
+
+      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-lg border border-fd-border bg-fd-muted/50 group-hover:border-[#f38020]/30 group-hover:bg-[#f38020]/5 transition-colors text-fd-foreground group-hover:text-[#f38020]">
         {icon}
       </div>
-      <div className="flex flex-col gap-1.5 min-w-0 flex-1">
-        <h3 className="text-sm font-medium text-fd-foreground group-hover:text-[#f38020] transition-colors">
+
+      <div className="flex flex-col gap-2 min-w-0 flex-1">
+        <h3 className="text-base font-bold text-fd-foreground group-hover:text-[#f38020] transition-colors flex items-center gap-2">
           {title}
+          <svg
+            className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity -translate-x-2 group-hover:translate-x-0"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+            strokeWidth={3}
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
         </h3>
-        <p className="text-xs text-fd-muted-foreground leading-relaxed">{description}</p>
+        <p className="text-sm text-fd-muted-foreground leading-relaxed">{description}</p>
+
         {(timeEstimate || audience) && (
-          <div className="flex items-center gap-2 text-[10px] text-fd-muted-foreground mt-0.5">
+          <div className="mt-auto pt-4 flex items-center gap-3 text-xs font-mono text-fd-muted-foreground/80">
             {timeEstimate && (
-              <span className="flex items-center gap-1">
+              <span className="flex items-center gap-1.5">
                 <svg
                   className="h-3 w-3"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
-                  strokeWidth={1.5}
                   aria-hidden="true"
                 >
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
                   />
                 </svg>
                 {timeEstimate}
               </span>
             )}
-            {timeEstimate && audience && <span className="text-fd-border">|</span>}
-            {audience && <span>{audienceLabels[audience]}</span>}
+            {audience && (
+              <span
+                className={`px-1.5 py-0.5 rounded border ${
+                  audience === 'beginner'
+                    ? 'border-green-200 bg-green-50 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-400'
+                    : audience === 'advanced'
+                      ? 'border-red-200 bg-red-50 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-400'
+                      : 'border-fd-border bg-fd-muted'
+                }`}
+              >
+                {audienceLabels[audience]}
+              </span>
+            )}
           </div>
         )}
       </div>

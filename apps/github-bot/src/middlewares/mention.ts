@@ -94,6 +94,44 @@ export function createGitHubMentionMiddleware(): MiddlewareHandler<{
       return next();
     }
 
+    // Get bot username from environment
+    const botUsername = c.env.BOT_USERNAME || 'duyetbot';
+
+    // Handle review request events - bypass mention check if bot is the requested reviewer
+    if (webhookContext.isReviewRequest && webhookContext.requestedReviewer) {
+      const requestedReviewer = webhookContext.requestedReviewer.toLowerCase();
+      const normalizedBotUsername = botUsername.toLowerCase();
+      // Handle both "duyetbot" and "duyetbot[bot]" (GitHub Apps format)
+      const isBotRequested =
+        requestedReviewer === normalizedBotUsername ||
+        requestedReviewer === `${normalizedBotUsername}[bot]`;
+
+      if (isBotRequested) {
+        c.set('hasMention', true);
+        c.set('task', 'Please review this pull request');
+
+        logger.info('[MENTION] Review requested from bot', {
+          requestId: webhookContext.requestId,
+          repository: `${webhookContext.owner}/${webhookContext.repo}`,
+          event: webhookContext.event,
+          action: webhookContext.action,
+          requestedReviewer: webhookContext.requestedReviewer,
+        });
+
+        return next();
+      }
+
+      // Review requested but not for our bot - skip processing
+      logger.debug('[MENTION] Review requested for different user', {
+        requestId: webhookContext.requestId,
+        repository: `${webhookContext.owner}/${webhookContext.repo}`,
+        requestedReviewer: webhookContext.requestedReviewer,
+        botUsername,
+      });
+      c.set('skipProcessing', true);
+      return next();
+    }
+
     // Extract text from context (comment body, issue body, or PR body)
     const text = getTextFromContext(webhookContext);
     if (!text) {
@@ -105,9 +143,6 @@ export function createGitHubMentionMiddleware(): MiddlewareHandler<{
       c.set('skipProcessing', true);
       return next();
     }
-
-    // Get bot username from environment
-    const botUsername = c.env.BOT_USERNAME || 'duyetbot';
 
     // Check for bot mention
     if (!hasMention(text, botUsername)) {

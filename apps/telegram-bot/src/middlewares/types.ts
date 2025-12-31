@@ -31,10 +31,86 @@ export interface TelegramUpdate {
     chat: {
       /** Unique chat identifier */
       id: number;
+      /** Type of chat: private, group, supergroup, or channel */
+      type?: 'private' | 'group' | 'supergroup' | 'channel';
+      /** Title of the chat (for groups, supergroups, and channels) */
+      title?: string;
     };
     /** Message text content */
     text?: string;
+    /** Original message being replied to (for quoted messages) */
+    reply_to_message?: {
+      /** Unique message identifier of the quoted message */
+      message_id: number;
+      /** Sender of the quoted message */
+      from?: {
+        /** Unique user identifier */
+        id: number;
+        /** True if this user is a bot */
+        is_bot?: boolean;
+        /** Username without @ prefix */
+        username?: string;
+        /** User's first name */
+        first_name: string;
+      };
+      /** Text content of the quoted message */
+      text?: string;
+      /** Unix timestamp when the quoted message was sent */
+      date: number;
+    };
   };
+  /** Inline keyboard button callback from user */
+  callback_query?: {
+    /** Unique identifier of this query */
+    id: string;
+    /** Sender of the callback query */
+    from: {
+      /** Unique user identifier */
+      id: number;
+      /** Username without @ prefix */
+      username?: string;
+      /** User's first name */
+      first_name: string;
+    };
+    /** Chat where the callback was triggered */
+    chat_instance: string;
+    /** Unique identifier of the message the button was in */
+    message?: {
+      /** Unique message identifier */
+      message_id: number;
+      /** Chat where message is located */
+      chat: {
+        /** Unique chat identifier */
+        id: number;
+      };
+    };
+    /** Data associated with the callback button */
+    data?: string;
+  };
+}
+
+/**
+ * Parsed inline keyboard callback context
+ *
+ * Contains extracted data from a callback_query update,
+ * ready for use by callback handlers and agents.
+ * Extends cloudflare-agent's CallbackContext with startTime for latency tracking.
+ */
+export interface CallbackContext {
+  /** Unique callback query ID from Telegram */
+  callbackQueryId: string;
+  /** Chat ID where the button was clicked */
+  chatId: number;
+  /** Message ID of the message containing the button */
+  messageId: number;
+  /** User ID of the user who clicked the button */
+  userId: number;
+  /** Username of the user who clicked the button */
+  username?: string;
+  /** Data payload from the callback button */
+  data: string;
+  /** Timestamp when processing started (for latency tracking) */
+  startTime: number;
 }
 
 /**
@@ -54,6 +130,28 @@ export interface WebhookContext {
   username?: string;
   /** Timestamp when processing started (for latency tracking) */
   startTime: number;
+  /** Message ID of the current message (for reply threading) */
+  messageId: number;
+  /** Message ID of the quoted message (when replying to a message) */
+  replyToMessageId?: number;
+  /** Text content of the quoted message */
+  quotedText?: string;
+  /** Username of the quoted message sender */
+  quotedUsername?: string;
+  /** Chat type: private, group, supergroup, or channel */
+  chatType: 'private' | 'group' | 'supergroup' | 'channel';
+  /** Title of the chat (for groups, supergroups, and channels) */
+  chatTitle?: string;
+  /** Whether this message is from a group or supergroup */
+  isGroupChat: boolean;
+  /** Whether the bot was mentioned in this message */
+  hasBotMention: boolean;
+  /** Whether this message is a reply to any message */
+  isReply: boolean;
+  /** Whether this message is a reply to the bot's message */
+  isReplyToBot: boolean;
+  /** Extracted task text (message with @mention removed, if present) */
+  task?: string;
 }
 
 /**
@@ -67,6 +165,10 @@ export interface Env {
   TELEGRAM_ALLOWED_USERS?: string;
   /** Telegram Bot API token */
   TELEGRAM_BOT_TOKEN: string;
+  /** Bot username for mention detection (without @, default: 'duyetbot') */
+  BOT_USERNAME?: string;
+  /** Admin username for special privileges (rate limit exemption, debug footer) */
+  TELEGRAM_ADMIN?: string;
 }
 
 /**
@@ -78,6 +180,8 @@ export interface Env {
 export type ParserVariables = {
   /** Parsed webhook context, undefined if parsing failed */
   webhookContext: WebhookContext | undefined;
+  /** Parsed callback query context, undefined if not a callback query */
+  callbackContext: CallbackContext | undefined;
   /** Whether to skip further processing (invalid request) */
   skipProcessing: boolean;
 };

@@ -41,40 +41,46 @@ export function FeatureCard({
   return (
     <Link
       href={href}
-      className="group relative flex flex-col gap-3 rounded-lg border border-fd-border bg-fd-card p-5 transition-all hover:border-[#f38020]/50 hover:bg-fd-muted/30"
+      className="group relative flex flex-col gap-4 rounded-xl border border-fd-border bg-fd-card p-6 transition-all hover:border-[#f38020] hover:shadow-[4px_4px_0px_0px_rgba(243,128,32,0.1)] active:translate-x-[2px] active:translate-y-[2px] active:shadow-none"
     >
-      <div className="flex items-center gap-3">
-        <span className="font-mono text-xs font-semibold text-[#f38020]">{number}</span>
-        <div className="text-fd-muted-foreground group-hover:text-[#f38020] transition-colors">
+      <div className="flex items-center justify-between">
+        <span className="font-mono text-xs font-bold text-[#f38020] bg-[#f38020]/10 px-2 py-1 rounded">
+          {number}
+        </span>
+        <div className="text-fd-muted-foreground group-hover:text-[#f38020] transition-colors p-2 rounded-lg bg-fd-muted/50 group-hover:bg-[#f38020]/10">
           {icon}
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
+      <div className="flex flex-col gap-2">
         <div className="flex items-center gap-2">
-          <h3 className="text-sm font-semibold text-fd-foreground group-hover:text-[#f38020] transition-colors">
+          <h3 className="text-base font-bold text-fd-foreground group-hover:text-[#f38020] transition-colors">
             {title}
           </h3>
           {technicalDetails && (
             <SimpleTooltip content={technicalDetails}>
-              <InfoIcon className="h-3.5 w-3.5 text-fd-muted-foreground hover:text-[#f38020] cursor-help transition-colors" />
+              <InfoIcon className="h-4 w-4 text-fd-muted-foreground/60 hover:text-[#f38020] cursor-help transition-colors" />
             </SimpleTooltip>
           )}
         </div>
-        <p className="text-xs text-fd-muted-foreground leading-relaxed">{description}</p>
+        <p className="text-sm text-fd-muted-foreground leading-relaxed">{description}</p>
       </div>
 
-      <div className="mt-auto flex items-center gap-1.5 text-xs font-medium text-[#f38020] opacity-0 group-hover:opacity-100 transition-opacity">
+      <div className="mt-auto pt-2 flex items-center gap-1.5 text-xs font-bold text-[#f38020] opacity-0 group-hover:opacity-100 transition-opacity translate-y-2 group-hover:translate-y-0 duration-300">
         Learn more
         <svg
-          className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+          className="h-3 w-3 transition-transform group-hover:translate-x-1"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
           strokeWidth={2}
           aria-hidden="true"
         >
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            d="M17.25 8.25L21 12m0 0l-3.75 3.75M21 12H3"
+          />
         </svg>
       </div>
     </Link>

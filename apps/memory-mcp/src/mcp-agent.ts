@@ -8,6 +8,14 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { McpAgent } from 'agents/mcp';
 import { z } from 'zod';
 import { D1Storage } from './storage/d1.js';
+import {
+  addTask,
+  completeTask,
+  deleteTask,
+  listTasks,
+  taskStatusEnum,
+  updateTask,
+} from './tools/todo-tasks.js';
 import type { Env, LLMMessage } from './types.js';
 
 /**
@@ -25,6 +33,11 @@ interface MemoryAgentState {
  * - save_memory: Save messages to a session
  * - search_memory: Full-text search across messages
  * - list_sessions: List user's sessions
+ * - add_task: Add a new task to the todo list
+ * - list_tasks: List tasks from the todo list
+ * - update_task: Update an existing task
+ * - complete_task: Mark a task as completed
+ * - delete_task: Delete a task from the todo list
  */
 export class MemoryMcpAgent extends McpAgent<Env, MemoryAgentState, Record<string, never>> {
   server = new McpServer({
@@ -314,6 +327,229 @@ export class MemoryMcpAgent extends McpAgent<Env, MemoryAgentState, Record<strin
                 text: JSON.stringify(result),
               },
             ],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+    );
+
+    // ========================================================================
+    // Todo/Task Management Tools
+    // ========================================================================
+
+    // add_task tool
+    this.server.tool(
+      'add_task',
+      'Add a new task to the todo list',
+      {
+        description: z.string().describe('Task description'),
+        priority: z.number().min(1).max(10).optional().describe('Priority (1-10, default 5)'),
+        due_date: z.number().optional().describe('Due date as Unix timestamp'),
+        tags: z.array(z.string()).optional().describe('Tags for categorization'),
+        parent_task_id: z.string().optional().describe('Parent task ID for subtasks'),
+      },
+      async ({ description, priority, due_date, tags, parent_task_id }) => {
+        if (!this.state.userId) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: 'Not authenticated' }) }],
+            isError: true,
+          };
+        }
+
+        try {
+          const task = await addTask(
+            {
+              description,
+              priority: priority ?? 5,
+              due_date,
+              tags: tags ?? [],
+              parent_task_id,
+            },
+            storage,
+            this.state.userId
+          );
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ task }) }],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+    );
+
+    // list_tasks tool
+    this.server.tool(
+      'list_tasks',
+      'List tasks from the todo list',
+      {
+        status: taskStatusEnum.optional().describe('Filter by status'),
+        limit: z.number().optional().default(20).describe('Maximum tasks to return'),
+        offset: z.number().optional().default(0).describe('Number of tasks to skip'),
+        parent_task_id: z.string().optional().describe('Filter by parent task ID'),
+      },
+      async ({ status, limit, offset, parent_task_id }) => {
+        if (!this.state.userId) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: 'Not authenticated' }) }],
+            isError: true,
+          };
+        }
+
+        try {
+          const result = await listTasks(
+            {
+              status,
+              limit: limit ?? 20,
+              offset: offset ?? 0,
+              parent_task_id,
+            },
+            storage,
+            this.state.userId
+          );
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result) }],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+    );
+
+    // update_task tool
+    this.server.tool(
+      'update_task',
+      'Update an existing task',
+      {
+        id: z.string().describe('Task ID to update'),
+        description: z.string().optional().describe('New description'),
+        status: taskStatusEnum.optional().describe('New status'),
+        priority: z.number().min(1).max(10).optional().describe('New priority (1-10)'),
+        due_date: z.number().optional().describe('New due date as Unix timestamp'),
+        tags: z.array(z.string()).optional().describe('New tags'),
+      },
+      async ({ id, description, status, priority, due_date, tags }) => {
+        if (!this.state.userId) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: 'Not authenticated' }) }],
+            isError: true,
+          };
+        }
+
+        try {
+          const task = await updateTask(
+            { id, description, status, priority, due_date, tags },
+            storage
+          );
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ task }) }],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+    );
+
+    // complete_task tool
+    this.server.tool(
+      'complete_task',
+      'Mark a task as completed',
+      {
+        id: z.string().describe('Task ID to complete'),
+      },
+      async ({ id }) => {
+        if (!this.state.userId) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: 'Not authenticated' }) }],
+            isError: true,
+          };
+        }
+
+        try {
+          const task = await completeTask({ id }, storage);
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ task }) }],
+          };
+        } catch (error) {
+          return {
+            content: [
+              {
+                type: 'text',
+                text: JSON.stringify({
+                  error: error instanceof Error ? error.message : 'Unknown error',
+                }),
+              },
+            ],
+            isError: true,
+          };
+        }
+      }
+    );
+
+    // delete_task tool
+    this.server.tool(
+      'delete_task',
+      'Delete a task from the todo list',
+      {
+        id: z.string().describe('Task ID to delete'),
+      },
+      async ({ id }) => {
+        if (!this.state.userId) {
+          return {
+            content: [{ type: 'text', text: JSON.stringify({ error: 'Not authenticated' }) }],
+            isError: true,
+          };
+        }
+
+        try {
+          const result = await deleteTask({ id }, storage);
+
+          return {
+            content: [{ type: 'text', text: JSON.stringify(result) }],
           };
         } catch (error) {
           return {

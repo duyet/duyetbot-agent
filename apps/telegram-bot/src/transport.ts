@@ -4,8 +4,9 @@
  * Implements the Transport interface for Telegram Bot API.
  */
 
-import type { DebugContext, Transport } from '@duyetbot/chat-agent';
+import type { DebugContext, Transport } from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
+import type { InlineKeyboardMarkup, SendMessageOptions } from '@duyetbot/types';
 import { prepareMessageWithDebug } from './debug-footer.js';
 
 /** Telegram message length limit */
@@ -82,6 +83,12 @@ export interface TelegramContext {
   isAdmin: boolean;
   /** Parse mode for message formatting */
   parseMode?: 'HTML' | 'MarkdownV2';
+  /** Message ID of the user's message (for reply threading) */
+  messageId: number;
+  /** Message ID of the quoted message (when user replied to a message) */
+  replyToMessageId?: number;
+  /** Whether this is a group or supergroup chat (for conditional reply threading) */
+  isGroupChat: boolean;
 }
 
 /**
@@ -94,21 +101,26 @@ export interface TelegramContext {
  * @param chatId - Chat to send to
  * @param text - Message text
  * @param parseMode - Parse mode ('HTML', 'Markdown', or undefined for plain text)
+ * @param replyToMessageId - Message ID to reply to (creates reply threading)
  */
 async function sendTelegramMessage(
   token: string,
   chatId: number,
   text: string,
-  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML'
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2',
+  replyToMessageId?: number
 ): Promise<number> {
   const chunks = splitMessage(text);
   let lastMessageId = 0;
 
   for (const chunk of chunks) {
-    // Build payload with optional parse_mode
+    // Build payload with optional parse_mode and reply_to_message_id
     const payload: Record<string, unknown> = { chat_id: chatId, text: chunk };
     if (parseMode) {
       payload.parse_mode = parseMode;
+    }
+    if (replyToMessageId) {
+      payload.reply_to_message_id = replyToMessageId;
     }
     logger.debug('[TRANSPORT] Sending message', payload);
 
@@ -121,17 +133,28 @@ async function sendTelegramMessage(
 
     // Fallback to plain text if parsing fails (400 error)
     if (response.status === 400 && parseMode) {
-      // Consume the error response body to prevent connection pool exhaustion
-      await response.text();
+      // Read and log the actual Telegram API error for debugging
+      const errorBody = await response.text();
+      let errorDetail = '';
+      try {
+        const parsed = JSON.parse(errorBody);
+        errorDetail = parsed.description || errorBody;
+      } catch {
+        errorDetail = errorBody;
+      }
 
       const withoutParseMode = {
         chat_id: chatId,
         text: chunk,
       };
-      logger.warn(
-        `[TRANSPORT] ${parseMode} parse failed, retrying without parse_mode`,
-        withoutParseMode
-      );
+
+      // Log detailed error info including the Telegram API error message
+      logger.warn(`[TRANSPORT] ${parseMode} parse failed, retrying without parse_mode`, {
+        ...withoutParseMode,
+        telegramError: errorDetail,
+        textLength: chunk.length,
+        textPreview: chunk.length > 100 ? `${chunk.slice(0, 100)}...` : chunk,
+      });
 
       response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
         method: 'POST',
@@ -177,7 +200,7 @@ async function editTelegramMessage(
   chatId: number,
   messageId: number,
   text: string,
-  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'HTML'
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2'
 ): Promise<void> {
   // Truncate if too long for edit
   const truncatedText =
@@ -206,18 +229,29 @@ async function editTelegramMessage(
 
   // Fallback to plain text if parsing fails
   if (response.status === 400 && parseMode) {
-    // Consume the error response body to prevent connection pool exhaustion
-    await response.text();
+    // Read and log the actual Telegram API error for debugging
+    const errorBody = await response.text();
+    let errorDetail = '';
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorDetail = parsed.description || errorBody;
+    } catch {
+      errorDetail = errorBody;
+    }
 
     const withoutParseMode = {
       chat_id: chatId,
       message_id: messageId,
       text: truncatedText,
     };
-    logger.warn(
-      `[TRANSPORT] ${parseMode} parse failed in edit, retrying without parse_mode`,
-      withoutParseMode
-    );
+
+    // Log detailed error info including the Telegram API error message
+    logger.warn(`[TRANSPORT] ${parseMode} parse failed in edit, retrying without parse_mode`, {
+      ...withoutParseMode,
+      telegramError: errorDetail,
+      textLength: truncatedText.length,
+      textPreview: truncatedText.length > 100 ? `${truncatedText.slice(0, 100)}...` : truncatedText,
+    });
 
     // Retry
     response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
@@ -265,6 +299,240 @@ async function sendTypingIndicator(token: string, chatId: number): Promise<void>
 }
 
 /**
+ * Send a message with inline keyboard via Telegram Bot API
+ *
+ * @param token - Bot token
+ * @param chatId - Chat to send to
+ * @param text - Message text
+ * @param keyboard - Inline keyboard markup
+ * @param parseMode - Parse mode for formatting
+ * @param replyToMessageId - Message ID to reply to
+ */
+export async function sendTelegramMessageWithKeyboard(
+  token: string,
+  chatId: number,
+  text: string,
+  keyboard: InlineKeyboardMarkup,
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2',
+  replyToMessageId?: number
+): Promise<number> {
+  // Truncate if too long (keyboards don't support chunking well)
+  const truncatedText =
+    text.length > MAX_MESSAGE_LENGTH
+      ? `${text.slice(0, MAX_MESSAGE_LENGTH - 20)}...\n\n[truncated]`
+      : text;
+
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    text: truncatedText,
+    reply_markup: keyboard,
+  };
+  if (parseMode) {
+    payload.parse_mode = parseMode;
+  }
+  if (replyToMessageId) {
+    payload.reply_to_message_id = replyToMessageId;
+  }
+
+  logger.debug('[TRANSPORT] Sending message with keyboard', { chatId, keyboard });
+
+  let response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  // Fallback to plain text if parsing fails
+  if (response.status === 400 && parseMode) {
+    const errorBody = await response.text();
+    let errorDetail = '';
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorDetail = parsed.description || errorBody;
+    } catch {
+      errorDetail = errorBody;
+    }
+
+    logger.warn(
+      `[TRANSPORT] ${parseMode} parse failed with keyboard, retrying without parse_mode`,
+      {
+        chatId,
+        telegramError: errorDetail,
+      }
+    );
+
+    const withoutParseMode = {
+      chat_id: chatId,
+      text: truncatedText,
+      reply_markup: keyboard,
+    };
+
+    response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(withoutParseMode),
+    });
+  }
+
+  if (!response.ok) {
+    const error = await response.text();
+    logger.error('[TRANSPORT] Send message with keyboard failed', {
+      status: response.status,
+      error,
+      chatId,
+    });
+    throw new Error(`Telegram API error: ${response.status}`);
+  }
+
+  const result = await response.json<{ result: { message_id: number } }>();
+  logger.debug('[TRANSPORT] Message with keyboard sent', {
+    chatId,
+    messageId: result.result.message_id,
+  });
+
+  return result.result.message_id;
+}
+
+/**
+ * Edit an existing message with inline keyboard via Telegram Bot API
+ *
+ * @param token - Bot token
+ * @param chatId - Chat containing the message
+ * @param messageId - Message to edit
+ * @param text - New message text
+ * @param keyboard - Inline keyboard markup (pass undefined to remove keyboard)
+ * @param parseMode - Parse mode for formatting
+ */
+export async function editTelegramMessageWithKeyboard(
+  token: string,
+  chatId: number,
+  messageId: number,
+  text: string,
+  keyboard?: InlineKeyboardMarkup,
+  parseMode: 'HTML' | 'MarkdownV2' | 'Markdown' | undefined = 'MarkdownV2'
+): Promise<void> {
+  const truncatedText =
+    text.length > MAX_MESSAGE_LENGTH
+      ? `${text.slice(0, MAX_MESSAGE_LENGTH - 20)}...\n\n[truncated]`
+      : text;
+
+  const payload: Record<string, unknown> = {
+    chat_id: chatId,
+    message_id: messageId,
+    text: truncatedText,
+  };
+  if (parseMode) {
+    payload.parse_mode = parseMode;
+  }
+  if (keyboard) {
+    payload.reply_markup = keyboard;
+  }
+
+  logger.debug('[TRANSPORT] Editing message with keyboard', { chatId, messageId });
+
+  let response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  // Fallback to plain text if parsing fails
+  if (response.status === 400 && parseMode) {
+    const errorBody = await response.text();
+    let errorDetail = '';
+    try {
+      const parsed = JSON.parse(errorBody);
+      errorDetail = parsed.description || errorBody;
+    } catch {
+      errorDetail = errorBody;
+    }
+
+    logger.warn(
+      `[TRANSPORT] ${parseMode} parse failed in edit with keyboard, retrying without parse_mode`,
+      {
+        chatId,
+        messageId,
+        telegramError: errorDetail,
+      }
+    );
+
+    const withoutParseMode: Record<string, unknown> = {
+      chat_id: chatId,
+      message_id: messageId,
+      text: truncatedText,
+    };
+    if (keyboard) {
+      withoutParseMode.reply_markup = keyboard;
+    }
+
+    response = await fetch(`https://api.telegram.org/bot${token}/editMessageText`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(withoutParseMode),
+    });
+  }
+
+  if (response?.ok) {
+    logger.info('[TRANSPORT] Message with keyboard edited successfully', {
+      chatId,
+      messageId,
+    });
+  } else {
+    const error = await response.text();
+    logger.error('[TRANSPORT] Edit message with keyboard failed', {
+      status: response.status,
+      error,
+      chatId,
+      messageId,
+    });
+    // Don't throw - message might have been deleted
+  }
+}
+
+/**
+ * Answer a callback query (required within 30s of receiving callback)
+ *
+ * @param token - Bot token
+ * @param callbackQueryId - Callback query ID to answer
+ * @param text - Optional notification text (shows as toast)
+ * @param showAlert - Show as alert dialog instead of toast
+ */
+export async function answerCallbackQuery(
+  token: string,
+  callbackQueryId: string,
+  text?: string,
+  showAlert = false
+): Promise<void> {
+  const payload: Record<string, unknown> = {
+    callback_query_id: callbackQueryId,
+  };
+  if (text) {
+    payload.text = text;
+    payload.show_alert = showAlert;
+  }
+
+  logger.debug('[TRANSPORT] Answering callback query', { callbackQueryId, text });
+
+  const response = await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (response.ok) {
+    logger.debug('[TRANSPORT] Callback query answered', { callbackQueryId });
+  } else {
+    const error = await response.text();
+    logger.error('[TRANSPORT] Answer callback query failed', {
+      status: response.status,
+      error,
+      callbackQueryId,
+    });
+    // Don't throw - callback might have expired
+  }
+}
+
+/**
  * Telegram transport implementation
  *
  * Integrates debug footer for admin users via context chain pattern:
@@ -285,7 +553,10 @@ export const telegramTransport: Transport<TelegramContext> = {
   send: async (ctx, text) => {
     // Apply debug footer for admin users (context chain pattern)
     const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
-    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode);
+    // Reply to user's message only in group chats for threading clarity
+    // In direct chats, quoting is redundant since context is obvious
+    const replyTo = ctx.isGroupChat ? ctx.messageId : undefined;
+    return sendTelegramMessage(ctx.token, ctx.chatId, finalText, parseMode, replyTo);
   },
 
   edit: async (ctx, ref, text) => {
@@ -303,12 +574,99 @@ export const telegramTransport: Transport<TelegramContext> = {
     userId: ctx.userId,
     chatId: ctx.chatId,
     username: ctx.username,
+    messageRef: ctx.messageId,
+    replyTo: ctx.replyToMessageId,
     metadata: {
       startTime: ctx.startTime,
       requestId: ctx.requestId,
     },
   }),
 };
+
+/**
+ * Send a pre-formatted message without applying additional escaping
+ *
+ * Use this for messages that are already formatted for the target parseMode,
+ * such as slash command responses from handleBuiltinCommand().
+ * Skips escapeHtml/smartEscapeMarkdownV2 to preserve pre-formatted content.
+ *
+ * @param ctx - Telegram context
+ * @param text - Pre-formatted message text (already escaped for parseMode)
+ * @returns Message ID of the sent message
+ */
+export async function sendRaw(ctx: TelegramContext, text: string): Promise<number> {
+  // Send directly without prepareMessageWithDebug() escaping
+  // The text is already formatted for ctx.parseMode
+  // Reply to user's message only in group chats for threading clarity
+  const replyTo = ctx.isGroupChat ? ctx.messageId : undefined;
+  return sendTelegramMessage(ctx.token, ctx.chatId, text, ctx.parseMode, replyTo);
+}
+
+/**
+ * Send message with options (keyboard support)
+ *
+ * This is a Telegram-specific helper that extends the base transport
+ * with inline keyboard support. Not part of the generic Transport interface.
+ *
+ * @param ctx - Telegram context
+ * @param text - Message text to send
+ * @param options - Optional send options including keyboard
+ * @returns Message ID of the sent message
+ */
+export async function sendWithOptions(
+  ctx: TelegramContext,
+  text: string,
+  options?: SendMessageOptions
+): Promise<number> {
+  const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
+  const effectiveParseMode = options?.parseMode ?? parseMode;
+  // Use explicit replyToMessageId if provided, otherwise apply group chat logic
+  const replyTo = options?.replyToMessageId ?? (ctx.isGroupChat ? ctx.messageId : undefined);
+
+  if (options?.keyboard) {
+    return sendTelegramMessageWithKeyboard(
+      ctx.token,
+      ctx.chatId,
+      finalText,
+      options.keyboard,
+      effectiveParseMode,
+      replyTo
+    );
+  }
+  return sendTelegramMessage(ctx.token, ctx.chatId, finalText, effectiveParseMode, replyTo);
+}
+
+/**
+ * Edit message with optional keyboard
+ *
+ * This is a Telegram-specific helper that extends the base transport
+ * with inline keyboard support on edit. Not part of the generic Transport interface.
+ *
+ * @param ctx - Telegram context
+ * @param ref - Message ID to edit
+ * @param text - New message text
+ * @param options - Optional edit options including keyboard
+ */
+export async function editWithOptions(
+  ctx: TelegramContext,
+  ref: number,
+  text: string,
+  options?: { keyboard?: InlineKeyboardMarkup }
+): Promise<void> {
+  const { text: finalText, parseMode } = prepareMessageWithDebug(text, ctx);
+  if (options?.keyboard !== undefined) {
+    await editTelegramMessageWithKeyboard(
+      ctx.token,
+      ctx.chatId,
+      ref,
+      finalText,
+      options.keyboard,
+      parseMode
+    );
+  } else {
+    await editTelegramMessage(ctx.token, ctx.chatId, ref, finalText, parseMode);
+  }
+}
 
 /**
  * Normalize username by removing leading @ if present
@@ -345,6 +703,9 @@ export function createTelegramContext(
     text: string;
     username?: string;
     startTime: number;
+    messageId: number;
+    replyToMessageId?: number;
+    isGroupChat: boolean;
   },
   adminUsername?: string,
   requestId?: string,
@@ -363,5 +724,8 @@ export function createTelegramContext(
     adminUsername,
     isAdmin,
     parseMode,
+    messageId: webhookCtx.messageId,
+    replyToMessageId: webhookCtx.replyToMessageId,
+    isGroupChat: webhookCtx.isGroupChat,
   };
 }

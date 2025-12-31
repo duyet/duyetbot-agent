@@ -11,7 +11,7 @@ description: Autonomous edge AI agents across CLI, Telegram, GitHub. Deploy in 3
 
 Build autonomous edge AI agents. Run on Cloudflare DO/D1. Zero-infra. Persistent MCP memory. Multi-platform: CLI/Telegram/GitHub.
 
-> **Why?** Save 75% tokens via smart routing. Scale globally. Cost: free idle.
+> **Why?** Simple loop-based architecture with tool iterations. Scale globally. Cost: free idle.
 
 ## 🎯 30s Quickstarts
 
@@ -24,7 +24,7 @@ bun run cli chat
 ```
 Try: `> Explain Durable Objects`
 
-**✅ Done!** Chat with 8 agents + memory.
+**✅ Done!** Chat with loop-based agent + memory.
 
 ### Telegram (Prod)
 ```bash
@@ -35,45 +35,34 @@ bun run deploy:telegram
 ```
 Set webhook at [@BotFather](https://t.me/botfather). Ping bot!
 
-## 🏗️ Phase 1 Architecture
+## 🏗️ Loop-Based Architecture
 
 ```
-                    Telegram/GitHub Webhook
-                              |
-                              v
-                       Platform Agent DO
-                              |
-                Memory MCP D1/KV <--+
-                       |            |
-                       v            |
-                    RouterAgent     |
-              (Hybrid Classifier)   |
-                       |<-----------+
-                +------+------+------+
-                |      |      |      |
-                v      v      v      v
-             Simple  HITL  Orch  Duyet
-             Agent  Agent Agent  Info
-                          |   Agent
-                       +---+---+-----+
-                       |   |   |     |
-                       v   v   v     v
-                     Code Res GitHub
-                     Worker Worker Worker
-
-                 Claude/OpenRouter (LLM)
-                          ^
-                          | connected to all agents
-                          v
-                     D, E, F, G, H, I, J agents
+User → Telegram/GitHub → Transport → CloudflareChatAgent (DO)
+                                              │
+                                              ▼
+                                      ┌──────────────┐
+                                      │  Chat Loop   │ ◄─── LLM Provider
+                                      │              │
+                                      │  ┌────────┐  │
+                                      │  │ Tools  │  │ ◄─── Built-in + MCP
+                                      │  └────────┘  │
+                                      │              │
+                                      │  ┌────────┐  │
+                                      │  │ Track  │  │ ◄─── Token/cost → D1
+                                      │  └────────┘  │
+                                      └──────────────┘
+                                              │
+                                              ▼
+                                    Memory MCP (D1 + KV)
 ```
 
-**8 Durable Objects.** Shared via `script_name` bindings.
+**Single Durable Object** per bot with tool iterations (bash, git, github, research, plan).
 
 ## 📖 Sections
 
 - [Getting Started](/getting-started/env-setup)
-- [Guides](/guides/telegram-bot-setup)
+- [Guides](/guides/telegram-bot)
 - [Architecture](/architecture)
 - [Deployment](/deployment)
 

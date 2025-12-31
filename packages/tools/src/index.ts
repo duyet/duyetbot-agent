@@ -5,11 +5,13 @@
  * - bash: Execute shell commands
  * - git: Git operations
  * - file-ops: File read/write/edit operations (autonomous code editing)
+ * - deployment: CI/CD deployment tools (build, test, lint, deploy)
  * - github: GitHub API operations
  * - research: Web research (DuckDuckGo)
  * - plan: Task planning
  * - sleep: Delay execution
  * - scratchpad: Temporary note storage
+ * - duyet_mcp_client: Access duyet profile info via MCP server
  */
 
 import type { Tool } from '@duyetbot/types';
@@ -23,6 +25,7 @@ import {
   runTestsTool,
   typeCheckTool,
 } from './deployment.js';
+import { duyetMCPClientTool } from './duyet-mcp-client.js';
 import {
   batchFileOpsTool,
   editFileTool,
@@ -37,9 +40,11 @@ import { planTool } from './plan.js';
 import { researchTool } from './research.js';
 import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
+import { telegramForwardTool } from './telegram-forward.js';
 
 export * from './bash.js';
 export * from './deployment.js';
+export * from './duyet-mcp-client.js';
 export * from './file-ops.js';
 export * from './git.js';
 export * from './github.js';
@@ -48,6 +53,7 @@ export * from './registry.js';
 export * from './research.js';
 export * from './scratchpad.js';
 export * from './sleep.js';
+export * from './telegram-forward.js';
 
 /**
  * Agent platform types
@@ -68,6 +74,8 @@ export function getAllBuiltinTools(): Tool[] {
     researchTool,
     scratchpadTool,
     sleepTool,
+    telegramForwardTool,
+    duyetMCPClientTool,
     // File operations
     readFileTool,
     writeFileTool,
@@ -96,7 +104,13 @@ export function getAllBuiltinTools(): Tool[] {
  * - Long-running processes (sleep)
  */
 export function getCloudflareTools(): Tool[] {
-  return [planTool, researchTool, scratchpadTool];
+  return [
+    planTool,
+    duyetMCPClientTool,
+    researchTool,
+    scratchpadTool,
+    telegramForwardTool,
+  ];
 }
 
 /**

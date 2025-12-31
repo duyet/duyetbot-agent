@@ -1,0 +1,512 @@
+/**
+ * BaseAgent Class
+ *
+ * Abstract base class for all Durable Object agents.
+ * Provides common functionality for agent initialization, provider management,
+ * message handling, LLM communication, and debug tracking.
+ *
+ * All DO agents should extend this class and implement their domain-specific logic.
+ *
+ * @example
+ * ```typescript
+ * class MyAgent extends BaseAgent<MyEnv, MyState> {
+ *   async fetch(request: Request): Promise<Response> {
+ *     const ctx = createExecutionContext(...);
+ *     await this.respond(ctx, 'Hello, World!');
+ *     return new Response('OK');
+ *   }
+ * }
+ * ```
+ */
+
+import { logger } from '@duyetbot/hono-middleware';
+import { Agent } from 'agents';
+import type { ExecutionContext } from '../memory/context-helper.js';
+import {
+  formatMemoryContextForPrompt,
+  loadMemoryContext,
+  saveSessionSummary,
+} from '../memory/index.js';
+import type { MemoryAdapter } from '../memory-adapter.js';
+import type { LLMResponse, Message } from '../types.js';
+import type { BaseEnv, BaseState } from './base-types.js';
+
+/**
+ * BaseAgent abstract class
+ *
+ * Provides core functionality for all Durable Object agents including:
+ * - Provider management for LLM and transport operations
+ * - Message sending and editing via transport layer
+ * - LLM chat execution with timing and token tracking
+ * - Execution context management with tracing
+ * - Debug information accumulation
+ *
+ * @typeParam TEnv - Environment bindings type (extends BaseEnv)
+ * @typeParam TState - Agent state type (extends BaseState)
+ */
+export abstract class BaseAgent<TEnv extends BaseEnv, TState extends BaseState> extends Agent<
+  TEnv,
+  TState
+> {
+  /**
+   * LLM provider for chat and transport operations
+   * Set via setProvider() before agent execution
+   *
+   * NOTE: Legacy property from deleted execution module.
+   * This class is deprecated and no longer actively maintained.
+   */
+  protected provider!: any;
+
+  /**
+   * Set the provider for this agent
+   *
+   * The provider combines LLM capabilities with platform-specific message operations.
+   * This should be called during agent initialization.
+   *
+   * NOTE: Legacy method from deleted execution module.
+   * This class is deprecated and no longer actively maintained.
+   *
+   * @param provider - Provider instance for LLM and transport operations
+   *
+   * @example
+   * ```typescript
+   * const agent = this.env.AGENT_NAMESPACE.get(id);
+   * agent.setProvider(createProvider(this.env));
+   * ```
+   */
+  setProvider(provider: any): void {
+    this.provider = provider;
+    logger.debug('[BaseAgent] Provider set', {
+      agent: this.constructor.name,
+    });
+  }
+
+  /**
+   * Send a message to the user via the platform transport
+   *
+   * If responseMessageId exists, edits the message; otherwise sends a new message
+   * and stores the reference.
+   *
+   * @param ctx - ExecutionContext containing user and message information
+   * @param content - Message content to send
+   * @throws Error if provider is not set or send/edit fails
+   *
+   * @example
+   * ```typescript
+   * await this.respond(ctx, 'Processing your request...');
+   * // Later, update the same message:
+   * await this.respond(ctx, 'Done! Here is the result...');
+   * ```
+   */
+  protected async respond(ctx: ExecutionContext, content: string): Promise<void> {
+    if (!this.provider) {
+      throw new Error('Provider not set. Call setProvider() before responding.');
+    }
+
+    // NOTE: Legacy code using deleted execution module
+    // createProviderContextFn is no longer available, replaced with simple context object
+    const providerCtx = {
+      text: 'query' in ctx ? (ctx as any).query : '',
+      userId: ctx.userId,
+      chatId: ctx.chatId,
+      ...('username' in ctx && { username: (ctx as any).username }),
+      messageRef: 'userMessageId' in ctx ? (ctx as any).userMessageId : undefined,
+    };
+
+    try {
+      if ('responseMessageId' in ctx && (ctx as any).responseMessageId) {
+        // Edit existing message
+        await this.provider.edit(providerCtx, (ctx as any).responseMessageId, content);
+        logger.debug('[BaseAgent] Message edited', {
+          platform: ctx.platform,
+          contentLength: content.length,
+        });
+      } else {
+        // Send new message and store reference
+        const messageRef = await this.provider.send(providerCtx, content);
+        (ctx as any).responseMessageId = messageRef;
+        logger.debug('[BaseAgent] Message sent', {
+          platform: ctx.platform,
+          messageRef,
+          contentLength: content.length,
+        });
+      }
+    } catch (error) {
+      logger.error('[BaseAgent] Failed to respond', {
+        error: error instanceof Error ? error.message : String(error),
+        hasExistingMessage: 'responseMessageId' in ctx,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Update thinking status message
+   *
+   * Edits the response message with a thinking indicator.
+   * Useful for long operations to show the user that work is in progress.
+   *
+   * @param ctx - ExecutionContext containing message reference
+   * @param status - Current status message (e.g., "Analyzing data")
+   * @throws Error if responseMessageId is not set or edit fails
+   *
+   * @example
+   * ```typescript
+   * await this.updateThinking(ctx, 'Fetching data from API');
+   * const data = await fetchData();
+   * await this.updateThinking(ctx, 'Processing results');
+   * ```
+   */
+  protected async updateThinking(ctx: ExecutionContext, status: string): Promise<void> {
+    if (!('responseMessageId' in ctx) || !(ctx as any).responseMessageId) {
+      logger.warn('[BaseAgent] updateThinking called without responseMessageId');
+      return;
+    }
+
+    const content = `🤔 ${status}...`;
+
+    try {
+      // NOTE: Legacy code using deleted execution module
+      const providerCtx = {
+        text: 'query' in ctx ? (ctx as any).query : '',
+        userId: ctx.userId,
+        chatId: ctx.chatId,
+        ...('username' in ctx && { username: (ctx as any).username }),
+        messageRef: 'userMessageId' in ctx ? (ctx as any).userMessageId : undefined,
+      };
+
+      await this.provider.edit(providerCtx, (ctx as any).responseMessageId, content);
+      logger.debug('[BaseAgent] Thinking status updated', {
+        status,
+      });
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to update thinking status', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Don't throw - thinking indicator is not critical
+    }
+  }
+
+  /**
+   * Send typing indicator to show the agent is processing
+   *
+   * Displays a typing indicator on the platform to provide user feedback
+   * during long operations.
+   *
+   * NOTE: Legacy method from deleted execution module.
+   *
+   * @param ctx - ExecutionContext containing platform information
+   * @throws Error if provider.typing() fails (may be unsupported on some platforms)
+   *
+   * @example
+   * ```typescript
+   * await this.sendTyping(ctx);
+   * const result = await expensiveOperation();
+   * await this.respond(ctx, result);
+   * ```
+   */
+  protected async sendTyping(ctx: ExecutionContext): Promise<void> {
+    if (!this.provider) {
+      logger.warn('[BaseAgent] Provider not set for sendTyping');
+      return;
+    }
+
+    try {
+      // NOTE: Legacy code using deleted execution module
+      const providerCtx = {
+        text: 'query' in ctx ? (ctx as any).query : '',
+        userId: ctx.userId,
+        chatId: ctx.chatId,
+        ...('username' in ctx && { username: (ctx as any).username }),
+        messageRef: 'userMessageId' in ctx ? (ctx as any).userMessageId : undefined,
+      };
+
+      await this.provider.typing(providerCtx);
+      logger.debug('[BaseAgent] Typing indicator sent');
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to send typing indicator', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Don't throw - typing indicator is optional
+    }
+  }
+
+  /**
+   * Send a chat message to the LLM
+   *
+   * Calls the provider's LLM API and tracks timing information in the debug context.
+   * Automatically measures execution time and records it in ctx.debug.llmMs.
+   *
+   * @param ctx - ExecutionContext for tracing and debug accumulation
+   * @param messages - Conversation messages to send to the LLM
+   * @param options - Optional chat configuration (model, tokens, tools, etc)
+   * @returns LLMResponse containing content, optional tool calls, and token usage
+   * @throws Error if provider.chat() fails
+   *
+   * @example
+   * ```typescript
+   * const response = await this.chat(ctx, [
+   *   { role: 'user', content: 'What is 2+2?' }
+   * ], {
+   *   maxTokens: 500,
+   *   temperature: 0.7,
+   * });
+   *
+   * console.log(response.content); // "2+2 equals 4"
+   * console.log(ctx.debug.llmMs);  // 234 (ms spent in LLM)
+   * ```
+   */
+  protected async chat(
+    ctx: ExecutionContext,
+    messages: Message[],
+    options?: any
+  ): Promise<LLMResponse> {
+    if (!this.provider) {
+      throw new Error('Provider not set. Call setProvider() before calling chat().');
+    }
+
+    const startTime = Date.now();
+
+    try {
+      const response = await this.provider.chat(messages, options);
+
+      const durationMs = Date.now() - startTime;
+      ctx.debug.llmMs = durationMs;
+
+      logger.debug('[BaseAgent] LLM chat completed', {
+        spanId: ctx.spanId,
+        durationMs,
+        contentLength: response.content.length,
+        hasToolCalls: !!response.toolCalls?.length,
+        tokensUsed: response.usage?.totalTokens,
+      });
+
+      return response;
+    } catch (error) {
+      const durationMs = Date.now() - startTime;
+      ctx.debug.llmMs = durationMs;
+
+      logger.error('[BaseAgent] LLM chat failed', {
+        spanId: ctx.spanId,
+        durationMs,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      throw error;
+    }
+  }
+
+  /**
+   * Check if execution has time remaining before deadline
+   *
+   * Determines whether there is sufficient time remaining before the execution
+   * deadline (typically the Durable Object request timeout).
+   *
+   * Useful for controlling long-running operations that might timeout.
+   *
+   * @param ctx - ExecutionContext containing deadline
+   * @param bufferMs - Safety buffer in milliseconds (default: 5000)
+   * @returns true if current time + bufferMs < deadline, false otherwise
+   *
+   * @example
+   * ```typescript
+   * while (hasMoreItems && this.hasTimeRemaining(ctx, 10000)) {
+   *   await processItem();
+   * }
+   * // Stop processing if time is running out
+   * ```
+   */
+  protected hasTimeRemaining(ctx: ExecutionContext, bufferMs: number = 5000): boolean {
+    const now = Date.now();
+    const deadline = ctx.deadline || now + 30000; // Default to 30 seconds if not set
+    const timeRemaining = deadline - now;
+    const hasTime = timeRemaining > bufferMs;
+
+    if (!hasTime) {
+      logger.warn('[BaseAgent] Approaching deadline', {
+        timeRemaining,
+        bufferMs,
+      });
+    }
+
+    return hasTime;
+  }
+
+  /**
+   * Create a child execution context for delegated operations
+   *
+   * Creates a new ExecutionContext for sub-operations while maintaining
+   * tracing connection to the parent operation through spanId relationships.
+   *
+   * Use this when delegating to other agents or workers.
+   *
+   * @param ctx - Parent ExecutionContext
+   * @returns New ExecutionContext with new spanId and parent linkage
+   *
+   * @example
+   * ```typescript
+   * const parentCtx = ctx;
+   * const childCtx = this.createChildContext(parentCtx);
+   * // childCtx.parentSpanId === parentCtx.spanId
+   * // childCtx.traceId === parentCtx.traceId (same trace)
+   * await subAgent.execute(childCtx);
+   * ```
+   */
+  protected createChildContext(ctx: ExecutionContext): ExecutionContext {
+    // NOTE: Legacy code using deleted execution module
+    // createSpanIdFn is no longer available, using simple UUID alternative
+    const newSpanId = `span-${Math.random().toString(36).substr(2, 9)}`;
+
+    return {
+      ...ctx,
+      ...('spanId' in ctx ? { spanId: newSpanId } : {}),
+      ...('parentSpanId' in ctx ? { parentSpanId: (ctx as any).spanId } : {}),
+    };
+  }
+
+  /**
+   * Record an agent execution span in debug information
+   *
+   * Adds an entry to the debug.agentChain tracking which agents executed
+   * and how long they took.
+   *
+   * NOTE: Legacy method from deleted execution module.
+   * Recording functionality is no longer available.
+   *
+   * @param ctx - ExecutionContext with debug accumulator
+   * @param agentName - Name of the agent that executed (e.g., 'simple-agent')
+   * @param durationMs - Execution duration in milliseconds
+   *
+   * @example
+   * ```typescript
+   * const startTime = Date.now();
+   * try {
+   *   await executeAgent();
+   * } finally {
+   *   this.recordExecution(ctx, 'my-agent', Date.now() - startTime);
+   * }
+   * ```
+   */
+  protected recordExecution(ctx: ExecutionContext, agentName: string, durationMs: number): void {
+    // NOTE: Legacy code - recordAgentSpanFn is no longer available
+    // Just log the execution instead
+    logger.debug('[BaseAgent] Execution recorded', {
+      platform: ctx.platform,
+      agentName,
+      durationMs,
+    });
+  }
+
+  /**
+   * Load memory context for the current user/session
+   *
+   * Fetches short-term and long-term memory relevant to the current execution.
+   * Updates ctx.memoryContext with loaded data. Gracefully degrades if memory
+   * service is unavailable.
+   *
+   * @param ctx - ExecutionContext to populate
+   * @param memoryAdapter - Memory adapter for fetching data
+   * @param sessionId - Session ID for memory lookup
+   * @returns Updated ExecutionContext with memory loaded
+   *
+   * @example
+   * ```typescript
+   * const ctx = await this.loadMemory(ctx, memoryAdapter, sessionId);
+   * // ctx.memoryContext now contains relevant memories
+   * ```
+   */
+  protected async loadMemory(
+    ctx: ExecutionContext,
+    memoryAdapter: MemoryAdapter,
+    sessionId: string
+  ): Promise<ExecutionContext> {
+    try {
+      const startTime = Date.now();
+      const updatedCtx = await loadMemoryContext(ctx, memoryAdapter, sessionId);
+      const durationMs = Date.now() - startTime;
+
+      logger.debug('[BaseAgent] Memory context loaded', {
+        spanId: ctx.spanId,
+        durationMs,
+        shortTermItems: updatedCtx.memoryContext?.shortTermItems.length || 0,
+        longTermItems: updatedCtx.memoryContext?.relevantLongTerm.length || 0,
+      });
+
+      return updatedCtx;
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to load memory context', {
+        spanId: ctx.spanId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+
+      // Return context as-is - graceful degradation
+      return ctx;
+    }
+  }
+
+  /**
+   * Get memory context section for system prompt
+   *
+   * Formats loaded memory context into a string suitable for inclusion in
+   * the LLM system prompt.
+   *
+   * @param ctx - ExecutionContext containing memoryContext
+   * @returns Formatted memory section or empty string if no context
+   *
+   * @example
+   * ```typescript
+   * const memorySection = this.getMemoryPromptSection(ctx);
+   * const systemPrompt = `You are a helpful assistant.\n\n${memorySection}`;
+   * ```
+   */
+  protected getMemoryPromptSection(ctx: ExecutionContext): string {
+    try {
+      return formatMemoryContextForPrompt(ctx.memoryContext);
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to format memory prompt section', {
+        spanId: ctx.spanId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return '';
+    }
+  }
+
+  /**
+   * Save important information from this conversation to long-term memory
+   *
+   * Saves a summary of the conversation outcome or important facts learned
+   * to long-term memory for future reference.
+   *
+   * @param ctx - ExecutionContext containing conversation
+   * @param memoryAdapter - Memory adapter for saving data
+   * @param summary - Summary of conversation or outcome
+   *
+   * @example
+   * ```typescript
+   * await this.saveMemory(ctx, memoryAdapter, 'User prefers async/await over promises');
+   * ```
+   */
+  protected async saveMemory(
+    ctx: ExecutionContext,
+    memoryAdapter: MemoryAdapter,
+    summary: string
+  ): Promise<void> {
+    try {
+      const startTime = Date.now();
+      await saveSessionSummary(ctx, memoryAdapter, summary);
+      const durationMs = Date.now() - startTime;
+
+      logger.debug('[BaseAgent] Memory saved', {
+        spanId: ctx.spanId,
+        durationMs,
+        summaryLength: summary.length,
+      });
+    } catch (error) {
+      logger.warn('[BaseAgent] Failed to save memory', {
+        spanId: ctx.spanId,
+        error: error instanceof Error ? error.message : String(error),
+      });
+      // Non-critical operation - don't throw
+    }
+  }
+}

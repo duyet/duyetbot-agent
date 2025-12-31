@@ -1,11 +1,11 @@
 /**
  * LLM Provider for GitHub Bot
  *
- * Uses OpenRouter SDK via Cloudflare AI Gateway.
- * Supports xAI Grok native tools (web_search, x_search).
+ * Creates an LLM provider using OpenRouter SDK via Cloudflare AI Gateway.
+ * Supports native web search for xAI models.
  */
 
-import type { LLMProvider } from '@duyetbot/chat-agent';
+import type { LLMProvider } from '@duyetbot/cloudflare-agent';
 import {
   createOpenRouterProvider,
   type OpenRouterProviderEnv,
@@ -15,12 +15,27 @@ import { logger } from './logger.js';
 
 /**
  * Environment for GitHub bot provider
- * Extends OpenRouterProviderEnv for type safety
+ *
+ * Combines OpenRouter provider config with GitHub platform requirements
  */
-export type ProviderEnv = OpenRouterProviderEnv;
+export interface GitHubEnv extends OpenRouterProviderEnv {
+  // GitHub API
+  GITHUB_TOKEN: string;
+  GITHUB_WEBHOOK_SECRET?: string;
+  BOT_USERNAME?: string;
+  GITHUB_ADMIN?: string;
+
+  // Common config
+  ENVIRONMENT?: string;
+  ROUTER_DEBUG?: string;
+}
 
 /**
  * Create an LLM provider for GitHub bot
+ *
+ * @param env - Environment with OpenRouter configuration
+ * @param options - Optional provider options
+ * @returns LLM provider for chat operations
  *
  * @example
  * ```typescript
@@ -31,15 +46,15 @@ export type ProviderEnv = OpenRouterProviderEnv;
  * ```
  */
 export function createProvider(
-  env: ProviderEnv,
+  env: OpenRouterProviderEnv,
   options?: Partial<OpenRouterProviderOptions>
 ): LLMProvider {
-  logger.info('GitHub bot creating provider', {
+  logger.info('GitHub bot creating LLM provider', {
     gateway: env.AI_GATEWAY_NAME,
     model: env.MODEL || 'x-ai/grok-4.1-fast',
   });
 
-  return createOpenRouterProvider(env as OpenRouterProviderEnv, {
+  return createOpenRouterProvider(env, {
     maxTokens: 2048,
     requestTimeout: 60000,
     enableWebSearch: true, // Enable native web search for xAI models
@@ -49,4 +64,5 @@ export function createProvider(
 }
 
 // Re-export for backwards compatibility
+export type ProviderEnv = OpenRouterProviderEnv;
 export { createProvider as createOpenRouterProvider };

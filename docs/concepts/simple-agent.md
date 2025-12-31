@@ -1,11 +1,16 @@
 ---
-title: Simple Agent
-description: Direct LLM responses for low-complexity queries. No tools. Leverages parent history. Web search optional.
+title: Simple Agent (LEGACY)
+description: DEPRECATED - This document describes the legacy SimpleAgent which was removed in December 2024.
+deprecated: true
 ---
 
 <!-- i18n: en -->
 
-**TL;DR**: Answers greetings/general knowledge directly via LLM. Fast, no tools/orchestration. Fallback for 80% queries.
+> **DEPRECATION NOTICE**: This document describes the legacy SimpleAgent which was removed in December 2024 as part of the loop-based agent refactoring. The system now uses a single `CloudflareChatAgent` with tool iterations. See [architecture.md](../architecture.md) for current implementation.
+
+## Legacy Documentation
+
+**TL;DR** (Historical): Answered greetings/general knowledge directly via LLM. Fast, no tools/orchestration. Fallback for 80% queries.
 
 ## Table of Contents
 - [Flow](#flow)
@@ -67,7 +72,7 @@ Router sends here for:
 
 ## Code Snippet
 
-[`packages/chat-agent/src/agents/simple-agent.ts`](packages/chat-agent/src/agents/simple-agent.ts:190)
+[`packages/cloudflare-agent/src/agents/simple-agent.ts`](packages/cloudflare-agent/src/agents/simple-agent.ts:190)
 ```typescript
 async execute(query: string, context: AgentContext): Promise<AgentResult> {
   const provider = config.createProvider(env, context);

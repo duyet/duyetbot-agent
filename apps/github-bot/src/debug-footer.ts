@@ -8,9 +8,9 @@
  * that would be pulled in from the barrel export.
  */
 
-import type { DebugContext } from '@duyetbot/chat-agent';
+import type { DebugContext } from '@duyetbot/cloudflare-agent';
 // Direct path import to avoid cloudflare: protocol issues in tests
-import { formatDebugFooterMarkdown as coreFormatDebugFooterMarkdown } from '@duyetbot/chat-agent/debug-footer';
+import { formatDebugFooterMarkdown as coreFormatDebugFooterMarkdown } from '@duyetbot/cloudflare-agent/debug-footer';
 import type { GitHubContext } from './transport.js';
 
 /**

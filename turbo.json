@@ -44,30 +44,38 @@
       "dependsOn": ["build", "test"],
       "cache": false
     },
+    "deploy:branch": {
+      "dependsOn": ["build", "test"],
+      "cache": false
+    },
     "format": {
       "cache": false
     },
     "@duyetbot/telegram-bot#deploy": {
-      "dependsOn": ["@duyetbot/shared-agents#deploy"],
+      "dependsOn": ["build", "test"],
       "cache": false
     },
     "@duyetbot/github-bot#deploy": {
-      "dependsOn": ["@duyetbot/shared-agents#deploy"],
+      "dependsOn": ["build", "test"],
       "cache": false
     },
     "config": {
       "cache": false
     },
-    "@duyetbot/shared-agents#config": {
-      "dependsOn": ["@duyetbot/shared-agents#deploy"],
-      "cache": false
-    },
     "@duyetbot/telegram-bot#config": {
-      "dependsOn": ["@duyetbot/shared-agents#config", "@duyetbot/telegram-bot#deploy"],
+      "dependsOn": ["@duyetbot/telegram-bot#deploy"],
       "cache": false
     },
     "@duyetbot/github-bot#config": {
-      "dependsOn": ["@duyetbot/shared-agents#config", "@duyetbot/github-bot#deploy"],
+      "dependsOn": ["@duyetbot/github-bot#deploy"],
+      "cache": false
+    },
+    "@duyetbot/web#deploy": {
+      "dependsOn": ["build"],
+      "cache": false
+    },
+    "@duyetbot/web#config": {
+      "dependsOn": ["@duyetbot/web#deploy"],
       "cache": false
     },
     "@duyetbot/docs#build": {

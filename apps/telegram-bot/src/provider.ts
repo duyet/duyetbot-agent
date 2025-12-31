@@ -1,11 +1,11 @@
 /**
  * LLM Provider for Telegram Bot
  *
- * Uses OpenRouter SDK via Cloudflare AI Gateway.
+ * Creates an LLM provider using OpenRouter SDK via Cloudflare AI Gateway.
  * Supports xAI Grok native tools (web_search, x_search).
  */
 
-import type { LLMProvider } from '@duyetbot/chat-agent';
+import type { LLMProvider } from '@duyetbot/cloudflare-agent';
 import { logger } from '@duyetbot/hono-middleware';
 import {
   createOpenRouterProvider,
@@ -14,13 +14,11 @@ import {
 } from '@duyetbot/providers';
 
 /**
- * Environment for Telegram bot provider
- * Extends OpenRouterProviderEnv for type safety
- */
-export type ProviderEnv = OpenRouterProviderEnv;
-
-/**
  * Create an LLM provider for Telegram bot
+ *
+ * @param env - Environment with OpenRouter configuration
+ * @param options - Optional provider options
+ * @returns LLM provider for chat operations
  *
  * @example
  * ```typescript
@@ -31,10 +29,10 @@ export type ProviderEnv = OpenRouterProviderEnv;
  * ```
  */
 export function createProvider(
-  env: ProviderEnv,
+  env: OpenRouterProviderEnv,
   options?: Partial<OpenRouterProviderOptions>
 ): LLMProvider {
-  logger.info('Telegram bot creating provider', {
+  logger.info('Telegram bot creating LLM provider', {
     gateway: env.AI_GATEWAY_NAME,
     model: env.MODEL || 'x-ai/grok-4.1-fast',
   });
@@ -48,5 +46,8 @@ export function createProvider(
   });
 }
 
-// Re-export for backwards compatibility
+// Alias for backwards compatibility
 export { createProvider as createAIGatewayProvider };
+
+// Re-export provider env type
+export type ProviderEnv = OpenRouterProviderEnv;

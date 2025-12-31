@@ -4,9 +4,7 @@ export default defineConfig({
   test: {
     globals: true,
     environment: 'node',
-    // Use forks pool to avoid hanging process issues with worker threads
-    // Worker threads can fail to terminate with module-level singletons (e.g., AgentRegistry)
-    pool: 'forks',
+    watch: false,
     include: ['src/**/*.test.ts', 'src/**/*.spec.ts'],
     exclude: ['**/node_modules/**', '**/dist/**'],
     coverage: {

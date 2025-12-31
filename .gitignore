@@ -8,6 +8,11 @@ dist/
 build/
 *.tsbuildinfo
 
+# Compiled TypeScript outputs
+**/src/**/*.js
+**/src/**/*.d.ts
+**/src/**/*.map
+
 # Cloudflare Workers
 .wrangler/
 .dev.vars
@@ -65,4 +70,38 @@ Thumbs.db
 packages/*/dist/
 .turbo/
 .turbo
-apps/docs/out/
+# Next.js
+.next/
+.source/
+*.timestamp-*
+results/
+apps/web/logs
+
+# Claude local state
+.claude/*.local.md
+.claude/settings.local.json
+
+# Playwright
+playwright-report/
+test-results/
+
+# Vercel
+.vercel/
+
+# Ralph Wiggum state
+.ralph-state.json
+
+# Deploy logs
+deploy.log
+test-output.log
+
+# Additional temp files
+*.bak
+*.old
+
+# Turbo build logs
+**/.turbo/turbo-*.log
+
+# Webpack cache (Next.js)
+**/.next/cache/**/*.old
+**/.next/cache/**/*.gz.old

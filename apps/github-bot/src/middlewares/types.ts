@@ -6,7 +6,7 @@
  * parser, and mention middlewares.
  */
 
-import type { CloudflareChatAgentNamespace } from '@duyetbot/chat-agent';
+import type { CloudflareChatAgentNamespace } from '@duyetbot/cloudflare-agent';
 import type { GitHubContext } from '../transport.js';
 
 /**
@@ -177,6 +177,11 @@ export interface WebhookContext {
   headRef?: string;
   /** Target branch name */
   baseRef?: string;
+  // Review request metadata
+  /** Whether this is a review request event (pull_request:review_requested) */
+  isReviewRequest?: boolean;
+  /** Username of the requested reviewer (for review_requested events) */
+  requestedReviewer?: string;
 }
 
 /**
@@ -235,6 +240,8 @@ export interface GitHubWebhookPayload {
   comment?: GitHubComment;
   /** Hook ID (for ping events) */
   hook_id?: number;
+  /** Requested reviewer (for pull_request review_requested events) */
+  requested_reviewer?: GitHubUser;
 }
 
 /**

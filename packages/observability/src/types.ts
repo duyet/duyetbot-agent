@@ -144,6 +144,49 @@ export interface CategoryStat {
 }
 
 /**
+ * Chat message role types.
+ */
+export type ChatMessageRole = 'user' | 'assistant' | 'system' | 'tool';
+
+/**
+ * A single chat message stored in D1.
+ */
+export interface ChatMessage {
+  /** Auto-generated database ID */
+  id?: number;
+  /** Optional event ID for webhook correlation */
+  eventId?: string;
+  /** Session identifier (format: "platform:userId:chatId") */
+  sessionId: string;
+  /** Message sequence number (0-indexed) */
+  sequence: number;
+  /** Message role */
+  role: ChatMessageRole;
+  /** Message content */
+  content: string;
+  /** Input tokens used for this message */
+  inputTokens?: number;
+  /** Output tokens generated (for assistant messages) */
+  outputTokens?: number;
+  /** Timestamp when message was created */
+  timestamp: number;
+}
+
+/**
+ * Session statistics from chat_session_stats view.
+ */
+export interface ChatSessionStats {
+  sessionId: string;
+  messageCount: number;
+  userMessages: number;
+  assistantMessages: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  firstMessageAt: number;
+  lastMessageAt: number;
+}
+
+/**
  * Token counts structure used during accumulation.
  */
 export interface TokenCounts {
@@ -169,7 +212,8 @@ export interface TokenUsage {
  */
 export interface WorkerDebugInfo {
   name: string;
-  status: string;
+  /** Current execution status (optional to match chat-agent) */
+  status?: string;
   durationMs?: number;
   tokenUsage?: TokenUsage;
 }
@@ -195,7 +239,19 @@ export interface DebugContext {
     complexity?: string;
   };
   workers?: WorkerDebugInfo[];
-  metadata?: Record<string, unknown>;
+  /** Additional debug metadata (accepts any object type for flexibility) */
+  metadata?: {
+    fallback?: boolean;
+    originalError?: string;
+    cacheHits?: number;
+    cacheMisses?: number;
+    toolTimeouts?: number;
+    timedOutTools?: string[];
+    toolErrors?: number;
+    lastToolError?: string;
+    tokenUsage?: TokenUsage;
+    [key: string]: unknown;
+  };
 }
 
 /**

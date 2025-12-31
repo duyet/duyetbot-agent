@@ -309,17 +309,17 @@ export function createTestScenarios() {
       },
     })),
 
-    formattedMessages: parseModeTestConfig.testMessages.formatted.map((text) => {
-      const codeMatch = text.match(/`([^`]+)`/)?.[1];
-      return {
-        input: text,
-        expectations: {
-          minLength: 10,
-          maxLength: 2000,
-          containsText: codeMatch ? [codeMatch] : [],
-        },
-      };
-    }),
+    formattedMessages: parseModeTestConfig.testMessages.formatted.map((text) => ({
+      input: text,
+      expectations: {
+        minLength: 10,
+        maxLength: 2000,
+        containsText: (() => {
+          const match = text.match(/`([^`]+)`/);
+          return match?.[1] ? [match[1]] : [];
+        })(),
+      },
+    })),
 
     complexMessages: parseModeTestConfig.testMessages.complex.map((text) => ({
       input: text,

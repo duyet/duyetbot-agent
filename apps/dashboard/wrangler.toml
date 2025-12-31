@@ -1,0 +1,30 @@
+#:schema node_modules/wrangler/config-schema.json
+
+name = "duyetbot-dashboard"
+main = ".open-next/worker.js"
+compatibility_date = "2024-12-01"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "duyetbot"
+database_id = "6d29934e-92cc-48ff-9149-8ddf6846fd43"
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[observability.traces]
+enabled = true
+head_sampling_rate = 1 # Log 100% of requests
+
+[placement]
+mode = "smart"

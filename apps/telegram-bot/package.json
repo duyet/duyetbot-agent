@@ -15,6 +15,7 @@
     "clean": "rm -rf dist",
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
+    "deploy:branch": "bun ../../scripts/deploy-branch.ts telegram",
     "config": "bun ../../scripts/config.ts telegram",
     "test": "bun run test:unit",
     "test:unit": "vitest run --passWithNoTests",
@@ -23,22 +24,23 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@duyetbot/chat-agent": "workspace:*",
+    "@duyetbot/api-security": "workspace:*",
+    "@duyetbot/cloudflare-agent": "workspace:*",
     "@duyetbot/hono-middleware": "workspace:*",
     "@duyetbot/mcp-servers": "workspace:*",
     "@duyetbot/observability": "workspace:*",
     "@duyetbot/prompts": "workspace:*",
     "@duyetbot/providers": "workspace:*",
     "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
     "agents": "catalog:",
     "hono": "catalog:"
   },
   "devDependencies": {
-    "@cloudflare/vitest-pool-workers": "^0.10.11",
+    "@cloudflare/vitest-pool-workers": "^0.11.1",
     "@cloudflare/workers-types": "^4.20241127.0",
-    "@vitest/coverage-v8": "^2.1.8",
     "typescript": "catalog:",
-    "vitest": "catalog:",
+    "vitest": "^3.2.0",
     "wrangler": "catalog:"
   }
 }
