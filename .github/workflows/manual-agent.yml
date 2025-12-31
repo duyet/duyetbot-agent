@@ -1,0 +1,40 @@
+name: Manual Agent
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description'
+        required: true
+        type: string
+
+env:
+  TURBO_TOKEN: secrets.TURBO_TOKEN
+  TURBO_TEAM: vars.TURBO_TEAM
+
+jobs:
+  manual:
+    name: Manual Run
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Run Agent
+        env:
+          TASK: inputs.task
+        run: |
+          echo "Running task: TASK"
