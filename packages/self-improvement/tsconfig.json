@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Self-Improvement",
+  "extends": "../config-typescript/base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "lib": ["ES2022"],
+    "types": ["node"],
+    "skipLibCheck": true
+  },
+  "include": ["src"]
+}

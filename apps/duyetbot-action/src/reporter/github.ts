@@ -15,15 +15,17 @@ export interface GitHubReporterOptions {
   /** If true, skip actual GitHub API calls */
   dryRun?: boolean | undefined;
   /** Auto-merge configuration */
-  autoMerge?: {
-    enabled: boolean;
-    requireChecks: string[];
-    waitForChecks: boolean;
-    timeout: number;
-    approveFirst: boolean;
-    deleteBranch: boolean;
-    closeIssueAfterMerge?: boolean; // Auto-close issue after PR merge
-  } | undefined;
+  autoMerge?:
+    | {
+        enabled: boolean;
+        requireChecks: string[];
+        waitForChecks: boolean;
+        timeout: number;
+        approveFirst: boolean;
+        deleteBranch: boolean;
+        closeIssueAfterMerge?: boolean; // Auto-close issue after PR merge
+      }
+    | undefined;
 }
 
 /**
@@ -72,7 +74,10 @@ export class GitHubReporter implements Reporter {
               const merged = await this.autoMergePR(prNumber);
               // Close issue after successful merge if configured
               if (merged && this.options.autoMerge?.closeIssueAfterMerge) {
-                await this.closeIssue(context.issueNumber, '✅ Issue closed automatically after PR was merged.');
+                await this.closeIssue(
+                  context.issueNumber,
+                  '✅ Issue closed automatically after PR was merged.'
+                );
                 console.log(`✅ Issue #${context.issueNumber} closed`);
               }
             }
@@ -170,7 +175,10 @@ export class GitHubReporter implements Reporter {
   /**
    * Wait for status checks to complete
    */
-  private async waitForChecks(prNumber: number, config: GitHubReporterOptions['autoMerge']): Promise<void> {
+  private async waitForChecks(
+    prNumber: number,
+    config: GitHubReporterOptions['autoMerge']
+  ): Promise<void> {
     console.log('⏳ Waiting for CI checks...');
 
     const startTime = Date.now();

@@ -7,7 +7,7 @@
 /**
  * Error categories for classification
  */
-export const enum ErrorCategory {
+export enum ErrorCategory {
   // Build & compilation
   BUILD = 'build',
   DEPENDENCY = 'dependency',
@@ -40,10 +40,10 @@ export const enum ErrorCategory {
 /**
  * Severity levels
  */
-export const enum ErrorSeverity {
-  LOW = 'low',       // Warnings, style issues
+export enum ErrorSeverity {
+  LOW = 'low', // Warnings, style issues
   MEDIUM = 'medium', // Type errors, test failures
-  HIGH = 'high',     // Build failures, runtime errors
+  HIGH = 'high', // Build failures, runtime errors
   CRITICAL = 'critical', // Blocks all progress
 }
 
@@ -57,9 +57,9 @@ export interface ParsedError {
   file?: string;
   line?: number;
   column?: number;
-  code?: string;        // Error code (e.g., TS2322)
-  stack?: string;       // Stack trace if available
-  context?: string;     // Lines of code around the error
+  code?: string; // Error code (e.g., TS2322)
+  stack?: string; // Stack trace if available
+  context?: string; // Lines of code around the error
 }
 
 /**
@@ -68,7 +68,7 @@ export interface ParsedError {
 export interface FixSuggestion {
   error: ParsedError;
   description: string;
-  confidence: number;  // 0-1, how confident we are this will work
+  confidence: number; // 0-1, how confident we are this will work
   autoAppliable: boolean;
   patch?: {
     file: string;
@@ -119,12 +119,12 @@ export interface RecoveryResult {
 export interface FailurePattern {
   id: string;
   category: ErrorCategory;
-  pattern: string;      // Regex pattern to match errors
-  symptom: string;      // Human-readable description
-  solution: string;     // How to fix it
-  frequency: number;    // How often seen
-  lastSeen: number;     // Timestamp
-  successRate: number;  // 0-1, how often fix works
+  pattern: string; // Regex pattern to match errors
+  symptom: string; // Human-readable description
+  solution: string; // How to fix it
+  frequency: number; // How often seen
+  lastSeen: number; // Timestamp
+  successRate: number; // 0-1, how often fix works
   exampleError: string; // Example error message
 }
 
@@ -133,7 +133,7 @@ export interface FailurePattern {
  */
 export interface LearnedFix {
   id: string;
-  errorSignature: string;  // Hash of error pattern
+  errorSignature: string; // Hash of error pattern
   fix: {
     type: 'patch' | 'command' | 'refactor';
     description: string;

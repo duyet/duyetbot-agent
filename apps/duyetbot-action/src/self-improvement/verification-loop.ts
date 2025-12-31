@@ -5,8 +5,8 @@
  */
 
 import { spawn } from 'node:child_process';
-import type { ParsedError, VerificationCheck, VerificationResult } from './types.js';
 import { errorAnalyzer } from './error-analyzer.js';
+import type { ParsedError, VerificationCheck, VerificationResult } from './types.js';
 import { ErrorCategory, ErrorSeverity } from './types.js';
 
 /**
@@ -16,8 +16,8 @@ interface VerificationCheckConfig {
   name: string;
   command: string;
   args: string[];
-  critical: boolean;  // If true, block PR on failure
-  timeout: number;    // Milliseconds
+  critical: boolean; // If true, block PR on failure
+  timeout: number; // Milliseconds
 }
 
 /**
@@ -69,7 +69,7 @@ export interface VerificationLoopOptions {
 async function runCheck(
   config: VerificationCheckConfig,
   cwd: string,
-  onProgress?: (check: string, status: 'running' | 'passed' | 'failed') => void,
+  onProgress?: (check: string, status: 'running' | 'passed' | 'failed') => void
 ): Promise<VerificationCheck> {
   const startTime = Date.now();
   onProgress?.(config.name, 'running');
@@ -124,7 +124,7 @@ async function runCheck(
 function spawnCommand(
   command: string,
   args: string[],
-  options: { cwd: string; timeout: number },
+  options: { cwd: string; timeout: number }
 ): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
   return new Promise((resolve, reject) => {
     let stdout = '';
@@ -213,7 +213,9 @@ export class VerificationLoop {
     const totalDuration = Date.now() - startTime;
     const passed = checks.every((c) => c.passed || !this.isCritical(c.name));
 
-    console.log(`\n${passed ? '✅' : '❌'} Verification ${passed ? 'passed' : 'failed'} (${totalDuration}ms)`);
+    console.log(
+      `\n${passed ? '✅' : '❌'} Verification ${passed ? 'passed' : 'failed'} (${totalDuration}ms)`
+    );
 
     if (errors.length > 0) {
       console.log(`\n📋 Error Summary:`);
@@ -282,7 +284,7 @@ export class VerificationLoop {
  */
 export async function verifyWorkDir(
   workDir: string,
-  options?: Partial<VerificationLoopOptions>,
+  options?: Partial<VerificationLoopOptions>
 ): Promise<VerificationResult> {
   const loop = new VerificationLoop({
     cwd: workDir,

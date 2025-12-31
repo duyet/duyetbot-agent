@@ -130,11 +130,7 @@ export class ErrorAnalyzer {
   /**
    * Get error context (lines around the error)
    */
-  async getErrorContext(
-    file: string,
-    line: number,
-    contextLines = 3,
-  ): Promise<string> {
+  async getErrorContext(file: string, line: number, contextLines = 3): Promise<string> {
     try {
       const content = await readFile(file, 'utf-8');
       const lines = content.split('\n');
@@ -159,18 +155,7 @@ export class ErrorAnalyzer {
    * Check if line is informational (not an error)
    */
   private isInfoLine(line: string): boolean {
-    const infoPrefixes = [
-      'info',
-      'warn',
-      'note',
-      'hint',
-      'suggestion',
-      '✔',
-      '✓',
-      '✅',
-      '->',
-      '▸',
-    ];
+    const infoPrefixes = ['info', 'warn', 'note', 'hint', 'suggestion', '✔', '✓', '✅', '->', '▸'];
 
     const lowerLine = line.toLowerCase();
     return infoPrefixes.some((prefix) => lowerLine.startsWith(prefix));
@@ -182,7 +167,7 @@ export class ErrorAnalyzer {
   private buildParsedError(
     match: RegExpMatchArray,
     pattern: (typeof ERROR_PATTERNS)[0],
-    originalMessage: string,
+    originalMessage: string
   ): ParsedError {
     const error: ParsedError = {
       category: pattern.category,

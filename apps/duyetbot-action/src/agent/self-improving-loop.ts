@@ -4,13 +4,10 @@
  * Extends AgentLoop with verification and error recovery
  */
 
-import type {
-  ParsedError,
-  VerificationResult,
-} from '../self-improvement/types.js';
-import { VerificationLoop } from '../self-improvement/verification-loop.js';
 import { errorAnalyzer } from '../self-improvement/error-analyzer.js';
 import { getFailureMemory } from '../self-improvement/failure-memory.js';
+import type { ParsedError, VerificationResult } from '../self-improvement/types.js';
+import { VerificationLoop } from '../self-improvement/verification-loop.js';
 import type { AgentLoopOptions, AgentResult } from './loop.js';
 import { AgentLoop } from './loop.js';
 
@@ -60,9 +57,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
     // Initialize failure memory
     if (this.selfImprovementOptions.enableAutoFix) {
       const config = this.getConfig();
-      const memory = getFailureMemory(
-        config.checkpointDir + '/memory',
-      );
+      const memory = getFailureMemory(config.checkpointDir + '/memory');
       memory.load().catch(console.error);
     }
   }
@@ -83,17 +78,16 @@ export class SelfImprovingAgentLoop extends AgentLoop {
    */
   override async run(): Promise<SelfImprovingAgentResult> {
     const config = this.getConfig();
-    const maxAttempts =
-      this.selfImprovementOptions.maxRecoveryAttempts || 3;
+    const maxAttempts = this.selfImprovementOptions.maxRecoveryAttempts || 3;
 
     console.log('🤖 Starting self-improving agent loop...');
     console.log(`   Verification: ${this.verificationLoop ? 'enabled' : 'disabled'}`);
     console.log(
-      `   Auto-fix: ${this.selfImprovementOptions.enableAutoFix ? 'enabled' : 'disabled'}`,
+      `   Auto-fix: ${this.selfImprovementOptions.enableAutoFix ? 'enabled' : 'disabled'}`
     );
     console.log(`   Max recovery attempts: ${maxAttempts}\n`);
 
-    let result = await super.run();
+    const result = await super.run();
     let verificationResult: VerificationResult | undefined;
 
     // If successful and verification is enabled, verify before completing
@@ -103,11 +97,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
 
       if (!verificationResult.passed) {
         console.log('❌ Verification failed, attempting recovery...');
-        return await this.recover(
-          result,
-          verificationResult.errors,
-          maxAttempts,
-        );
+        return await this.recover(result, verificationResult.errors, maxAttempts);
       }
     }
 
@@ -131,7 +121,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
   private async recover(
     initialResult: AgentResult,
     errors: ParsedError[] | undefined,
-    maxAttempts: number,
+    maxAttempts: number
   ): Promise<SelfImprovingAgentResult> {
     if (!errors || errors.length === 0) {
       return {
@@ -160,9 +150,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
 
       // Check if we have a learned fix
       const config = this.getConfig();
-      const memory = getFailureMemory(
-        config.checkpointDir + '/memory',
-      );
+      const memory = getFailureMemory(config.checkpointDir + '/memory');
       const suggestedFix = memory.getFixForError(error);
 
       if (suggestedFix && this.selfImprovementOptions.enableAutoFix) {
@@ -217,7 +205,9 @@ export class SelfImprovingAgentLoop extends AgentLoop {
   /**
    * Apply a fix (simplified version - just logs for now)
    */
-  private async applyFix(fix: import('../self-improvement/types.js').FixSuggestion): Promise<boolean> {
+  private async applyFix(
+    fix: import('../self-improvement/types.js').FixSuggestion
+  ): Promise<boolean> {
     console.log(`   Applying fix: ${fix.description}`);
 
     // TODO: Implement actual fix application
@@ -233,10 +223,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
   /**
    * Post-mortem analysis after task completion
    */
-  private async postMortem(
-    result: AgentResult,
-    verification?: VerificationResult,
-  ): Promise<void> {
+  private async postMortem(result: AgentResult, verification?: VerificationResult): Promise<void> {
     console.log('\n📊 Post-mortem analysis:');
 
     // Analyze what went well
@@ -250,16 +237,14 @@ export class SelfImprovingAgentLoop extends AgentLoop {
     // Learn from errors
     if (verification?.errors && verification.errors.length > 0) {
       const config = this.getConfig();
-      const memory = getFailureMemory(
-        config.checkpointDir + '/memory',
-      );
+      const memory = getFailureMemory(config.checkpointDir + '/memory');
 
       for (const error of verification.errors) {
         // Learn from the error pattern
         await memory.learnFromFailure(
           error,
           'TODO: Add solution',
-          false, // Didn't fix it yet
+          false // Didn't fix it yet
         );
       }
 
@@ -278,7 +263,7 @@ export class SelfImprovingAgentLoop extends AgentLoop {
  * Convenience function to create a self-improving agent loop
  */
 export function createSelfImprovingAgentLoop(
-  options: SelfImprovingAgentLoopOptions,
+  options: SelfImprovingAgentLoopOptions
 ): SelfImprovingAgentLoop {
   return new SelfImprovingAgentLoop(options);
 }

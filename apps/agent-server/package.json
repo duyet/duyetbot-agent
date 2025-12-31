@@ -1,0 +1,36 @@
+{
+  "name": "@duyetbot/agent-server",
+  "version": "0.0.1",
+  "description": "24/7 Long-Running Agent Server with Claude Agent SDK",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "start": "bun run dist/index.js",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "biome check src/",
+    "lint:fix": "biome check --write src/"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^1.0.0",
+    "@duyetbot/core": "workspace:*",
+    "@duyetbot/providers": "workspace:*",
+    "@duyetbot/tools": "workspace:*",
+    "@duyetbot/types": "workspace:*",
+    "chokidar": "^4.0.0",
+    "express": "^4.18.0",
+    "better-sqlite3": "^11.0.0"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "1.9.0",
+    "@duyetbot/config-typescript": "workspace:*",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/express": "^4.17.0",
+    "bun-types": "latest",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}

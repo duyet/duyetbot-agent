@@ -1,0 +1,35 @@
+{
+  "name": "@duyetbot/safety",
+  "version": "0.1.0",
+  "description": "Safety validation layer for autonomous AI agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@duyetbot/types": "workspace:*"
+  },
+  "devDependencies": {
+    "@duyetbot/config-typescript": "workspace:*",
+    "@duyetbot/config-vitest": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
