@@ -4,6 +4,9 @@
  * Built-in tools for agent operations:
  * - bash: Execute shell commands
  * - git: Git operations
+ * - file-ops: File read/write/edit operations (autonomous code editing)
+ * - deployment: CI/CD deployment tools (build, test, lint, deploy)
+ * - github: GitHub API operations
  * - research: Web research (DuckDuckGo)
  * - plan: Task planning
  * - sleep: Delay execution
@@ -13,7 +16,25 @@
 
 import type { Tool } from '@duyetbot/types';
 import { bashTool } from './bash.js';
+import {
+  ciPipelineTool,
+  deployCloudflareTool,
+  healthCheckTool,
+  lintTool,
+  runBuildTool,
+  runTestsTool,
+  typeCheckTool,
+} from './deployment.js';
 import { duyetMCPClientTool } from './duyet-mcp-client.js';
+import {
+  batchFileOpsTool,
+  editFileTool,
+  fileStatsTool,
+  listDirTool,
+  readFileTool,
+  searchFilesTool,
+  writeFileTool,
+} from './file-ops.js';
 import { gitTool } from './git.js';
 import { planTool } from './plan.js';
 import { researchTool } from './research.js';
@@ -22,7 +43,9 @@ import { sleepTool } from './sleep.js';
 import { telegramForwardTool } from './telegram-forward.js';
 
 export * from './bash.js';
+export * from './deployment.js';
 export * from './duyet-mcp-client.js';
+export * from './file-ops.js';
 export * from './git.js';
 export * from './github.js';
 export * from './plan.js';
@@ -52,6 +75,23 @@ export function getAllBuiltinTools(): Tool[] {
     scratchpadTool,
     sleepTool,
     telegramForwardTool,
+    duyetMCPClientTool,
+    // File operations
+    readFileTool,
+    writeFileTool,
+    editFileTool,
+    listDirTool,
+    searchFilesTool,
+    fileStatsTool,
+    batchFileOpsTool,
+    // Deployment
+    runBuildTool,
+    runTestsTool,
+    typeCheckTool,
+    lintTool,
+    deployCloudflareTool,
+    healthCheckTool,
+    ciPipelineTool,
   ];
 }
 
@@ -64,7 +104,13 @@ export function getAllBuiltinTools(): Tool[] {
  * - Long-running processes (sleep)
  */
 export function getCloudflareTools(): Tool[] {
-  return [planTool, duyetMCPClientTool, researchTool, scratchpadTool, telegramForwardTool];
+  return [
+    planTool,
+    duyetMCPClientTool,
+    researchTool,
+    scratchpadTool,
+    telegramForwardTool,
+  ];
 }
 
 /**

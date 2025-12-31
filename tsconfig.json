@@ -2,7 +2,6 @@
   "extends": "./packages/config-typescript/base.json",
   "compilerOptions": {
     "noEmit": true,
-    "types": ["vitest/globals"],
     "baseUrl": ".",
     "paths": {
       "@duyetbot/types": ["packages/types/src"],

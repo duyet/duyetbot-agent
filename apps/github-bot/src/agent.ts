@@ -9,6 +9,7 @@
  * duyetbot-shared-agents worker via script_name in wrangler.toml.
  */
 
+import type { D1Database } from '@cloudflare/workers-types';
 import {
   type CloudflareChatAgentClass,
   type CloudflareChatAgentNamespace,
@@ -41,6 +42,8 @@ const githubMcpServer: MCPServerConnection = {
 interface BaseEnv extends ProviderEnv {
   // Common config (from wrangler.toml [vars])
   ENVIRONMENT?: string;
+  // Observability
+  OBSERVABILITY_DB?: D1Database;
   // GitHub-specific
   GITHUB_TOKEN: string;
   GITHUB_WEBHOOK_SECRET?: string;

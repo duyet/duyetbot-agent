@@ -11,6 +11,25 @@ import type {
 export class D1Storage {
   constructor(private db: D1Database) {}
 
+  /**
+   * Execute an operation with timing instrumentation.
+   * Logs duration on success and error details on failure.
+   */
+  private async withTiming<T>(operation: string, fn: () => Promise<T>): Promise<T> {
+    const start = Date.now();
+    try {
+      const result = await fn();
+      console.log(`[MEMORY] ${operation} completed in ${Date.now() - start}ms`);
+      return result;
+    } catch (error) {
+      const duration = Date.now() - start;
+      console.error(`[MEMORY] ${operation} failed after ${duration}ms`, {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      throw error;
+    }
+  }
+
   // User operations
   async getUser(id: string): Promise<User | null> {
     const result = await this.db
@@ -126,22 +145,24 @@ export class D1Storage {
   }
 
   async createSession(session: Session): Promise<Session> {
-    await this.db
-      .prepare(
-        `INSERT INTO memory_sessions (id, user_id, title, state, created_at, updated_at, metadata)
+    return this.withTiming(`createSession(${session.id})`, async () => {
+      await this.db
+        .prepare(
+          `INSERT INTO memory_sessions (id, user_id, title, state, created_at, updated_at, metadata)
          VALUES (?, ?, ?, ?, ?, ?, ?)`
-      )
-      .bind(
-        session.id,
-        session.user_id,
-        session.title,
-        session.state,
-        session.created_at,
-        session.updated_at,
-        session.metadata ? JSON.stringify(session.metadata) : null
-      )
-      .run();
-    return session;
+        )
+        .bind(
+          session.id,
+          session.user_id,
+          session.title,
+          session.state,
+          session.created_at,
+          session.updated_at,
+          session.metadata ? JSON.stringify(session.metadata) : null
+        )
+        .run();
+      return session;
+    });
   }
 
   async updateSession(id: string, updates: Partial<Session>): Promise<void> {
@@ -211,36 +232,38 @@ export class D1Storage {
     sessionId: string,
     options: { limit?: number; offset?: number } = {}
   ): Promise<LLMMessage[]> {
-    const { limit, offset = 0 } = options;
+    return this.withTiming(`getMessages(${sessionId})`, async () => {
+      const { limit, offset = 0 } = options;
 
-    let query =
-      'SELECT role, content, timestamp, metadata FROM memory_messages WHERE session_id = ? ORDER BY timestamp ASC';
-    const params: unknown[] = [sessionId];
+      let query =
+        'SELECT role, content, timestamp, metadata FROM memory_messages WHERE session_id = ? ORDER BY timestamp ASC';
+      const params: unknown[] = [sessionId];
 
-    if (limit !== undefined) {
-      query += ' LIMIT ? OFFSET ?';
-      params.push(limit, offset);
-    } else if (offset > 0) {
-      query += ' LIMIT -1 OFFSET ?';
-      params.push(offset);
-    }
+      if (limit !== undefined) {
+        query += ' LIMIT ? OFFSET ?';
+        params.push(limit, offset);
+      } else if (offset > 0) {
+        query += ' LIMIT -1 OFFSET ?';
+        params.push(offset);
+      }
 
-    const result = await this.db
-      .prepare(query)
-      .bind(...params)
-      .all<{
-        role: string;
-        content: string;
-        timestamp: number;
-        metadata: string | null;
-      }>();
+      const result = await this.db
+        .prepare(query)
+        .bind(...params)
+        .all<{
+          role: string;
+          content: string;
+          timestamp: number;
+          metadata: string | null;
+        }>();
 
-    return result.results.map((row) => ({
-      role: row.role as 'user' | 'assistant' | 'system',
-      content: row.content,
-      timestamp: row.timestamp,
-      ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
-    }));
+      return result.results.map((row) => ({
+        role: row.role as 'user' | 'assistant' | 'system',
+        content: row.content,
+        timestamp: row.timestamp,
+        ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
+      }));
+    });
   }
 
   async saveMessages(sessionId: string, messages: LLMMessage[]): Promise<number> {
@@ -248,29 +271,31 @@ export class D1Storage {
       return 0;
     }
 
-    // Delete existing messages and insert new ones in a batch
-    const statements = [
-      this.db.prepare('DELETE FROM memory_messages WHERE session_id = ?').bind(sessionId),
-    ];
+    return this.withTiming(`saveMessages(${sessionId}, ${messages.length} msgs)`, async () => {
+      // Delete existing messages and insert new ones in a batch
+      const statements = [
+        this.db.prepare('DELETE FROM memory_messages WHERE session_id = ?').bind(sessionId),
+      ];
 
-    for (const msg of messages) {
-      statements.push(
-        this.db
-          .prepare(
-            'INSERT INTO memory_messages (session_id, role, content, timestamp, metadata) VALUES (?, ?, ?, ?, ?)'
-          )
-          .bind(
-            sessionId,
-            msg.role,
-            msg.content,
-            msg.timestamp || Date.now(),
-            msg.metadata ? JSON.stringify(msg.metadata) : null
-          )
-      );
-    }
+      for (const msg of messages) {
+        statements.push(
+          this.db
+            .prepare(
+              'INSERT INTO memory_messages (session_id, role, content, timestamp, metadata) VALUES (?, ?, ?, ?, ?)'
+            )
+            .bind(
+              sessionId,
+              msg.role,
+              msg.content,
+              msg.timestamp || Date.now(),
+              msg.metadata ? JSON.stringify(msg.metadata) : null
+            )
+        );
+      }
 
-    await this.db.batch(statements);
-    return messages.length;
+      await this.db.batch(statements);
+      return messages.length;
+    });
   }
 
   async appendMessages(sessionId: string, newMessages: LLMMessage[]): Promise<number> {
@@ -323,52 +348,54 @@ export class D1Storage {
       messageIndex: number;
     }>
   > {
-    const { sessionId, dateRange, limit = 100 } = options;
+    return this.withTiming(`searchMessages(${userId}, "${query}")`, async () => {
+      const { sessionId, dateRange, limit = 100 } = options;
 
-    let sql = `
-      SELECT m.session_id, m.role, m.content, m.timestamp, m.metadata,
-             ROW_NUMBER() OVER (PARTITION BY m.session_id ORDER BY m.timestamp ASC) - 1 as msg_index
-      FROM memory_messages m
-      JOIN memory_sessions s ON m.session_id = s.id
-      WHERE s.user_id = ? AND m.content LIKE ?
-    `;
-    const params: unknown[] = [userId, `%${query}%`];
+      let sql = `
+        SELECT m.session_id, m.role, m.content, m.timestamp, m.metadata,
+               ROW_NUMBER() OVER (PARTITION BY m.session_id ORDER BY m.timestamp ASC) - 1 as msg_index
+        FROM memory_messages m
+        JOIN memory_sessions s ON m.session_id = s.id
+        WHERE s.user_id = ? AND m.content LIKE ?
+      `;
+      const params: unknown[] = [userId, `%${query}%`];
 
-    if (sessionId) {
-      sql += ' AND m.session_id = ?';
-      params.push(sessionId);
-    }
+      if (sessionId) {
+        sql += ' AND m.session_id = ?';
+        params.push(sessionId);
+      }
 
-    if (dateRange) {
-      sql += ' AND m.timestamp >= ? AND m.timestamp <= ?';
-      params.push(dateRange.start, dateRange.end);
-    }
+      if (dateRange) {
+        sql += ' AND m.timestamp >= ? AND m.timestamp <= ?';
+        params.push(dateRange.start, dateRange.end);
+      }
 
-    sql += ' ORDER BY m.timestamp DESC LIMIT ?';
-    params.push(limit);
+      sql += ' ORDER BY m.timestamp DESC LIMIT ?';
+      params.push(limit);
 
-    const result = await this.db
-      .prepare(sql)
-      .bind(...params)
-      .all<{
-        session_id: string;
-        role: string;
-        content: string;
-        timestamp: number;
-        metadata: string | null;
-        msg_index: number;
-      }>();
+      const result = await this.db
+        .prepare(sql)
+        .bind(...params)
+        .all<{
+          session_id: string;
+          role: string;
+          content: string;
+          timestamp: number;
+          metadata: string | null;
+          msg_index: number;
+        }>();
 
-    return result.results.map((row) => ({
-      sessionId: row.session_id,
-      message: {
-        role: row.role as 'user' | 'assistant' | 'system',
-        content: row.content,
-        timestamp: row.timestamp,
-        ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
-      },
-      messageIndex: row.msg_index,
-    }));
+      return result.results.map((row) => ({
+        sessionId: row.session_id,
+        message: {
+          role: row.role as 'user' | 'assistant' | 'system',
+          content: row.content,
+          timestamp: row.timestamp,
+          ...(row.metadata ? { metadata: JSON.parse(row.metadata) } : {}),
+        },
+        messageIndex: row.msg_index,
+      }));
+    });
   }
 
   // Short-term memory operations
