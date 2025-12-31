@@ -18,11 +18,6 @@
     "formatter": { "enabled": false },
     "linter": { "enabled": false }
   },
-  "css": {
-    "linter": {
-      "enabled": false
-    }
-  },
   "formatter": {
     "enabled": true,
     "formatWithErrors": true,
