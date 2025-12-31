@@ -5,7 +5,8 @@ import { useEffect, useState } from "react";
 export function useOnlineStatus(): boolean {
 	const [isOnline, setIsOnline] = useState(() => {
 		// Initialize with current online status
-		if (typeof window !== "undefined") {
+		// Check both window and navigator for SSR compatibility
+		if (typeof window !== "undefined" && typeof navigator !== "undefined") {
 			return navigator.onLine;
 		}
 		return true;

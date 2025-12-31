@@ -17,8 +17,10 @@ export function ServiceWorkerRegistration() {
 
 	useEffect(() => {
 		// Only register service worker in production and when supported
+		// Check navigator exists before accessing it for SSR compatibility
 		if (
 			typeof window === "undefined" ||
+			typeof navigator === "undefined" ||
 			!("serviceWorker" in navigator) ||
 			process.env.NODE_ENV !== "production"
 		) {
@@ -91,6 +93,7 @@ export function ServiceWorkerRegistration() {
 	};
 
 	if (
+		typeof navigator === "undefined" ||
 		!("serviceWorker" in navigator) ||
 		process.env.NODE_ENV !== "production"
 	) {
