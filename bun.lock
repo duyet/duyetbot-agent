@@ -525,6 +525,18 @@
         "typescript": "catalog:",
       },
     },
+    "packages/validation": {
+      "name": "@duyetbot/validation",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/node": "catalog:",
+        "typescript": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "tests/e2e": {
       "name": "@duyetbot/e2e-tests",
       "version": "0.1.0",
@@ -1047,6 +1059,8 @@
     "@duyetbot/tools": ["@duyetbot/tools@workspace:packages/tools"],
 
     "@duyetbot/types": ["@duyetbot/types@workspace:packages/types"],
+
+    "@duyetbot/validation": ["@duyetbot/validation@workspace:packages/validation"],
 
     "@duyetbot/web": ["@duyetbot/web@workspace:apps/web"],
 
