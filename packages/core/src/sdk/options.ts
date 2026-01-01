@@ -138,6 +138,17 @@ export interface QueryOptions {
 
 /**
  * Create default options with sensible defaults
+ *
+ * @example
+ * ```typescript
+ * const options = createDefaultOptions({
+ *   model: 'opus',
+ *   temperature: 0.5,
+ * });
+ * ```
+ *
+ * @param overrides - Optional options to override defaults
+ * @returns QueryOptions with defaults applied
  */
 export function createDefaultOptions(overrides?: Partial<QueryOptions>): QueryOptions {
   return {
@@ -152,6 +163,19 @@ export function createDefaultOptions(overrides?: Partial<QueryOptions>): QueryOp
 
 /**
  * Merge options with defaults
+ *
+ * Performs deep merge for nested objects and concatenates arrays.
+ *
+ * @example
+ * ```typescript
+ * const defaults = createDefaultOptions({ model: 'haiku' });
+ * const custom = createDefaultOptions({ model: 'sonnet' });
+ * const merged = mergeOptions(defaults, custom);
+ * ```
+ *
+ * @param defaults - Default options to merge
+ * @param overrides - Options to override defaults
+ * @returns Merged QueryOptions
  */
 export function mergeOptions(
   defaults: QueryOptions,
@@ -174,6 +198,19 @@ export function mergeOptions(
 
 /**
  * Validate options
+ *
+ * Checks that all options are valid and returns any validation errors.
+ *
+ * @example
+ * ```typescript
+ * const validation = validateOptions(options);
+ * if (!validation.valid) {
+ *   console.error('Invalid options:', validation.errors);
+ * }
+ * ```
+ *
+ * @param options - Options to validate
+ * @returns Validation result with valid flag and error messages
  */
 export function validateOptions(options: QueryOptions): {
   valid: boolean;

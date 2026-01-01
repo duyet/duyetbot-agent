@@ -8,16 +8,27 @@ import type { z } from 'zod';
 
 /**
  * Permission modes for tool execution
+ *
+ * - `default`: Standard permissions (ask for approval on tool use)
+ * - `acceptEdits`: Auto-approve file edits (for trusted environments)
+ * - `bypassPermissions`: Skip all permission checks (testing only)
  */
 export type PermissionMode = 'default' | 'acceptEdits' | 'bypassPermissions';
 
 /**
  * Model selection
+ *
+ * Can be a short name ('haiku', 'sonnet', 'opus') or a full model ID string.
  */
 export type ModelType = 'haiku' | 'sonnet' | 'opus' | string;
 
 /**
  * MCP server connection types
+ *
+ * - `stdio`: Standard input/output (local processes)
+ * - `sse`: Server-Sent Events (HTTP long-lived connections)
+ * - `http`: REST API style (stateless HTTP requests)
+ * - `sdk`: In-process SDK integration
  */
 export type MCPServerType = 'stdio' | 'sse' | 'http' | 'sdk';
 
