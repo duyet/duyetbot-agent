@@ -27,6 +27,7 @@
     "format": "biome format --write .",
     "check": "biome check --write . && turbo run type-check",
     "clean": "turbo run clean && rm -rf node_modules .turbo",
+    "audit": "echo 'Checking GitHub Dependabot for vulnerabilities...' && gh api repos/duyet/duyetbot-agent/dependabot/alerts --method GET 2>/dev/null | jq '.[] | select(.security_vulnerability.severity == \"HIGH\" or .security_vulnerability.severity == \"CRITICAL\") | {package: .package.name, severity: .security_vulnerability.severity, advisory: .security_advisory.description, patched: .security_advisories[].patched_versions}'",
     "deploy": "turbo run deploy config",
     "deploy:safety-kernel": "turbo run deploy config --filter=@duyetbot/safety-kernel",
     "deploy:shared-agents": "turbo run deploy config --filter=@duyetbot/shared-agents",
