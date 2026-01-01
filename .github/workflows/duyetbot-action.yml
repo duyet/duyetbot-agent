@@ -99,6 +99,8 @@ jobs:
       contents: write
       pull-requests: write
       issues: write
+    # Only run for manual workflow_dispatch triggers
+    if: github.event_name == 'workflow_dispatch'
     # Use longer timeout for continuous mode (up to 6 hours for 100 tasks)
     timeout-minutes: ${{ inputs.timeout || 60 }}
     steps:
