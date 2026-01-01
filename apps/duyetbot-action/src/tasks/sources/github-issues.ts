@@ -131,7 +131,7 @@ export class GitHubIssuesSource implements TaskSourceProvider {
       .filter((l: string) => l !== 'agent-task' && !l.startsWith('priority-'));
 
     return {
-      id: `github-${this.owner}-${this.repo}-${issue.number}`,
+      id: `github-issues-${this.owner}-${this.repo}-${issue.number}`,
       source: 'github-issues',
       title: issue.title,
       description: issue.body || '',

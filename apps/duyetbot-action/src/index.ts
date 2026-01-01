@@ -127,10 +127,10 @@ function buildReportContext(
   },
   duration: number
 ): ReportContext {
-  // Extract issue number from GitHub issue task ID (format: github-{number})
+  // Extract issue number from GitHub issue task ID (format: github-issues-{owner}-{repo}-{number})
   let issueNumber: number | undefined;
   if (task.source === 'github-issues') {
-    const match = task.id.match(/github-(\d+)/);
+    const match = task.id.match(/github-issues-.*?-(\d+)/);
     if (match?.[1]) {
       issueNumber = parseInt(match[1], 10);
     }
