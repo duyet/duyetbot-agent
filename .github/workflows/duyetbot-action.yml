@@ -305,7 +305,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
         run: |
-          TASK_ID="github-${{ github.repository }}-${{ github.event.issue.number }}"
+          TASK_ID="github-${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ github.event.issue.number }}"
           bun run apps/duyetbot-action/src/index.ts \
             --source="github-issues" \
             --task="$TASK_ID"
@@ -392,7 +392,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
         run: |
-          TASK_ID="github-${{ github.repository }}-${{ github.event.issue.number }}"
+          TASK_ID="github-${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ github.event.issue.number }}"
           bun run apps/duyetbot-action/src/index.ts \
             --source="github-issues" \
             --task="$TASK_ID"
