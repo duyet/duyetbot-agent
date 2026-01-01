@@ -78,7 +78,7 @@ name: duyetbot-action
         type: boolean
 
   issues:
-    types: [labeled]
+    types: [opened, labeled]
 
   issue_comment:
     types: [created]
@@ -327,6 +327,80 @@ jobs:
         if: always()
         with:
           name: agent-issue-${{ github.event.issue.number }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Triggered when a new issue is opened
+  run-agent-on-new-issue:
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    name: Agent for New Issue
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 60
+    concurrency:
+      group: agent-new-issue-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - name: Auto-label and assign issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          # Add triage and agent-task labels
+          gh issue label "$ISSUE_NUMBER" --add-label "triage,agent-task"
+
+          # Assign to duyetbot
+          gh issue edit "$ISSUE_NUMBER" --assignee duyetbot
+
+          echo "✅ Issue #$ISSUE_NUMBER labeled and assigned to @duyetbot"
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🤖 **@duyetbot** is analyzing this issue...\n\nI\'ll review the issue and respond shortly. Depending on the task, I may:\n- Ask clarifying questions\n- Propose a solution\n- Create a pull request with fixes\n\nStand by! 🚀'
+            });
+
+      - name: Run Agent
+        env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+        run: |
+          TASK_ID="github-${{ github.repository }}-${{ github.event.issue.number }}"
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="github-issues" \
+            --task="$TASK_ID"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-new-issue-${{ github.event.issue.number }}-${{ github.run_number }}
           path: .agent/logs/
           retention-days: 7
           if-no-files-found: ignore
