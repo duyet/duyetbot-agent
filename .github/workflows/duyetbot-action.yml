@@ -369,7 +369,7 @@ jobs:
           gh issue edit "$ISSUE_NUMBER" --add-label "triage" --add-label "agent-task"
 
           # Assign to duyetbot
-          gh issue edit "$ISSUE_NUMBER" --assignee duyetbot
+          gh issue edit "$ISSUE_NUMBER" --add-assignee duyetbot
 
           echo "✅ Issue #$ISSUE_NUMBER labeled and assigned to @duyetbot"
 
