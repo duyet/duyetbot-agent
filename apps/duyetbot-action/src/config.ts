@@ -1,12 +1,12 @@
 import { z } from 'zod';
 
 export const configSchema = z.object({
-  // OpenRouter API key for LLM access
+  // API key for LLM access (OpenRouter via Anthropic-compatible API)
   // Handle empty string as validation error with clear message
-  openrouterApiKey: z
+  apiKey: z
     .string()
-    .min(1, "OPENROUTER_API_KEY is required. Set it in GitHub Secrets.")
-    .refine((val) => val.trim().length > 0, "OPENROUTER_API_KEY cannot be empty"),
+    .min(1, 'DUYETBOT_API_KEY is required. Set it in GitHub Secrets.')
+    .refine((val) => val.trim().length > 0, 'DUYETBOT_API_KEY cannot be empty'),
 
   // GitHub token for API operations
   githubToken: z.string().min(1),
@@ -17,8 +17,8 @@ export const configSchema = z.object({
     .string()
     .url()
     .optional()
-    .or(z.literal(""))
-    .transform((val) => (val === "" ? undefined : val)),
+    .or(z.literal(''))
+    .transform((val) => (val === '' ? undefined : val)),
 
   // Model to use
   model: z.string().default('anthropic/claude-sonnet-4'),
@@ -84,12 +84,23 @@ export const configSchema = z.object({
 
 export type Config = z.infer<typeof configSchema>;
 
+/**
+ * Load configuration from environment variables
+ *
+ * Supports both new (DUYETBOT_*) and legacy (ANTHROPIC_*, OPENROUTER_*) names
+ * for backward compatibility. New names take precedence.
+ */
 export function loadConfig(): Config {
-  return configSchema.parse({
-    openrouterApiKey: process.env.OPENROUTER_API_KEY,
+  const config = configSchema.parse({
+    // Support both new and old environment variable names for backward compatibility
+    apiKey:
+      process.env.DUYETBOT_API_KEY ||
+      process.env.OPENROUTER_API_KEY ||
+      process.env.ANTHROPIC_API_KEY ||
+      '',
     githubToken: process.env.GITHUB_TOKEN,
     memoryMcpUrl: process.env.MEMORY_MCP_URL,
-    model: process.env.MODEL,
+    model: process.env.MODEL || process.env.DUYETBOT_MODEL,
     dryRun: process.env.DRY_RUN === 'true',
     autoMerge:
       process.env.AUTO_MERGE === 'true'
@@ -124,4 +135,29 @@ export function loadConfig(): Config {
         }
       : undefined,
   });
+
+  // Set up SDK environment variables if not already set
+  // The Claude Agent SDK reads ANTHROPIC_* variables directly
+  if (!process.env.ANTHROPIC_API_KEY) {
+    process.env.ANTHROPIC_API_KEY = config.apiKey;
+  }
+
+  if (!process.env.ANTHROPIC_BASE_URL) {
+    const baseUrl = process.env.DUYETBOT_BASE_URL || 'https://openrouter.ai/api';
+    process.env.ANTHROPIC_BASE_URL = baseUrl;
+  }
+
+  // Only set model defaults if not using a custom model
+  if (
+    !process.env.ANTHROPIC_DEFAULT_SONNET_MODEL &&
+    !process.env.MODEL &&
+    !process.env.DUYETBOT_MODEL
+  ) {
+    const defaultModel = process.env.DUYETBOT_MODEL || '@preset/claude-code-github-action';
+    process.env.ANTHROPIC_DEFAULT_SONNET_MODEL = defaultModel;
+    process.env.ANTHROPIC_DEFAULT_OPUS_MODEL = defaultModel;
+    process.env.ANTHROPIC_DEFAULT_HAIKU_MODEL = defaultModel;
+  }
+
+  return config;
 }

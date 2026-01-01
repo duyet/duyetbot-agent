@@ -149,11 +149,8 @@ jobs:
       - name: Run duyetbot-action
         env:
           # Use OpenRouter with Anthropic-compatible API
-          ANTHROPIC_BASE_URL: https://openrouter.ai/api
-          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
-          ANTHROPIC_DEFAULT_OPUS_MODEL: '@preset/claude-code-github-action'
-          ANTHROPIC_DEFAULT_HAIKU_MODEL: '@preset/claude-code-github-action'
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
           MODEL: ${{ inputs.model }}
@@ -300,10 +297,8 @@ jobs:
 
       - name: Run Agent
         env:
-          ANTHROPIC_BASE_URL: https://openrouter.ai/api
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
         run: |
@@ -387,10 +382,8 @@ jobs:
 
       - name: Run Agent
         env:
-          ANTHROPIC_BASE_URL: https://openrouter.ai/api
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
         run: |
@@ -453,10 +446,8 @@ jobs:
 
       - name: Run Agent
         env:
-          ANTHROPIC_BASE_URL: https://openrouter.ai/api
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
           PR_NUMBER: ${{ github.event.issue.number }}
