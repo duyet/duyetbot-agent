@@ -366,7 +366,7 @@ jobs:
           ISSUE_NUMBER: ${{ github.event.issue.number }}
         run: |
           # Add triage and agent-task labels
-          gh issue label "$ISSUE_NUMBER" --add-label "triage,agent-task"
+          gh issue edit "$ISSUE_NUMBER" --add-label "triage" --add-label "agent-task"
 
           # Assign to duyetbot
           gh issue edit "$ISSUE_NUMBER" --assignee duyetbot
