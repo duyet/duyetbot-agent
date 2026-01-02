@@ -139,7 +139,7 @@ jobs:
             --body "$ISSUE_BODY" \
             --label "duyetbot-action" \
             --json number,title \
-   --jq '{number: .number, title: .title}')
+            --jq '{number: .number, title: .title}')
 
           # Extract issue number and set output
           ISSUE_NUMBER=$(echo "$RESPONSE" | jq -r '.number')
@@ -245,16 +245,16 @@ jobs:
             echo ""
             echo "### 🤖 Full Capabilities"
             echo ""
-   echo "duyetbot-action runs with:"
-   echo "- ✅ **Full Skills**: bash, git, github, research, plan, and more"
-   echo "- ✅ **MCP Servers**: Memory MCP and other configured servers"
-   echo "- ✅ **Sub-Agents**: Autonomous task delegation and parallel execution"
-   echo "- ✅ **Checkpoint Support**: Resume from interrupted runs"
-   echo "- ✅ **Token Tracking**: Full usage and cost tracking"
-   echo "- ✅ **Continuous Mode**: Process all tasks until done"
-   echo "- ✅ **Auto-Merge**: Automatically merge PRs after CI"
-   echo "- ✅ **Auto-Close**: Automatically close issues after merge"
-          } >> "$GITHUB_STEP_SUMMARY"
+            echo "duyetbot-action runs with:"
+            echo "- ✅ **Full Skills**: bash, git, github, research, plan, and more"
+            echo "- ✅ **MCP Servers**: Memory MCP and other configured servers"
+            echo "- ✅ **Sub-Agents**: Autonomous task delegation and parallel execution"
+            echo "- ✅ **Checkpoint Support**: Resume from interrupted runs"
+            echo "- ✅ **Token Tracking**: Full usage and cost tracking"
+            echo "- ✅ **Continuous Mode**: Process all tasks until done"
+            echo "- ✅ **Auto-Merge**: Automatically merge PRs after CI"
+            echo "- ✅ **Auto-Close**: Automatically close issues after merge"
+            } >> "$GITHUB_STEP_SUMMARY"
 
   # Triggered by agent-task label on issues
   run-agent-on-issue:
@@ -462,7 +462,7 @@ jobs:
         if: always()
         with:
           script: |
-   const content = '${{ job.status }}' === 'success' ? 'rocket' : 'confused';
+            const content = '${{ job.status }}' === 'success' ? 'rocket' : 'confused';
             await github.rest.reactions.createForIssueComment({
               owner: context.repo.owner,
               repo: context.repo.repo,
