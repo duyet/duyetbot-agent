@@ -21,44 +21,59 @@ vi.mock('../../src/github/operations/comments.js', () => {
 });
 
 vi.mock('../../src/github/operations/labels.js', () => {
-  const addLabels = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.addLabels) {
-      return octokit.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels });
+  const addLabels = vi.fn(
+    (octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
+      if (octokit?.requests !== undefined && octokit?.rest?.issues?.addLabels) {
+        return octokit.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels });
+      }
+      return Promise.resolve();
     }
-    return Promise.resolve();
-  });
+  );
 
-  const removeLabel = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number, labelName: string) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.removeLabel) {
-      return octokit.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name: labelName });
+  const removeLabel = vi.fn(
+    (octokit: any, owner: string, repo: string, issueNumber: number, labelName: string) => {
+      if (octokit?.requests !== undefined && octokit?.rest?.issues?.removeLabel) {
+        return octokit.rest.issues.removeLabel({
+          owner,
+          repo,
+          issue_number: issueNumber,
+          name: labelName,
+        });
+      }
+      return Promise.resolve();
     }
-    return Promise.resolve();
-  });
+  );
 
-  const setLabels = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.setLabels) {
-      return octokit.rest.issues.setLabels({ owner, repo, issue_number: issueNumber, labels });
+  const setLabels = vi.fn(
+    (octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
+      if (octokit?.requests !== undefined && octokit?.rest?.issues?.setLabels) {
+        return octokit.rest.issues.setLabels({ owner, repo, issue_number: issueNumber, labels });
+      }
+      return Promise.resolve();
     }
-    return Promise.resolve();
-  });
+  );
 
   const listLabels = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number) => {
     if (octokit?.requests !== undefined && octokit?.rest?.issues?.listLabelsOnIssue) {
-      return octokit.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: issueNumber }).then((response: any) =>
-        response.data.map((label: any) => ({
-          name: label.name,
-          color: label.color,
-          description: label.description || '',
-        }))
-      );
+      return octokit.rest.issues
+        .listLabelsOnIssue({ owner, repo, issue_number: issueNumber })
+        .then((response: any) =>
+          response.data.map((label: any) => ({
+            name: label.name,
+            color: label.color,
+            description: label.description || '',
+          }))
+        );
     }
     return Promise.resolve([]);
   });
 
-  const hasLabel = vi.fn(async (octokit: any, owner: string, repo: string, issueNumber: number, labelName: string) => {
-    const labels = await listLabels(octokit, owner, repo, issueNumber);
-    return labels.some((l: any) => l.name.toLowerCase() === labelName.toLowerCase());
-  });
+  const hasLabel = vi.fn(
+    async (octokit: any, owner: string, repo: string, issueNumber: number, labelName: string) => {
+      const labels = await listLabels(octokit, owner, repo, issueNumber);
+      return labels.some((l: any) => l.name.toLowerCase() === labelName.toLowerCase());
+    }
+  );
 
   return {
     addLabels,
@@ -93,18 +108,10 @@ describe('modes/tag', () => {
       isPR: false,
       inputs: {
         triggerPhrase: '@duyetbot',
-        assigneeTrigger: 'duyetbot',
         labelTrigger: 'duyetbot',
         prompt: '',
         settings: '',
-        continuousMode: 'false',
-        maxTasks: '100',
-        autoMerge: 'true',
-        closeIssues: 'true',
-        delayBetweenTasks: '5',
-        dryRun: 'false',
-        taskSource: 'github-issues',
-        taskId: '',
+        claudeArgs: '',
         baseBranch: 'main',
         branchPrefix: 'duyetbot/',
         allowedBots: '',
@@ -113,7 +120,6 @@ describe('modes/tag', () => {
         useCommitSigning: 'false',
         botId: '41898282',
         botName: 'duyetbot[bot]',
-        memoryMcpUrl: '',
       },
       runId: '123456',
       ...overrides,
@@ -194,21 +200,7 @@ describe('modes/tag', () => {
       expect(tagMode.shouldTrigger(context)).toBe(true);
     });
 
-    it('should trigger on assignee match', () => {
-      const context = createBaseContext({
-        entityNumber: 202,
-        payload: {
-          issue: {
-            assignees: [{ login: 'duyetbot' }],
-            body: 'Task assigned',
-          },
-        },
-      });
-
-      expect(tagMode.shouldTrigger(context)).toBe(true);
-    });
-
-    it('should not trigger without mention, label, or assignee', () => {
+    it('should not trigger without mention or label', () => {
       const context = createBaseContext({
         entityNumber: 303,
         payload: {
@@ -263,24 +255,6 @@ describe('modes/tag', () => {
         payload: {
           issue: {
             labels: [{ name: 'bot-task', color: '00ff00' }],
-            body: 'Task',
-          },
-        },
-      });
-
-      expect(tagMode.shouldTrigger(context)).toBe(true);
-    });
-
-    it('should use custom assignee trigger from inputs', () => {
-      const context = createBaseContext({
-        entityNumber: 707,
-        inputs: {
-          ...createBaseContext().inputs,
-          assigneeTrigger: 'bot-assistant',
-        },
-        payload: {
-          issue: {
-            assignees: [{ login: 'bot-assistant' }],
             body: 'Task',
           },
         },

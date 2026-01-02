@@ -195,11 +195,13 @@ export function parseGitHubContext(): GitHubContext {
   }
   if (process.env.CLOSE_ISSUES === 'true' || process.env.CLOSE_ISSUES) {
     settingsObject.autoMerge = settingsObject.autoMerge || {};
-    settingsObject.autoMerge.closeIssueAfterMerge = settingsObject.autoMerge.closeIssueAfterMerge ?? true;
+    settingsObject.autoMerge.closeIssueAfterMerge =
+      settingsObject.autoMerge.closeIssueAfterMerge ?? true;
   }
   if (process.env.DELAY_BETWEEN_TASKS) {
     settingsObject.continuous = settingsObject.continuous || {};
-    settingsObject.continuous.delayBetweenTasks = parseInt(process.env.DELAY_BETWEEN_TASKS, 10) * 1000;
+    settingsObject.continuous.delayBetweenTasks =
+      parseInt(process.env.DELAY_BETWEEN_TASKS, 10) * 1000;
   }
   if (process.env.DRY_RUN === 'true' || process.env.DRY_RUN) {
     settingsObject.dryRun = true;

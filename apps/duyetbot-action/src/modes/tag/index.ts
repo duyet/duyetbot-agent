@@ -53,14 +53,6 @@ export const tagMode: Mode = {
       return true;
     }
 
-    // Check for assignee trigger
-    const assigneeTrigger = context.inputs.assigneeTrigger?.toLowerCase() || 'duyetbot';
-    const assignees =
-      context.payload?.issue?.assignees || context.payload?.pull_request?.assignees || [];
-    if (assignees.some((a: any) => a.login?.toLowerCase() === assigneeTrigger)) {
-      return true;
-    }
-
     return false;
   },
 
@@ -206,14 +198,19 @@ export const tagMode: Mode = {
 
     // Find existing tracking comment
     const botName = context.inputs.botName || 'duyetbot[bot]';
-    const existingComment = await CommentOps.findBotComment(
-      octokit,
-      owner,
-      repo,
-      entityNumber,
-      botName,
-      PROGRESS_MARKER
-    );
+    let existingComment = null;
+    try {
+      existingComment = await CommentOps.findBotComment(
+        octokit,
+        owner,
+        repo,
+        entityNumber,
+        botName,
+        PROGRESS_MARKER
+      );
+    } catch {
+      // Ignore errors finding existing comment
+    }
 
     let commentId: number | undefined;
     const taskId = `tag-${owner}-${repo}-${entityNumber}-${Date.now()}`;
@@ -227,23 +224,33 @@ export const tagMode: Mode = {
     });
 
     if (existingComment) {
-      await CommentOps.updateComment(octokit, {
-        owner,
-        repo,
-        commentId: existingComment.id,
-        body: progressComment,
-      });
-      commentId = existingComment.id;
-      console.log(`  ✓ Updated existing comment #${existingComment.id}`);
-    } else {
-      const result = await CommentOps.createComment(octokit, {
-        owner,
-        repo,
-        issueNumber: entityNumber,
-        body: progressComment,
-      });
-      commentId = result.id;
-      console.log(`  ✓ Created tracking comment #${result.id}`);
+      try {
+        await CommentOps.updateComment(octokit, {
+          owner,
+          repo,
+          commentId: existingComment.id,
+          body: progressComment,
+        });
+        commentId = existingComment.id;
+        console.log(`  ✓ Updated existing comment #${existingComment.id}`);
+      } catch {
+        // Fall through to create new comment
+      }
+    }
+
+    if (!commentId) {
+      try {
+        const result = await CommentOps.createComment(octokit, {
+          owner,
+          repo,
+          issueNumber: entityNumber,
+          body: progressComment,
+        });
+        commentId = result.id;
+        console.log(`  ✓ Created tracking comment #${result.id}`);
+      } catch {
+        // Comment creation failed, continue without it
+      }
     }
 
     // Add "in-progress" label

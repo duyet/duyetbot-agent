@@ -32,19 +32,32 @@ vi.mock('../../src/github/operations/comments.js', () => {
     return Promise.resolve();
   });
 
-  const findBotComment = vi.fn(async (octokit: any, owner: string, repo: string, issueNumber: number, botUsername: string, marker: string) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.listComments) {
-      const response = await octokit.rest.issues.listComments({ owner, repo, issue_number: issueNumber });
-      const comments = response.data;
-      for (const comment of comments) {
-        if (comment.body.includes(marker)) {
-          return { id: comment.id, body: comment.body };
+  const findBotComment = vi.fn(
+    async (
+      octokit: any,
+      owner: string,
+      repo: string,
+      issueNumber: number,
+      botUsername: string,
+      marker: string
+    ) => {
+      if (octokit?.requests !== undefined && octokit?.rest?.issues?.listComments) {
+        const response = await octokit.rest.issues.listComments({
+          owner,
+          repo,
+          issue_number: issueNumber,
+        });
+        const comments = response.data;
+        for (const comment of comments) {
+          if (comment.body.includes(marker)) {
+            return { id: comment.id, body: comment.body };
+          }
         }
+        return null;
       }
-      return null;
+      return Promise.resolve(null);
     }
-    return Promise.resolve(null);
-  });
+  );
 
   return {
     createComment,
@@ -54,12 +67,14 @@ vi.mock('../../src/github/operations/comments.js', () => {
 });
 
 vi.mock('../../src/github/operations/labels.js', () => {
-  const addLabels = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.addLabels) {
-      return octokit.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels });
+  const addLabels = vi.fn(
+    (octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
+      if (octokit?.requests !== undefined && octokit?.rest?.issues?.addLabels) {
+        return octokit.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels });
+      }
+      return Promise.resolve();
     }
-    return Promise.resolve();
-  });
+  );
 
   return {
     addLabels,

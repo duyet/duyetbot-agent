@@ -99,38 +99,47 @@ export function loadConfig(settings?: Settings): Config {
 
   const config = configSchema.parse({
     // Support both new and old environment variable names for backward compatibility
+    // DUYETBOT_API_KEY takes precedence over legacy names
     apiKey:
-      process.env.ANTHROPIC_API_KEY ||
       process.env.DUYETBOT_API_KEY ||
-      process.env.OPENROUTER_API_KEY ||
       settingsData.model?.apiKey ||
+      process.env.ANTHROPIC_API_KEY ||
+      process.env.OPENROUTER_API_KEY ||
       '',
     githubToken: process.env.GITHUB_TOKEN,
     memoryMcpUrl: settingsData.memoryMcpUrl || process.env.MEMORY_MCP_URL,
     model: settingsData.model || process.env.MODEL || process.env.DUYETBOT_MODEL,
-    dryRun: settingsData.dryRun ?? (process.env.DRY_RUN === 'true'),
+    dryRun: settingsData.dryRun ?? process.env.DRY_RUN === 'true',
     taskSources: settingsData.taskSources,
-    autoMerge: settingsData.autoMerge ?? (process.env.AUTO_MERGE === 'true' ? {
-      enabled: true,
-      requireChecks: (process.env.REQUIRED_CHECKS || '').split(',').filter(Boolean),
-      waitForChecks: process.env.WAIT_FOR_CHECKS !== 'false',
-      timeout: parseInt(process.env.AUTO_MERGE_TIMEOUT || '600000', 10),
-      approveFirst: process.env.AUTO_MERGE_APPROVE !== 'false',
-      deleteBranch: process.env.AUTO_MERGE_DELETE_BRANCH !== 'false',
-      closeIssueAfterMerge: process.env.CLOSE_ISSUES_AFTER_MERGE !== 'false',
-    } : undefined),
+    autoMerge:
+      settingsData.autoMerge ??
+      (process.env.AUTO_MERGE === 'true'
+        ? {
+            enabled: true,
+            requireChecks: (process.env.REQUIRED_CHECKS || '').split(',').filter(Boolean),
+            waitForChecks: process.env.WAIT_FOR_CHECKS !== 'false',
+            timeout: parseInt(process.env.AUTO_MERGE_TIMEOUT || '600000', 10),
+            approveFirst: process.env.AUTO_MERGE_APPROVE !== 'false',
+            deleteBranch: process.env.AUTO_MERGE_DELETE_BRANCH !== 'false',
+            closeIssueAfterMerge: process.env.CLOSE_ISSUES_AFTER_MERGE !== 'false',
+          }
+        : undefined),
     selfImprovement: {
       enableVerification: process.env.ENABLE_VERIFICATION !== 'false',
       enableAutoFix: process.env.ENABLE_AUTO_FIX === 'true',
       maxRecoveryAttempts: parseInt(process.env.MAX_RECOVERY_ATTEMPTS || '3', 10),
     },
-    continuous: settingsData.continuous ?? (process.env.CONTINUOUS_MODE === 'true' ? {
-      enabled: true,
-      maxTasks: parseInt(process.env.CONTINUOUS_MAX_TASKS || '100', 10),
-      delayBetweenTasks: parseInt(process.env.CONTINUOUS_DELAY_MS || '5000', 10),
-      closeIssuesAfterMerge: process.env.CLOSE_ISSUES_AFTER_MERGE !== 'false',
-      stopOnFirstFailure: process.env.STOP_ON_FIRST_FAILURE === 'true',
-    } : undefined),
+    continuous:
+      settingsData.continuous ??
+      (process.env.CONTINUOUS_MODE === 'true'
+        ? {
+            enabled: true,
+            maxTasks: parseInt(process.env.CONTINUOUS_MAX_TASKS || '100', 10),
+            delayBetweenTasks: parseInt(process.env.CONTINUOUS_DELAY_MS || '5000', 10),
+            closeIssuesAfterMerge: process.env.CLOSE_ISSUES_AFTER_MERGE !== 'false',
+            stopOnFirstFailure: process.env.STOP_ON_FIRST_FAILURE === 'true',
+          }
+        : undefined),
     repository: process.env.GITHUB_REPOSITORY
       ? {
           owner: process.env.GITHUB_REPOSITORY.split('/')[0],
@@ -146,7 +155,10 @@ export function loadConfig(settings?: Settings): Config {
   }
 
   if (!process.env.ANTHROPIC_BASE_URL) {
-    const baseUrl = settingsData.provider?.baseUrl || process.env.DUYETBOT_BASE_URL || 'https://openrouter.ai/api';
+    const baseUrl =
+      settingsData.provider?.baseUrl ||
+      process.env.DUYETBOT_BASE_URL ||
+      'https://openrouter.ai/api';
     process.env.ANTHROPIC_BASE_URL = baseUrl;
   }
 

@@ -19,8 +19,8 @@ import type { AutoDetectedMode } from './types.js';
  */
 export function detectMode(context: GitHubContext): AutoDetectedMode {
   // Priority 1: Continuous mode takes precedence
-  if (context.inputs.continuousMode === 'true') {
-    console.log('🔄 Continuous mode detected (continuous_mode input)');
+  if (context.inputs.settingsObject?.continuous?.enabled) {
+    console.log('🔄 Continuous mode detected (continuous mode enabled in settings)');
     return 'continuous';
   }
 
@@ -92,7 +92,6 @@ export function detectMode(context: GitHubContext): AutoDetectedMode {
 function checkForTrigger(context: GitHubContext): boolean {
   const triggerPhrase = context.inputs.triggerPhrase?.toLowerCase() || '@duyetbot';
   const labelTrigger = context.inputs.labelTrigger?.toLowerCase() || 'duyetbot';
-  const assigneeTrigger = context.inputs.assigneeTrigger?.toLowerCase() || 'duyetbot';
 
   // Check in issue/PR body
   const body = context.payload?.issue?.body || context.payload?.pull_request?.body || '';
@@ -112,13 +111,6 @@ function checkForTrigger(context: GitHubContext): boolean {
     if (labels.some((l: { name?: string }) => l.name?.toLowerCase() === labelTrigger)) {
       return true;
     }
-  }
-
-  // Check for assignee trigger
-  const assignees =
-    context.payload?.issue?.assignees || context.payload?.pull_request?.assignees || [];
-  if (assignees.some((a: { login?: string }) => a.login?.toLowerCase() === assigneeTrigger)) {
-    return true;
   }
 
   return false;

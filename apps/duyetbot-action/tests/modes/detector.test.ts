@@ -32,18 +32,10 @@ describe('modes/detector', () => {
       isPR: false,
       inputs: {
         triggerPhrase: '@duyetbot',
-        assigneeTrigger: 'duyetbot',
         labelTrigger: 'duyetbot',
         prompt: '',
         settings: '',
-        continuousMode: 'false',
-        maxTasks: '100',
-        autoMerge: 'true',
-        closeIssues: 'true',
-        delayBetweenTasks: '5',
-        dryRun: 'false',
-        taskSource: 'github-issues',
-        taskId: '',
+        claudeArgs: '',
         baseBranch: 'main',
         branchPrefix: 'duyetbot/',
         allowedBots: '',
@@ -52,7 +44,6 @@ describe('modes/detector', () => {
         useCommitSigning: 'false',
         botId: '41898282',
         botName: 'duyetbot[bot]',
-        memoryMcpUrl: '',
       },
       runId: '123456',
       ...overrides,
@@ -60,11 +51,15 @@ describe('modes/detector', () => {
   }
 
   describe('continuous mode detection', () => {
-    it('should detect continuous mode when continuous_mode is true', () => {
+    it('should detect continuous mode when enabled in settings', () => {
       const context = createBaseContext({
         inputs: {
           ...createBaseContext().inputs,
-          continuousMode: 'true',
+          settingsObject: {
+            continuous: {
+              enabled: true,
+            },
+          },
         },
       });
 
@@ -77,7 +72,11 @@ describe('modes/detector', () => {
         eventName: 'issue_comment',
         inputs: {
           ...createBaseContext().inputs,
-          continuousMode: 'true',
+          settingsObject: {
+            continuous: {
+              enabled: true,
+            },
+          },
           prompt: 'explicit prompt',
         },
         payload: {
@@ -235,23 +234,6 @@ describe('modes/detector', () => {
       expect(mode).toBe('tag');
     });
 
-    it('should detect tag mode with assignee trigger', () => {
-      const context = createBaseContext({
-        eventName: 'issues',
-        eventAction: 'assigned',
-        entityNumber: 789,
-        payload: {
-          issue: {
-            assignees: [{ login: 'duyetbot' }],
-            body: 'Assigned to bot',
-          },
-        },
-      });
-
-      const mode = detectMode(context);
-      expect(mode).toBe('tag');
-    });
-
     it('should be case-insensitive for triggers', () => {
       const context = createBaseContext({
         eventName: 'issue_comment',
@@ -274,23 +256,6 @@ describe('modes/detector', () => {
         payload: {
           issue: {
             labels: [{ name: 'DuyetBot', color: 'ff0000' }],
-            body: 'Help',
-          },
-        },
-      });
-
-      const mode = detectMode(context);
-      expect(mode).toBe('tag');
-    });
-
-    it('should detect assignee trigger case-insensitively', () => {
-      const context = createBaseContext({
-        eventName: 'pull_request',
-        entityNumber: 456,
-        isPR: true,
-        payload: {
-          pull_request: {
-            assignees: [{ login: 'DuyetBot' }],
             body: 'Help',
           },
         },
@@ -415,23 +380,6 @@ describe('modes/detector', () => {
         payload: {
           issue: {
             labels: [],
-            body: 'Test',
-          },
-        },
-      });
-
-      const mode = detectMode(context);
-      expect(mode).toBe('agent');
-    });
-
-    it('should handle empty assignees array', () => {
-      const context = createBaseContext({
-        eventName: 'issues',
-        eventAction: 'assigned',
-        entityNumber: 123,
-        payload: {
-          issue: {
-            assignees: [],
             body: 'Test',
           },
         },

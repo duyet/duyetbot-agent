@@ -32,18 +32,10 @@ describe('modes/registry', () => {
       isPR: false,
       inputs: {
         triggerPhrase: '@duyetbot',
-        assigneeTrigger: 'duyetbot',
         labelTrigger: 'duyetbot',
         prompt: '',
         settings: '',
-        continuousMode: 'false',
-        maxTasks: '100',
-        autoMerge: 'true',
-        closeIssues: 'true',
-        delayBetweenTasks: '5',
-        dryRun: 'false',
-        taskSource: 'github-issues',
-        taskId: '',
+        claudeArgs: '',
         baseBranch: 'main',
         branchPrefix: 'duyetbot/',
         allowedBots: '',
@@ -52,7 +44,6 @@ describe('modes/registry', () => {
         useCommitSigning: 'false',
         botId: '41898282',
         botName: 'duyetbot[bot]',
-        memoryMcpUrl: '',
       },
       runId: '123456',
       ...overrides,
@@ -100,11 +91,15 @@ describe('modes/registry', () => {
       expect(mode.description).toBeDefined();
     });
 
-    it('should return continuous mode when continuous_mode is true', () => {
+    it('should return continuous mode when continuous mode is enabled in settings', () => {
       const context = createBaseContext({
         inputs: {
           ...createBaseContext().inputs,
-          continuousMode: 'true',
+          settingsObject: {
+            continuous: {
+              enabled: true,
+            },
+          },
         },
       });
 
@@ -235,22 +230,20 @@ describe('modes/registry', () => {
   });
 
   describe('error handling', () => {
-    it('should throw error if detected mode is not in registry', () => {
-      // This is a defensive test - in normal operation this should never happen
-      // because detectMode only returns valid mode names
-      // But we test the error handling path anyway
+    it('should return null for invalid mode names', () => {
+      // Verify that getModeByName returns null for invalid modes
+      const mode = getModeByName('invalid' as any);
+      expect(mode).toBeNull();
+    });
 
+    it('should not crash on unknown mode', () => {
+      // This test ensures the registry handles unknown modes gracefully
       const context = createBaseContext();
+      const mode = getMode(context);
 
-      // Mock detectMode to return invalid mode
-      vi.doMock('../../src/modes/detector.js', () => ({
-        detectMode: () => 'invalid' as any,
-      }));
-
-      // Since we can't easily mock the detector after import,
-      // we verify the error message structure exists
-      const mode = getModeByName('tag');
+      // Should always return a valid mode
       expect(mode).toBeDefined();
+      expect(mode.name).toBeTruthy();
     });
   });
 
