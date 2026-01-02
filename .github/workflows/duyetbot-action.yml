@@ -83,9 +83,7 @@ name: duyetbot-action
   issue_comment:
     types: [created]
 
-concurrency:
-  group: duyetbot-action-${{ github.ref }}
-  cancel-in-progress: true
+# Global concurrency removed - jobs manage their own concurrency per-issue/PR
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
