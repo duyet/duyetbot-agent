@@ -1,0 +1,478 @@
+# duyetbot-action: Consolidated workflow with manual dispatch, issue trigger, and PR comment trigger
+# Note: Removed global concurrency group to prevent workflow cancellations (commit 843d6cf)
+name: duyetbot-action
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description for the agent (skip if continuous mode)'
+        required: false
+        type: string
+      model:
+        description: 'AI model to use'
+        required: false
+        default: 'anthropic/claude-sonnet-4-20250514'
+        type: choice
+        options:
+          - anthropic/claude-sonnet-4-20250514
+          - anthropic/claude-opus-4-20250514
+          - anthropic/claude-haiku-4-20250514
+          - google/gemini-2.5-flash
+          - google/gemini-2.5-pro
+          - openai/gpt-4o
+          - openai/gpt-4o-mini
+      timeout:
+        description: 'Timeout in minutes'
+        required: false
+        default: '60'
+        type: string
+      dry_run:
+        description: 'Dry run (no git changes)'
+        required: false
+        default: false
+        type: boolean
+      task_source:
+        description: 'Task source for existing tasks'
+        required: false
+        default: 'github-issues'
+        type: choice
+        options:
+          - github-issues
+          - file
+          - memory
+          - all
+      task_id:
+        description: 'Specific task ID to run (optional, overrides creating new issue)'
+        required: false
+        type: string
+      # Continuous mode inputs
+      continuous_mode:
+        description: 'Enable continuous mode - process all tasks until done'
+        required: false
+        default: false
+        type: boolean
+      max_tasks:
+        description: 'Maximum tasks to process in continuous mode'
+        required: false
+        default: '100'
+        type: string
+      auto_merge:
+        description: 'Auto-merge PRs after CI checks pass'
+        required: false
+        default: true
+        type: boolean
+      close_issues:
+        description: 'Auto-close issues after PR merge'
+        required: false
+        default: true
+        type: boolean
+      delay_between_tasks:
+        description: 'Delay between tasks in continuous mode (seconds)'
+        required: false
+        default: '5'
+        type: string
+      stop_on_failure:
+        description: 'Stop continuous mode if a task fails'
+        required: false
+        default: false
+        type: boolean
+
+  issues:
+    types: [opened, labeled]
+
+  issue_comment:
+    types: [created]
+
+# Global concurrency removed - jobs manage their own concurrency per-issue/PR
+
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
+jobs:
+  run-agent:
+    name: Run duyetbot-action
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    # Only run for manual workflow_dispatch triggers
+    if: github.event_name == 'workflow_dispatch'
+    # Use longer timeout for continuous mode (up to 6 hours for 100 tasks)
+    timeout-minutes: ${{ inputs.timeout || 60 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build Project
+        run: bun run build
+
+      - name: Create GitHub Issue for Task
+        id: create_issue
+        # Skip issue creation in continuous mode or when task_id is provided
+        if: inputs.continuous_mode != 'true' && inputs.task_id == '' && inputs.task != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Use jq to safely construct the issue body JSON (prevents command injection)
+          ISSUE_BODY=$(jq -n \
+            --arg desc "${{ inputs.task }}" \
+            '"## Task Description\n\n\($desc)\n\n---\n\n*This issue was automatically created by duyetbot-action*"')
+
+          # Create GitHub issue using the safely escaped body
+          RESPONSE=$(gh issue create \
+            --title "🤖 duyetbot-action Task" \
+            --body "$ISSUE_BODY" \
+            --label "duyetbot-action" \
+            --json number,title \
+            --jq '{number: .number, title: .title}')
+
+          # Extract issue number and set output
+          ISSUE_NUMBER=$(echo "$RESPONSE" | jq -r '.number')
+          echo "issue_number=$ISSUE_NUMBER" >> $GITHUB_OUTPUT
+          echo "✅ Created issue #${ISSUE_NUMBER}"
+
+      - name: Run duyetbot-action
+        env:
+          # Use OpenRouter with Anthropic-compatible API
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          MODEL: ${{ inputs.model }}
+          DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
+          TASK_SOURCE: ${{ inputs.task_source }}
+          TASK_ID: ${{ inputs.task_id != '' && inputs.task_id || format('github-{0}', steps.create_issue.outputs.issue_number) }}
+          # Continuous mode configuration
+          CONTINUOUS_MODE: ${{ inputs.continuous_mode == 'true' && 'true' || 'false' }}
+          CONTINUOUS_MAX_TASKS: ${{ inputs.max_tasks }}
+          CONTINUOUS_DELAY_MS: ${{ inputs.delay_between_tasks && format('{0}000', inputs.delay_between_tasks) || '5000' }}
+          CLOSE_ISSUES_AFTER_MERGE: ${{ inputs.close_issues == 'true' && 'true' || 'false' }}
+          STOP_ON_FIRST_FAILURE: ${{ inputs.stop_on_failure == 'true' && 'true' || 'false' }}
+          # Auto-merge configuration
+          AUTO_MERGE: ${{ inputs.auto_merge == 'true' && 'true' || 'false' }}
+          REQUIRED_CHECKS: "ci,test"
+          WAIT_FOR_CHECKS: "true"
+          AUTO_MERGE_TIMEOUT: "600000"
+          AUTO_MERGE_APPROVE: "true"
+          AUTO_MERGE_DELETE_BRANCH: "true"
+        run: |
+          # Build arguments
+          ARGS="--source=$TASK_SOURCE"
+          if [ -n "$TASK_ID" ]; then
+            ARGS="$ARGS --task=$TASK_ID"
+          fi
+          if [ "$DRY_RUN" = "true" ]; then
+            ARGS="$ARGS --dry-run"
+          fi
+          if [ "$CONTINUOUS_MODE" = "true" ]; then
+            ARGS="$ARGS --continuous"
+          fi
+
+          echo "🤖 Running duyetbot-action..."
+          echo "   Model: ${MODEL}"
+          echo "   Source: ${TASK_SOURCE}"
+          echo "   Task ID: ${TASK_ID}"
+          echo "   Continuous Mode: ${CONTINUOUS_MODE}"
+          echo "   Auto-Merge: ${AUTO_MERGE}"
+          echo "   Dry Run: ${DRY_RUN}"
+          echo ""
+
+          bun run apps/duyetbot-action/src/index.ts $ARGS
+
+      - name: Close Task Issue
+        # Skip in continuous mode (issues are auto-closed after PR merge)
+        if: inputs.continuous_mode != 'true' && inputs.task_id == '' && steps.create_issue.outputs.issue_number != '' && inputs.dry_run != 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ steps.create_issue.outputs.issue_number }}
+        run: |
+          # Close the issue after task completion
+          gh issue close "$ISSUE_NUMBER" \
+            --comment "✅ Task completed by duyetbot-action run #${{ github.run_number }}"
+
+      - name: Upload Agent Logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-logs-${{ github.run_number }}
+          path: |
+            .agent/logs/
+            .agent/checkpoints/
+          retention-days: 30
+          if-no-files-found: ignore
+
+      - name: Summary
+        if: always()
+        env:
+          TASK: ${{ inputs.task }}
+          MODEL: ${{ inputs.model }}
+          TASK_SOURCE: ${{ inputs.task_source }}
+          TASK_ID: ${{ inputs.task_id != '' && inputs.task_id || format('github-{0}', steps.create_issue.outputs.issue_number) }}
+          DRY_RUN: ${{ inputs.dry_run }}
+          CONTINUOUS_MODE: ${{ inputs.continuous_mode }}
+          AUTO_MERGE: ${{ inputs.auto_merge }}
+          MAX_TASKS: ${{ inputs.max_tasks }}
+        run: |
+          {
+            echo "## duyetbot-action Run Summary"
+            echo ""
+            echo "| Setting | Value |"
+            echo "|---------|-------|"
+            echo "| Task | ${TASK} |"
+            echo "| Model | ${MODEL} |"
+            echo "| Task Source | ${TASK_SOURCE} |"
+            echo "| Task ID | ${TASK_ID} |"
+            echo "| Dry Run | ${DRY_RUN} |"
+            echo "| Continuous Mode | ${CONTINUOUS_MODE} |"
+            echo "| Auto-Merge | ${AUTO_MERGE} |"
+            echo "| Max Tasks | ${MAX_TASKS} |"
+            echo "| Status | ${{ job.status }} |"
+            echo ""
+            echo "### 🤖 Full Capabilities"
+            echo ""
+            echo "duyetbot-action runs with:"
+            echo "- ✅ **Full Skills**: bash, git, github, research, plan, and more"
+            echo "- ✅ **MCP Servers**: Memory MCP and other configured servers"
+            echo "- ✅ **Sub-Agents**: Autonomous task delegation and parallel execution"
+            echo "- ✅ **Checkpoint Support**: Resume from interrupted runs"
+            echo "- ✅ **Token Tracking**: Full usage and cost tracking"
+            echo "- ✅ **Continuous Mode**: Process all tasks until done"
+            echo "- ✅ **Auto-Merge**: Automatically merge PRs after CI"
+            echo "- ✅ **Auto-Close**: Automatically close issues after merge"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  # Triggered by agent-task label on issues
+  run-agent-on-issue:
+    if: github.event_name == 'issues' && github.event.action == 'labeled' && github.event.label.name == 'agent-task'
+    name: Agent for Issue
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 60
+    concurrency:
+      group: agent-issue-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.addLabels({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              labels: ['agent-processing']
+            });
+
+      - name: Run Agent
+        env:
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+        run: |
+          TASK_ID="github-issues-${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ github.event.issue.number }}"
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="github-issues" \
+            --task="$TASK_ID"
+
+      - uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            try {
+              await github.rest.issues.removeLabel({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                name: 'agent-processing'
+              });
+            } catch (e) {}
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-issue-${{ github.event.issue.number }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Triggered when a new issue is opened
+  run-agent-on-new-issue:
+    if: github.event_name == 'issues' && github.event.action == 'opened'
+    name: Agent for New Issue
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 60
+    concurrency:
+      group: agent-new-issue-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - name: Auto-label and assign issue
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          # Add triage and agent-task labels
+          gh issue edit "$ISSUE_NUMBER" --add-label "triage" --add-label "agent-task"
+
+          # Assign to duyetbot
+          gh issue edit "$ISSUE_NUMBER" --add-assignee duyetbot
+
+          echo "✅ Issue #$ISSUE_NUMBER labeled and assigned to @duyetbot"
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: '🤖 **@duyetbot** is analyzing this issue...\n\nI\'ll review the issue and respond shortly. Depending on the task, I may:\n- Ask clarifying questions\n- Propose a solution\n- Create a pull request with fixes\n\nStand by! 🚀'
+            });
+
+      - name: Run Agent
+        env:
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+        run: |
+          TASK_ID="github-issues-${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ github.event.issue.number }}"
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="github-issues" \
+            --task="$TASK_ID"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-new-issue-${{ github.event.issue.number }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
+
+  # Triggered by @duyetbot mentions in PR comments
+  run-agent-on-pr-comment:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@duyetbot')
+    name: Agent for PR Comment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 45
+    concurrency:
+      group: agent-pr-comment-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.issue.pull_request.head.sha }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+      - name: Run Agent
+        env:
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+          COMMENT: ${{ github.event.comment.body }}
+        run: |
+          TASK=$(echo "$COMMENT" | sed 's/.*@duyetbot//' | xargs)
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="file" \
+            --task="pr-comment-${PR_NUMBER}-$(date +%s)"
+
+      - uses: actions/github-script@v7
+        if: always()
+        with:
+          script: |
+            const content = '${{ job.status }}' === 'success' ? 'rocket' : 'confused';
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: content
+            });
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-pr-${{ github.event.issue.number }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
