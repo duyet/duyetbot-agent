@@ -2,7 +2,7 @@
 # Note: Removed global concurrency group to prevent workflow cancellations (commit 843d6cf)
 name: duyetbot-action
 
-'on':
+on:
   workflow_dispatch:
     inputs:
       task:
