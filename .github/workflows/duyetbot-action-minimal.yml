@@ -7,6 +7,15 @@ on:
         description: 'Task description'
         required: false
         type: string
+      model:
+        description: 'AI model to use'
+        required: false
+        default: 'anthropic/claude-sonnet-4-20250514'
+        type: choice
+        options:
+          - anthropic/claude-sonnet-4-20250514
+          - anthropic/claude-opus-4-20250514
+          - anthropic/claude-haiku-4-20250514
   issues:
     types: [opened, labeled]
   issue_comment:
