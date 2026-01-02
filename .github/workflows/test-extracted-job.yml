@@ -1,0 +1,28 @@
+name: Test Extracted Job
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task'
+        required: false
+        type: string
+
+jobs:
+  run-agent:
+    name: Run duyetbot-action
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    if: github.event_name == 'workflow_dispatch'
+    timeout-minutes: ${{ inputs.timeout || 60 }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Echo
+        run: echo "Test"
