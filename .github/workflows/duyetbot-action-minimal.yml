@@ -7,6 +7,10 @@ on:
         description: 'Task description'
         required: false
         type: string
+  issues:
+    types: [opened, labeled]
+  issue_comment:
+    types: [created]
 
 env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
@@ -20,3 +24,11 @@ jobs:
     steps:
       - name: Echo
         run: echo "run-agent job running!"
+  
+  run-agent-on-issue:
+    if: github.event_name == 'issues' && github.event.action == 'labeled'
+    name: Agent for Issue
+    runs-on: ubuntu-latest
+    steps:
+      - name: Echo
+        run: echo "Agent for Issue"
