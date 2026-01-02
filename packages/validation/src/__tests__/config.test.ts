@@ -4,19 +4,19 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  repositoryConfigSchema,
-  autoMergeConfigSchema,
-  selfImprovementConfigSchema,
-  continuousConfigSchema,
   agentConfigSchema,
-  serverConfigSchema,
+  autoMergeConfigSchema,
+  continuousConfigSchema,
   databaseConfigSchema,
-  rateLimitConfigSchema,
-  logConfigSchema,
-  featureFlagSchema,
   effortConfigSchema,
-  telegramConfigSchema,
+  featureFlagSchema,
+  logConfigSchema,
+  rateLimitConfigSchema,
+  repositoryConfigSchema,
+  selfImprovementConfigSchema,
+  serverConfigSchema,
   taskSourceValues,
+  telegramConfigSchema,
 } from '../config/index.js';
 
 describe('repositoryConfigSchema', () => {

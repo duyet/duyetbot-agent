@@ -471,7 +471,7 @@ describe('MCPMemoryClient', () => {
     });
 
     it('should maintain token consistency across concurrent requests', async () => {
-      let receivedTokens: string[] = [];
+      const receivedTokens: string[] = [];
 
       mockFetch.mockImplementation(async (...args: unknown[]) => {
         // The second argument is the RequestInit object with headers
@@ -660,7 +660,11 @@ describe('MCPMemoryClient', () => {
     it('should make request without auth when token is not set', async () => {
       mockFetch.mockResolvedValueOnce({
         ok: true,
-        json: async () => ({ user_id: 'user-123', session_token: 'new-token', expires_at: Date.now() + 3600000 }),
+        json: async () => ({
+          user_id: 'user-123',
+          session_token: 'new-token',
+          expires_at: Date.now() + 3600000,
+        }),
       });
 
       await client.authenticate('github-token');

@@ -128,9 +128,15 @@ export const chatTitleSchema = z
  */
 export const chatMetadataSchema = z.object({
   createdAt: z.date().or(z.number().transform((val: number) => new Date(val))),
-  updatedAt: z.date().or(z.number().transform((val: number) => new Date(val))).optional(),
+  updatedAt: z
+    .date()
+    .or(z.number().transform((val: number) => new Date(val)))
+    .optional(),
   messageCount: z.number().int().nonnegative().optional(),
-  lastMessageAt: z.date().or(z.number().transform((val: number) => new Date(val))).optional(),
+  lastMessageAt: z
+    .date()
+    .or(z.number().transform((val: number) => new Date(val)))
+    .optional(),
 });
 
 /**
@@ -142,9 +148,15 @@ export const chatSchema = z.object({
   visibility: chatVisibilitySchema,
   userId: z.string().min(1, 'User ID is required'),
   createdAt: z.date().or(z.number().transform((val: number) => new Date(val))),
-  updatedAt: z.date().or(z.number().transform((val: number) => new Date(val))).optional(),
+  updatedAt: z
+    .date()
+    .or(z.number().transform((val: number) => new Date(val)))
+    .optional(),
   parentChatId: chatIdSchema.optional(),
-  branchPoint: z.date().or(z.number().transform((val: number) => new Date(val))).optional(),
+  branchPoint: z
+    .date()
+    .or(z.number().transform((val: number) => new Date(val)))
+    .optional(),
 });
 
 /**
@@ -156,7 +168,10 @@ export const postRequestBodySchema = z.object({
   messages: z.array(messageSchema).optional(),
   selectedChatModel: z.string().min(1, 'Model selection is required'),
   selectedVisibilityType: chatVisibilitySchema,
-  customInstructions: z.string().max(5000, 'Custom instructions must be at most 5000 characters').optional(),
+  customInstructions: z
+    .string()
+    .max(5000, 'Custom instructions must be at most 5000 characters')
+    .optional(),
   aiSettings: z
     .object({
       temperature: z.number().min(0).max(2).optional(),
@@ -231,7 +246,10 @@ export const chatListQuerySchema = z.object({
 export const chatHistoryQuerySchema = z.object({
   chatId: chatIdSchema,
   limit: z.number().int().positive().max(100).optional().default(50),
-  before: z.date().or(z.number().transform((val: number) => new Date(val))).optional(),
+  before: z
+    .date()
+    .or(z.number().transform((val: number) => new Date(val)))
+    .optional(),
 });
 
 // Type exports

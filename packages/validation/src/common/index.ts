@@ -43,10 +43,7 @@ export const optionalUrlSchema = z
  * Email schema
  * Validates email address format
  */
-export const emailSchema = z
-  .string()
-  .min(1, 'Email is required')
-  .email('Invalid email address');
+export const emailSchema = z.string().min(1, 'Email is required').email('Invalid email address');
 
 /**
  * Repository identifier schema
@@ -54,10 +51,7 @@ export const emailSchema = z
  */
 export const repoIdentifierSchema = z
   .string()
-  .regex(
-    /^[a-zA-Z0-9_-]+\/[a-zA-Z0-9._-]+$/,
-    'Repository must be in "owner/name" format'
-  );
+  .regex(/^[a-zA-Z0-9_-]+\/[a-zA-Z0-9._-]+$/, 'Repository must be in "owner/name" format');
 
 /**
  * File path schema
@@ -68,32 +62,19 @@ export const filePathSchema = z.string().min(1, 'File path is required');
 /**
  * Encoding type schema for file operations
  */
-export const encodingSchema = z.enum([
-  'utf-8',
-  'ascii',
-  'utf-16le',
-  'ucs2',
-  'base64',
-  'latin1',
-]);
+export const encodingSchema = z.enum(['utf-8', 'ascii', 'utf-16le', 'ucs2', 'base64', 'latin1']);
 
 /**
  * Positive integer schema
  * Validates a positive integer (> 0)
  */
-export const positiveIntSchema = z
-  .number()
-  .int()
-  .positive('Value must be a positive integer');
+export const positiveIntSchema = z.number().int().positive('Value must be a positive integer');
 
 /**
  * Non-negative integer schema
  * Validates an integer >= 0
  */
-export const nonNegativeIntSchema = z
-  .number()
-  .int()
-  .nonnegative('Value must be non-negative');
+export const nonNegativeIntSchema = z.number().int().nonnegative('Value must be non-negative');
 
 /**
  * Port number schema
@@ -118,9 +99,8 @@ export const booleanStringSchema = z
  * Enum values schema
  * Validates array of enum values for configuration
  */
-export const enumValuesSchema = <T extends readonly [string, ...string[]]>(
-  values: T
-) => z.array(z.enum(values));
+export const enumValuesSchema = <T extends readonly [string, ...string[]]>(values: T) =>
+  z.array(z.enum(values));
 
 /**
  * Pagination schema
@@ -171,10 +151,7 @@ export const tagSchema = z
  */
 export const semverSchema = z
   .string()
-  .regex(
-    /^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$/,
-    'Invalid semantic version format'
-  );
+  .regex(/^v?\d+\.\d+\.\d+(-[a-zA-Z0-9.]+)?(\+[a-zA-Z0-9.]+)?$/, 'Invalid semantic version format');
 
 /**
  * Hex color schema
@@ -191,7 +168,7 @@ export const hexColorSchema = z
 export const mimeTypeSchema = z
   .string()
   .regex(
-    /^[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-\^_]*$/,
+    /^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_]*$/,
     'Invalid MIME type format'
   );
 
@@ -214,14 +191,7 @@ export const environmentSchema = z.enum([
  * Log level schema
  * Validates standard log levels
  */
-export const logLevelSchema = z.enum([
-  'trace',
-  'debug',
-  'info',
-  'warn',
-  'error',
-  'fatal',
-]);
+export const logLevelSchema = z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']);
 
 /**
  * ISO 8601 date string schema

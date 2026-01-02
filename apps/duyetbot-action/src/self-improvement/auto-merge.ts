@@ -56,9 +56,13 @@ export class AutoMergeService {
   constructor(
     private githubToken: string,
     private owner: string,
-    private repo: string
+    private repo: string,
+    octokit?: any
   ) {
-    // Lazy load Octokit
+    // Allow octokit to be injected for testing
+    if (octokit) {
+      this.octokit = octokit;
+    }
   }
 
   /**
@@ -67,9 +71,11 @@ export class AutoMergeService {
   async autoMerge(prNumber: number, config: AutoMergeConfig): Promise<AutoMergeResult> {
     console.log(`\n🔄 Auto-merge process for PR #${prNumber}...`);
 
-    // Get Octokit dynamically
-    const { Octokit } = await import('@octokit/rest');
-    this.octokit = new Octokit({ auth: this.githubToken });
+    // Get Octokit dynamically if not already set
+    if (!this.octokit) {
+      const { Octokit } = await import('@octokit/rest');
+      this.octokit = new Octokit({ auth: this.githubToken });
+    }
 
     // Get PR status
     const prStatus = await this.getPRStatus(prNumber);
@@ -84,7 +90,7 @@ export class AutoMergeService {
       };
     }
 
-    // Wait for checks if enabled
+    // Wait for checks if enabled, or just fetch current status
     let checks: StatusCheck[] = [];
     if (config.waitForChecks) {
       console.log('⏳ Waiting for CI checks...');
@@ -99,6 +105,37 @@ export class AutoMergeService {
           checksPassed: checks.filter((c) => c.status === 'success').map((c) => c.name),
           checksFailed: failed.map((c) => c.name),
         };
+      }
+    } else {
+      // Get current check status without waiting
+      const prStatus = await this.getPRStatus(prNumber);
+      checks = prStatus.statusChecks;
+
+      // Verify required checks have passed
+      if (config.requireChecks.length > 0) {
+        const requiredChecks = checks.filter((c) => config.requireChecks.includes(c.name));
+        const failed = requiredChecks.filter((c) => c.status === 'failure');
+        const pending = requiredChecks.filter((c) => c.status === 'pending');
+
+        if (failed.length > 0) {
+          return {
+            merged: false,
+            reason: 'CI checks failed',
+            prNumber,
+            checksPassed: checks.filter((c) => c.status === 'success').map((c) => c.name),
+            checksFailed: failed.map((c) => c.name),
+          };
+        }
+
+        if (pending.length > 0) {
+          return {
+            merged: false,
+            reason: 'CI checks are pending',
+            prNumber,
+            checksPassed: checks.filter((c) => c.status === 'success').map((c) => c.name),
+            checksFailed: [],
+          };
+        }
       }
     }
 
@@ -220,9 +257,10 @@ export async function autoMergePR(
   owner: string,
   repo: string,
   prNumber: number,
-  config: Partial<AutoMergeConfig> = {}
+  config: Partial<AutoMergeConfig> = {},
+  octokit?: any
 ): Promise<AutoMergeResult> {
-  const service = new AutoMergeService(githubToken, owner, repo);
+  const service = new AutoMergeService(githubToken, owner, repo, octokit);
 
   const defaultConfig: AutoMergeConfig = {
     enabled: true,

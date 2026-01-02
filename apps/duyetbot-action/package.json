@@ -7,6 +7,7 @@
     "start": "bun run src/index.ts",
     "dev": "bun run --watch src/index.ts",
     "test": "vitest run",
+    "test:eco": "vitest run --reporter=verbose --no-coverage",
     "type-check": "tsc --noEmit"
   },
   "dependencies": {

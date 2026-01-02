@@ -4,19 +4,19 @@
 
 import { describe, expect, it } from 'vitest';
 import {
-  nonEmptyString,
-  uuidSchema,
-  urlSchema,
   emailSchema,
-  repoIdentifierSchema,
-  positiveIntSchema,
-  paginationSchema,
-  tagSchema,
-  semverSchema,
-  hexColorSchema,
   environmentSchema,
-  logLevelSchema,
+  hexColorSchema,
   idSchema,
+  logLevelSchema,
+  nonEmptyString,
+  paginationSchema,
+  positiveIntSchema,
+  repoIdentifierSchema,
+  semverSchema,
+  tagSchema,
+  urlSchema,
+  uuidSchema,
 } from '../common/index.js';
 
 describe('nonEmptyString', () => {

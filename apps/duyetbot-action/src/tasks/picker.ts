@@ -76,15 +76,15 @@ export class TaskPicker {
       return null;
     }
 
-    // Sort by source priority (descending), then task priority (descending)
+    // Sort by source priority (descending), then task priority (ascending)
     allTasks.sort((a, b) => {
       // Higher source priority first
       if (a.sourcePriority !== b.sourcePriority) {
         return b.sourcePriority - a.sourcePriority;
       }
-      // Higher task priority first
+      // Lower task priority number first (1 is higher priority than 5)
       if (a.priority !== b.priority) {
-        return b.priority - a.priority;
+        return a.priority - b.priority;
       }
       // Newer tasks first (higher createdAt)
       return b.createdAt - a.createdAt;

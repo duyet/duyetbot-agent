@@ -5,17 +5,17 @@
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import {
+  flattenZodErrors,
   formatZodError,
   formatZodErrorToObject,
-  flattenZodErrors,
-  validateOrThrow,
-  validateWithData,
-  isZodError,
   getFirstZodError,
+  isZodError,
   parseEnvBoolean,
-  parseEnvNumber,
   parseEnvJson,
+  parseEnvNumber,
+  validateOrThrow,
   validatePartial,
+  validateWithData,
 } from '../helpers.js';
 
 describe('isZodError', () => {

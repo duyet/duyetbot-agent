@@ -167,10 +167,7 @@ export function getFirstZodError(error: z.ZodError): string | undefined {
  * Validate partial data with a schema
  * Useful for updates where only some fields are provided
  */
-export function validatePartial<T extends z.ZodObject<any>>(
-  schema: T,
-  data: unknown
-): z.infer<T> {
+export function validatePartial<T extends z.ZodObject<any>>(schema: T, data: unknown): z.infer<T> {
   return schema.partial().parse(data) as z.infer<T>;
 }
 

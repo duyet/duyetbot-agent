@@ -1,0 +1,285 @@
+name: "Duyetbot Action"
+description: "AI-powered GitHub automation with intelligent mode detection, continuous processing, and auto-merge capabilities. Auto-detects mode based on event type: @mentions (tag), direct prompts (agent), or multi-task (continuous)."
+branding:
+  icon: "bot"
+  color: "blue"
+
+inputs:
+  # Trigger configuration
+  trigger_phrase:
+    description: "The trigger phrase to look for in comments (e.g., @duyetbot)"
+    required: false
+    default: "@duyetbot"
+
+  assignee_trigger:
+    description: "The assignee username that triggers the action (e.g., duyetbot)"
+    required: false
+
+  label_trigger:
+    description: "The label that triggers the action (e.g., duyetbot)"
+    required: false
+    default: "duyetbot"
+
+  # Prompt configuration
+  prompt:
+    description: "Instructions for the agent. Can be a direct prompt or custom template."
+    required: false
+    default: ""
+
+  settings:
+    description: "Agent settings as JSON string or path to settings JSON file"
+    required: false
+    default: ""
+
+  # Auth configuration
+  anthropic_api_key:
+    description: "Anthropic API key or OpenRouter API key"
+    required: false
+
+  openrouter_api_key:
+    description: "OpenRouter API key (alternative to anthropic_api_key)"
+    required: false
+
+  github_token:
+    description: "GitHub token with repo and pull request permissions (optional if using GitHub App)"
+    required: false
+
+  base_url:
+    description: "Custom API base URL (e.g., https://openrouter.ai/api)"
+    required: false
+
+  # Model configuration
+  model:
+    description: "AI model to use (e.g., xiaomi/mimo-v2-flash:free, z-ai/glm-4.5-air:free)"
+    required: false
+    default: "xiaomi/mimo-v2-flash:free"
+
+  # Duyetbot-specific features
+  continuous_mode:
+    description: "Enable continuous mode - process all tasks until done"
+    required: false
+    default: "false"
+
+  max_tasks:
+    description: "Maximum tasks to process in continuous mode"
+    required: false
+    default: "100"
+
+  auto_merge:
+    description: "Auto-merge PRs after CI checks pass"
+    required: false
+    default: "true"
+
+  close_issues:
+    description: "Auto-close issues after PR merge"
+    required: false
+    default: "true"
+
+  delay_between_tasks:
+    description: "Delay between tasks in continuous mode (seconds)"
+    required: false
+    default: "5"
+
+  dry_run:
+    description: "Dry run mode (no git changes)"
+    required: false
+    default: "false"
+
+  # Task source configuration
+  task_source:
+    description: "Task source for existing tasks (github-issues, file, memory, all)"
+    required: false
+    default: "github-issues"
+
+  task_id:
+    description: "Specific task ID to run (optional, overrides creating new issue)"
+    required: false
+    default: ""
+
+  # Branch configuration
+  base_branch:
+    description: "The branch to use as the base/source when creating new branches"
+    required: false
+
+  branch_prefix:
+    description: "The prefix to use for duyetbot branches"
+    required: false
+    default: "duyetbot/"
+
+  # GitHub configuration
+  allowed_bots:
+    description: "Comma-separated list of allowed bot usernames, or '*' to allow all bots"
+    required: false
+    default: ""
+
+  allowed_non_write_users:
+    description: "Comma-separated list of usernames to allow without write permissions, or '*' to allow all users. WARNING: Use with extreme caution."
+    required: false
+    default: ""
+
+  use_sticky_comment:
+    description: "Use just one comment to deliver updates (edit instead of creating new ones)"
+    required: false
+    default: "true"
+
+  use_commit_signing:
+    description: "Enable commit signing using GitHub's commit signature verification"
+    required: false
+    default: "false"
+
+  bot_id:
+    description: "GitHub user ID to use for git operations"
+    required: false
+    default: "41898282"
+
+  bot_name:
+    description: "GitHub username to use for git operations"
+    required: false
+    default: "duyetbot[bot]"
+
+  # Memory MCP configuration
+  memory_mcp_url:
+    description: "Memory MCP server URL for cross-session memory"
+    required: false
+
+outputs:
+  execution_file:
+    description: "Path to the execution output file"
+    value: ${{ steps.execute.outputs.execution_file }}
+
+  branch_name:
+    description: "The branch created by duyetbot for this execution"
+    value: ${{ steps.prepare.outputs.branch_name }}
+
+  mode:
+    description: "The detected execution mode (tag, agent, or continuous)"
+    value: ${{ steps.prepare.outputs.mode }}
+
+  tasks_processed:
+    description: "Number of tasks processed (continuous mode)"
+    value: ${{ steps.report.outputs.tasks_processed }}
+
+  session_id:
+    description: "The session ID that can be used to continue this conversation"
+    value: ${{ steps.execute.outputs.session_id }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2.0.2
+      with:
+        bun-version: 1.2.11
+
+    - name: Install Dependencies
+      shell: bash
+      run: |
+        cd "${GITHUB_ACTION_PATH}"
+        bun install
+
+    - name: Prepare
+      id: prepare
+      shell: bash
+      run: |
+        bun run "${GITHUB_ACTION_PATH}/src/entrypoints/prepare.ts"
+      env:
+        # Trigger configuration
+        TRIGGER_PHRASE: ${{ inputs.trigger_phrase }}
+        ASSIGNEE_TRIGGER: ${{ inputs.assignee_trigger }}
+        LABEL_TRIGGER: ${{ inputs.label_trigger }}
+        # Prompt configuration
+        PROMPT: ${{ inputs.prompt }}
+        SETTINGS: ${{ inputs.settings }}
+        # Auth configuration
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter_api_key }}
+        OVERRIDE_GITHUB_TOKEN: ${{ inputs.github_token }}
+        BASE_URL: ${{ inputs.base_url }}
+        # Model configuration
+        MODEL: ${{ inputs.model }}
+        # Duyetbot-specific features
+        CONTINUOUS_MODE: ${{ inputs.continuous_mode }}
+        MAX_TASKS: ${{ inputs.max_tasks }}
+        AUTO_MERGE: ${{ inputs.auto_merge }}
+        CLOSE_ISSUES: ${{ inputs.close_issues }}
+        DELAY_BETWEEN_TASKS: ${{ inputs.delay_between_tasks }}
+        DRY_RUN: ${{ inputs.dry_run }}
+        TASK_SOURCE: ${{ inputs.task_source }}
+        TASK_ID: ${{ inputs.task_id }}
+        # Branch configuration
+        BASE_BRANCH: ${{ inputs.base_branch }}
+        BRANCH_PREFIX: ${{ inputs.branch_prefix }}
+        # GitHub configuration
+        ALLOWED_BOTS: ${{ inputs.allowed_bots }}
+        ALLOWED_NON_WRITE_USERS: ${{ inputs.allowed_non_write_users }}
+        USE_STICKY_COMMENT: ${{ inputs.use_sticky_comment }}
+        USE_COMMIT_SIGNING: ${{ inputs.use_commit_signing }}
+        BOT_ID: ${{ inputs.bot_id }}
+        BOT_NAME: ${{ inputs.bot_name }}
+        # Memory MCP
+        MEMORY_MCP_URL: ${{ inputs.memory_mcp_url }}
+        # Environment
+        GITHUB_EVENT_NAME: ${{ github.event_name }}
+        GITHUB_EVENT_ACTION: ${{ github.event.action }}
+        GITHUB_ACTOR: ${{ github.actor }}
+        GITHUB_REPOSITORY: ${{ github.repository }}
+        GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+        GITHUB_REF: ${{ github.ref }}
+        GITHUB_RUN_ID: ${{ github.run_id }}
+        GITHUB_EVENT_PATH: ${{ github.event_path }}
+        DEFAULT_WORKFLOW_TOKEN: ${{ github.token }}
+
+    - name: Execute
+      id: execute
+      if: steps.prepare.outputs.should_execute == 'true'
+      shell: bash
+      run: |
+        bun run "${GITHUB_ACTION_PATH}/src/entrypoints/execute.ts"
+      env:
+        # Outputs from prepare step
+        MODE: ${{ steps.prepare.outputs.mode }}
+        TASK_ID: ${{ steps.prepare.outputs.task_id }}
+        COMMENT_ID: ${{ steps.prepare.outputs.comment_id }}
+        BRANCH_NAME: ${{ steps.prepare.outputs.branch_name }}
+        BASE_BRANCH: ${{ steps.prepare.outputs.base_branch }}
+        SHOULD_EXECUTE: ${{ steps.prepare.outputs.should_execute }}
+        GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}
+        # Configuration
+        ANTHROPIC_API_KEY: ${{ inputs.anthropic_api_key }}
+        OPENROUTER_API_KEY: ${{ inputs.openrouter_api_key }}
+        BASE_URL: ${{ inputs.base_url }}
+        MODEL: ${{ inputs.model }}
+        MEMORY_MCP_URL: ${{ inputs.memory_mcp_url }}
+        DRY_RUN: ${{ inputs.dry_run }}
+        CONTINUOUS_MODE: ${{ inputs.continuous_mode }}
+        MAX_TASKS: ${{ inputs.max_tasks }}
+        AUTO_MERGE: ${{ inputs.auto_merge }}
+        CLOSE_ISSUES: ${{ inputs.close_issues }}
+        DELAY_BETWEEN_TASKS: ${{ inputs.delay_between_tasks }}
+        TASK_SOURCE: ${{ inputs.task_source }}
+
+    - name: Update Comment
+      if: always() && steps.prepare.outputs.should_execute == 'true' && steps.prepare.outputs.comment_id != ''
+      shell: bash
+      run: |
+        bun run "${GITHUB_ACTION_PATH}/src/entrypoints/update-comment.ts"
+      env:
+        MODE: ${{ steps.prepare.outputs.mode }}
+        COMMENT_ID: ${{ steps.prepare.outputs.comment_id }}
+        EXECUTION_FILE: ${{ steps.execute.outputs.execution_file }}
+        SUCCESS: ${{ steps.execute.outcome == 'success' && 'true' || 'false' }}
+        GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}
+
+    - name: Report
+      id: report
+      if: always()
+      shell: bash
+      run: |
+        bun run "${GITHUB_ACTION_PATH}/src/entrypoints/report.ts"
+      env:
+        MODE: ${{ steps.prepare.outputs.mode }}
+        EXECUTION_FILE: ${{ steps.execute.outputs.execution_file }}
+        SUCCESS: ${{ steps.execute.outcome == 'success' && 'true' || 'false' }}
+        TASKS_PROCESSED: ${{ steps.execute.outputs.tasks_processed }}
+        CONTINUOUS_MODE: ${{ inputs.continuous_mode }}
+        GITHUB_TOKEN: ${{ steps.prepare.outputs.github_token }}

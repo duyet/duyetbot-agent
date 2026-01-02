@@ -4,16 +4,16 @@
 
 import { describe, expect, it } from 'vitest';
 import {
+  branchRequestSchema,
   chatMessagePartSchema,
-  filePartSchema,
-  partSchema,
-  messageRoleSchema,
-  userMessageSchema,
-  chatVisibilitySchema,
   chatSchema,
+  chatVisibilitySchema,
+  filePartSchema,
+  messageRoleSchema,
+  partSchema,
   postRequestBodySchema,
   updateVisibilitySchema,
-  branchRequestSchema,
+  userMessageSchema,
 } from '../chat/index.js';
 
 describe('chatMessagePartSchema', () => {
