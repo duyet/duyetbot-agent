@@ -9,70 +9,14 @@ import type { GitHubContext } from '../../src/github/context.js';
 import { tagMode } from '../../src/modes/tag/index.js';
 import type { ModeResult } from '../../src/modes/types.js';
 
-// Mock GitHub operations with conditional logic for integration tests
+// Mock GitHub operations for unit tests
 vi.mock('../../src/github/operations/comments.js', () => {
-  const createComment = vi.fn((octokit: any, options: any) => {
-    // Check if this is MockOctokit (has requests array and rest.issues.createComment)
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.createComment) {
-      return octokit.rest.issues.createComment(options).then((response: any) => ({
-        id: response.data.id,
-        htmlUrl: response.data.html_url,
-      }));
-    }
-    return Promise.resolve({ id: 12345, htmlUrl: 'https://example.com' });
-  });
-
-  const updateComment = vi.fn((octokit: any, options: any) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.updateComment) {
-      return octokit.rest.issues.updateComment(options).then((response: any) => ({
-        id: response.data.id,
-        htmlUrl: response.data.html_url,
-      }));
-    }
-    return Promise.resolve();
-  });
-
-  const findBotComment = vi.fn(async (octokit: any, owner: string, repo: string, issueNumber: number, botUsername: string, marker: string) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.listComments) {
-      const response = await octokit.rest.issues.listComments({ owner, repo, issue_number: issueNumber });
-      const comments = response.data;
-      for (const comment of comments) {
-        if (comment.body.includes(marker)) {
-          return { id: comment.id, body: comment.body };
-        }
-      }
-      return null;
-    }
-    return Promise.resolve(null);
-  });
-
-  const listComments = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.listComments) {
-      return octokit.rest.issues.listComments({ owner, repo, issue_number: issueNumber }).then((response: any) =>
-        response.data.map((comment: any) => ({
-          id: comment.id,
-          body: comment.body,
-          htmlUrl: comment.html_url,
-          createdAt: comment.created_at,
-        }))
-      );
-    }
-    return Promise.resolve([]);
-  });
-
-  const deleteComment = vi.fn((octokit: any, owner: string, repo: string, commentId: number) => {
-    if (octokit?.requests !== undefined && octokit?.rest?.issues?.deleteComment) {
-      return octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
-    }
-    return Promise.resolve();
-  });
-
   return {
-    createComment,
-    updateComment,
-    findBotComment,
-    listComments,
-    deleteComment,
+    createComment: vi.fn(() => Promise.resolve({ id: 12345, htmlUrl: 'https://example.com' })),
+    updateComment: vi.fn(() => Promise.resolve()),
+    findBotComment: vi.fn(() => Promise.resolve(null)),
+    listComments: vi.fn(() => Promise.resolve([])),
+    deleteComment: vi.fn(() => Promise.resolve()),
   };
 });
 
