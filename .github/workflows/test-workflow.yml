@@ -1,0 +1,18 @@
+name: Test Workflow
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Test task'
+        required: false
+        type: string
+
+jobs:
+  test-job:
+    name: Test Job
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Echo
+        run: echo "Test job running!"
