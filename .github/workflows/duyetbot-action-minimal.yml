@@ -1,0 +1,18 @@
+name: duyetbot-action Minimal
+
+on:
+  workflow_dispatch:
+    inputs:
+      task:
+        description: 'Task description'
+        required: false
+        type: string
+
+jobs:
+  run-agent:
+    name: Run duyetbot-action
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    steps:
+      - name: Echo
+        run: echo "run-agent job running!"
