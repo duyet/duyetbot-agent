@@ -5,30 +5,38 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import * as CommentOps from '../../src/github/operations/comments.js';
+import * as LabelOps from '../../src/github/operations/labels.js';
 import type { GitHubContext } from '../../src/github/context.js';
 import { tagMode } from '../../src/modes/tag/index.js';
 import type { ModeResult } from '../../src/modes/types.js';
 
-// Mock GitHub operations
-vi.mock('../../src/github/operations/comments.js', () => ({
-  createComment: vi.fn(() => Promise.resolve({ id: 12345 })),
-  updateComment: vi.fn(() => Promise.resolve()),
-  findBotComment: vi.fn(() => Promise.resolve(null)),
-}));
-
-vi.mock('../../src/github/operations/labels.js', () => ({
-  addLabels: vi.fn(() => Promise.resolve()),
-}));
-
 describe('modes/tag', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
+  let createCommentSpy: ReturnType<typeof vi.spyOn>;
+  let updateCommentSpy: ReturnType<typeof vi.spyOn>;
+  let findBotCommentSpy: ReturnType<typeof vi.spyOn>;
+  let addLabelsSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    // Mock GitHub operations
+    createCommentSpy = vi.spyOn(CommentOps, 'createComment').mockResolvedValue({
+      id: 12345,
+      htmlUrl: 'https://example.com',
+    });
+    updateCommentSpy = vi.spyOn(CommentOps, 'updateComment').mockResolvedValue();
+    findBotCommentSpy = vi.spyOn(CommentOps, 'findBotComment').mockResolvedValue(null);
+    addLabelsSpy = vi.spyOn(LabelOps, 'addLabels').mockResolvedValue();
   });
 
   afterEach(() => {
     consoleLogSpy.mockRestore();
+    createCommentSpy.mockRestore();
+    updateCommentSpy.mockRestore();
+    findBotCommentSpy.mockRestore();
+    addLabelsSpy.mockRestore();
   });
 
   function createBaseContext(overrides: Partial<GitHubContext> = {}): GitHubContext {
