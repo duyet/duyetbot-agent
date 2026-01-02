@@ -43,30 +43,18 @@ export interface GitHubContext {
 export interface GitHubInputs {
   /** Trigger phrase for mentions (e.g., @duyetbot) */
   triggerPhrase: string;
-  /** Assignee username trigger */
-  assigneeTrigger: string;
   /** Label trigger */
   labelTrigger: string;
   /** User prompt for the agent */
   prompt: string;
-  /** Settings JSON */
+  /** Settings JSON string or path */
   settings: string;
-  /** Continuous mode enabled */
-  continuousMode: string;
-  /** Maximum tasks in continuous mode */
-  maxTasks: string;
-  /** Auto-merge enabled */
-  autoMerge: string;
-  /** Close issues after merge */
-  closeIssues: string;
-  /** Delay between tasks */
-  delayBetweenTasks: string;
-  /** Dry run mode */
-  dryRun: string;
-  /** Task source */
-  taskSource: string;
-  /** Specific task ID */
-  taskId: string;
+  /** Additional CLI arguments */
+  claudeArgs: string;
+  /** Parsed settings object (merged from settings JSON and env vars) */
+  settingsObject?: Settings;
+  /** Specific task ID (from env or settings) */
+  taskId?: string;
   /** Base branch */
   baseBranch: string;
   /** Branch prefix */
@@ -83,10 +71,45 @@ export interface GitHubInputs {
   botId: string;
   /** Bot name */
   botName: string;
-  /** Memory MCP URL */
-  memoryMcpUrl: string;
   /** Override GitHub token */
   githubToken?: string | undefined;
+}
+
+/**
+ * Settings structure (from settings JSON)
+ */
+export interface Settings {
+  /** Continuous mode configuration */
+  continuous?: {
+    enabled?: boolean;
+    maxTasks?: number;
+    delayBetweenTasks?: number;
+    closeIssuesAfterMerge?: boolean;
+    stopOnFirstFailure?: boolean;
+  };
+  /** Auto-merge configuration */
+  autoMerge?: {
+    enabled?: boolean;
+    requiredChecks?: string[];
+    closeIssueAfterMerge?: boolean;
+    approve?: boolean;
+    deleteBranch?: boolean;
+    timeout?: number;
+  };
+  /** Model configuration */
+  model?: string;
+  /** Task sources configuration */
+  taskSources?: Array<'github-issues' | 'file' | 'memory'>;
+  /** Dry run mode */
+  dryRun?: boolean;
+  /** Memory MCP configuration */
+  memoryMcp?: {
+    url?: string;
+  };
+  /** Provider configuration */
+  provider?: {
+    baseUrl?: string;
+  };
 }
 
 /**
@@ -115,32 +138,94 @@ export function parseGitHubContext(): GitHubContext {
     }
   }
 
-  // Parse inputs from action.yml
+  // Parse settings JSON from INPUT_SETTINGS
+  let settingsObject: Settings | undefined;
+  const settingsInput = process.env.INPUT_SETTINGS || '';
+  if (settingsInput) {
+    try {
+      // Try parsing as JSON first
+      settingsObject = JSON.parse(settingsInput);
+    } catch {
+      // If not JSON, treat as file path
+      try {
+        const settingsContent = readFileSync(settingsInput, 'utf-8');
+        settingsObject = JSON.parse(settingsContent);
+      } catch (error) {
+        console.warn(`Failed to parse settings from "${settingsInput}":`, error);
+      }
+    }
+  }
+
+  // Parse inputs from action.yml (simplified interface)
   const inputs: GitHubInputs = {
-    triggerPhrase: core.getInput('trigger_phrase') || '@duyetbot',
-    assigneeTrigger: core.getInput('assignee_trigger') || 'duyetbot',
-    labelTrigger: core.getInput('label_trigger') || 'duyetbot',
-    prompt: core.getInput('prompt') || '',
-    settings: core.getInput('settings') || '',
-    continuousMode: core.getInput('continuous_mode') || 'false',
-    maxTasks: core.getInput('max_tasks') || '100',
-    autoMerge: core.getInput('auto_merge') || 'true',
-    closeIssues: core.getInput('close_issues') || 'true',
-    delayBetweenTasks: core.getInput('delay_between_tasks') || '5',
-    dryRun: core.getInput('dry_run') || 'false',
-    taskSource: core.getInput('task_source') || 'github-issues',
-    taskId: core.getInput('task_id') || '',
-    baseBranch: core.getInput('base_branch') || '',
-    branchPrefix: core.getInput('branch_prefix') || 'duyetbot/',
-    allowedBots: core.getInput('allowed_bots') || '',
-    allowedNonWriteUsers: core.getInput('allowed_non_write_users') || '',
-    useStickyComment: core.getInput('use_sticky_comment') || 'true',
-    useCommitSigning: core.getInput('use_commit_signing') || 'false',
-    botId: core.getInput('bot_id') || '41898282',
-    botName: core.getInput('bot_name') || 'duyetbot[bot]',
-    memoryMcpUrl: core.getInput('memory_mcp_url') || '',
-    githubToken: core.getInput('github_token') || undefined,
+    triggerPhrase: process.env.TRIGGER_PHRASE || '@duyetbot',
+    labelTrigger: process.env.LABEL_TRIGGER || 'duyetbot',
+    prompt: process.env.INPUT_PROMPT || '',
+    settings: settingsInput,
+    claudeArgs: process.env.INPUT_CLAUDE_ARGS || '',
+    settingsObject,
+    baseBranch: process.env.BASE_BRANCH || '',
+    branchPrefix: process.env.BRANCH_PREFIX || 'duyetbot/',
+    allowedBots: process.env.ALLOWED_BOTS || '',
+    allowedNonWriteUsers: process.env.ALLOWED_NON_WRITE_USERS || '',
+    useStickyComment: process.env.USE_STICKY_COMMENT || 'true',
+    useCommitSigning: process.env.USE_COMMIT_SIGNING || 'false',
+    botId: process.env.BOT_ID || '41898282',
+    botName: process.env.BOT_NAME || 'duyetbot[bot]',
+    githubToken: process.env.OVERRIDE_GITHUB_TOKEN || process.env.GITHUB_TOKEN || undefined,
   };
+
+  // Backward compatibility: merge old environment variables into settingsObject
+  if (!settingsObject) {
+    settingsObject = {};
+  }
+
+  // Merge old env vars for backward compatibility (deprecated but still supported)
+  if (process.env.CONTINUOUS_MODE === 'true' || process.env.CONTINUOUS_MODE) {
+    settingsObject.continuous = settingsObject.continuous || {};
+    settingsObject.continuous.enabled = settingsObject.continuous.enabled ?? true;
+  }
+  if (process.env.MAX_TASKS) {
+    settingsObject.continuous = settingsObject.continuous || {};
+    settingsObject.continuous.maxTasks = parseInt(process.env.MAX_TASKS, 10);
+  }
+  if (process.env.AUTO_MERGE === 'true' || process.env.AUTO_MERGE) {
+    settingsObject.autoMerge = settingsObject.autoMerge || {};
+    settingsObject.autoMerge.enabled = settingsObject.autoMerge.enabled ?? true;
+  }
+  if (process.env.CLOSE_ISSUES === 'true' || process.env.CLOSE_ISSUES) {
+    settingsObject.autoMerge = settingsObject.autoMerge || {};
+    settingsObject.autoMerge.closeIssueAfterMerge = settingsObject.autoMerge.closeIssueAfterMerge ?? true;
+  }
+  if (process.env.DELAY_BETWEEN_TASKS) {
+    settingsObject.continuous = settingsObject.continuous || {};
+    settingsObject.continuous.delayBetweenTasks = parseInt(process.env.DELAY_BETWEEN_TASKS, 10) * 1000;
+  }
+  if (process.env.DRY_RUN === 'true' || process.env.DRY_RUN) {
+    settingsObject.dryRun = true;
+  }
+  if (process.env.TASK_SOURCE) {
+    // Parse comma-separated task sources
+    settingsObject.taskSources = process.env.TASK_SOURCE.split(',') as any;
+  }
+  if (process.env.TASK_ID) {
+    // Store task_id for reference (will be picked up by task picker)
+    inputs.taskId = process.env.TASK_ID;
+  }
+  if (process.env.MEMORY_MCP_URL) {
+    settingsObject.memoryMcp = settingsObject.memoryMcp || {};
+    settingsObject.memoryMcp.url = process.env.MEMORY_MCP_URL;
+  }
+  if (process.env.BASE_URL) {
+    settingsObject.provider = settingsObject.provider || {};
+    settingsObject.provider.baseUrl = process.env.BASE_URL;
+  }
+  if (process.env.MODEL) {
+    settingsObject.model = process.env.MODEL;
+  }
+
+  // Update inputs with merged settings
+  inputs.settingsObject = settingsObject;
 
   const entityNumber = getEntityNumber(payload, eventName);
   const isPR = isPREvent(payload, eventName);
