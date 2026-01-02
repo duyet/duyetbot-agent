@@ -5,38 +5,135 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import * as CommentOps from '../../src/github/operations/comments.js';
-import * as LabelOps from '../../src/github/operations/labels.js';
 import type { GitHubContext } from '../../src/github/context.js';
 import { tagMode } from '../../src/modes/tag/index.js';
 import type { ModeResult } from '../../src/modes/types.js';
 
+// Mock GitHub operations with conditional logic for integration tests
+vi.mock('../../src/github/operations/comments.js', () => {
+  const createComment = vi.fn((octokit: any, options: any) => {
+    // Check if this is MockOctokit (has requests array and rest.issues.createComment)
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.createComment) {
+      return octokit.rest.issues.createComment(options).then((response: any) => ({
+        id: response.data.id,
+        htmlUrl: response.data.html_url,
+      }));
+    }
+    return Promise.resolve({ id: 12345, htmlUrl: 'https://example.com' });
+  });
+
+  const updateComment = vi.fn((octokit: any, options: any) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.updateComment) {
+      return octokit.rest.issues.updateComment(options).then((response: any) => ({
+        id: response.data.id,
+        htmlUrl: response.data.html_url,
+      }));
+    }
+    return Promise.resolve();
+  });
+
+  const findBotComment = vi.fn(async (octokit: any, owner: string, repo: string, issueNumber: number, botUsername: string, marker: string) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.listComments) {
+      const response = await octokit.rest.issues.listComments({ owner, repo, issue_number: issueNumber });
+      const comments = response.data;
+      for (const comment of comments) {
+        if (comment.body.includes(marker)) {
+          return { id: comment.id, body: comment.body };
+        }
+      }
+      return null;
+    }
+    return Promise.resolve(null);
+  });
+
+  const listComments = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.listComments) {
+      return octokit.rest.issues.listComments({ owner, repo, issue_number: issueNumber }).then((response: any) =>
+        response.data.map((comment: any) => ({
+          id: comment.id,
+          body: comment.body,
+          htmlUrl: comment.html_url,
+          createdAt: comment.created_at,
+        }))
+      );
+    }
+    return Promise.resolve([]);
+  });
+
+  const deleteComment = vi.fn((octokit: any, owner: string, repo: string, commentId: number) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.deleteComment) {
+      return octokit.rest.issues.deleteComment({ owner, repo, comment_id: commentId });
+    }
+    return Promise.resolve();
+  });
+
+  return {
+    createComment,
+    updateComment,
+    findBotComment,
+    listComments,
+    deleteComment,
+  };
+});
+
+vi.mock('../../src/github/operations/labels.js', () => {
+  const addLabels = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.addLabels) {
+      return octokit.rest.issues.addLabels({ owner, repo, issue_number: issueNumber, labels });
+    }
+    return Promise.resolve();
+  });
+
+  const removeLabel = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number, labelName: string) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.removeLabel) {
+      return octokit.rest.issues.removeLabel({ owner, repo, issue_number: issueNumber, name: labelName });
+    }
+    return Promise.resolve();
+  });
+
+  const setLabels = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number, labels: string[]) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.setLabels) {
+      return octokit.rest.issues.setLabels({ owner, repo, issue_number: issueNumber, labels });
+    }
+    return Promise.resolve();
+  });
+
+  const listLabels = vi.fn((octokit: any, owner: string, repo: string, issueNumber: number) => {
+    if (octokit?.requests !== undefined && octokit?.rest?.issues?.listLabelsOnIssue) {
+      return octokit.rest.issues.listLabelsOnIssue({ owner, repo, issue_number: issueNumber }).then((response: any) =>
+        response.data.map((label: any) => ({
+          name: label.name,
+          color: label.color,
+          description: label.description || '',
+        }))
+      );
+    }
+    return Promise.resolve([]);
+  });
+
+  const hasLabel = vi.fn(async (octokit: any, owner: string, repo: string, issueNumber: number, labelName: string) => {
+    const labels = await listLabels(octokit, owner, repo, issueNumber);
+    return labels.some((l: any) => l.name.toLowerCase() === labelName.toLowerCase());
+  });
+
+  return {
+    addLabels,
+    removeLabel,
+    setLabels,
+    listLabels,
+    hasLabel,
+  };
+});
+
 describe('modes/tag', () => {
   let consoleLogSpy: ReturnType<typeof vi.spyOn>;
-  let createCommentSpy: ReturnType<typeof vi.spyOn>;
-  let updateCommentSpy: ReturnType<typeof vi.spyOn>;
-  let findBotCommentSpy: ReturnType<typeof vi.spyOn>;
-  let addLabelsSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
-
-    // Mock GitHub operations
-    createCommentSpy = vi.spyOn(CommentOps, 'createComment').mockResolvedValue({
-      id: 12345,
-      htmlUrl: 'https://example.com',
-    });
-    updateCommentSpy = vi.spyOn(CommentOps, 'updateComment').mockResolvedValue();
-    findBotCommentSpy = vi.spyOn(CommentOps, 'findBotComment').mockResolvedValue(null);
-    addLabelsSpy = vi.spyOn(LabelOps, 'addLabels').mockResolvedValue();
   });
 
   afterEach(() => {
     consoleLogSpy.mockRestore();
-    createCommentSpy.mockRestore();
-    updateCommentSpy.mockRestore();
-    findBotCommentSpy.mockRestore();
-    addLabelsSpy.mockRestore();
   });
 
   function createBaseContext(overrides: Partial<GitHubContext> = {}): GitHubContext {
