@@ -1,5 +1,6 @@
 # duyetbot-action: Consolidated workflow with manual dispatch, issue trigger, and PR comment trigger
 # Note: Removed global concurrency group to prevent workflow cancellations (commit 843d6cf)
+# Last refresh: 1767342243
 name: duyetbot-action
 
 on:
