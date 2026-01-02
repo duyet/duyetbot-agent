@@ -8,6 +8,10 @@ on:
         required: false
         type: string
 
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
 jobs:
   run-agent:
     name: Run duyetbot-action
