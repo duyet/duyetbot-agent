@@ -102,8 +102,8 @@ fi
 echo ""
 echo -e "${BLUE}🐛 Checking for debug statements...${NC}"
 
-# Exclude test files from debug check
-PROD_FILES=$(echo "$STAGED_CODE_FILES" | grep -v -E '\.test\.|\.spec\.|__tests__|__mocks__|\.config\.' || true)
+# Exclude test files and CLI scripts from debug check
+PROD_FILES=$(echo "$STAGED_CODE_FILES" | grep -v -E '\.test\.|\.spec\.|__tests__|__mocks__|\.config\.|^scripts/' || true)
 
 if [ -n "$PROD_FILES" ]; then
   DEBUG_FOUND=0
