@@ -23,9 +23,9 @@ NC='\033[0m' # No Color
 # Check 1: Linting
 echo ""
 echo "📝 Checking code style with Biome..."
-if npm run lint 2>&1 | grep -q "Error"; then
+if bun run lint 2>&1 | grep -q "Error"; then
   echo -e "${YELLOW}⚠️  Lint errors found. Attempting auto-fix...${NC}"
-  npm run lint:fix
+  bun run lint:fix
 
   # Check if there are uncommitted changes after fix
   if ! git diff --quiet; then
@@ -47,17 +47,29 @@ fi
 # Check 2: Type checking (non-blocking, just a warning)
 echo ""
 echo "🔧 Running TypeScript type check..."
-if npm run type-check; then
+if bun run type-check; then
   echo -e "${GREEN}✓ Type check passed${NC}"
 else
   echo -e "${YELLOW}⚠️  Type check has warnings (non-blocking)${NC}"
   echo "Consider fixing type errors when possible."
 fi
 
-# Check 3: Tests
+# Check 3: Build (catch build-time errors before CI)
+echo ""
+echo "🔨 Running build..."
+if bun run build; then
+  echo -e "${GREEN}✓ Build passed${NC}"
+else
+  echo -e "${RED}✗ Build failed${NC}"
+  echo ""
+  echo -e "${YELLOW}💡 Tip: Fix build errors before pushing.${NC}"
+  exit 1
+fi
+
+# Check 4: Tests
 echo ""
 echo "🧪 Running tests..."
-if npm test; then
+if bun run test; then
   echo -e "${GREEN}✓ All tests passed${NC}"
 else
   echo -e "${RED}✗ Tests failed${NC}"
