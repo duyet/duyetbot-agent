@@ -52,9 +52,13 @@ export interface GitHubInputs {
   /** Additional CLI arguments */
   claudeArgs: string;
   /** Parsed settings object (merged from settings JSON and env vars) */
-  settingsObject?: Settings;
+  settingsObject?: Settings | undefined;
   /** Specific task ID (from env or settings) */
   taskId?: string;
+  /** Task source selection (all, github-issues, file, memory) */
+  taskSource?: 'all' | 'github-issues' | 'file' | 'memory';
+  /** Continuous mode configuration */
+  continuousMode?: 'true' | 'false';
   /** Base branch */
   baseBranch: string;
   /** Branch prefix */
@@ -174,11 +178,6 @@ export function parseGitHubContext(): GitHubContext {
     botName: process.env.BOT_NAME || 'duyetbot[bot]',
     githubToken: process.env.OVERRIDE_GITHUB_TOKEN || process.env.GITHUB_TOKEN || undefined,
   };
-
-  // Backward compatibility: merge old environment variables into settingsObject
-  if (!settingsObject) {
-    settingsObject = {};
-  }
 
   // Merge old env vars for backward compatibility (deprecated but still supported)
   if (process.env.CONTINUOUS_MODE === 'true' || process.env.CONTINUOUS_MODE) {

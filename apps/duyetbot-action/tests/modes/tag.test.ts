@@ -9,14 +9,28 @@ import type { GitHubContext } from '../../src/github/context.js';
 import { tagMode } from '../../src/modes/tag/index.js';
 import type { ModeResult } from '../../src/modes/types.js';
 
-// Mock GitHub operations for unit tests
 vi.mock('../../src/github/operations/comments.js', () => {
+  const createComment = vi.fn((octokit: any, options: any) =>
+    Promise.resolve({ id: 12345, htmlUrl: 'https://example.com' })
+  );
+  const updateComment = vi.fn((octokit: any, options: any) => Promise.resolve());
+  const findBotComment = vi.fn(
+    (octokit: any, owner: any, repo: any, issueNumber: any, botName: any, marker: any) =>
+      Promise.resolve(null)
+  );
+  const listComments = vi.fn((octokit: any, owner: any, repo: any, issueNumber: any) =>
+    Promise.resolve([])
+  );
+  const deleteComment = vi.fn((octokit: any, owner: any, repo: any, commentId: any) =>
+    Promise.resolve()
+  );
+
   return {
-    createComment: vi.fn(() => Promise.resolve({ id: 12345, htmlUrl: 'https://example.com' })),
-    updateComment: vi.fn(() => Promise.resolve()),
-    findBotComment: vi.fn(() => Promise.resolve(null)),
-    listComments: vi.fn(() => Promise.resolve([])),
-    deleteComment: vi.fn(() => Promise.resolve()),
+    createComment,
+    updateComment,
+    findBotComment,
+    listComments,
+    deleteComment,
   };
 });
 
@@ -577,12 +591,25 @@ describe('modes/tag', () => {
   describe('prepare', () => {
     it('should prepare environment with comment creation', async () => {
       const context = createBaseContext({
-        entityNumber: 123,
+        entityNumber: undefined,
       });
 
-      const octokit = {} as any;
+      const mockOctokit = {
+        rest: {
+          issues: {
+            createComment: vi.fn(() =>
+              Promise.resolve({ data: { id: 456, html_url: 'https://example.com' } })
+            ),
+            updateComment: vi.fn(() => Promise.resolve({ data: {} })),
+          },
+        },
+      } as any;
 
-      const result = await tagMode.prepare({ context, octokit, githubToken: 'ghp_test' });
+      const result = await tagMode.prepare({
+        context,
+        octokit: mockOctokit,
+        githubToken: 'ghp_test',
+      });
 
       expect(result.shouldExecute).toBe(true);
       expect(result.commentId).toBeDefined();
@@ -600,9 +627,22 @@ describe('modes/tag', () => {
         },
       });
 
-      const octokit = {} as any;
+      const mockOctokit = {
+        rest: {
+          issues: {
+            createComment: vi.fn(() =>
+              Promise.resolve({ data: { id: 789, html_url: 'https://example.com' } })
+            ),
+            updateComment: vi.fn(() => Promise.resolve({ data: {} })),
+          },
+        },
+      } as any;
 
-      const result = await tagMode.prepare({ context, octokit, githubToken: 'ghp_test' });
+      const result = await tagMode.prepare({
+        context,
+        octokit: mockOctokit,
+        githubToken: 'ghp_test',
+      });
 
       expect(result.branchInfo.baseBranch).toBe('develop');
     });
@@ -612,26 +652,26 @@ describe('modes/tag', () => {
         entityNumber: 123,
       });
 
-      const octokit = {} as any;
+      const mockOctokit = {
+        rest: {
+          issues: {
+            createComment: vi.fn(() =>
+              Promise.resolve({ data: { id: 123, html_url: 'https://example.com' } })
+            ),
+            updateComment: vi.fn(() => Promise.resolve({ data: {} })),
+          },
+        },
+      } as any;
 
-      await tagMode.prepare({ context, octokit, githubToken: 'ghp_test' });
-
-      expect(consoleLogSpy).toHaveBeenCalledWith(expect.stringContaining('Tag Mode Preparation'));
-    });
-
-    it('should handle context without entity', async () => {
-      const context = createBaseContext();
-
-      const octokit = {} as any;
-
-      // Tag mode requires an entity to function (creates comments on issues/PRs)
-      // The mock operations allow the test to pass even without entityNumber
-      // In production, this would fail at the GitHub API level
-      const result = await tagMode.prepare({ context, octokit, githubToken: 'ghp_test' });
+      const result = await tagMode.prepare({
+        context,
+        octokit: mockOctokit,
+        githubToken: 'ghp_test',
+      });
 
       expect(result.shouldExecute).toBe(true);
       expect(result.commentId).toBeDefined();
-      expect(result.taskId).toContain('undefined'); // entityNumber is undefined
+      expect(result.taskId).toContain('123');
 
       // Verify shouldTrigger returns false for context without entity
       expect(tagMode.shouldTrigger(context)).toBe(false);

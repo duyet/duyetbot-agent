@@ -88,9 +88,21 @@ describe('Error Recovery Integration', () => {
         },
       });
 
+      const createComment = vi.fn(() =>
+        Promise.resolve({ data: { id: 123, html_url: 'https://example.com' } })
+      );
+      const mockOctokit = {
+        rest: {
+          issues: {
+            createComment,
+            get: vi.fn(),
+          },
+        },
+      } as any;
+
       const options: ModeOptions = {
         context: githubContext,
-        octokit: {} as any,
+        octokit: mockOctokit,
         config,
       };
 

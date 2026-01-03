@@ -8,17 +8,25 @@ import { Octokit } from '@octokit/rest';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { GitHubIssuesSource } from '../../../src/tasks/sources/github-issues.js';
 
-// Mock Octokit
-vi.mock('@octokit/rest', () => ({
-  Octokit: vi.fn().mockImplementation(() => ({
-    issues: {
-      listForRepo: vi.fn(),
-      createComment: vi.fn(),
-      update: vi.fn(),
-      addLabels: vi.fn(),
-    },
-  })),
-}));
+vi.mock('@octokit/rest', () => {
+  const listForRepo = vi.fn();
+  const createComment = vi.fn();
+  const update = vi.fn();
+  const addLabels = vi.fn();
+  const createLabel = vi.fn();
+
+  return {
+    Octokit: vi.fn().mockImplementation(() => ({
+      issues: {
+        listForRepo,
+        createComment,
+        update,
+        addLabels,
+        createLabel,
+      },
+    })),
+  };
+});
 
 describe('GitHubIssuesSource', () => {
   let source: GitHubIssuesSource;
