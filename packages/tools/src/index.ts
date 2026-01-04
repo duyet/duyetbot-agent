@@ -59,9 +59,8 @@ export * from './scratchpad.js';
 export * from './sleep.js';
 export * from './telegram-forward.js';
 export * from './todo-write.js';
-export * from './tool-search.js';
-
 export { todoWriteTool } from './todo-write.js';
+export * from './tool-search.js';
 export { toolSearchTool } from './tool-search.js';
 
 /**
