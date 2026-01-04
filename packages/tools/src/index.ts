@@ -5,8 +5,6 @@
  * - bash: Execute shell commands
  * - git: Git operations
  * - file-ops: File read/write/edit operations (autonomous code editing)
- * - glob: Fast file pattern matching (Claude Code-style)
- * - grep: Powerful code search with regex (Claude Code-style)
  * - deployment: CI/CD deployment tools (build, test, lint, deploy)
  * - github: GitHub API operations
  * - research: Web research (DuckDuckGo)
@@ -38,36 +36,27 @@ import {
   writeFileTool,
 } from './file-ops.js';
 import { gitTool } from './git.js';
-import { askUserTool } from './ask-user.js';
-import { globTool } from './glob.js';
-import { grepTool } from './grep.js';
 import { planTool } from './plan.js';
 import { researchTool } from './research.js';
 import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
 import { telegramForwardTool } from './telegram-forward.js';
-import { todoReadTool, todoWriteTool } from './todo.js';
-import { webFetchTool } from './web-fetch.js';
-import { webSearchTool } from './web-search.js';
+import { todoWriteTool } from './todo-write.js';
 
-export * from './ask-user.js';
 export * from './bash.js';
 export * from './deployment.js';
 export * from './duyet-mcp-client.js';
 export * from './file-ops.js';
 export * from './git.js';
 export * from './github.js';
-export * from './glob.js';
-export * from './grep.js';
 export * from './plan.js';
 export * from './registry.js';
 export * from './research.js';
 export * from './scratchpad.js';
 export * from './sleep.js';
 export * from './telegram-forward.js';
-export * from './todo.js';
-export * from './web-fetch.js';
-export * from './web-search.js';
+export * from './todo-write.js';
+export { todoWriteTool } from './todo-write.js';
 
 /**
  * Agent platform types
@@ -90,12 +79,8 @@ export function getAllBuiltinTools(): Tool[] {
     sleepTool,
     telegramForwardTool,
     duyetMCPClientTool,
-    // Interactive tools (Claude Code-style)
-    askUserTool,
-    // Task management (Claude Code-style)
     todoWriteTool,
-    todoReadTool,
-    // File operations (Claude Code-style)
+    // File operations
     readFileTool,
     writeFileTool,
     editFileTool,
@@ -103,12 +88,6 @@ export function getAllBuiltinTools(): Tool[] {
     searchFilesTool,
     fileStatsTool,
     batchFileOpsTool,
-    // Code search tools (Claude Code-style)
-    globTool,
-    grepTool,
-    // Web tools (Claude Code-style)
-    webFetchTool,
-    webSearchTool,
     // Deployment
     runBuildTool,
     runTestsTool,
