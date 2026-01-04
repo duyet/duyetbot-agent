@@ -42,6 +42,7 @@ import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
 import { telegramForwardTool } from './telegram-forward.js';
 import { todoWriteTool } from './todo-write.js';
+import { toolSearchTool } from './tool-search.js';
 
 export * from './bash.js';
 export * from './deployment.js';
@@ -56,7 +57,9 @@ export * from './scratchpad.js';
 export * from './sleep.js';
 export * from './telegram-forward.js';
 export * from './todo-write.js';
+export * from './tool-search.js';
 export { todoWriteTool } from './todo-write.js';
+export { toolSearchTool } from './tool-search.js';
 
 /**
  * Agent platform types
@@ -71,6 +74,7 @@ export type AgentPlatform = 'cli' | 'server' | 'telegram' | 'github';
  */
 export function getAllBuiltinTools(): Tool[] {
   return [
+    toolSearchTool,
     bashTool,
     gitTool,
     planTool,
@@ -108,7 +112,15 @@ export function getAllBuiltinTools(): Tool[] {
  * - Long-running processes (sleep)
  */
 export function getCloudflareTools(): Tool[] {
-  return [planTool, duyetMCPClientTool, researchTool, scratchpadTool, telegramForwardTool];
+  return [
+    toolSearchTool,
+    planTool,
+    duyetMCPClientTool,
+    researchTool,
+    scratchpadTool,
+    telegramForwardTool,
+    todoWriteTool,
+  ];
 }
 
 /**

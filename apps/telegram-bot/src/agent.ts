@@ -20,7 +20,8 @@ import {
   getTelegramPrompt,
   getTelegramWelcomeMessage,
 } from '@duyetbot/prompts';
-import { getPlatformTools } from '@duyetbot/tools';
+import { getAllBuiltinTools, getPlatformTools } from '@duyetbot/tools';
+import { toolSearchTool } from '@duyetbot/tools/tool-search.js';
 import { createAIGatewayProvider, type ProviderEnv } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
 
@@ -69,7 +70,12 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // MCP servers disabled - SSE connections cause connection pool exhaustion
     // TODO: Re-enable when MCP client supports AbortController timeouts
     mcpServers: [],
-    tools: getPlatformTools('telegram'),
+    // Initialize tool search with all available tools for on-demand discovery
+    // Only expose tool_search initially (85% context savings)
+    tools: [toolSearchTool],
+    onBeforeChat: async (env) => {
+      toolSearchTool.initialize(getAllBuiltinTools());
+    },
     // Reduce history to minimize token usage and subrequests
     // Cloudflare Workers limit: 50 subrequests per invocation
     maxHistory: 20,
@@ -78,7 +84,6 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // Tool iterations - allow complex multi-step tasks like Claude Code
     maxToolIterations: 25,
     // Limit number of tools to reduce token overhead and prevent timeouts
-    // Priority: built-in tools first, then MCP tools
     maxTools: 5,
     // Extract platform config for shared DOs (includes AI Gateway credentials)
     hooks: {
