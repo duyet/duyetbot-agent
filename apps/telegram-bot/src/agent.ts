@@ -87,6 +87,9 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     maxTools: 5,
     // Extract platform config for shared DOs (includes AI Gateway credentials)
     hooks: {
+      beforeHandle: async (ctx) => {
+        toolSearchTool.initialize(getAllBuiltinTools());
+      },
       onError: async (ctx, error, messageRef) => {
         // Log the error for monitoring
         logger.error('[AGENT] Error in handle()', {
@@ -97,7 +100,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
           isAdmin: ctx.isAdmin,
         });
 
-        // Framework automatically edits the thinking message to show error
+        // Framework automatically edits thinking message to show error
         // For admins, send additional detailed error info
         if (ctx.isAdmin) {
           await telegramTransport.send(ctx, `🔍 Debug: ${error.message}`);

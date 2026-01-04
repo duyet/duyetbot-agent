@@ -11,6 +11,8 @@
  * - plan: Task planning
  * - sleep: Delay execution
  * - scratchpad: Temporary note storage
+ * - tool_search: On-demand tool discovery (Claude Code pattern)
+ * - todo: TODO list management
  * - duyet_mcp_client: Access duyet profile info via MCP server
  */
 
@@ -58,6 +60,7 @@ export * from './sleep.js';
 export * from './telegram-forward.js';
 export * from './todo-write.js';
 export * from './tool-search.js';
+
 export { todoWriteTool } from './todo-write.js';
 export { toolSearchTool } from './tool-search.js';
 
@@ -69,7 +72,7 @@ export type AgentPlatform = 'cli' | 'server' | 'telegram' | 'github';
 /**
  * Get all built-in tools
  *
- * Returns the standard set of tools that don't require external context.
+ * Returns standard set of tools that don't require external context.
  * Note: github tool requires Octokit instance, use createGitHubTool() separately.
  */
 export function getAllBuiltinTools(): Tool[] {
@@ -133,7 +136,7 @@ export function getCloudflareTools(): Tool[] {
  * - github: Cloudflare Workers - no shell/git access
  *
  * @param platform - The agent platform type
- * @returns Array of tools appropriate for the platform
+ * @returns Array of tools appropriate for platform
  */
 export function getPlatformTools(platform: AgentPlatform): Tool[] {
   switch (platform) {
