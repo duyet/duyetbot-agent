@@ -146,7 +146,7 @@
 		"@types/react-window": "^2.0.0",
 		"@vitest/coverage-v8": "1.6.1",
 		"@vitest/ui": "^4.0.16",
-		"drizzle-kit": "^0.25.0",
+		"drizzle-kit": "^0.31.8",
 		"happy-dom": "^20.0.11",
 		"jsdom": "^27.4.0",
 		"postcss": "^8",
