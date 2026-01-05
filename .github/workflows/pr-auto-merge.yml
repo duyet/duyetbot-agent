@@ -34,16 +34,19 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Bun
-        uses: ./.github/actions/setup-bun
+      - name: Install Bun
+        run: curl -fsSL https://bun.sh/install | bash
 
       - name: Configure Git
         run: |
           git config user.name "duyetbot"
           git config user.email "duyetbot@users.noreply.github.com"
 
+      - name: Install dependencies
+        run: ~/bun/bun install
+
       - name: Build Project
-        run: bun run build
+        run: ~/bun/bun run build
 
       - name: Run PR Auto-Merge Agent
         env:
