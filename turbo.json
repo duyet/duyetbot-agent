@@ -77,11 +77,6 @@
     "@duyetbot/web#config": {
       "dependsOn": ["@duyetbot/web#deploy"],
       "cache": false
-    },
-    "@duyetbot/docs#build": {
-      "dependsOn": ["^build"],
-      "outputs": ["out/**", ".next/**"],
-      "inputs": ["app/**", "lib/**", "src/**", "*.config.*", "*.json"]
     }
   }
 }
