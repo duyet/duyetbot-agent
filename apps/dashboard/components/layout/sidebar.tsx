@@ -2,6 +2,7 @@
 
 import {
   Activity,
+  CheckSquare,
   ChevronLeft,
   ChevronRight,
   ChevronsUpDown,
@@ -42,6 +43,7 @@ const mainNavItems: NavItem[] = [
   { label: 'Sessions', href: '/sessions', icon: Clock },
   { label: 'Events', href: '/events', icon: Zap },
   { label: 'MCP Servers', href: '/mcp', icon: Database },
+  { label: 'Tasks', href: '/tasks-kanban', icon: CheckSquare },
   { label: 'Tokens', href: '/tokens', icon: Activity },
   { label: 'Cost', href: '/tokens/cost', icon: CreditCard },
 ];
