@@ -38,8 +38,10 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Install Bun
-        run: curl -fsSL https://bun.sh/install | bash
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
 
       - name: Configure Git
         run: |
@@ -47,16 +49,10 @@ jobs:
           git config user.email "duyetbot@users.noreply.github.com"
 
       - name: Install dependencies
-        run: |
-          export BUN_INSTALL="$HOME/.bun"
-          export PATH="$BUN_INSTALL/bin:$PATH"
-          bun install
+        run: bun install
 
       - name: Build Project
-        run: |
-          export BUN_INSTALL="$HOME/.bun"
-          export PATH="$BUN_INSTALL/bin:$PATH"
-          bun run build
+        run: bun run build
 
       - name: Run PR Auto-Merge Agent
         env:
