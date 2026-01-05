@@ -24,20 +24,9 @@ runs:
           ~/.bun/install/cache
           node_modules
           **/node_modules
-        key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock') }}
+        key: ${{ runner.os }}-bun-${{ hashFiles('**/bun.lockb') }}
         restore-keys: |
           ${{ runner.os }}-bun-
-
-    - name: Cache Turbo and build outputs
-      uses: actions/cache@v4
-      with:
-        path: |
-          .turbo
-          packages/*/dist
-          apps/*/dist
-        key: ${{ runner.os }}-turbo-${{ hashFiles('packages/*/src/**', 'apps/*/src/**', 'bun.lock') }}
-        restore-keys: |
-          ${{ runner.os }}-turbo-
 
     - name: Install dependencies
       if: inputs.install == 'true'
