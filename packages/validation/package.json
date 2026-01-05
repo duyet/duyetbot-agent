@@ -46,7 +46,7 @@
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@types/node": "catalog:",
+    "@types/node": "22.10.0",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }
