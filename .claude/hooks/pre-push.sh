@@ -47,7 +47,8 @@ fi
 # Check 2: Type checking (non-blocking, just a warning)
 echo ""
 echo "🔧 Running TypeScript type check..."
-if bun run type-check; then
+# Use npx turbo directly to avoid loop detection in bun run type-check
+if npx turbo run type-check; then
   echo -e "${GREEN}✓ Type check passed${NC}"
 else
   echo -e "${YELLOW}⚠️  Type check has warnings (non-blocking)${NC}"
@@ -57,7 +58,8 @@ fi
 # Check 3: Build (catch build-time errors before CI)
 echo ""
 echo "🔨 Running build..."
-if bun run build; then
+# Use npx turbo directly to avoid loop detection in bun run build
+if npx turbo run build; then
   echo -e "${GREEN}✓ Build passed${NC}"
 else
   echo -e "${RED}✗ Build failed${NC}"
