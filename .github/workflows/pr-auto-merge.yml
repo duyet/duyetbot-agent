@@ -1,0 +1,90 @@
+name: PR Auto-Merge
+
+on:
+  # Run every hour to check for PRs that can be auto-merged
+  schedule:
+    - cron: '0 * * * *'
+  # Allow manual trigger
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Dry run mode (do not actually merge)'
+        type: boolean
+        default: false
+      creator:
+        description: 'Filter by creator (e.g., app/dependabot)'
+        type: string
+        default: 'app/dependabot'
+
+concurrency:
+  group: pr-auto-merge
+  cancel-in-progress: false
+
+jobs:
+  auto-merge-prs:
+    name: Auto-Merge PRs
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - name: Run PR Auto-Merge Agent
+        env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
+          PR_CREATOR: ${{ inputs.creator || 'app/dependabot' }}
+          AUTO_MERGE_MODE: 'true'
+        run: |
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="memory" \
+            --task="pr-auto-merge-$(date +%s)" \
+            --prompt="Review and auto-merge pull requests from ${PR_CREATOR}.
+
+For each open PR from ${PR_CREATOR}:
+1. Check if all CI checks pass successfully
+2. Verify the PR is mergeable (no merge conflicts)
+3. Review the changes for any obvious issues or breaking changes
+4. For Dependabot PRs specifically:
+   - Verify the version update is safe (patch > minor > major for automatic merge)
+   - Check if the changelog mentions any breaking changes
+5. Merge PRs that meet all criteria:
+   - All CI checks pass
+   - No merge conflicts
+   - No breaking changes detected
+   - PR is at least 1 hour old (to allow CI to complete)
+
+Report your findings with:
+- Total PRs reviewed
+- PRs merged (with numbers)
+- PRs skipped with reasons (CI failed, conflicts, breaking changes, etc.)
+
+${DRY_RUN == 'true' && 'DRY RUN MODE: Report what you would do without actually merging.' || ''}"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pr-auto-merge-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore

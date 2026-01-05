@@ -45,6 +45,8 @@ export const githubInputSchema = z.object({
     'add_labels',
     'remove_labels',
     'merge_pr',
+    'list_prs',
+    'get_pr_status',
   ]),
   params: z.record(z.unknown()).optional(),
 });
@@ -441,6 +443,136 @@ export function createGitHubTool(client: GitHubClient, context: RepoContext): Gi
             return {
               success: true,
               data: { merged: result.merged, sha: result.sha },
+            };
+          }
+
+          case 'list_prs': {
+            const state = (params.state as string) || 'open';
+            const perPage = (params.per_page as number) || 100;
+            const creator = (params.creator as string) || undefined;
+            const labels = (params.labels as string) || undefined;
+
+            const queryParams: Record<string, string | number> = {
+              state,
+              per_page,
+              sort: 'created',
+              direction: 'desc',
+            };
+            if (creator) queryParams.creator = creator;
+            if (labels) queryParams.labels = labels;
+
+            const response = await client.request(
+              'GET',
+              `/repos/${context.owner}/${context.repo}/pulls`,
+              queryParams
+            );
+
+            const prs = response.data as Array<{
+              number: number;
+              title: string;
+              state: string;
+              created_at: string;
+              updated_at: string;
+              user: { login: string; type: string };
+              head: { ref: string; sha: string };
+              base: { ref: string };
+              mergeable: boolean | null;
+              merge_state_status: string | null;
+              labels: Array<{ name: string }>;
+            }>;
+
+            return {
+              success: true,
+              data: {
+                prs: prs.map((pr) => ({
+                  number: pr.number,
+                  title: pr.title,
+                  state: pr.state,
+                  created_at: pr.created_at,
+                  updated_at: pr.updated_at,
+                  author: pr.user.login,
+                  author_is_bot: pr.user.type === 'Bot',
+                  head_ref: pr.head.ref,
+                  base_ref: pr.base.ref,
+                  mergeable: pr.mergeable,
+                  merge_state_status: pr.merge_state_status,
+                  labels: pr.labels.map((l) => l.name),
+                })),
+                count: prs.length,
+              },
+            };
+          }
+
+          case 'get_pr_status': {
+            const number = params.number as number;
+            if (!number) {
+              return { success: false, error: 'PR number is required' };
+            }
+
+            // Fetch PR with status check rollup
+            const response = await client.request(
+              'GET',
+              `/repos/${context.owner}/${context.repo}/pulls/${number}`,
+              { headers: { Accept: 'application/vnd.github+json' } }
+            );
+
+            const pr = response.data as {
+              number: number;
+              title: string;
+              state: string;
+              mergeable: boolean | null;
+              merge_state_status: string;
+              status_check_rollup?: Array<{
+                __typename: string;
+                name: string;
+                status: string;
+                conclusion: string | null;
+                workflow_name?: string;
+                details_url?: string;
+              }>;
+            };
+
+            // Parse status checks
+            const statusChecks = (pr.status_check_rollup || []).map((check) => ({
+              name: check.name,
+              status: check.status,
+              conclusion: check.conclusion,
+              workflow: check.workflow_name || null,
+              details_url: check.details_url || null,
+            }));
+
+            // Calculate overall status
+            const completedChecks = statusChecks.filter((c) => c.status === 'COMPLETED');
+            const failedChecks = completedChecks.filter((c) => c.conclusion === 'FAILURE');
+            const passedChecks = completedChecks.filter((c) => c.conclusion === 'SUCCESS');
+            const pendingChecks = statusChecks.filter(
+              (c) => c.status === 'PENDING' || c.status === 'QUEUED'
+            );
+
+            const allPassed =
+              completedChecks.length > 0 && failedChecks.length === 0 && pendingChecks.length === 0;
+            const hasFailures = failedChecks.length > 0;
+            const isPending = pendingChecks.length > 0;
+
+            return {
+              success: true,
+              data: {
+                number: pr.number,
+                title: pr.title,
+                state: pr.state,
+                mergeable: pr.mergeable,
+                merge_state_status: pr.merge_state_status,
+                status_checks: statusChecks,
+                summary: {
+                  total: statusChecks.length,
+                  passed: passedChecks.length,
+                  failed: failedChecks.length,
+                  pending: pendingChecks.length,
+                  all_passed: allPassed,
+                  has_failures: hasFailures,
+                  is_pending: isPending,
+                },
+              },
             };
           }
 
