@@ -45,6 +45,7 @@ import { researchTool } from './research.js';
 import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
 import { telegramForwardTool } from './telegram-forward.js';
+import { todoReadTool, todoWriteTool } from './todo.js';
 
 export * from './bash.js';
 export * from './deployment.js';
@@ -60,6 +61,7 @@ export * from './research.js';
 export * from './scratchpad.js';
 export * from './sleep.js';
 export * from './telegram-forward.js';
+export * from './todo.js';
 
 /**
  * Agent platform types
@@ -82,6 +84,9 @@ export function getAllBuiltinTools(): Tool[] {
     sleepTool,
     telegramForwardTool,
     duyetMCPClientTool,
+    // Task management (Claude Code-style)
+    todoWriteTool,
+    todoReadTool,
     // File operations (Claude Code-style)
     readFileTool,
     writeFileTool,

@@ -23,11 +23,23 @@ import { z } from 'zod';
 // =============================================================================
 
 /**
- * Schema for read_file tool
+ * Schema for read_file tool (Claude Code-style)
+ *
+ * Supports:
+ * - Full file read (default, up to 2000 lines)
+ * - Offset/limit for large files
+ * - Line numbers in output (cat -n format)
  */
 const readFileInputSchema = z.object({
+  /** Absolute path to the file to read */
   path: z.string().min(1, 'Path is required'),
+  /** File encoding (default: utf-8) */
   encoding: z.enum(['utf-8', 'ascii', 'utf-16le', 'ucs2', 'base64', 'latin1']).optional(),
+  /** Line number to start reading from (1-based, for large files) */
+  offset: z.number().int().min(1).optional(),
+  /** Number of lines to read (default: 2000) */
+  limit: z.number().int().positive().optional(),
+  /** Legacy: specific line range (deprecated, use offset/limit) */
   lines: z
     .object({
       from: z.number().int().positive(),
@@ -178,16 +190,22 @@ function filterByPattern(files: string[], pattern: string): string[] {
 // =============================================================================
 
 /**
- * Read file tool
+ * Read file tool (Claude Code-style)
  *
- * Reads a file and returns its contents. Can optionally read a specific line range.
+ * Reads a file and returns its contents with line numbers (cat -n format).
+ * Supports offset/limit for reading large files in chunks.
+ * Default limit is 2000 lines, lines longer than 2000 chars are truncated.
  */
 export class ReadFileTool implements Tool {
   name = 'read_file';
   description =
-    'Read the contents of a file. Can optionally read a specific line range. ' +
-    'Returns the file content with line numbers for easy reference.';
+    'Read the contents of a file with line numbers (cat -n format). ' +
+    'By default reads up to 2000 lines. Use offset/limit for large files. ' +
+    'Lines longer than 2000 characters will be truncated.';
   inputSchema = readFileInputSchema;
+
+  private static readonly DEFAULT_LIMIT = 2000;
+  private static readonly MAX_LINE_LENGTH = 2000;
 
   validate(input: ToolInput): boolean {
     const result = this.inputSchema.safeParse(input.content);
@@ -197,35 +215,63 @@ export class ReadFileTool implements Tool {
   async execute(input: ToolInput): Promise<ToolOutput> {
     try {
       const parsed = this.inputSchema.parse(input.content);
-      const { path, encoding = 'utf-8', lines } = parsed;
+      const {
+        path: filePath,
+        encoding = 'utf-8',
+        offset,
+        limit = ReadFileTool.DEFAULT_LIMIT,
+        lines,
+      } = parsed;
 
-      const content = await readFile(path, { encoding });
+      const content = await readFile(filePath, { encoding });
+      const allLines = content.split('\n');
+      const totalLines = allLines.length;
+
+      // Determine which lines to return
+      let startLine: number;
+      let endLine: number;
 
       if (lines) {
-        const linesArray = content.split('\n');
-        const from = Math.max(1, lines.from) - 1;
-        const to = lines.to ? Math.min(linesArray.length, lines.to) : from + 1;
-        const selectedLines = linesArray.slice(from, to);
-
-        return {
-          status: 'success',
-          content: selectedLines.join('\n'),
-          metadata: {
-            totalLines: linesArray.length,
-            linesRead: to - from,
-            path,
-            lineRange: { from: lines.from, to },
-          },
-        };
+        // Legacy: specific line range
+        startLine = Math.max(1, lines.from);
+        endLine = lines.to ? Math.min(totalLines, lines.to) : startLine;
+      } else if (offset) {
+        // New: offset/limit (1-based)
+        startLine = Math.max(1, offset);
+        endLine = Math.min(totalLines, startLine + limit - 1);
+      } else {
+        // Default: from beginning, up to limit
+        startLine = 1;
+        endLine = Math.min(totalLines, limit);
       }
+
+      // Extract lines (convert to 0-based index)
+      const selectedLines = allLines.slice(startLine - 1, endLine);
+
+      // Format with line numbers (cat -n style)
+      const maxLineNumWidth = String(endLine).length;
+      const formattedLines = selectedLines.map((line, index) => {
+        const lineNum = startLine + index;
+        const paddedNum = String(lineNum).padStart(maxLineNumWidth, ' ');
+        // Truncate long lines
+        const truncatedLine =
+          line.length > ReadFileTool.MAX_LINE_LENGTH
+            ? line.substring(0, ReadFileTool.MAX_LINE_LENGTH) + '...'
+            : line;
+        return `${paddedNum}\t${truncatedLine}`;
+      });
+
+      const formattedContent = formattedLines.join('\n');
 
       return {
         status: 'success',
-        content,
+        content: formattedContent,
         metadata: {
-          path,
-          size: content.length,
-          lines: content.split('\n').length,
+          path: filePath,
+          totalLines,
+          linesRead: selectedLines.length,
+          lineRange: { from: startLine, to: endLine },
+          truncated: endLine < totalLines,
         },
       };
     } catch (error) {
