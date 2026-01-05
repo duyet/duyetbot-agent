@@ -12,7 +12,7 @@
     "@duyetbot/core": "workspace:*",
     "@duyetbot/tools": "workspace:*",
     "@duyetbot/types": "workspace:*",
-    "vitest": "^2.0.0",
+    "vitest": "^4.0.16",
     "zod": "^3.23.0"
   }
 }

@@ -23,6 +23,6 @@
   "devDependencies": {
     "@duyetbot/config-typescript": "workspace:*",
     "@types/bun": "latest",
-    "vitest": "^3.0.0"
+    "vitest": "^4.0.16"
   }
 }
