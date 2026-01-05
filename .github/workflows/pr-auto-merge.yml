@@ -20,6 +20,10 @@ concurrency:
   group: pr-auto-merge
   cancel-in-progress: false
 
+env:
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+
 jobs:
   auto-merge-prs:
     name: Auto-Merge PRs
