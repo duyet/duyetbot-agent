@@ -285,7 +285,7 @@ jobs:
       - name: Build
         run: bun run build
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         with:
           script: |
             await github.rest.issues.addLabels({
@@ -307,7 +307,7 @@ jobs:
             --source="github-issues" \
             --task="$TASK_ID"
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         if: always()
         with:
           script: |
@@ -370,7 +370,7 @@ jobs:
 
           echo "✅ Issue #$ISSUE_NUMBER labeled and assigned to @duyetbot"
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         with:
           script: |
             await github.rest.issues.createComment({
@@ -434,7 +434,7 @@ jobs:
       - name: Build
         run: bun run build
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         with:
           script: |
             await github.rest.reactions.createForIssueComment({
@@ -458,7 +458,7 @@ jobs:
             --source="file" \
             --task="pr-comment-${PR_NUMBER}-$(date +%s)"
 
-      - uses: actions/github-script@v7
+      - uses: actions/github-script@v8
         if: always()
         with:
           script: |
