@@ -90,8 +90,11 @@ export class ContextCompressor {
     const toolResultRegex = /\[Tool.*?\]\s+(.*?)(?=\n\s*|$)/g;
     let result = text;
 
-    let match: RegExpExecArray | null;
-    while ((match = toolResultRegex.exec(result)) !== null) {
+    for (
+      let match = toolResultRegex.exec(result);
+      match !== null;
+      match = toolResultRegex.exec(result)
+    ) {
       const toolName = match[1];
       const toolOutput = match[2];
 

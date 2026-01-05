@@ -454,7 +454,7 @@ export function createGitHubTool(client: GitHubClient, context: RepoContext): Gi
 
             const queryParams: Record<string, string | number> = {
               state,
-              per_page,
+              per_page: _perPage,
               sort: 'created',
               direction: 'desc',
             };

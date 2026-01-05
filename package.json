@@ -102,12 +102,12 @@
   "devDependencies": {
     "@biomejs/biome": "^2.3.10",
     "@opennextjs/cloudflare": "^1.14.7",
-    "@vitest/coverage-v8": "^2.1.8",
+    "@vitest/coverage-v8": "^4.0.16",
     "concurrently": "^9.2.1",
     "promptfoo": "^0.120.4",
     "tsx": "^4.21.0",
     "turbo": "^2.6.3",
-    "vitest": "^2.1.8",
+    "vitest": "^4.0.16",
     "wrangler": "^4.54.0"
   },
   "packageManager": "pnpm@9.15.0",
@@ -124,7 +124,7 @@
     "agents": "0.3.0",
     "hono": "^4.11.2",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8",
+    "vitest": "^4.0.16",
     "wrangler": "^4.50.0",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.24.5"
