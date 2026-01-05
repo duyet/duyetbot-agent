@@ -57,10 +57,7 @@ jobs:
 
       - name: Run PR Auto-Merge Agent
         env:
-          ANTHROPIC_BASE_URL: https://openrouter.ai/api
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
           DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
