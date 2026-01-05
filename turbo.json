@@ -51,31 +51,7 @@
     "format": {
       "cache": false
     },
-    "@duyetbot/telegram-bot#deploy": {
-      "dependsOn": ["build", "test"],
-      "cache": false
-    },
-    "@duyetbot/github-bot#deploy": {
-      "dependsOn": ["build", "test"],
-      "cache": false
-    },
     "config": {
-      "cache": false
-    },
-    "@duyetbot/telegram-bot#config": {
-      "dependsOn": ["@duyetbot/telegram-bot#deploy"],
-      "cache": false
-    },
-    "@duyetbot/github-bot#config": {
-      "dependsOn": ["@duyetbot/github-bot#deploy"],
-      "cache": false
-    },
-    "@duyetbot/web#deploy": {
-      "dependsOn": ["build"],
-      "cache": false
-    },
-    "@duyetbot/web#config": {
-      "dependsOn": ["@duyetbot/web#deploy"],
       "cache": false
     }
   }
