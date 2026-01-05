@@ -20,8 +20,9 @@ export const DEFAULT_CONFIG = {
   /** Maximum messages to keep in conversation history (prevents memory overflow) */
   maxHistory: 100,
 
-  /** Maximum tool call iterations per message (prevents infinite loops) */
-  maxToolIterations: 5,
+  /** Maximum tool call iterations per message (prevents infinite loops)
+   *  Increased to 25 to support complex multi-step tasks like Claude Code */
+  maxToolIterations: 25,
 
   /** Interval in milliseconds to rotate thinking messages during processing */
   thinkingRotationInterval: 5000,

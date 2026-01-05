@@ -19,7 +19,7 @@ describe('config', () => {
   describe('DEFAULT_CONFIG', () => {
     it('should have correct default values', () => {
       expect(DEFAULT_CONFIG.maxHistory).toBe(100);
-      expect(DEFAULT_CONFIG.maxToolIterations).toBe(5);
+      expect(DEFAULT_CONFIG.maxToolIterations).toBe(25); // Increased for complex multi-step tasks
       expect(DEFAULT_CONFIG.thinkingRotationInterval).toBe(5000);
       expect(DEFAULT_CONFIG.maxTools).toBeUndefined();
       expect(DEFAULT_CONFIG.welcomeMessage).toBe('Welcome! How can I help you today?');

@@ -75,8 +75,8 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     maxHistory: 20,
     // Increase rotation interval to reduce edit subrequests
     thinkingRotationInterval: 5000,
-    // Limit tool call iterations to prevent gateway timeouts
-    maxToolIterations: 10,
+    // Tool iterations - allow complex multi-step tasks like Claude Code
+    maxToolIterations: 25,
     // Limit number of tools to reduce token overhead and prevent timeouts
     // Priority: built-in tools first, then MCP tools
     maxTools: 5,

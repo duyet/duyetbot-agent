@@ -5,6 +5,8 @@
  * - bash: Execute shell commands
  * - git: Git operations
  * - file-ops: File read/write/edit operations (autonomous code editing)
+ * - glob: Fast file pattern matching (Claude Code-style)
+ * - grep: Powerful code search with regex (Claude Code-style)
  * - deployment: CI/CD deployment tools (build, test, lint, deploy)
  * - github: GitHub API operations
  * - research: Web research (DuckDuckGo)
@@ -36,6 +38,8 @@ import {
   writeFileTool,
 } from './file-ops.js';
 import { gitTool } from './git.js';
+import { globTool } from './glob.js';
+import { grepTool } from './grep.js';
 import { planTool } from './plan.js';
 import { researchTool } from './research.js';
 import { scratchpadTool } from './scratchpad.js';
@@ -48,6 +52,8 @@ export * from './duyet-mcp-client.js';
 export * from './file-ops.js';
 export * from './git.js';
 export * from './github.js';
+export * from './glob.js';
+export * from './grep.js';
 export * from './plan.js';
 export * from './registry.js';
 export * from './research.js';
@@ -76,7 +82,7 @@ export function getAllBuiltinTools(): Tool[] {
     sleepTool,
     telegramForwardTool,
     duyetMCPClientTool,
-    // File operations
+    // File operations (Claude Code-style)
     readFileTool,
     writeFileTool,
     editFileTool,
@@ -84,6 +90,9 @@ export function getAllBuiltinTools(): Tool[] {
     searchFilesTool,
     fileStatsTool,
     batchFileOpsTool,
+    // Code search tools (Claude Code-style)
+    globTool,
+    grepTool,
     // Deployment
     runBuildTool,
     runTestsTool,

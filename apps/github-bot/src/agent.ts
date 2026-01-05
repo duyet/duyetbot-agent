@@ -71,8 +71,8 @@ export const GitHubAgent: CloudflareChatAgentClass<BaseEnv, GitHubContext> =
     maxHistory: 10,
     // Thinking rotation interval to match Telegram (keeps connection alive)
     thinkingRotationInterval: 5000,
-    // Limit tool call iterations to prevent gateway timeouts
-    maxToolIterations: 10,
+    // Tool iterations - allow complex multi-step tasks like Claude Code
+    maxToolIterations: 25,
     // Limit number of tools to reduce token overhead
     maxTools: 5,
     // Extract platform config for shared DOs (includes AI Gateway credentials)
