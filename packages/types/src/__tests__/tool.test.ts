@@ -6,7 +6,6 @@
 
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
-import { ToolExecutionError } from '../tool.js';
 import type {
   Tool,
   ToolContext,
@@ -20,6 +19,7 @@ import type {
   ToolRegistryEntry,
   ToolStatus,
 } from '../tool.js';
+import { ToolExecutionError } from '../tool.js';
 
 describe('Tool Types', () => {
   describe('ToolStatus', () => {
@@ -292,7 +292,7 @@ describe('Tool Types', () => {
         name: 'testTool',
         description: 'Test tool',
         inputSchema: z.object({}),
-        async execute(input) {
+        async execute(_input) {
           return { status: 'success', content: 'done' };
         },
       };
@@ -351,23 +351,23 @@ describe('Tool Types', () => {
 
   describe('ToolHooks', () => {
     it('should define hook functions', () => {
-      const mockTool: Tool = {
+      const _mockTool: Tool = {
         name: 'hookedTool',
         description: 'Tool with hooks',
         inputSchema: z.object({}),
-        async execute(input) {
+        async execute(_input) {
           return { status: 'success', content: 'done' };
         },
       };
 
       const hooks: ToolHooks = {
-        beforeExecute: async (tool, input, context) => {
+        beforeExecute: async (tool, _input, _context) => {
           console.log(`Before executing ${tool.name}`);
         },
-        afterExecute: async (tool, output, context) => {
+        afterExecute: async (tool, _output, _context) => {
           console.log(`After executing ${tool.name}`);
         },
-        onError: async (tool, error, context) => {
+        onError: async (tool, error, _context) => {
           console.error(`Error in ${tool.name}: ${error.message}`);
         },
       };

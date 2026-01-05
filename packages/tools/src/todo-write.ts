@@ -7,7 +7,7 @@
 
 import type { Tool, ToolInput, ToolOutput } from '@duyetbot/types';
 import { z } from 'zod';
-import { TodoManager, type TodoItem } from './todo.js';
+import { type TodoItem, TodoManager } from './todo.js';
 
 // Input schema for todo operations
 const todoInputSchema = z.object({
@@ -96,7 +96,7 @@ export class TodoWriteTool implements Tool {
           };
         }
 
-        case 'update_todo':
+        case 'update_todo': {
           if (!data.listId || !data.todoId) {
             return {
               status: 'error',
@@ -109,8 +109,12 @@ export class TodoWriteTool implements Tool {
           }
 
           const updateData: Partial<Pick<TodoItem, 'status' | 'priority'>> = {};
-          if (data.status !== undefined) updateData.status = data.status;
-          if (data.priority !== undefined) updateData.priority = data.priority;
+          if (data.status !== undefined) {
+            updateData.status = data.status;
+          }
+          if (data.priority !== undefined) {
+            updateData.priority = data.priority;
+          }
 
           manager.updateTodo(data.listId, data.todoId, updateData);
           return {
@@ -118,6 +122,7 @@ export class TodoWriteTool implements Tool {
             content: `✅ Updated TODO item ${data.todoId}`,
             metadata: { listId: data.listId, todoId: data.todoId },
           };
+        }
 
         case 'remove_list':
           if (!data.listId) {
@@ -251,7 +256,9 @@ export class TodoWriteTool implements Tool {
             `📋 **All TODO Lists** (${lists.size})`,
             ...Array.from(lists.entries()).map(([id, list]: [string, any]) => {
               const stats = manager.getStats(id);
-              if (!stats) return '';
+              if (!stats) {
+                return '';
+              }
               return [
                 `  **${list.title || id}**`,
                 `    Items: ${stats.total}`,

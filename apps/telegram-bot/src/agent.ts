@@ -20,10 +20,11 @@ import {
   getTelegramPrompt,
   getTelegramWelcomeMessage,
 } from '@duyetbot/prompts';
-import { getAllBuiltinTools, getPlatformTools } from '@duyetbot/tools';
-import { toolSearchTool } from '@duyetbot/tools/tool-search.js';
+import { getAllBuiltinTools, toolSearchTool } from '@duyetbot/tools';
 import { createAIGatewayProvider, type ProviderEnv } from './provider.js';
 import { type TelegramContext, telegramTransport } from './transport.js';
+
+toolSearchTool.initialize(getAllBuiltinTools());
 
 /**
  * Base environment without self-reference
@@ -73,9 +74,6 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     // Initialize tool search with all available tools for on-demand discovery
     // Only expose tool_search initially (85% context savings)
     tools: [toolSearchTool],
-    onBeforeChat: async (env) => {
-      toolSearchTool.initialize(getAllBuiltinTools());
-    },
     // Reduce history to minimize token usage and subrequests
     // Cloudflare Workers limit: 50 subrequests per invocation
     maxHistory: 20,
@@ -87,7 +85,7 @@ export const TelegramAgent: CloudflareChatAgentClass<BaseEnv, TelegramContext> =
     maxTools: 5,
     // Extract platform config for shared DOs (includes AI Gateway credentials)
     hooks: {
-      beforeHandle: async (ctx) => {
+      beforeHandle: async (_ctx) => {
         toolSearchTool.initialize(getAllBuiltinTools());
       },
       onError: async (ctx, error, messageRef) => {

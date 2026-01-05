@@ -95,6 +95,8 @@ export class ContextCompressor {
       const toolName = match[1];
       const toolOutput = match[2];
 
+      if (!toolOutput) continue;
+
       if (this.config.preserveToolResults) {
         result = result.replace(toolOutput, `[Tool: ${toolName}] (result preserved)`);
       } else {

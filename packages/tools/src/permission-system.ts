@@ -53,10 +53,9 @@ class PermissionManager {
     });
 
     const timeout = this.config.timeout || 300000;
-    const deadline = Date.now() + timeout;
 
     return new Promise((resolve, reject) => {
-      const timeoutId = setTimeout(() => {
+      setTimeout(() => {
         this.pendingApprovals.delete(approvalId);
         reject(new Error(`Approval timeout for ${toolName}`));
       }, timeout);
