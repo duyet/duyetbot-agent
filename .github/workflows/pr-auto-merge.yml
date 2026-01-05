@@ -34,7 +34,13 @@ jobs:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - uses: ./.github/actions/setup-bun
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
       - name: Configure Git
         run: |
