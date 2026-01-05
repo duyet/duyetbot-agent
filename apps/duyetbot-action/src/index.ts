@@ -17,6 +17,7 @@ program
 program
   .option('-s, --source <source>', 'Task source (all, github-issues, file, memory)', 'all')
   .option('-t, --task <taskId>', 'Specific task ID to run')
+  .option('-p, --prompt <prompt>', 'Direct prompt to execute (bypasses task sources)')
   .option('--dry-run', 'Run without making real changes')
   .option('--continuous', 'Enable continuous mode - process all available tasks')
   .action(async (options) => {
@@ -31,6 +32,13 @@ program
       if (options.dryRun) {
         (config as { dryRun: boolean }).dryRun = true;
         console.log('⚠️  Dry run mode enabled');
+      }
+
+      // Handle direct prompt mode - bypasses task sources entirely
+      if (options.prompt) {
+        console.log('📝 Direct prompt mode enabled');
+        await runDirectPrompt(config, options.prompt, startTime);
+        return;
       }
 
       // Enable continuous mode if CLI flag or config
@@ -96,6 +104,92 @@ function getSourcesToUse(sourceOption: string, config: Config): TaskSource[] {
 
   console.warn(`Unknown source: ${sourceOption}, using all sources`);
   return config.taskSources;
+}
+
+/**
+ * Run a direct prompt without task sources
+ *
+ * Creates a synthetic task from the prompt and executes it directly.
+ * Useful for one-off commands, scheduled tasks, or testing.
+ */
+async function runDirectPrompt(
+  config: Config,
+  prompt: string,
+  sessionStartTime: number
+): Promise<void> {
+  // Create a synthetic task from the prompt
+  const task: Task = {
+    id: `direct-prompt-${Date.now()}`,
+    source: 'file',
+    title: prompt.slice(0, 80),
+    description: prompt,
+    priority: 5,
+    labels: ['direct-prompt'],
+    status: 'pending',
+    metadata: {
+      directPrompt: true,
+    },
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+  };
+
+  console.log(`\n🎯 Executing direct prompt`);
+  console.log(`   ${prompt.slice(0, 100)}${prompt.length > 100 ? '...' : ''}\n`);
+
+  // Initialize agent loop
+  const agentLoop = new AgentLoop({
+    config,
+    task,
+    onProgress: (step, message) => {
+      const preview = message.slice(0, 100).replace(/\n/g, ' ');
+      console.log(`   [Step ${step}] ${preview}${message.length > 100 ? '...' : ''}`);
+    },
+  });
+
+  // Run agent
+  console.log('🔄 Running agent loop...\n');
+  const result = await agentLoop.run();
+
+  const duration = Date.now() - sessionStartTime;
+
+  // Build report context (minimal for direct prompts)
+  const reportContext: ReportContext = {
+    taskId: task.id,
+    taskSource: task.source,
+    success: result.success,
+    output: result.output,
+    error: result.error,
+    tokensUsed: result.tokensUsed,
+    duration,
+  };
+
+  // Initialize reporter and report results
+  if (config.repository) {
+    const reporter = new CombinedReporter({
+      githubToken: config.githubToken,
+      owner: config.repository.owner,
+      repo: config.repository.name,
+      logDir: config.logDir,
+      dryRun: config.dryRun,
+      autoMerge: config.autoMerge,
+    });
+
+    console.log('\n📤 Reporting results...');
+    await reporter.report(reportContext);
+  }
+
+  // Print summary
+  console.log('\n📊 Summary:');
+  console.log(`   Duration: ${(duration / 1000).toFixed(2)}s`);
+  console.log(`   Tokens: ${result.tokensUsed}`);
+  console.log(`   Steps: ${result.stepsCompleted}`);
+
+  if (!result.success) {
+    console.log(`\n❌ Task failed: ${result.error}`);
+    process.exit(1);
+  }
+
+  console.log(`\n✅ Direct prompt completed successfully`);
 }
 
 /**

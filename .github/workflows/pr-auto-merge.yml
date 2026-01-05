@@ -44,13 +44,19 @@ jobs:
       - name: Build
         run: bun run build
 
-      - name: Create PR Auto-Merge Task in Memory-MCP
+      - name: Run PR Auto-Merge Agent
         env:
+          ANTHROPIC_BASE_URL: https://openrouter.ai/api
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
           PR_CREATOR: ${{ inputs.creator || 'app/dependabot' }}
         run: |
-          # Create task in memory-mcp for the agent to pick up
-          TASK_DESC="Review and auto-merge pull requests from ${PR_CREATOR}.
+          bun run apps/duyetbot-action/src/index.ts \
+            --prompt="Review and auto-merge pull requests from ${PR_CREATOR}.
 
           For each open PR from ${PR_CREATOR}:
           1. Check if all CI checks pass successfully
@@ -68,39 +74,9 @@ jobs:
           Report your findings with:
           - Total PRs reviewed
           - PRs merged (with numbers)
-          - PRs skipped with reasons (CI failed, conflicts, breaking changes, etc.)"
+          - PRs skipped with reasons (CI failed, conflicts, breaking changes, etc.)
 
-          curl -X POST "${MEMORY_MCP_URL}/api/tasks" \
-            -H "Content-Type: application/json" \
-            -d "{
-              \"action\": \"add\",
-              \"userId\": \"github-actions-agent\",
-              \"params\": {
-                \"description\": \"${TASK_DESC}\",
-                \"priority\": 7,
-                \"tags\": [\"pr-auto-merge\", \"${PR_CREATOR}\"],
-                \"metadata\": {
-                  \"creator\": \"${PR_CREATOR}\",
-                  \"autoMerge\": true
-                }
-              }
-            }"
-
-      - name: Run PR Auto-Merge Agent
-        env:
-          ANTHROPIC_BASE_URL: https://openrouter.ai/api
-          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          ANTHROPIC_DEFAULT_SONNET_MODEL: '@preset/claude-code-github-action'
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
-          DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
-          PR_CREATOR: ${{ inputs.creator || 'app/dependabot' }}
-          AUTO_MERGE_MODE: 'true'
-        run: |
-          bun run apps/duyetbot-action/src/index.ts \
-            --source="memory" \
-            --continuous
+          ${DRY_RUN == 'true' && 'DRY RUN MODE: Report what you would do without actually merging.' || ''}"
 
       - uses: actions/upload-artifact@v4
         if: always()

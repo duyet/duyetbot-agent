@@ -1,0 +1,31 @@
+name: Sync Claude Plugins
+
+on:
+  schedule:
+    # Run weekly on Sundays at midnight UTC
+    - cron: '0 0 * * 0'
+  workflow_dispatch:  # Allow manual triggering
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v1
+        with:
+          bun-version: latest
+
+      - name: Sync plugins
+        run: bun run scripts/sync-plugins.ts
+        working-directory: apps/duyetbot-action
+
+      - name: Commit changes
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add apps/duyetbot-action/.claude/
+          git diff --staged --quiet || git commit -m "chore: sync claude plugins [auto-update]"
+          git push
