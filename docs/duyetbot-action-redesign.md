@@ -1,3 +1,8 @@
+---
+title: duyetbot-action Redesign Plan
+description: Redesign duyetbot-action to match claude-code-action's architecture and developer experience (DX).
+---
+
 # duyetbot-action Redesign Plan
 
 ## Overview
