@@ -44,6 +44,48 @@ jobs:
       - name: Build
         run: bun run build
 
+      - name: Create PR Auto-Merge Task in Memory-MCP
+        env:
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          PR_CREATOR: ${{ inputs.creator || 'app/dependabot' }}
+        run: |
+          # Create task in memory-mcp for the agent to pick up
+          TASK_DESC="Review and auto-merge pull requests from ${PR_CREATOR}.
+
+          For each open PR from ${PR_CREATOR}:
+          1. Check if all CI checks pass successfully
+          2. Verify the PR is mergeable (no merge conflicts)
+          3. Review the changes for any obvious issues or breaking changes
+          4. For Dependabot PRs specifically:
+             - Verify the version update is safe (patch > minor > major for automatic merge)
+             - Check if the changelog mentions any breaking changes
+          5. Merge PRs that meet all criteria:
+             - All CI checks pass
+             - No merge conflicts
+             - No breaking changes detected
+             - PR is at least 1 hour old (to allow CI to complete)
+
+          Report your findings with:
+          - Total PRs reviewed
+          - PRs merged (with numbers)
+          - PRs skipped with reasons (CI failed, conflicts, breaking changes, etc.)"
+
+          curl -X POST "${MEMORY_MCP_URL}/api/tasks" \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"action\": \"add\",
+              \"userId\": \"github-actions-agent\",
+              \"params\": {
+                \"description\": \"${TASK_DESC}\",
+                \"priority\": 7,
+                \"tags\": [\"pr-auto-merge\", \"${PR_CREATOR}\"],
+                \"metadata\": {
+                  \"creator\": \"${PR_CREATOR}\",
+                  \"autoMerge\": true
+                }
+              }
+            }"
+
       - name: Run PR Auto-Merge Agent
         env:
           ANTHROPIC_BASE_URL: https://openrouter.ai/api
@@ -58,28 +100,7 @@ jobs:
         run: |
           bun run apps/duyetbot-action/src/index.ts \
             --source="memory" \
-            --task="pr-auto-merge-$(date +%s)" \
-            --prompt="Review and auto-merge pull requests from ${PR_CREATOR}.
-
-For each open PR from ${PR_CREATOR}:
-1. Check if all CI checks pass successfully
-2. Verify the PR is mergeable (no merge conflicts)
-3. Review the changes for any obvious issues or breaking changes
-4. For Dependabot PRs specifically:
-   - Verify the version update is safe (patch > minor > major for automatic merge)
-   - Check if the changelog mentions any breaking changes
-5. Merge PRs that meet all criteria:
-   - All CI checks pass
-   - No merge conflicts
-   - No breaking changes detected
-   - PR is at least 1 hour old (to allow CI to complete)
-
-Report your findings with:
-- Total PRs reviewed
-- PRs merged (with numbers)
-- PRs skipped with reasons (CI failed, conflicts, breaking changes, etc.)
-
-${DRY_RUN == 'true' && 'DRY RUN MODE: Report what you would do without actually merging.' || ''}"
+            --continuous
 
       - uses: actions/upload-artifact@v4
         if: always()
