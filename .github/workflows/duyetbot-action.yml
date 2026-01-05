@@ -118,8 +118,10 @@ jobs:
           git config user.name "duyetbot"
           git config user.email "duyetbot@users.noreply.github.com"
 
-      - name: Build Project
-        run: bun run build
+      # Note: Build all packages for duyetbot-action dependencies
+      # Using turbo directly to avoid loop detection in bun run build
+      - name: Build Dependencies
+        run: npx turbo run build
 
       - name: Create GitHub Issue for Task
         id: create_issue
@@ -282,8 +284,8 @@ jobs:
           git config user.name "duyetbot"
           git config user.email "duyetbot@users.noreply.github.com"
 
-      - name: Build
-        run: bun run build
+      # Note: Skip full build - duyetbot-action runs directly with bun
+      # The monorepo build is not needed for webhook triggers
 
       - uses: actions/github-script@v8
         with:
@@ -354,8 +356,8 @@ jobs:
           git config user.name "duyetbot"
           git config user.email "duyetbot@users.noreply.github.com"
 
-      - name: Build
-        run: bun run build
+      # Note: Skip full build - duyetbot-action runs directly with bun
+      # The monorepo build is not needed for webhook triggers
 
       - name: Auto-label and assign issue
         env:
@@ -431,8 +433,8 @@ jobs:
           git config user.name "duyetbot"
           git config user.email "duyetbot@users.noreply.github.com"
 
-      - name: Build
-        run: bun run build
+      # Note: Skip full build - duyetbot-action runs directly with bun
+      # The monorepo build is not needed for webhook triggers
 
       - uses: actions/github-script@v8
         with:
@@ -508,8 +510,8 @@ jobs:
           git config user.name "duyetbot"
           git config user.email "duyetbot@users.noreply.github.com"
 
-      - name: Build
-        run: bun run build
+      # Note: Skip full build - duyetbot-action runs directly with bun
+      # The monorepo build is not needed for webhook triggers
 
       - uses: actions/github-script@v8
         with:
