@@ -476,7 +476,7 @@ describe('MCPMemoryClient', () => {
       mockFetch.mockImplementation(async (...args: unknown[]) => {
         // The second argument is the RequestInit object with headers
         const options = args[1] as RequestInit | undefined;
-        const authHeader = options?.headers?.['Authorization'] as string | undefined;
+        const authHeader = options?.headers?.Authorization as string | undefined;
         receivedTokens.push(authHeader || '');
         return {
           ok: true,

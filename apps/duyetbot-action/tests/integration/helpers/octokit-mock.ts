@@ -293,7 +293,9 @@ export class MockOctokit {
    */
   getLastCallArgs(resource: string, method: string): any | null {
     const calls = this.getRequestsByType(resource, method);
-    if (calls.length === 0) return null;
+    if (calls.length === 0) {
+      return null;
+    }
     return calls[calls.length - 1].args[0];
   }
 

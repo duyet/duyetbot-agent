@@ -14,7 +14,7 @@ import * as core from '@actions/core';
 async function run() {
   try {
     const mode = core.getInput('MODE');
-    const commentId = parseInt(core.getInput('COMMENT_ID') || '0');
+    const commentId = parseInt(core.getInput('COMMENT_ID') || '0', 10);
     const executionFile = core.getInput('EXECUTION_FILE') || '';
     const success = core.getInput('SUCCESS') === 'true';
 

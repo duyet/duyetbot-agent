@@ -5,8 +5,7 @@
  * GitHubContext object used throughout the action.
  */
 
-import * as core from '@actions/core';
-import { readFileSync } from 'fs';
+import { readFileSync } from 'node:fs';
 
 /**
  * Parsed GitHub context with all information needed for mode detection
@@ -252,7 +251,9 @@ export function parseGitHubContext(): GitHubContext {
  * Extracts the entity number (issue or PR number) from the payload
  */
 function getEntityNumber(payload: any, eventName: string): number | undefined {
-  if (!payload) return undefined;
+  if (!payload) {
+    return undefined;
+  }
 
   if (eventName === 'pull_request' || eventName === 'pull_request_review') {
     return payload.pull_request?.number;

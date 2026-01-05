@@ -154,9 +154,13 @@ export class TodoManager {
     let pending = 0;
 
     for (const item of list.items.values()) {
-      if (item.status === 'completed') completed++;
-      else if (item.status === 'in_progress') inProgress++;
-      else if (item.status === 'pending') pending++;
+      if (item.status === 'completed') {
+        completed++;
+      } else if (item.status === 'in_progress') {
+        inProgress++;
+      } else if (item.status === 'pending') {
+        pending++;
+      }
     }
 
     return {

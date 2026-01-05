@@ -28,7 +28,9 @@ export interface CommitResult {
  * Stage files for commit
  */
 export async function stageFiles(files: string[]): Promise<void> {
-  if (files.length === 0) return;
+  if (files.length === 0) {
+    return;
+  }
 
   await $`git add ${files}`;
 }

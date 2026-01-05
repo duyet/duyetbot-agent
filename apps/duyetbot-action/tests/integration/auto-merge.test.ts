@@ -10,9 +10,8 @@
  * - Issue is closed (if applicable)
  */
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AutoMergeService, autoMergePR } from '../../src/self-improvement/auto-merge.js';
-import { mockCheckRunEvent } from './helpers/mocks.js';
 import { MockOctokit } from './helpers/octokit-mock.js';
 
 describe('Auto-Merge Integration', () => {

@@ -10,18 +10,18 @@ import { tagMode } from '../../src/modes/tag/index.js';
 import type { ModeResult } from '../../src/modes/types.js';
 
 vi.mock('../../src/github/operations/comments.js', () => {
-  const createComment = vi.fn((octokit: any, options: any) =>
+  const createComment = vi.fn((_octokit: any, _options: any) =>
     Promise.resolve({ id: 12345, htmlUrl: 'https://example.com' })
   );
-  const updateComment = vi.fn((octokit: any, options: any) => Promise.resolve());
+  const updateComment = vi.fn((_octokit: any, _options: any) => Promise.resolve());
   const findBotComment = vi.fn(
-    (octokit: any, owner: any, repo: any, issueNumber: any, botName: any, marker: any) =>
+    (_octokit: any, _owner: any, _repo: any, _issueNumber: any, _botName: any, _marker: any) =>
       Promise.resolve(null)
   );
-  const listComments = vi.fn((octokit: any, owner: any, repo: any, issueNumber: any) =>
+  const listComments = vi.fn((_octokit: any, _owner: any, _repo: any, _issueNumber: any) =>
     Promise.resolve([])
   );
-  const deleteComment = vi.fn((octokit: any, owner: any, repo: any, commentId: any) =>
+  const deleteComment = vi.fn((_octokit: any, _owner: any, _repo: any, _commentId: any) =>
     Promise.resolve()
   );
 

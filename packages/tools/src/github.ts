@@ -448,7 +448,7 @@ export function createGitHubTool(client: GitHubClient, context: RepoContext): Gi
 
           case 'list_prs': {
             const state = (params.state as string) || 'open';
-            const perPage = (params.per_page as number) || 100;
+            const _perPage = (params.per_page as number) || 100;
             const creator = (params.creator as string) || undefined;
             const labels = (params.labels as string) || undefined;
 
@@ -458,8 +458,12 @@ export function createGitHubTool(client: GitHubClient, context: RepoContext): Gi
               sort: 'created',
               direction: 'desc',
             };
-            if (creator) queryParams.creator = creator;
-            if (labels) queryParams.labels = labels;
+            if (creator) {
+              queryParams.creator = creator;
+            }
+            if (labels) {
+              queryParams.labels = labels;
+            }
 
             const response = await client.request(
               'GET',

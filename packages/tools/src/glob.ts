@@ -81,7 +81,7 @@ function globToRegex(pattern: string): RegExp {
       const end = pattern.indexOf('}', i);
       if (end !== -1) {
         const alternatives = pattern.slice(i + 1, end).split(',');
-        regexStr += '(?:' + alternatives.map(escapeRegex).join('|') + ')';
+        regexStr += `(?:${alternatives.map(escapeRegex).join('|')})`;
         i = end + 1;
       } else {
         regexStr += escapeRegex(char);
@@ -93,9 +93,9 @@ function globToRegex(pattern: string): RegExp {
       if (end !== -1) {
         const inner = pattern.slice(i + 1, end);
         if (inner.startsWith('!')) {
-          regexStr += '[^' + inner.slice(1) + ']';
+          regexStr += `[^${inner.slice(1)}]`;
         } else {
-          regexStr += '[' + inner + ']';
+          regexStr += `[${inner}]`;
         }
         i = end + 1;
       } else {
@@ -108,14 +108,16 @@ function globToRegex(pattern: string): RegExp {
     }
   }
 
-  return new RegExp('^' + regexStr + '$');
+  return new RegExp(`^${regexStr}$`);
 }
 
 /**
  * Escape special regex characters
  */
 function escapeRegex(str: string | undefined): string {
-  if (!str) return '';
+  if (!str) {
+    return '';
+  }
   return str.replace(/[.+^${}()|[\]\\]/g, '\\$&');
 }
 
@@ -156,14 +158,14 @@ function parseGitignore(content: string): IgnorePatterns {
     // If pattern ends with /, it matches only directories
     // For our purposes, we'll match anything under that directory
     if (pattern.endsWith('/')) {
-      pattern = pattern + '**';
+      pattern = `${pattern}**`;
     }
 
     // If pattern doesn't start with /, it matches anywhere
     if (pattern.startsWith('/')) {
       pattern = pattern.slice(1);
     } else {
-      pattern = '**/' + pattern;
+      pattern = `**/${pattern}`;
     }
 
     const regex = globToRegex(pattern);
@@ -330,7 +332,7 @@ export class GlobTool implements Tool {
       ];
 
       for (const ignorePattern of defaultIgnores) {
-        ignorePatterns.patterns.push(globToRegex('**/' + ignorePattern));
+        ignorePatterns.patterns.push(globToRegex(`**/${ignorePattern}`));
       }
 
       // Walk directory and find matches

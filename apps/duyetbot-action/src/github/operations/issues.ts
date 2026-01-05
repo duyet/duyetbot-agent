@@ -45,9 +45,15 @@ export async function createIssue(
     repo,
     title,
   };
-  if (body !== undefined) params.body = body;
-  if (labels !== undefined) params.labels = labels;
-  if (assignees !== undefined) params.assignees = assignees;
+  if (body !== undefined) {
+    params.body = body;
+  }
+  if (labels !== undefined) {
+    params.labels = labels;
+  }
+  if (assignees !== undefined) {
+    params.assignees = assignees;
+  }
 
   const response = await octokit.rest.issues.create(params as any);
 
@@ -68,11 +74,21 @@ export async function updateIssue(octokit: Octokit, options: UpdateIssueOptions)
     repo,
     issue_number: issueNumber,
   };
-  if (title !== undefined) params.title = title;
-  if (body !== undefined) params.body = body;
-  if (state !== undefined) params.state = state;
-  if (labels !== undefined) params.labels = labels;
-  if (assignees !== undefined) params.assignees = assignees;
+  if (title !== undefined) {
+    params.title = title;
+  }
+  if (body !== undefined) {
+    params.body = body;
+  }
+  if (state !== undefined) {
+    params.state = state;
+  }
+  if (labels !== undefined) {
+    params.labels = labels;
+  }
+  if (assignees !== undefined) {
+    params.assignees = assignees;
+  }
 
   await octokit.rest.issues.update(params as any);
 }

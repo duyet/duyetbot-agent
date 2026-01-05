@@ -231,7 +231,7 @@ export class ToolSearchTool implements Tool {
           lines.push('');
         }
       }
-    } catch (e) {
+    } catch (_e) {
       lines.push('Parameters: (see tool definition)\n');
     }
 

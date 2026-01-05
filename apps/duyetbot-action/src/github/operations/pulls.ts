@@ -58,7 +58,9 @@ export async function createPR(octokit: Octokit, options: CreatePROptions): Prom
     head,
     base,
   };
-  if (draft !== undefined) params.draft = draft;
+  if (draft !== undefined) {
+    params.draft = draft;
+  }
 
   const response = await octokit.rest.pulls.create(params as any);
 
@@ -82,10 +84,18 @@ export async function updatePR(octokit: Octokit, options: UpdatePROptions): Prom
     repo,
     pull_number: pullNumber,
   };
-  if (title !== undefined) params.title = title;
-  if (body !== undefined) params.body = body;
-  if (state !== undefined) params.state = state;
-  if (base !== undefined) params.base = base;
+  if (title !== undefined) {
+    params.title = title;
+  }
+  if (body !== undefined) {
+    params.body = body;
+  }
+  if (state !== undefined) {
+    params.state = state;
+  }
+  if (base !== undefined) {
+    params.base = base;
+  }
 
   await octokit.rest.pulls.update(params as any);
 }
@@ -107,8 +117,12 @@ export async function mergePR(
       pull_number: pullNumber,
       merge_method: mergeMethod || 'merge',
     };
-    if (commitTitle !== undefined) params.commit_title = commitTitle;
-    if (commitMessage !== undefined) params.commit_message = commitMessage;
+    if (commitTitle !== undefined) {
+      params.commit_title = commitTitle;
+    }
+    if (commitMessage !== undefined) {
+      params.commit_message = commitMessage;
+    }
 
     const response = await octokit.rest.pulls.merge(params as any);
 
@@ -195,8 +209,12 @@ export async function listPRs(
     repo,
     state: filters?.state || 'open',
   };
-  if (filters?.head !== undefined) params.head = filters.head;
-  if (filters?.base !== undefined) params.base = filters.base;
+  if (filters?.head !== undefined) {
+    params.head = filters.head;
+  }
+  if (filters?.base !== undefined) {
+    params.base = filters.base;
+  }
 
   const response = await octokit.rest.pulls.list(params as any);
 
@@ -225,7 +243,9 @@ export async function requestReview(
     pull_number: pullNumber,
     reviewers,
   };
-  if (teamReviewers !== undefined) params.team_reviewers = teamReviewers;
+  if (teamReviewers !== undefined) {
+    params.team_reviewers = teamReviewers;
+  }
 
   await octokit.rest.pulls.requestReviewers(params as any);
 }

@@ -95,7 +95,9 @@ export class ContextCompressor {
       const toolName = match[1];
       const toolOutput = match[2];
 
-      if (!toolOutput) continue;
+      if (!toolOutput) {
+        continue;
+      }
 
       if (this.config.preserveToolResults) {
         result = result.replace(toolOutput, `[Tool: ${toolName}] (result preserved)`);
@@ -111,7 +113,7 @@ export class ContextCompressor {
     const lines = text.split('\n');
     const truncated = lines.map((line) => {
       if (line.length > maxLineLength) {
-        return line.substring(0, maxLineLength) + '...';
+        return `${line.substring(0, maxLineLength)}...`;
       }
       return line;
     });

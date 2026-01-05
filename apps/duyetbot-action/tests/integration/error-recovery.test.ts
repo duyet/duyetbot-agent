@@ -12,7 +12,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { checkWritePermissions } from '../../src/github/validation/permissions.js';
 import { agentMode } from '../../src/modes/agent/index.js';
-import { continuousMode } from '../../src/modes/continuous/index.js';
 import { tagMode } from '../../src/modes/tag/index.js';
 import type { ModeOptions } from '../../src/modes/types.js';
 import { mockIssueCommentWithMention } from './helpers/mocks.js';

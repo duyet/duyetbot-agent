@@ -214,7 +214,7 @@ describe('Sticky Comment Integration', () => {
     });
 
     it('should preserve marker when updating comment', async () => {
-      const commentId = 5000;
+      const _commentId = 5000;
       const taskId = 'agent-test-task-123';
 
       // Generate initial comment

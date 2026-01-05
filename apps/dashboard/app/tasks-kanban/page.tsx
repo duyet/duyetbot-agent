@@ -29,7 +29,7 @@ export default function TasksKanbanPage() {
   const [selectedTask, setSelectedTask] = useState<TaskItem | null>(null);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
 
-  const handleTaskUpdate = (id: string, updates: UpdateTaskInput) => {
+  const handleTaskUpdate = (_id: string, updates: UpdateTaskInput) => {
     updateTask.mutate(updates);
   };
 

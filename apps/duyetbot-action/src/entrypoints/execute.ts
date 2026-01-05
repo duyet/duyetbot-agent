@@ -43,7 +43,7 @@ async function run() {
     const modeInstance = getMode(context);
     const prepareData: Partial<import('../modes/types.js').ModeResult> = { taskId };
     if (commentId) {
-      prepareData.commentId = parseInt(commentId);
+      prepareData.commentId = parseInt(commentId, 10);
     }
     const modeContext = modeInstance.prepareContext(context, prepareData);
 

@@ -116,7 +116,9 @@ function formatQuestionsForDisplay(questions: Question[]): string {
 
   for (let i = 0; i < questions.length; i++) {
     const q = questions[i];
-    if (!q) continue;
+    if (!q) {
+      continue;
+    }
 
     lines.push(`### ${i + 1}. ${q.header}`);
     lines.push(`**${q.question}**`);
@@ -125,7 +127,9 @@ function formatQuestionsForDisplay(questions: Question[]): string {
 
     for (let j = 0; j < q.options.length; j++) {
       const opt = q.options[j];
-      if (!opt) continue;
+      if (!opt) {
+        continue;
+      }
       const prefix = q.multiSelect ? '☐' : '○';
       lines.push(`${prefix} **${opt.label}**`);
       if (opt.description) {

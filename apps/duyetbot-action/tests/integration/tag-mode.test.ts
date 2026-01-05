@@ -10,7 +10,6 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GitHubContext } from '../../src/github/context.js';
 import { tagMode } from '../../src/modes/tag/index.js';
 import type { ModeOptions } from '../../src/modes/types.js';
 import {

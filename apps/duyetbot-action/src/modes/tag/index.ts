@@ -64,11 +64,18 @@ export const tagMode: Mode = {
       mode: 'tag',
       githubContext: context,
     };
-    if (data?.commentId !== undefined) result.commentId = data.commentId;
-    if (data?.taskId !== undefined) result.taskId = data.taskId;
-    if (data?.branchInfo?.baseBranch !== undefined) result.baseBranch = data.branchInfo.baseBranch;
-    if (data?.branchInfo?.claudeBranch !== undefined)
+    if (data?.commentId !== undefined) {
+      result.commentId = data.commentId;
+    }
+    if (data?.taskId !== undefined) {
+      result.taskId = data.taskId;
+    }
+    if (data?.branchInfo?.baseBranch !== undefined) {
+      result.baseBranch = data.branchInfo.baseBranch;
+    }
+    if (data?.branchInfo?.claudeBranch !== undefined) {
       result.claudeBranch = data.branchInfo.claudeBranch;
+    }
     return result;
   },
 

@@ -38,7 +38,7 @@ vi.mock('../../src/github/operations/comments.js', () => {
       owner: string,
       repo: string,
       issueNumber: number,
-      botUsername: string,
+      _botUsername: string,
       marker: string
     ) => {
       if (octokit?.requests !== undefined && octokit?.rest?.issues?.listComments) {

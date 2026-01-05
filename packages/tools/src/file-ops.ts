@@ -264,7 +264,7 @@ export class ReadFileTool implements Tool {
         // Truncate long lines
         const truncatedLine =
           line.length > ReadFileTool.MAX_LINE_LENGTH
-            ? line.substring(0, ReadFileTool.MAX_LINE_LENGTH) + '...'
+            ? `${line.substring(0, ReadFileTool.MAX_LINE_LENGTH)}...`
             : line;
         return `${paddedNum}\t${truncatedLine}`;
       });

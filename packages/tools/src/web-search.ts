@@ -119,10 +119,15 @@ async function searchDuckDuckGo(query: string, maxResults: number): Promise<WebS
   const resultPattern =
     /<a[^>]*class="result__a"[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>[\s\S]*?<a[^>]*class="result__snippet"[^>]*>([^<]*)<\/a>/gi;
 
-  let match;
-  while ((match = resultPattern.exec(html)) !== null && results.length < maxResults) {
+  for (
+    let match = resultPattern.exec(html);
+    match !== null && results.length < maxResults;
+    match = resultPattern.exec(html)
+  ) {
     const [, urlEncoded, title, snippet] = match;
-    if (!urlEncoded || !title) continue;
+    if (!urlEncoded || !title) {
+      continue;
+    }
 
     // Decode the DuckDuckGo redirect URL
     let finalUrl = urlEncoded;
@@ -156,9 +161,15 @@ async function searchDuckDuckGo(query: string, maxResults: number): Promise<WebS
     const simplePattern =
       /<a[^>]*href="(https?:\/\/[^"]+)"[^>]*>([^<]+)<\/a>[\s\S]*?<span[^>]*>([^<]*)</gi;
 
-    while ((match = simplePattern.exec(html)) !== null && results.length < maxResults) {
-      const [, url, title, snippet] = match;
-      if (!url || !title || url.includes('duckduckgo.com')) continue;
+    for (
+      let simpleMatch = simplePattern.exec(html);
+      simpleMatch !== null && results.length < maxResults;
+      simpleMatch = simplePattern.exec(html)
+    ) {
+      const [, url, title, snippet] = simpleMatch;
+      if (!url || !title || url.includes('duckduckgo.com')) {
+        continue;
+      }
 
       let source = 'unknown';
       try {
@@ -233,7 +244,9 @@ function formatResults(results: WebSearchResult[]): string {
 
   for (let i = 0; i < results.length; i++) {
     const result = results[i];
-    if (!result) continue;
+    if (!result) {
+      continue;
+    }
 
     lines.push(`### ${i + 1}. ${result.title}`);
     lines.push(`[${result.source}](${result.url})`);

@@ -9,7 +9,7 @@ export default defineConfig({
       4,
       typeof navigator !== 'undefined'
         ? navigator.hardwareConcurrency || 4
-        : require('os').cpus().length
+        : require('node:os').cpus().length
     ),
     // Disable file isolation to reduce memory overhead (reuses VM context)
     isolate: false,

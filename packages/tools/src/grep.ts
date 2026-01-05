@@ -106,8 +106,7 @@ function globToRegex(pattern: string): RegExp {
       const end = pattern.indexOf('}', i);
       if (end !== -1) {
         const alternatives = pattern.slice(i + 1, end).split(',');
-        regexStr +=
-          '(?:' + alternatives.map((s) => s.replace(/[.+^${}()|[\]\\]/g, '\\$&')).join('|') + ')';
+        regexStr += `(?:${alternatives.map((s) => s.replace(/[.+^${}()|[\]\\]/g, '\\$&')).join('|')})`;
         i = end + 1;
       } else {
         regexStr += '\\{';
@@ -119,7 +118,7 @@ function globToRegex(pattern: string): RegExp {
     }
   }
 
-  return new RegExp('^' + regexStr + '$');
+  return new RegExp(`^${regexStr}$`);
 }
 
 // =============================================================================
@@ -241,7 +240,9 @@ async function searchFile(
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i];
-      if (line === undefined) continue;
+      if (line === undefined) {
+        continue;
+      }
 
       if (pattern.test(line)) {
         const match: Match = {
@@ -389,8 +390,12 @@ export class GrepTool implements Tool {
 
       // Build regex flags
       let flags = 'g';
-      if (ignoreCase) flags += 'i';
-      if (multiline) flags += 'ms';
+      if (ignoreCase) {
+        flags += 'i';
+      }
+      if (multiline) {
+        flags += 'ms';
+      }
 
       // Compile regex
       let regex: RegExp;
@@ -409,8 +414,12 @@ export class GrepTool implements Tool {
 
       // Find files to search
       const findOptions: { glob?: string; type?: string } = {};
-      if (glob) findOptions.glob = glob;
-      if (type) findOptions.type = type;
+      if (glob) {
+        findOptions.glob = glob;
+      }
+      if (type) {
+        findOptions.type = type;
+      }
       const files = await findFiles(rootDir, findOptions);
 
       // Calculate effective context
@@ -448,7 +457,6 @@ export class GrepTool implements Tool {
         case 'count':
           output = formatCountOutput(processedResults, rootDir);
           break;
-        case 'files_with_matches':
         default:
           output = formatFilesOutput(processedResults, rootDir);
           break;

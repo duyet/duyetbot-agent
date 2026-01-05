@@ -80,7 +80,9 @@ export function validateWithData<T>(
  * Handles common boolean string representations
  */
 export function parseEnvBoolean(value: string | undefined, defaultValue = false): boolean {
-  if (!value) return defaultValue;
+  if (!value) {
+    return defaultValue;
+  }
   return ['true', '1', 'yes', 'on'].includes(value.toLowerCase());
 }
 
@@ -89,7 +91,9 @@ export function parseEnvBoolean(value: string | undefined, defaultValue = false)
  * Returns undefined if invalid
  */
 export function parseEnvNumber(value: string | undefined): number | undefined {
-  if (!value) return undefined;
+  if (!value) {
+    return undefined;
+  }
   const parsed = Number.parseInt(value, 10);
   return Number.isNaN(parsed) ? undefined : parsed;
 }
@@ -99,7 +103,9 @@ export function parseEnvNumber(value: string | undefined): number | undefined {
  * Returns undefined if invalid
  */
 export function parseEnvJson<T>(value: string | undefined): T | undefined {
-  if (!value) return undefined;
+  if (!value) {
+    return undefined;
+  }
   try {
     return JSON.parse(value) as T;
   } catch {
@@ -156,9 +162,13 @@ export function sanitizeZodError(error: z.ZodError, sensitiveKeys: string[] = []
  * Useful for displaying a single validation error
  */
 export function getFirstZodError(error: z.ZodError): string | undefined {
-  if (error.errors.length === 0) return undefined;
+  if (error.errors.length === 0) {
+    return undefined;
+  }
   const first = error.errors[0] as z.ZodIssue | undefined;
-  if (!first) return undefined;
+  if (!first) {
+    return undefined;
+  }
   const path = first.path.length > 0 ? `${first.path.join('.')}: ` : '';
   return `${path}${first.message}`;
 }

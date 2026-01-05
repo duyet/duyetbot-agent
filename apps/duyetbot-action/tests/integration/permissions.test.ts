@@ -9,7 +9,6 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { GitHubContext } from '../../src/github/context.js';
 import { checkWritePermissions } from '../../src/github/validation/permissions.js';
 import { cleanupTestContext, createTestContext } from './helpers/test-context.js';
 

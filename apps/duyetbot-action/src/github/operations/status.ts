@@ -40,8 +40,12 @@ export async function createStatus(
     context: status.context,
     state: status.state,
   };
-  if (status.description !== undefined) params.description = status.description;
-  if (status.targetUrl !== undefined) params.target_url = status.targetUrl;
+  if (status.description !== undefined) {
+    params.description = status.description;
+  }
+  if (status.targetUrl !== undefined) {
+    params.target_url = status.targetUrl;
+  }
 
   await octokit.rest.repos.createCommitStatus(params as any);
 }
@@ -247,17 +251,29 @@ export async function createCheckRun(
     status: options.status,
   };
 
-  if (options.detailsUrl !== undefined) params.details_url = options.detailsUrl;
-  if (options.externalId !== undefined) params.external_id = options.externalId;
-  if (options.conclusion !== undefined) params.conclusion = options.conclusion;
-  if (options.startedAt !== undefined) params.started_at = options.startedAt;
-  if (options.completedAt !== undefined) params.completed_at = options.completedAt;
+  if (options.detailsUrl !== undefined) {
+    params.details_url = options.detailsUrl;
+  }
+  if (options.externalId !== undefined) {
+    params.external_id = options.externalId;
+  }
+  if (options.conclusion !== undefined) {
+    params.conclusion = options.conclusion;
+  }
+  if (options.startedAt !== undefined) {
+    params.started_at = options.startedAt;
+  }
+  if (options.completedAt !== undefined) {
+    params.completed_at = options.completedAt;
+  }
   if (options.output !== undefined) {
     params.output = {
       title: options.output.title,
       summary: options.output.summary,
     };
-    if (options.output.text !== undefined) (params.output as any).text = options.output.text;
+    if (options.output.text !== undefined) {
+      (params.output as any).text = options.output.text;
+    }
     if (options.output.annotations !== undefined) {
       (params.output as any).annotations = options.output.annotations.map((ann) => ({
         path: ann.path,
@@ -313,19 +329,35 @@ export async function updateCheckRun(
     check_run_id: checkRunId,
   };
 
-  if (updates.name !== undefined) params.name = updates.name;
-  if (updates.detailsUrl !== undefined) params.details_url = updates.detailsUrl;
-  if (updates.externalId !== undefined) params.external_id = updates.externalId;
-  if (updates.status !== undefined) params.status = updates.status;
-  if (updates.conclusion !== undefined) params.conclusion = updates.conclusion;
-  if (updates.startedAt !== undefined) params.started_at = updates.startedAt;
-  if (updates.completedAt !== undefined) params.completed_at = updates.completedAt;
+  if (updates.name !== undefined) {
+    params.name = updates.name;
+  }
+  if (updates.detailsUrl !== undefined) {
+    params.details_url = updates.detailsUrl;
+  }
+  if (updates.externalId !== undefined) {
+    params.external_id = updates.externalId;
+  }
+  if (updates.status !== undefined) {
+    params.status = updates.status;
+  }
+  if (updates.conclusion !== undefined) {
+    params.conclusion = updates.conclusion;
+  }
+  if (updates.startedAt !== undefined) {
+    params.started_at = updates.startedAt;
+  }
+  if (updates.completedAt !== undefined) {
+    params.completed_at = updates.completedAt;
+  }
   if (updates.output !== undefined) {
     params.output = {
       title: updates.output.title,
       summary: updates.output.summary,
     };
-    if (updates.output.text !== undefined) (params.output as any).text = updates.output.text;
+    if (updates.output.text !== undefined) {
+      (params.output as any).text = updates.output.text;
+    }
     if (updates.output.annotations !== undefined) {
       (params.output as any).annotations = updates.output.annotations.map((ann) => ({
         path: ann.path,

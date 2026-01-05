@@ -7,7 +7,7 @@
 import { vi } from 'vitest';
 
 // Create mock functions
-const getInput = vi.fn((name: string) => '');
+const getInput = vi.fn((_name: string) => '');
 const setOutput = vi.fn(() => {});
 const setFailed = vi.fn(() => {});
 const exportVariable = vi.fn(() => {});

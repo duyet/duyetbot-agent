@@ -39,7 +39,7 @@ async function run() {
     const summary = generateSummary({
       mode,
       success,
-      tasksProcessed: parseInt(tasksProcessed),
+      tasksProcessed: parseInt(tasksProcessed, 10),
       executionOutput,
     });
 

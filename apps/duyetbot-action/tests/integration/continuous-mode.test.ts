@@ -11,7 +11,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { continuousMode } from '../../src/modes/continuous/index.js';
 import type { ModeOptions } from '../../src/modes/types.js';
-import { mockWorkflowDispatchEvent } from './helpers/mocks.js';
 import { cleanupTestContext, createTestContext } from './helpers/test-context.js';
 
 describe('Continuous Mode Integration', () => {
