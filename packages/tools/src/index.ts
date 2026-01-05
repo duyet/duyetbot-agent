@@ -38,6 +38,7 @@ import {
   writeFileTool,
 } from './file-ops.js';
 import { gitTool } from './git.js';
+import { askUserTool } from './ask-user.js';
 import { globTool } from './glob.js';
 import { grepTool } from './grep.js';
 import { planTool } from './plan.js';
@@ -47,6 +48,7 @@ import { sleepTool } from './sleep.js';
 import { telegramForwardTool } from './telegram-forward.js';
 import { todoReadTool, todoWriteTool } from './todo.js';
 
+export * from './ask-user.js';
 export * from './bash.js';
 export * from './deployment.js';
 export * from './duyet-mcp-client.js';
@@ -84,6 +86,8 @@ export function getAllBuiltinTools(): Tool[] {
     sleepTool,
     telegramForwardTool,
     duyetMCPClientTool,
+    // Interactive tools (Claude Code-style)
+    askUserTool,
     // Task management (Claude Code-style)
     todoWriteTool,
     todoReadTool,

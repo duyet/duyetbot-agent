@@ -58,12 +58,20 @@ const writeFileInputSchema = z.object({
 });
 
 /**
- * Schema for edit_file tool
+ * Schema for edit_file tool (Claude Code-style)
+ *
+ * Performs exact string replacements in files.
+ * The edit will FAIL if old_string is not unique in the file
+ * (unless replace_all is true).
  */
 const editFileInputSchema = z.object({
+  /** Absolute path to the file to modify */
   path: z.string().min(1, 'Path is required'),
+  /** The text to replace (must be unique unless replace_all is true) */
   oldText: z.string().min(1, 'Old text is required'),
+  /** The text to replace it with (must be different from oldText) */
   newText: z.string(),
+  /** Replace all occurrences (default: false, requires unique match) */
   replaceAll: z.boolean().optional(),
 });
 
@@ -338,15 +346,18 @@ export class WriteFileTool implements Tool {
 }
 
 /**
- * Edit file tool
+ * Edit file tool (Claude Code-style)
  *
- * Edits a file by finding and replacing text.
+ * Performs exact string replacements in files.
+ * The edit will FAIL if old_string is not unique in the file
+ * (unless replace_all is true). This prevents accidental edits.
  */
 export class EditFileTool implements Tool {
   name = 'edit_file';
   description =
-    'Edit a file by finding and replacing text. ' +
-    'Can replace first or all occurrences. Use for precise edits.';
+    'Perform exact string replacements in files. ' +
+    'The edit will FAIL if old_string is not unique (provide more context to make it unique). ' +
+    'Use replace_all=true to replace all occurrences.';
   inputSchema = editFileInputSchema;
 
   validate(input: ToolInput): boolean {
@@ -357,42 +368,72 @@ export class EditFileTool implements Tool {
   async execute(input: ToolInput): Promise<ToolOutput> {
     try {
       const parsed = this.inputSchema.parse(input.content);
-      const { path, oldText, newText, replaceAll = false } = parsed;
+      const { path: filePath, oldText, newText, replaceAll = false } = parsed;
 
-      const content = await readFile(path, 'utf-8');
-
-      let newContent: string;
-      let replacements = 0;
-
-      if (replaceAll) {
-        const regex = new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
-        const matches = content.match(regex);
-        replacements = matches ? matches.length : 0;
-        newContent = content.replaceAll(oldText, newText);
-      } else {
-        const index = content.indexOf(oldText);
-        if (index === -1) {
-          return {
-            status: 'error',
-            content: 'Old text not found in file',
-            error: {
-              message: 'The specified old text was not found in the file',
-              code: 'TEXT_NOT_FOUND',
-            },
-          };
-        }
-        replacements = 1;
-        newContent =
-          content.substring(0, index) + newText + content.substring(index + oldText.length);
+      // Check that old and new text are different
+      if (oldText === newText) {
+        return {
+          status: 'error',
+          content: 'old_string and new_string must be different',
+          error: {
+            message: 'The old_string and new_string are identical',
+            code: 'IDENTICAL_STRINGS',
+          },
+        };
       }
 
-      await writeFile(path, newContent, 'utf-8');
+      const content = await readFile(filePath, 'utf-8');
+
+      // Count occurrences
+      const regex = new RegExp(oldText.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      const matches = content.match(regex);
+      const occurrences = matches ? matches.length : 0;
+
+      if (occurrences === 0) {
+        return {
+          status: 'error',
+          content: 'Old text not found in file',
+          error: {
+            message: 'The specified old_string was not found in the file',
+            code: 'TEXT_NOT_FOUND',
+          },
+        };
+      }
+
+      // If not replace_all and multiple occurrences, fail
+      if (!replaceAll && occurrences > 1) {
+        return {
+          status: 'error',
+          content: `old_string is not unique (found ${occurrences} occurrences). Provide more context or use replace_all=true.`,
+          error: {
+            message: `Found ${occurrences} occurrences of old_string. Either provide a larger string with more surrounding context to make it unique, or set replace_all=true to replace all occurrences.`,
+            code: 'NOT_UNIQUE',
+          },
+        };
+      }
+
+      // Perform replacement
+      let newContent: string;
+      let replacements: number;
+
+      if (replaceAll) {
+        newContent = content.replaceAll(oldText, newText);
+        replacements = occurrences;
+      } else {
+        // Single replacement (we know it's unique at this point)
+        const index = content.indexOf(oldText);
+        newContent =
+          content.substring(0, index) + newText + content.substring(index + oldText.length);
+        replacements = 1;
+      }
+
+      await writeFile(filePath, newContent, 'utf-8');
 
       return {
         status: 'success',
-        content: `Successfully replaced ${replacements} occurrence(s) in ${path}`,
+        content: `Successfully replaced ${replacements} occurrence(s) in ${filePath}`,
         metadata: {
-          path,
+          path: filePath,
           replacements,
         },
       };
