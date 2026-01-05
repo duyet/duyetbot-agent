@@ -194,15 +194,32 @@ The system now uses a single loop-based agent pattern instead of the previous mu
 
 ### Tool System
 
-The chat loop uses tools instead of specialized agents:
+The chat loop uses tools instead of specialized agents. Tools are now **Claude Code-style** for powerful agent capabilities:
 
 ```
 Built-in Tools (from @duyetbot/tools):
-├─ bash: Execute shell commands
+
+Core Tools:
+├─ bash: Execute shell commands (with description, timeout up to 10min)
 ├─ git: Git operations
 ├─ github: GitHub API operations
 ├─ research: Web search and synthesis
 └─ plan: Task planning and decomposition
+
+Claude Code-Style Tools (NEW):
+├─ glob: Fast file pattern matching (**/*.ts, src/**/*.tsx)
+├─ grep: Regex code search with context lines (-A/-B/-C)
+├─ read_file: Read with line numbers (cat -n), offset/limit
+├─ write_file: Write with directory creation
+├─ edit_file: Unique match required (safer edits)
+├─ todo_write: Task tracking (pending/in_progress/completed)
+├─ todo_read: Read current todo list
+├─ ask_user: Interactive clarification with options
+└─ web_fetch: URL content retrieval with HTML-to-markdown
+
+Configuration:
+├─ maxToolIterations: 25 (up from 5, for complex tasks)
+└─ Tools sorted by priority in getAllBuiltinTools()
 
 MCP Tools (dynamically discovered):
 ├─ duyet-mcp: Personal blog/info queries

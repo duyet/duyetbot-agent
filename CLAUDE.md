@@ -87,7 +87,7 @@ interface Transport<TContext> {
 |---------|---------|-------------|
 | `@duyetbot/core` | SDK adapter, session, MCP client | `query()`, `sdkTool()` |
 | `@duyetbot/cloudflare-agent` | Cloudflare agent with chat loop | `createCloudflareChatAgent`, `ChatLoop`, `TokenTracker` |
-| `@duyetbot/tools` | Built-in tools | `bash`, `git`, `github`, `research`, `plan` |
+| `@duyetbot/tools` | Built-in tools (Claude Code-style) | `bash`, `git`, `glob`, `grep`, `read_file`, `edit_file`, `todo_write`, `ask_user`, `web_fetch` |
 | `@duyetbot/providers` | LLM providers | Claude, OpenRouter, AI Gateway |
 | `@duyetbot/prompts` | System prompts | `getTelegramPrompt()`, `getGitHubBotPrompt()` |
 | `@duyetbot/hono-middleware` | Shared Hono utilities | `createBaseApp()`, health routes |
