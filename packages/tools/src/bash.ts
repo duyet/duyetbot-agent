@@ -18,27 +18,39 @@ const MAX_COMMAND_LENGTH = 50000;
 // Default timeout: 30 seconds
 const DEFAULT_TIMEOUT = 30000;
 
-// Input schema for bash tool
+// Input schema for bash tool (Claude Code-style)
 const bashInputSchema = z.union([
   z
     .string()
     .min(1, 'Command cannot be empty')
     .transform((command) => ({ command })),
   z.object({
+    /** The command to execute */
     command: z.string().min(1, 'Command cannot be empty'),
-    timeout: z.number().positive().optional(),
+    /** Clear description of what this command does (5-10 words) */
+    description: z.string().optional(),
+    /** Timeout in milliseconds (default: 30000, max: 600000) */
+    timeout: z.number().positive().max(600000).optional(),
+    /** Working directory for the command */
     cwd: z.string().optional(),
+    /** Environment variables to set */
     env: z.record(z.string()).optional(),
+    /** Run command in background (returns immediately) */
+    run_in_background: z.boolean().optional(),
   }),
 ]);
 
 /**
- * Bash tool implementation
+ * Bash tool implementation (Claude Code-style)
+ *
+ * Executes shell commands with configurable timeout.
+ * Always include a clear description of what the command does.
  */
 export class BashTool implements Tool {
   name = 'bash';
   description =
-    'Execute shell commands in a sandboxed environment. Returns stdout, stderr, and exit code.';
+    'Execute shell commands. Include a clear description (5-10 words) of what the command does. ' +
+    'Returns stdout, stderr, and exit code. Default timeout is 30s, max 10 minutes.';
   inputSchema = bashInputSchema;
 
   /**
@@ -89,6 +101,7 @@ export class BashTool implements Tool {
 
       const data = parsed.data;
       const command = data.command;
+      const description = 'description' in data ? data.description : undefined;
       const timeout =
         'timeout' in data && data.timeout !== undefined ? data.timeout : DEFAULT_TIMEOUT;
       const cwd = 'cwd' in data ? data.cwd : undefined;
@@ -122,6 +135,7 @@ export class BashTool implements Tool {
           content: stdout || '(no output)',
           metadata: {
             command,
+            description,
             exitCode: 0,
             stdout,
             stderr: stderr || undefined,

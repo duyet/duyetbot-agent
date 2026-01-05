@@ -47,6 +47,7 @@ import { scratchpadTool } from './scratchpad.js';
 import { sleepTool } from './sleep.js';
 import { telegramForwardTool } from './telegram-forward.js';
 import { todoReadTool, todoWriteTool } from './todo.js';
+import { webFetchTool } from './web-fetch.js';
 
 export * from './ask-user.js';
 export * from './bash.js';
@@ -64,6 +65,7 @@ export * from './scratchpad.js';
 export * from './sleep.js';
 export * from './telegram-forward.js';
 export * from './todo.js';
+export * from './web-fetch.js';
 
 /**
  * Agent platform types
@@ -102,6 +104,8 @@ export function getAllBuiltinTools(): Tool[] {
     // Code search tools (Claude Code-style)
     globTool,
     grepTool,
+    // Web tools (Claude Code-style)
+    webFetchTool,
     // Deployment
     runBuildTool,
     runTestsTool,
