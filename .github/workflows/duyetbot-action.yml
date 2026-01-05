@@ -477,3 +477,82 @@ jobs:
           path: .agent/logs/
           retention-days: 7
           if-no-files-found: ignore
+
+  # Triggered by @duyetbot mentions in issue comments (not PRs)
+  run-agent-on-issue-comment:
+    if: |
+      github.event_name == 'issue_comment' &&
+      github.event.action == 'created' &&
+      !github.event.issue.pull_request &&
+      contains(github.event.comment.body, '@duyetbot')
+    name: Agent for Issue Comment
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+    timeout-minutes: 45
+    concurrency:
+      group: agent-issue-comment-${{ github.event.issue.number }}
+      cancel-in-progress: true
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: ./.github/actions/setup-bun
+
+      - name: Configure Git
+        run: |
+          git config user.name "duyetbot"
+          git config user.email "duyetbot@users.noreply.github.com"
+
+      - name: Build
+        run: bun run build
+
+      - uses: actions/github-script@v8
+        with:
+          script: |
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: 'eyes'
+            });
+
+      - name: Run Agent
+        env:
+          DUYETBOT_BASE_URL: https://openrouter.ai/api
+          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT: ${{ github.event.comment.body }}
+        run: |
+          TASK=$(echo "$COMMENT" | sed 's/.*@duyetbot//' | xargs)
+          TASK_ID="github-issues-${{ github.repository_owner }}-${{ github.event.repository.name }}-${{ github.event.issue.number }}"
+          bun run apps/duyetbot-action/src/index.ts \
+            --source="github-issues" \
+            --task="$TASK_ID" \
+            --prompt="${TASK}"
+
+      - uses: actions/github-script@v8
+        if: always()
+        with:
+          script: |
+            const content = '${{ job.status }}' === 'success' ? 'rocket' : 'confused';
+            await github.rest.reactions.createForIssueComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              comment_id: context.payload.comment.id,
+              content: content
+            });
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: agent-issue-comment-${{ github.event.issue.number }}-${{ github.run_number }}
+          path: .agent/logs/
+          retention-days: 7
+          if-no-files-found: ignore
