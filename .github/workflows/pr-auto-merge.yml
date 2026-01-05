@@ -16,14 +16,6 @@ on:
         type: string
         default: 'app/dependabot'
 
-concurrency:
-  group: pr-auto-merge
-  cancel-in-progress: false
-
-env:
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-
 jobs:
   auto-merge-prs:
     name: Auto-Merge PRs
@@ -31,65 +23,168 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    timeout-minutes: 60
+      issues: write
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Configure Git
-        run: |
-          git config user.name "duyetbot"
-          git config user.email "duyetbot@users.noreply.github.com"
-
-      - name: Install dependencies
-        run: bun install
-
-      - name: Build Project
-        continue-on-error: true
-        run: bun run build || echo "Build failed, continuing anyway..."
-
-      - name: Run PR Auto-Merge Agent
+      - name: Auto-Merge PRs
+        uses: actions/github-script@v7
         env:
-          DUYETBOT_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          MEMORY_MCP_URL: ${{ secrets.MEMORY_MCP_URL }}
           DRY_RUN: ${{ inputs.dry_run == 'true' && 'true' || 'false' }}
           PR_CREATOR: ${{ inputs.creator || 'app/dependabot' }}
-        run: |
-          bun run apps/duyetbot-action/src/index.ts \
-            --prompt="Review and auto-merge pull requests from ${PR_CREATOR}.
-
-          For each open PR from ${PR_CREATOR}:
-          1. Check if all CI checks pass successfully
-          2. Verify the PR is mergeable (no merge conflicts)
-          3. Review the changes for any obvious issues or breaking changes
-          4. For Dependabot PRs specifically:
-             - Verify the version update is safe (patch > minor > major for automatic merge)
-             - Check if the changelog mentions any breaking changes
-          5. Merge PRs that meet all criteria:
-             - All CI checks pass
-             - No merge conflicts
-             - No breaking changes detected
-             - PR is at least 1 hour old (to allow CI to complete)
-
-          Report your findings with:
-          - Total PRs reviewed
-          - PRs merged (with numbers)
-          - PRs skipped with reasons (CI failed, conflicts, breaking changes, etc.)
-
-          ${DRY_RUN == 'true' && 'DRY RUN MODE: Report what you would do without actually merging.' || ''}"
-
-      - uses: actions/upload-artifact@v4
-        if: always()
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          name: pr-auto-merge-${{ github.run_number }}
-          path: .agent/logs/
-          retention-days: 7
-          if-no-files-found: ignore
+          script: |
+            const { data: pulls } = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              creator: process.env.PR_CREATOR,
+              per_page: 100,
+              sort: 'created',
+              direction: 'desc',
+            });
+
+            console.log(`Found ${pulls.length} PRs from ${process.env.PR_CREATOR}`);
+
+            let mergedCount = 0;
+            let skippedCount = 0;
+            const results = [];
+
+            const dryRun = process.env.DRY_RUN === 'true';
+
+            for (const pr of pulls) {
+              const prNumber = pr.number;
+              const prTitle = pr.title;
+              const createdAt = new Date(pr.created_at);
+              const ageHours = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+
+              console.log(`\nChecking PR #${prNumber}: ${prTitle}`);
+              console.log(`  Age: ${Math.round(ageHours)}h`);
+              console.log(`  Mergeable: ${pr.mergeable}`);
+              console.log(`  Merge status: ${pr.mergeable_state}`);
+
+              // Skip if too young
+              if (ageHours < 1) {
+                console.log(`  ⏭️  Skipped: Too young (${Math.round(ageHours)}h < 1h)`);
+                skippedCount++;
+                results.push(`#${prNumber}: Skipped - Too young`);
+                continue;
+              }
+
+              // Check if mergeable
+              if (pr.mergeable !== true) {
+                console.log(`  ⏭️  Skipped: Not mergeable (${pr.mergeable_state || pr.mergeable})`);
+                skippedCount++;
+                results.push(`#${prNumber}: Skipped - ${pr.mergeable_state || pr.mergeable}`);
+                continue;
+              }
+
+              // Check CI status
+              const checks = await github.rest.checks.listForRef({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                ref: pr.head.sha,
+              });
+
+              const checkRuns = checks.data.check_runs || [];
+              const failedChecks = checkRuns.filter(c => c.conclusion === 'failure');
+              const pendingChecks = checkRuns.filter(c => c.status === 'queued' || c.status === 'in_progress');
+              const completedChecks = checkRuns.filter(c => c.conclusion === 'success');
+
+              console.log(`  CI Checks: ${completedChecks.length} passed, ${failedChecks.length} failed, ${pendingChecks.length} pending`);
+
+              if (pendingChecks.length > 0) {
+                console.log(`  ⏭️  Skipped: CI pending`);
+                skippedCount++;
+                results.push(`#${prNumber}: Skipped - CI pending`);
+                continue;
+              }
+
+              if (failedChecks.length > 0) {
+                console.log(`  ⏭️  Skipped: CI failed`);
+                skippedCount++;
+                results.push(`#${prNumber}: Skipped - CI failed`);
+                continue;
+              }
+
+              // All checks passed, merge the PR
+              console.log(`  ✅ All checks passed, merging...`);
+
+              if (!dryRun) {
+                try {
+                  await github.rest.pulls.merge({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    pull_number: prNumber,
+                    commit_title: `Merge PR #${prNumber} (auto-merged by @duyetbot)`,
+                    merge_method: 'merge',
+                  });
+
+                  mergedCount++;
+                  results.push(`#${prNumber}: ✅ Merged`);
+                  console.log(`  ✅ Merged successfully`);
+
+                  // Add success comment
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: prNumber,
+                    body: `✅ Auto-merged by @duyetbot\n\nAll CI checks passed and PR was mergeable.`,
+                  });
+
+                } catch (error) {
+                  console.log(`  ❌ Merge failed: ${error.message}`);
+                  skippedCount++;
+                  results.push(`#${prNumber}: ❌ Merge failed - ${error.message}`);
+                }
+              } else {
+                mergedCount++;
+                results.push(`#${prNumber}: ✅ Would merge (dry run)`);
+                console.log(`  ✅ Would merge (dry run)`);
+              }
+            }
+
+            // Create summary comment on the tracking issue
+            const summary = `## PR Auto-Merge Results\n\n` +
+              `**Review completed:** ${new Date().toISOString()}\n` +
+              `**Creator filter:** ${process.env.PR_CREATOR}\n` +
+              `**Dry run:** ${dryRun ? 'Yes' : 'No'}\n\n` +
+              `### Summary\n` +
+              `- **Total PRs reviewed:** ${pulls.length}\n` +
+              `- **Merged:** ${mergedCount}\n` +
+              `- **Skipped:** ${skippedCount}\n\n` +
+              `### Details\n` +
+              results.map(r => `- ${r}`).join('\n');
+
+            console.log('\n' + '='.repeat(50));
+            console.log(summary);
+            console.log('='.repeat(50));
+
+            // Post results as issue comment
+            if (dryRun) {
+              try {
+                const { data: issues } = await github.rest.issues.listForRepo({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  labels: 'pr-auto-merge',
+                  state: 'open',
+                  per_page: 1,
+                });
+
+                if (issues.length > 0) {
+                  await github.rest.issues.createComment({
+                    owner: context.repo.owner,
+                    repo: context.repo.repo,
+                    issue_number: issues[0].number,
+                    body: summary,
+                  });
+                }
+              } catch (error) {
+                console.log(`Could not post comment: ${error.message}`);
+              }
+            }
