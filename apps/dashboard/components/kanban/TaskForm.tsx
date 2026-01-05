@@ -97,6 +97,7 @@ export function TaskForm({ onSubmit, onCancel, initialTask, isLoading }: TaskFor
                 className={cn(
                   'flex-1 py-1.5 text-xs font-mono rounded-sm transition-colors',
                   'border border-white/5',
+                  'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500/50',
                   priority === p
                     ? 'bg-amber-500/20 text-amber-500 border-amber-500/30'
                     : 'bg-white/5 text-white/40 hover:bg-white/10'
@@ -152,9 +153,9 @@ export function TaskForm({ onSubmit, onCancel, initialTask, isLoading }: TaskFor
         </div>
         {tags.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-3">
-            {tags.map((tag) => (
+            {tags.map((tag, index) => (
               <span
-                key={tag}
+                key={`${tag}-${index}`}
                 className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-xs font-mono bg-white/5 border border-white/10 text-white/60"
               >
                 <Tag className="h-3 w-3" />
@@ -162,7 +163,8 @@ export function TaskForm({ onSubmit, onCancel, initialTask, isLoading }: TaskFor
                 <button
                   type="button"
                   onClick={() => handleRemoveTag(tag)}
-                  className="hover:text-white"
+                  aria-label={`Remove tag: ${tag}`}
+                  className="hover:text-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-white/20 rounded-sm"
                 >
                   <X className="h-3 w-3" />
                 </button>

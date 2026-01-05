@@ -136,9 +136,9 @@ export function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
       {/* Tags row */}
       {task.tags.length > 0 && (
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {task.tags.slice(0, 3).map((tag) => (
+          {task.tags.slice(0, 3).map((tag, index) => (
             <span
-              key={tag}
+              key={`${tag}-${index}`}
               className="text-[10px] px-1.5 py-0.5 rounded-sm font-mono bg-white/5 text-white/40 border border-white/5"
             >
               {tag}

@@ -106,7 +106,8 @@ export function Board({ tasks, onTaskUpdate, onTaskClick }: BoardProps) {
       const updates: UpdateTaskInput = {
         id: activeTask.id,
         status: newStatus,
-        completed_at: newStatus === 'completed' ? Date.now() : activeTask.completed_at || undefined,
+        completed_at:
+          newStatus === 'completed' ? Date.now() : (activeTask.completed_at ?? undefined),
       };
       onTaskUpdate?.(activeTask.id, updates);
     }

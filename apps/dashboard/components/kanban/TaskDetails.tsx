@@ -190,9 +190,9 @@ export function TaskDetails({
                     <div className="space-y-2">
                       <span className="text-sm text-white/40">Tags</span>
                       <div className="flex flex-wrap gap-2">
-                        {task.tags.map((tag) => (
+                        {task.tags.map((tag, index) => (
                           <span
-                            key={tag}
+                            key={`${tag}-${index}`}
                             className="inline-flex items-center gap-1 px-2 py-1 rounded-sm text-xs font-mono bg-white/5 border border-white/10 text-white/60"
                           >
                             <Tag className="h-3 w-3" />
