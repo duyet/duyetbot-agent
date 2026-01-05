@@ -43,10 +43,16 @@ jobs:
           git config user.email "duyetbot@users.noreply.github.com"
 
       - name: Install dependencies
-        run: ~/bun/bun install
+        run: |
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun install
 
       - name: Build Project
-        run: ~/bun/bun run build
+        run: |
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          bun run build
 
       - name: Run PR Auto-Merge Agent
         env:
