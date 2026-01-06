@@ -24,10 +24,13 @@ on:
       - 'apps/web/**'
       - 'apps/memory-mcp/**'
       - 'packages/**'
+      - '.github/workflows/deploy-workers.yml'
 
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   deploy:
@@ -50,7 +53,7 @@ jobs:
         uses: ./.github/actions/setup-bun
 
       - name: Deploy ${{ matrix.app }}
-        run: bun run deploy:${{ matrix.app }}
+        run: bun run ci:deploy:${{ matrix.app }}
 
   deploy-dashboard:
     name: Deploy Dashboard
@@ -65,7 +68,7 @@ jobs:
         uses: ./.github/actions/setup-bun
 
       - name: Deploy Dashboard
-        run: bun run deploy:dashboard
+        run: bun run ci:deploy:dashboard
 
   deploy-web:
     name: Deploy Web
@@ -80,4 +83,4 @@ jobs:
         uses: ./.github/actions/setup-bun
 
       - name: Deploy Web
-        run: bun run deploy:web
+        run: bun run ci:deploy:web
