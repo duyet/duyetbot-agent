@@ -1,0 +1,83 @@
+name: Deploy Cloudflare Workers
+
+on:
+  workflow_dispatch:
+    inputs:
+      app:
+        description: 'App to deploy (all, github-bot, telegram-bot, dashboard, web, memory-mcp)'
+        required: false
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - github-bot
+          - telegram-bot
+          - dashboard
+          - web
+          - memory-mcp
+  push:
+    branches: [master]
+    paths:
+      - 'apps/github-bot/**'
+      - 'apps/telegram-bot/**'
+      - 'apps/dashboard/**'
+      - 'apps/web/**'
+      - 'apps/memory-mcp/**'
+      - 'packages/**'
+
+env:
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+jobs:
+  deploy:
+    name: Deploy Workers
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        app:
+          - github-bot
+          - telegram-bot
+          - memory-mcp
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Deploy ${{ matrix.app }}
+        run: bun run deploy:${{ matrix.app }}
+
+  deploy-dashboard:
+    name: Deploy Dashboard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Deploy Dashboard
+        run: bun run deploy:dashboard
+
+  deploy-web:
+    name: Deploy Web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Setup Bun
+        uses: ./.github/actions/setup-bun
+
+      - name: Deploy Web
+        run: bun run deploy:web
