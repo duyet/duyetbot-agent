@@ -29,8 +29,6 @@ on:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
-  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   deploy:
@@ -52,8 +50,14 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
-      - name: Build dependencies
-        run: npx turbo run build --filter=@duyetbot/${{ matrix.app }}...
+      - name: Build ${{ matrix.app }} dependencies
+        run: |
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ] && [ -f "$pkg/tsconfig.json" ]; then
+              echo "Building $pkg..."
+              (cd "$pkg" && npx tsc) || true
+            fi
+          done
 
       - name: Deploy ${{ matrix.app }}
         run: cd apps/${{ matrix.app }} && bun run deploy
@@ -69,6 +73,15 @@ jobs:
 
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
+
+      - name: Build dashboard dependencies
+        run: |
+          for pkg in packages/analytics packages/*/; do
+            if [ -f "$pkg/package.json" ] && [ -f "$pkg/tsconfig.json" ]; then
+              echo "Building $pkg..."
+              (cd "$pkg" && npx tsc) || true
+            fi
+          done
 
       - name: Build dashboard
         run: cd apps/dashboard && bun run build
@@ -87,6 +100,15 @@ jobs:
 
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
+
+      - name: Build web dependencies
+        run: |
+          for pkg in packages/*/; do
+            if [ -f "$pkg/package.json" ] && [ -f "$pkg/tsconfig.json" ]; then
+              echo "Building $pkg..."
+              (cd "$pkg" && npx tsc) || true
+            fi
+          done
 
       - name: Build web
         run: cd apps/web && bun run build
