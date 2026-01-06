@@ -29,6 +29,8 @@ on:
 env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+  TURBO_TEAM: ${{ vars.TURBO_TEAM }}
 
 jobs:
   deploy:
@@ -50,6 +52,9 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
+      - name: Build dependencies
+        run: npx turbo run build --filter=@duyetbot/${{ matrix.app }}...
+
       - name: Deploy ${{ matrix.app }}
         run: cd apps/${{ matrix.app }} && bun run deploy
 
@@ -65,6 +70,9 @@ jobs:
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
 
+      - name: Build dashboard
+        run: cd apps/dashboard && bun run build
+
       - name: Deploy Dashboard
         run: cd apps/dashboard && bun run deploy
 
@@ -79,6 +87,9 @@ jobs:
 
       - name: Setup Bun
         uses: ./.github/actions/setup-bun
+
+      - name: Build web
+        run: cd apps/web && bun run build
 
       - name: Deploy Web
         run: cd apps/web && bun run deploy
