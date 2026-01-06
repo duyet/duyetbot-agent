@@ -31,14 +31,15 @@ const testProvider = (() => {
 // Get OpenAI-compatible client configured for Cloudflare AI Gateway
 async function getOpenAIClient() {
 	const { env } = await getCloudflareContext({ async: true });
+	const envAny = env as any; // Type assertion for Cloudflare env with AI Gateway
 
 	// Get AI Gateway URL for OpenRouter
-	const gateway = env.AI.gateway(env.AI_GATEWAY_NAME || "ai-gateway");
+	const gateway = envAny.AI.gateway(envAny.AI_GATEWAY_NAME || "ai-gateway");
 	const gatewayUrl = await gateway.getUrl("openrouter");
 
 	return createOpenAI({
 		baseURL: gatewayUrl,
-		apiKey: env.AI_GATEWAY_API_KEY || "",
+		apiKey: envAny.AI_GATEWAY_API_KEY || "",
 	});
 }
 

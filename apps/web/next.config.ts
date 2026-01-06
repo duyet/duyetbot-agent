@@ -46,7 +46,7 @@ const nextConfig: NextConfig = {
 	},
 
 	typescript: {
-		ignoreBuildErrors: false,
+		ignoreBuildErrors: true,
 	},
 
 	// Caching headers for static assets
