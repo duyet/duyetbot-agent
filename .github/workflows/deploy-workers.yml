@@ -60,7 +60,7 @@ jobs:
           done
 
       - name: Deploy ${{ matrix.app }}
-        run: cd apps/${{ matrix.app }} && bun run deploy
+        run: cd apps/${{ matrix.app }} && pnpm run deploy
 
   deploy-dashboard:
     name: Deploy Dashboard
@@ -84,10 +84,10 @@ jobs:
           done
 
       - name: Build dashboard
-        run: cd apps/dashboard && bun run build
+        run: cd apps/dashboard && pnpm run build
 
       - name: Deploy Dashboard
-        run: cd apps/dashboard && bun run deploy
+        run: cd apps/dashboard && pnpm run deploy
 
   deploy-web:
     name: Deploy Web
@@ -111,7 +111,7 @@ jobs:
           done
 
       - name: Build web
-        run: cd apps/web && bun run build
+        run: cd apps/web && pnpm run build
 
       - name: Deploy Web
-        run: cd apps/web && bun run deploy
+        run: cd apps/web && pnpm run deploy
