@@ -1,5 +1,9 @@
-import type { Ai } from "@cloudflare/workers-types";
-import type { D1Database, R2Bucket, KVNamespace } from "@cloudflare/workers-types";
+import type {
+	Ai,
+	D1Database,
+	KVNamespace,
+	R2Bucket,
+} from "@cloudflare/workers-types";
 
 export interface CloudflareEnv extends Record<string, unknown> {
 	AI: Ai;
@@ -18,9 +22,7 @@ export interface CloudflareEnv extends Record<string, unknown> {
 declare global {
 	namespace NodeJS {
 		interface ProcessEnv {
-		// Add any Node.js env vars here if needed
-	}
+			// Add any Node.js env vars here if needed
+		}
 	}
 }
-
-export {}; // Ensure this file is treated as a module

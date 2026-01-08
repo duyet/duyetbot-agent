@@ -7,6 +7,15 @@
 
 export type TaskStatus = 'pending' | 'in_progress' | 'blocked' | 'completed' | 'cancelled';
 
+export type DateFilterType = 'overdue' | 'today' | 'this_week' | 'this_month' | null;
+
+export interface TaskFilters {
+  searchQuery: string;
+  priorityFilter: 'high' | 'medium' | 'low' | null;
+  tagFilters: string[];
+  dateFilter: DateFilterType;
+}
+
 export interface TaskItem {
   id: string;
   description: string;

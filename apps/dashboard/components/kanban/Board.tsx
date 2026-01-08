@@ -20,11 +20,21 @@ import {
   useSensors,
 } from '@dnd-kit/core';
 import { useState } from 'react';
-import type { ColumnId, TaskItem, UpdateTaskInput } from '@/lib/kanban';
+import type {
+  ColumnId,
+  DateFilterType,
+  TaskFilters,
+  TaskItem,
+  UpdateTaskInput,
+} from '@/lib/kanban';
 import { COLUMNS } from '@/lib/kanban';
+import { filterTasks, getAllTags } from '@/lib/kanban/task-filters';
 import { cn } from '@/lib/utils';
 import { Column } from './Column';
+import { FilterBar } from './FilterBar';
+import { SearchBar } from './SearchBar';
 import { TaskCard } from './TaskCard';
+import { TaskStatistics } from './TaskStatistics';
 
 interface BoardProps {
   tasks: TaskItem[];
@@ -57,11 +67,30 @@ function getColumnStatus(columnId: ColumnId): TaskItem['status'] {
 
 export function Board({ tasks, onTaskUpdate, onTaskClick }: BoardProps) {
   const [activeTask, setActiveTask] = useState<TaskItem | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState<'high' | 'medium' | 'low' | null>(null);
+  const [tagFilters, setTagFilters] = useState<string[]>([]);
+  const [dateFilter, setDateFilter] = useState<DateFilterType>(null);
+  const [showFilters, setShowFilters] = useState(true);
 
-  // Group tasks by column
+  const availableTags = getAllTags(tasks);
+
+  const filters: TaskFilters = {
+    searchQuery,
+    priorityFilter,
+    tagFilters,
+    dateFilter,
+  };
+
+  const filteredTasks = filterTasks(tasks, filters);
+
+  const visibleTaskCount = filteredTasks.length;
+  const filteredCount = tasks.length - visibleTaskCount;
+
+  // Group filtered tasks by column
   const tasksByColumn = COLUMNS.reduce(
     (acc, column) => {
-      const columnTasks = tasks.filter((task) => column.status.includes(task.status));
+      const columnTasks = filteredTasks.filter((task) => column.status.includes(task.status));
       acc[column.id] = columnTasks;
       return acc;
     },
@@ -116,13 +145,44 @@ export function Board({ tasks, onTaskUpdate, onTaskClick }: BoardProps) {
   return (
     <div className="h-full flex flex-col">
       {/* Board header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-        <div>
-          <h1 className="text-xl font-semibold text-white">Tasks</h1>
-          <p className="text-sm text-white/40 mt-1">
-            {tasks.length} {tasks.length === 1 ? 'task' : 'tasks'} across {COLUMNS.length} columns
-          </p>
+      <div className="px-6 py-4 border-b border-white/5 space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-white">Tasks</h1>
+            <p className="text-sm text-white/40 mt-1">
+              {visibleTaskCount} {visibleTaskCount === 1 ? 'task' : 'tasks'}
+              {filteredCount > 0 && (
+                <span className="text-white/30"> ({filteredCount} hidden by filters)</span>
+              )}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowFilters(!showFilters)}
+            className="text-sm text-white/40 hover:text-white/60 transition-colors"
+          >
+            {showFilters ? 'Hide Filters' : 'Show Filters'}
+          </button>
         </div>
+
+        {/* Search bar */}
+        <SearchBar value={searchQuery} onChange={setSearchQuery} />
+
+        {/* Filter bar */}
+        {showFilters && (
+          <FilterBar
+            priorityFilter={priorityFilter}
+            onPriorityChange={setPriorityFilter}
+            tagFilters={tagFilters}
+            onTagFiltersChange={setTagFilters}
+            dateFilter={dateFilter}
+            onDateFilterChange={setDateFilter}
+            availableTags={availableTags}
+          />
+        )}
+
+        {/* Task statistics */}
+        {showFilters && <TaskStatistics tasks={filteredTasks} />}
       </div>
 
       {/* Kanban board - horizontally scrollable */}

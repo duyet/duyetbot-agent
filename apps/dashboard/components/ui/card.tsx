@@ -14,15 +14,13 @@ const CardHeader: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className,
 );
 
 const CardTitle: React.FC<React.HTMLAttributes<HTMLHeadingElement>> = ({ className, ...props }) => (
-  <h3
-    className={cn('text-2xl font-semibold leading-none tracking-tight', className)}
-    {...props}
-  />
+  <h3 className={cn('text-2xl font-semibold leading-none tracking-tight', className)} {...props} />
 );
 
-const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({ className, ...props }) => (
-  <p className={cn('text-sm text-muted-foreground', className)} {...props} />
-);
+const CardDescription: React.FC<React.HTMLAttributes<HTMLParagraphElement>> = ({
+  className,
+  ...props
+}) => <p className={cn('text-sm text-muted-foreground', className)} {...props} />;
 
 const CardContent: React.FC<React.HTMLAttributes<HTMLDivElement>> = ({ className, ...props }) => (
   <div className={cn('p-6 pt-0', className)} {...props} />

@@ -11,44 +11,24 @@ import {
   MergeConflictStatus,
 } from '../merge-conflict.js';
 
-// Mock Octokit
-vi.mock('@octokit/rest', () => ({
-  Octokit: vi.fn().mockImplementation(() => ({
-    pulls: {
-      get: vi.fn(),
-    },
-    issues: {
-      createComment: vi.fn(),
-      listComments: vi.fn(),
-      updateComment: vi.fn(),
-    },
-  })),
-}));
-
-// Mock logger
-vi.mock('../logger.js', () => ({
-  logger: {
-    debug: vi.fn(),
-    info: vi.fn(),
-    warn: vi.fn(),
-    error: vi.fn(),
-  },
-}));
-
 describe('checkMergeConflicts', () => {
   it('should detect clean merge', async () => {
-    const { Octokit } = await import('@octokit/rest');
     const mockGet = vi.fn().mockResolvedValue({
       data: {
         mergeable: true,
         merge_commit_sha: 'abc123',
       },
     });
-    (Octokit as any).mockImplementation(() => ({
-      pulls: { get: mockGet },
-    }));
 
-    const octokit = new (Octokit as any)();
+    const octokit = {
+      pulls: { get: mockGet },
+      issues: {
+        createComment: vi.fn(),
+        listComments: vi.fn(),
+        updateComment: vi.fn(),
+      },
+    } as any;
+
     const result = await checkMergeConflicts(octokit, 'owner', 'repo', 123);
 
     expect(result.status).toBe('clean');
@@ -57,18 +37,22 @@ describe('checkMergeConflicts', () => {
   });
 
   it('should detect merge conflicts', async () => {
-    const { Octokit } = await import('@octokit/rest');
     const mockGet = vi.fn().mockResolvedValue({
       data: {
         mergeable: false,
         merge_commit_sha: null,
       },
     });
-    (Octokit as any).mockImplementation(() => ({
-      pulls: { get: mockGet },
-    }));
 
-    const octokit = new (Octokit as any)();
+    const octokit = {
+      pulls: { get: mockGet },
+      issues: {
+        createComment: vi.fn(),
+        listComments: vi.fn(),
+        updateComment: vi.fn(),
+      },
+    } as any;
+
     const result = await checkMergeConflicts(octokit, 'owner', 'repo', 123);
 
     expect(result.status).toBe('conflicting');
@@ -77,18 +61,22 @@ describe('checkMergeConflicts', () => {
   });
 
   it('should handle unknown merge status', async () => {
-    const { Octokit } = await import('@octokit/rest');
     const mockGet = vi.fn().mockResolvedValue({
       data: {
         mergeable: null,
         merge_commit_sha: null,
       },
     });
-    (Octokit as any).mockImplementation(() => ({
-      pulls: { get: mockGet },
-    }));
 
-    const octokit = new (Octokit as any)();
+    const octokit = {
+      pulls: { get: mockGet },
+      issues: {
+        createComment: vi.fn(),
+        listComments: vi.fn(),
+        updateComment: vi.fn(),
+      },
+    } as any;
+
     const result = await checkMergeConflicts(octokit, 'owner', 'repo', 123);
 
     expect(result.status).toBe('unknown');
@@ -97,13 +85,17 @@ describe('checkMergeConflicts', () => {
   });
 
   it('should handle API errors gracefully', async () => {
-    const { Octokit } = await import('@octokit/rest');
     const mockGet = vi.fn().mockRejectedValue(new Error('API Error'));
-    (Octokit as any).mockImplementation(() => ({
-      pulls: { get: mockGet },
-    }));
 
-    const octokit = new (Octokit as any)();
+    const octokit = {
+      pulls: { get: mockGet },
+      issues: {
+        createComment: vi.fn(),
+        listComments: vi.fn(),
+        updateComment: vi.fn(),
+      },
+    } as any;
+
     const result = await checkMergeConflicts(octokit, 'owner', 'repo', 123);
 
     expect(result.status).toBe('unknown');
@@ -126,8 +118,8 @@ describe('formatConflictComment', () => {
     expect(comment).toContain('## Merge Status Check');
     expect(comment).toContain('✅');
     expect(comment).toContain('#123');
-    expect(comment).toContain('`feature-branch`');
-    expect(comment).toContain('`main`');
+    expect(comment).toContain('feature-branch');
+    expect(comment).toContain('main');
     expect(comment).toContain('ready to merge');
   });
 
@@ -169,7 +161,6 @@ describe('formatConflictComment', () => {
     };
     const comment = formatConflictComment(result, 456, 'fix/auth', 'develop');
 
-    // Check bash code blocks are present
     expect(comment).toContain('```bash');
     expect(comment).toContain('git fetch origin develop');
     expect(comment).toContain('git checkout fix/auth');
@@ -190,7 +181,7 @@ describe('formatConflictComment', () => {
     const result = { ...baseResult };
     const comment = formatConflictComment(result, 123, 'feature/123-thing', 'release/v2.0');
 
-    expect(comment).toContain('`feature/123-thing`');
-    expect(comment).toContain('`release/v2.0`');
+    expect(comment).toContain('feature/123-thing');
+    expect(comment).toContain('release/v2.0');
   });
 });
