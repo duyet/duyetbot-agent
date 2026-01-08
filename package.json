@@ -126,7 +126,7 @@
     "vitest": "4.0.16",
     "wrangler": "4.50.0",
     "zod": "4.0.0",
-    "zod-to-json-schema": "3.24.5"
+    "zod-to-json-schema": "3.25.1"
   },
   "resolutions": {
     "@modelcontextprotocol/sdk": "1.24.2",
