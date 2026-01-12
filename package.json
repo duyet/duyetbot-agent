@@ -104,9 +104,9 @@
     "@opennextjs/cloudflare": "^1.14.7",
     "@vitest/coverage-v8": "^4.0.16",
     "concurrently": "^9.2.1",
-    "promptfoo": "^0.120.4",
+    "promptfoo": "^0.120.11",
     "tsx": "^4.21.0",
-    "turbo": "^2.6.3",
+    "turbo": "^2.7.4",
     "vitest": "^4.0.16",
     "wrangler": "^4.54.0"
   },
