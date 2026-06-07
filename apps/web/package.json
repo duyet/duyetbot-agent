@@ -117,7 +117,7 @@
 		"server-only": "^0.0.1",
 		"shiki": "^3.14.0",
 		"sonner": "^1.5.0",
-		"streamdown": "^1.4.0",
+		"streamdown": "^2.0.1",
 		"swr": "^2.2.5",
 		"tailwind-merge": "^2.5.2",
 		"tailwindcss-animate": "^1.0.7",
