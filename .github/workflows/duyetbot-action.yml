@@ -208,7 +208,7 @@ jobs:
             --comment "✅ Task completed by duyetbot-action run #${{ github.run_number }}"
 
       - name: Upload Agent Logs
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: agent-logs-${{ github.run_number }}
@@ -322,7 +322,7 @@ jobs:
               });
             } catch (e) {}
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: agent-issue-${{ github.event.issue.number }}-${{ github.run_number }}
@@ -394,7 +394,7 @@ jobs:
             --source="github-issues" \
             --task="$TASK_ID"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: agent-new-issue-${{ github.event.issue.number }}-${{ github.run_number }}
@@ -472,7 +472,7 @@ jobs:
               content: content
             });
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: agent-pr-${{ github.event.issue.number }}-${{ github.run_number }}
@@ -551,7 +551,7 @@ jobs:
               content: content
             });
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         if: always()
         with:
           name: agent-issue-comment-${{ github.event.issue.number }}-${{ github.run_number }}
