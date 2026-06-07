@@ -106,7 +106,7 @@
     "concurrently": "^9.2.1",
     "promptfoo": "^0.120.4",
     "tsx": "^4.21.0",
-    "turbo": "^2.6.3",
+    "turbo": "^2.8.20",
     "vitest": "^4.0.16",
     "wrangler": "^4.54.0"
   },
